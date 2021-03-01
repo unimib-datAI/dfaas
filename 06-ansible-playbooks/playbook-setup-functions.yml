@@ -1,0 +1,61 @@
+#!/usr/bin/env ansible-playbook
+---
+- hosts: faasnodes
+
+  vars:
+    pip_install_packages:
+      - name: docker
+    docker_users:
+      - debian
+    dfaas_functions: ["a", "b", "c"]
+
+  tasks:
+    - name: Execute apt update only if the last one is more than 1 hour ago
+      become: yes
+      apt:
+        update_cache: yes
+        cache_valid_time: 3600
+
+    - name: Ensure some basic apt packages are installed (and at the latest version)
+      become: yes
+      apt:
+        name:
+          - git
+          - htop
+          - nano
+          - tmux
+          - tree
+          - wget
+          - zip
+          - curl
+          - socat
+          - hatop
+          - jq
+        state: latest
+
+    - name: Ensure some necessary python2 packages are installed (and at the latest version)
+      become: yes
+      apt:
+        name:
+          - python-setuptools # Needed by the "geerlingguy.pip" Ansible role
+          - python-docker # Needed by the "docker_container" Ansible module
+          - rsync # Needed by the "synchronize" Ansible module
+        state: latest
+
+    - name: Install the OpenFaaS CLI client
+      become: yes
+      shell:
+        cmd: curl -sSL https://cli.openfaas.com/ | sh
+        warn: no # Disable the "Consider using the get_url or uri module rather than running curl" warning message
+
+    - name: Login into the gateways
+      shell:
+        cmd: echo faaspass2020 | faas-cli login --password-stdin
+
+    - name: Deploy the nodeinfo function on every node
+      shell:
+        cmd: faas-cli store deploy nodeinfo --label dfaas.maxrate=50
+
+    - name: Deploy the figlet function on every node
+      shell:
+        cmd: faas-cli store deploy figlet --label dfaas.maxrate=50

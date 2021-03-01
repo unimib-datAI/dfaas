@@ -1,0 +1,26 @@
+module gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent
+
+go 1.14
+
+require (
+	github.com/Masterminds/goutils v1.1.0 // indirect
+	github.com/Masterminds/semver v1.5.0 // indirect
+	github.com/Masterminds/sprig v2.22.0+incompatible
+	github.com/bcicen/go-haproxy v0.0.0-20180203142132-ff5824fe38be
+	github.com/gocarina/gocsv v0.0.0-20200925213129-04be9ee2e1a2 // indirect
+	github.com/huandu/xstrings v1.3.2 // indirect
+	github.com/imdario/mergo v0.3.11 // indirect
+	github.com/ipfs/go-log/v2 v2.0.8 // indirect
+	github.com/libp2p/go-libp2p v0.9.2
+	github.com/libp2p/go-libp2p-core v0.5.6
+	github.com/libp2p/go-libp2p-discovery v0.4.0
+	github.com/libp2p/go-libp2p-kad-dht v0.7.12
+	github.com/libp2p/go-libp2p-pubsub v0.3.0
+	github.com/libp2p/go-yamux v1.3.7 // indirect
+	github.com/mitchellh/copystructure v1.0.0 // indirect
+	github.com/multiformats/go-multiaddr v0.2.2
+	github.com/pkg/errors v0.9.1
+	github.com/spf13/pflag v1.0.5
+	github.com/stretchr/testify v1.5.1
+	go.uber.org/zap v1.15.0
+)
