@@ -27,7 +27,7 @@
 - modificare la riga `DEBIAN_ISO_LOCAL_PATH` dei file `01-vbox-nodes/main.sh` e `02-vbox-dfaasctrl/main.sh` in modo tale che la directory in cui salvare la ISO di Debian esista realmente
 - eseguire lo script `01-vbox-nodes/main.sh` all'interno di una finestra di terminale *Git Bash*
 - eseguire lo script `02-vbox-dfaasctrl/main.sh` all'interno di una finestra di terminale *Git Bash*
-  - (opzionale): se si dispone di massimo 8 Gb di RAM è consigliato da Virtual Box diminuire la RAM attribuita ad ogni VM. Aprire Virtual Box, `selezionare la VM > Impostazioni > Sistema` ed inserire 1536 Mb, ovvero un 1.5 Gb per ognuna di esse. 
+  - (opzionale): se si dispone di massimo 8 Gb di RAM è consigliato diminuire la RAM attribuita ad ogni VM. Aprire Virtual Box ed eseguire il seguente passaggio per ogni VM: `Selezionare una VM > Impostazioni > Sistema > Modificare Memoria di Base` ed inserire 1536 Mb, ovvero un 1.5 Gb per ognuna di esse (si può diminuire fino circa 1 Gb) 
 
 ### Installazione debian sulle vm dei cluster
 
@@ -62,7 +62,7 @@
 - lasciare pure aperte le tre vm. serviranno per dopo
 
 ### Deployment funzioni FaaS di esempio sulle vm dei cluster
-- andare all'interno della cartella `example-function` e digitare il seguente comando `faas-cli template store pull golang-http` all'interno di GitBash per scaricare i template
+- andare all'interno della cartella `example-functions` e digitare il seguente comando `faas-cli template store pull golang-http` all'interno di GitBash per scaricare i template, tornare poi nella root di progetto
 - assicurarsi di avere TUTTE E QUATTRO le macchine virtuali aperte
 - eseguire lo script `06-ansible-playbooks/reset-ssh-keys-wsl.sh` all'interno di Git Bash
 - eseguire lo script `06-ansible-playbooks/script-setup-client.sh` all'interno di Git Bash
