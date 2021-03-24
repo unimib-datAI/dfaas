@@ -10,6 +10,7 @@
     dfaas_functions: ["a", "b", "c"]
 
   tasks:
+
     - name: Copy the files needed to build and deploy the functions
       synchronize:
         # Trailing slash required! See http://qdosmsq.dunbar-it.co.uk/blog/2013/02/rsync-to-slash-or-not-to-slash/
@@ -44,6 +45,13 @@
         path: /home/debian/example-functions/func{{item}}/handler.go
         regexp: '"###FUNCNAME###"'
         replace: '"{{item | upper}}"'
+      loop: "{{dfaas_functions}}"
+
+    - name: Replace CRLF with LF
+      replace:
+        path: /home/debian/example-functions/func{{item}}/handler.go
+        regexp: '\r\n'
+        replace: '\n'
       loop: "{{dfaas_functions}}"
 
     - name: Build the functions
