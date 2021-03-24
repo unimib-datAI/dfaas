@@ -14,9 +14,9 @@ fi
 ##### INIZIO CONFIGURAZIONE #####
 
 # URL per il download della ISO di Debian
-DEBIAN_ISO_DOWNLOAD_URL="https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/debian-10.3.0-amd64-netinst.iso"
+DEBIAN_ISO_DOWNLOAD_URL="https://cdimage.debian.org/debian-cd/current/amd64/iso-cd/debian-10.8.0-amd64-netinst.iso"
 # Percorso locale del file ISO di Debian
-DEBIAN_ISO_LOCAL_PATH="C:\\Users\\Motte\\DatiMotteBig\\ISO\\debian-10.3.0-amd64-netinst.iso"
+DEBIAN_ISO_LOCAL_PATH="C:\\Users\\Motte\\DatiMotteBig\\ISO\\debian-10.8.0-amd64-netinst.iso"
 
 # Nome della rete di tipo NAT Network da creare e utilizzare
 NATNETWORK_NAME="DFaaSNAT"
