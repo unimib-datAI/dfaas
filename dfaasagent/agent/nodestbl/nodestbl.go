@@ -111,6 +111,12 @@ func (tbl *Table) SetReceivedValues(
 		// Remove from my table the functions limits which are no more present
 		// in the new updated message
 		for funcName := range entries[nodeID].FuncsData {
+			// Once this routine executed a message from another node of the
+			// p2p net has been received.
+			// If I (and I am the receiver node) stored in _nodestbl functions
+			// that are not more present in sender node, identified by the fact
+			// that they are not more present in received message, I can remove them
+			// from my local table.
 			_, present := funcLimits[funcName]
 			if !present {
 				delete(entries[nodeID].FuncsData, funcName)
@@ -122,6 +128,14 @@ func (tbl *Table) SetReceivedValues(
 		for funcName, limit := range funcLimits {
 			_, present := entries[nodeID].FuncsData[funcName]
 			if present {
+				// For each function received by sender node, updates
+				// corrisponding line of _nodestbl table.
+				// If entry for sender node is present, updates LimitOut
+				// for that node with received limit.
+				// LimitOut means number of req/sec that I can fwd
+				// toward this node.
+				// Note: this LimitOut is updated on the base of LimitIn
+				// for this function received by i-th node (sender).
 				entries[nodeID].FuncsData[funcName].LimitOut = limit
 			} else {
 				entries[nodeID].FuncsData[funcName] = &FuncData{

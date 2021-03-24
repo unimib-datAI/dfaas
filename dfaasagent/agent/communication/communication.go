@@ -42,6 +42,7 @@ func Initialize(
 	}
 
 	// Subscribe to the PubSub topic
+	// All Agents subscribed to the same topc --> broadcasting of messages.
 	subscription, err := ps.Subscribe(constants.P2pPubSubTopic)
 	if err != nil {
 		return errors.Wrap(err, "Error while subscribing to the PubSub topic")

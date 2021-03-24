@@ -67,6 +67,7 @@ func processMsgNodeInfo(sender string, msg *MsgNodeInfo) error {
 	// Note: if the sender node do not "know" us (we aren't in his FuncLimits) we just ignore his message
 	funcLimits, present := msg.FuncLimits[myself]
 	if present {
+		// Pass to receive function only limits regarding myself.
 		_nodestbl.SetReceivedValues(sender, msg.HAProxyHost, msg.HAProxyPort, funcLimits)
 	}
 

@@ -190,6 +190,10 @@ func recalcStep1() error {
 				for _, entry := range entries {
 					funcData, present := entry.FuncsData[funcName]
 					if present {
+						// Weights represent likelihood of send a request toward i-th
+						// function instance.
+						// Considering that this function instance is labelled as "underload"
+						// it is not necessary to send request towards other nodes.
 						funcData.NodeWeight = 0
 						nNodes++
 					}
@@ -285,6 +289,9 @@ func recalcStep2() error {
 			_nodestbl.SafeExec(func(entries map[string]*nodestbl.Entry) error {
 				totLimitsOut := float64(0)
 
+				// Loop on all node in _nodestbl, check if that node
+				// has this function running; if is present sum the amount of
+				// req/sec forwardable to this node.
 				for _, entry := range entries {
 					funcData, present := entry.FuncsData[funcName]
 					if present {
@@ -299,6 +306,14 @@ func recalcStep2() error {
 					totLimitsOut = 1
 				}
 
+				// Loop on all all node in _nodestbl, if function funcName is present in this node
+				// that is in "oveload" state, is present also in i-th node, calculate
+				// weight for the instance of function in i-th node.
+				// Weight is based on LimitOut (number of req/sec forwardable to this node)
+				// divided by total forwardable request.
+				// All multiplied by 100, that is the sum of weights; this op allow to
+				// express weights as the percentage of requests forwarded by this node to
+				// other functions that runs on other nodes.
 				for _, entry := range entries {
 					funcData, present := entry.FuncsData[funcName]
 					if present {
