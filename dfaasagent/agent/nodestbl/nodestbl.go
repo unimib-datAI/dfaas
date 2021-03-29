@@ -96,6 +96,9 @@ func (tbl *Table) SetReceivedValues(
 	funcLimits map[string]float64,
 ) error {
 	return tbl.SafeExec(func(entries map[string]*Entry) error {
+
+		// If the message arrives from a sender node with ID nodeID that is
+		// not present in _nodesbl yet, it is added to the table.
 		_, present := entries[nodeID]
 		if !present {
 			entries[nodeID] = &Entry{
