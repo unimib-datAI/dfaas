@@ -127,7 +127,22 @@ func recalcStep1() error {
 	}
 	debugHAProxyUserRates(_recalc.userRates)
 
-	//////////////////// GATHER INFO FROM PROMETHEUS ////////////////////
+	//////////////////// GATHER INFO FOR STICKTABLES OF DATA FROM OTHER NODES ////////////////////
+	// TODO: Here I could insert print of other stick table to insert in Agent log.
+	for funcName := range _recalc.funcs {
+		stName := fmt.Sprintf("st_other_nodes_func_%s", funcName)
+		stContent, err := hasock.ReadStickTable(&_hasockClient, stName)
+
+		if err != nil {
+			errWrap := errors.Wrap(err, "Error while reading the stick-table \""+stName+"\" from the HAProxy socket")
+			logger.Error(errWrap)
+			logger.Warn("Not changing userRates for stick-table \"" + stName + "\" but this should be ok")
+		}
+
+		debugStickTable(stName, stContent)
+	}
+
+	//////////////////// GATHER INFO FROM PROMETHEUS //////////////////// --> TODO
 
 	//_recalc.afet, err = _ofpromqClient.QueryAFET(_flags.RecalcPeriod)
 	//if err != nil {
@@ -154,7 +169,7 @@ func recalcStep1() error {
 			_recalc.overloads[funcName] = true
 		}
 	}
-	//debugOverloads(_recalc.overloads)
+	debugOverloads(_recalc.overloads) // Debug purpose.
 
 	//////////////////// LIMITS AND WEIGHTS CALCULATIONS ////////////////////
 

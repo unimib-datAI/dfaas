@@ -33,6 +33,17 @@ backend st_users_func_{{$funcName}}
 The size is set to 10, but setting it to 1 should be already enough. */ -}}
 backend st_local_func_{{$funcName}}
     stick-table type integer size 10 expire {{$.StrRecalc}} store http_req_cnt,http_req_rate(1s)
+
+{{/* [NEW] Stick-Table for counting request from others agesnts:
+    - String keys with node IDs.
+    - Register number of http requests with header "DFaaS...". 
+    - One row for every node that has comunicated with this agent.
+    - RecalTime for expiring why LimitIn are updated every "RecalPeriod" time.
+    - Count number of requests and check rate for periods of 1 sec.
+*/ -}}
+backend st_other_nodes_func_{{$funcName}}
+    stick-table type string size {{len $.Nodes}} espire {{$.StrRecalc}} store http_req_cnt,http_req_rate(1s)
+
 {{end}}
 
 {{/* #################### FRONTEND #################### */ -}}
@@ -95,6 +106,49 @@ frontend fe_main
     (this works because dst_port is 80 for every possible request) */ -}}
     {{range $funcName, $_ := .Functions -}}
     http-request track-sc1 dst_port table st_users_func_{{$funcName}} if is_func_{{$funcName}} !has_nodeid_hdr {{- /* Using Sticky-Counter #1 */}}
+    {{end}}
+
+    {{/* [NEW] ########### ACLs FOR CHECKING IF A NODE IS KNOWN ######### */ -}}
+    {{/* Multiple conditions on the same line are joined togheter with an AND 
+        instead named ACLs named multiple times are joined with OR.
+        is_hdr_nodeID_known check that another node has forwarded the req (if hdr is present)
+        and if a nodeID is known (someone that has communicated with this node).
+    */ -}}
+    {{range $nodeID, $_ := $.Nodes}}
+    acl is_hdr_nodeID_known { has_nodeid_hdr } { req.hdr(DFaaS-Node-ID) -m str {{$nodeID}} }
+    {{end}}
+
+    {{/* [NEW] ########### TRACKING WITH STICK TABLES FWD MESSAGED ########## */-}}
+    {{/* How it works?
+            - If a message has a header "DFaaSNode..." it comes from another DFaaS node, indeed the message
+              has been forwarded.
+            - If a message has been forwarded from another node, increment specific row (for a specific function) in stick table.
+            - AND if a node is a known one.
+    */ -}}
+    {{range $funcName, $_ := .Functions -}}
+    http-request track-sc3 req.hdr(DFaaS-Node-ID) table st_other_nodes_func_{{$funcName}} if is_func_{{$funcName}} has_nodeid_hdr is_hdr_nodeID_known {{- /* Using Sticky-Counter #3 */}}
+    {{end}}
+
+    {{/* [NEW] ########## ACLs FOR LIMIT-IN CONTROL ##########*/ -}}
+    {{/* If the rate of request from each other node for each function is greater than LimitIn 
+        calculated by the algorithm, deny further requests */ -}}
+    {{range $funcName, $func := .Functions -}}
+    {{/* Define ACL (using a variable) and capture that variable */ -}}
+    {{range $nodeID, $limitIn := $func.LimitsIn -}}
+    http-request set-var(req.rate_other_nodes_func_{{$nodeID}}_{{$funcName}}) {{$nodeID}},table_http_req_rate(st_other_nodes_func_{{$funcName}})
+    acl limitIn_saturated_{{$nodeID}}_{{$funcName}} var(req.rate_other_nodes_func_{{$nodeID}}_{{$funcName}}),add(0) gt {{$limitIn}}  {{- /* The ",add(0)" needed also here (see above for explanation) */}}
+    http-request capture str({{$nodeID}}_{{$funcName}}:),concat(,req.rate_other_nodes_func_{{$nodeID}}_{{$funcName}},) len 100 {{- /* e.g. "figlet:5" */}}
+    {{end}}
+    {{end}}
+
+    {{/* [NEW] If a hdr DFaaS-Node-ID is not known deny request */ -}}
+    http-request deny deny_status 429 if !is_hdr_nodeID_known
+    
+    {{/* [NEW] Deny requests that exceed limitIn */ -}}
+    {{range $funcName, $func := .Functions -}}
+    {{range $nodeID, $limitIn := $func.LimitsIn -}}
+    http-request deny deny_status 429 if limitIn_saturated_{{$nodeID}}_{{$funcName}}
+    {{end}}
     {{end}}
 
     {{/* ########## BACKEND SELECTION ########## */ -}}
