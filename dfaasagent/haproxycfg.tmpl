@@ -18,7 +18,7 @@ defaults
 
 {{/* #################### STICK-TABLES #################### */ -}}
 
-{{range $funcName, $_ := .Functions -}}
+{{range $funcName, $func := .Functions -}}
 {{/* Stick-Table for specific function invocations:
     - not denied
     - from users only
@@ -30,7 +30,7 @@ backend st_users_func_{{$funcName}}
     - not denied
     - to local OpenFaaS instance only
     - only one row, for all clients
-The size is set to 10, but setting it to 1 should be already enough. */ -}}
+The size is set to 10, but setting it t!bgo 1 should be already enough. */ -}}
 backend st_local_func_{{$funcName}}
     stick-table type integer size 10 expire {{$.StrRecalc}} store http_req_cnt,http_req_rate(1s)
 
@@ -41,8 +41,11 @@ backend st_local_func_{{$funcName}}
     - RecalTime for expiring why LimitIn are updated every "RecalPeriod" time.
     - Count number of requests and check rate for periods of 1 sec.
 */ -}}
-backend st_other_nodes_func_{{$funcName}}
-    stick-table type string size {{len $.Nodes}} espire {{$.StrRecalc}} store http_req_cnt,http_req_rate(1s)
+
+{{range $nodeID, $_ := $func.LimitsIn -}}
+backend st_other_node_{{$funcName}}_{{$nodeID}}
+    stick-table type integer size 10 expire {{$.StrRecalc}} store http_req_cnt,http_req_rate(1s)
+{{end}}
 
 {{end}}
 
@@ -109,24 +112,14 @@ frontend fe_main
     {{end}}
 
     {{/* [NEW] ########### ACLs FOR CHECKING IF A NODE IS KNOWN ######### */ -}}
-    {{/* Multiple conditions on the same line are joined togheter with an AND 
+    {{/* Multiple conditions in the same line are joined togheter with an AND 
         instead named ACLs named multiple times are joined with OR.
         is_hdr_nodeID_known check that another node has forwarded the req (if hdr is present)
         and if a nodeID is known (someone that has communicated with this node).
     */ -}}
     {{range $nodeID, $_ := $.Nodes}}
-    acl is_hdr_nodeID_known { has_nodeid_hdr } { req.hdr(DFaaS-Node-ID) -m str {{$nodeID}} }
-    {{end}}
-
-    {{/* [NEW] ########### TRACKING WITH STICK TABLES FWD MESSAGED ########## */-}}
-    {{/* How it works?
-            - If a message has a header "DFaaSNode..." it comes from another DFaaS node, indeed the message
-              has been forwarded.
-            - If a message has been forwarded from another node, increment specific row (for a specific function) in stick table.
-            - AND if a node is a known one.
-    */ -}}
-    {{range $funcName, $_ := .Functions -}}
-    http-request track-sc3 req.hdr(DFaaS-Node-ID) table st_other_nodes_func_{{$funcName}} if is_func_{{$funcName}} has_nodeid_hdr is_hdr_nodeID_known {{- /* Using Sticky-Counter #3 */}}
+    {{/*acl is_hdr_nodeID_known req.hdr(DFaaS-Node-ID) -m str {{$nodeID}} */ -}}
+    acl is_node_{{$nodeID}} req.hdr(DFaaS-Node-ID) -m str {{$nodeID}}
     {{end}}
 
     {{/* [NEW] ########## ACLs FOR LIMIT-IN CONTROL ##########*/ -}}
@@ -135,29 +128,37 @@ frontend fe_main
     {{range $funcName, $func := .Functions -}}
     {{/* Define ACL (using a variable) and capture that variable */ -}}
     {{range $nodeID, $limitIn := $func.LimitsIn -}}
-    http-request set-var(req.rate_other_nodes_func_{{$nodeID}}_{{$funcName}}) {{$nodeID}},table_http_req_rate(st_other_nodes_func_{{$funcName}})
-    acl limitIn_saturated_{{$nodeID}}_{{$funcName}} var(req.rate_other_nodes_func_{{$nodeID}}_{{$funcName}}),add(0) gt {{$limitIn}}  {{- /* The ",add(0)" needed also here (see above for explanation) */}}
-    http-request capture str({{$nodeID}}_{{$funcName}}:),concat(,req.rate_other_nodes_func_{{$nodeID}}_{{$funcName}},) len 100 {{- /* e.g. "figlet:5" */}}
+    http-request set-var(req.rate_other_node_{{$funcName}}_{{$nodeID}}) dst_port,table_http_req_rate(st_other_node_{{$funcName}}_{{$nodeID}})
+    acl limitIn_saturated_{{$funcName}}_{{$nodeID}} var(req.rate_other_node_{{$funcName}}_{{$nodeID}}),add(0) ge {{$limitIn}}  {{- /* The ",add(0)" needed also here (see above for explanation) */}}
     {{end}}
     {{end}}
 
     {{/* [NEW] If a hdr DFaaS-Node-ID is not known deny request */ -}}
-    http-request deny deny_status 429 if !is_hdr_nodeID_known
+    {{/*http-request deny deny_status 500 if has_nodeid_hdr !is_hdr_nodeID_known */ -}}
     
     {{/* [NEW] Deny requests that exceed limitIn */ -}}
+    {{/*
     {{range $funcName, $func := .Functions -}}
     {{range $nodeID, $limitIn := $func.LimitsIn -}}
-    http-request deny deny_status 429 if limitIn_saturated_{{$nodeID}}_{{$funcName}}
+    http-request deny deny_status 429 if has_nodeid_hdr limitIn_saturated_{{$funcName}}_{{$nodeID}}
     {{end}}
     {{end}}
+    */ -}}
 
     {{/* ########## BACKEND SELECTION ########## */ -}}
 
     use_backend be_ok if is_path_root
-    {{range $funcName, $_ := .Functions -}}
+    {{range $funcName, $func := .Functions -}}
+
+    {{/* [NEW] Select backend for request that exeeds limitsIn */ -}}
+    {{range $nodeID, $limitIn := $func.LimitsIn -}}
+    use_backend be_limitInExceeds if is_func_{{$funcName}} is_node_{{$nodeID}} has_nodeid_hdr limitIn_saturated_{{$funcName}}_{{$nodeID}} {{- /* Conditions are ANDed */}} 
+    {{end}}
+
     use_backend be_myself if is_func_{{$funcName}} has_nodeid_hdr {{- /* Conditions are ANDed */}}
     use_backend be_myself if is_func_{{$funcName}} !local_capacity_exceeded_func_{{$funcName}} {{- /* Conditions are ANDed */}}
     use_backend be_others_func_{{$funcName}} if is_func_{{$funcName}} !has_nodeid_hdr local_capacity_exceeded_func_{{$funcName}} {{- /* Conditions are ANDed */}}
+
     {{end}}
 
     default_backend be_ok
@@ -182,10 +183,28 @@ backend be_myself
     {{/* Add DFaaS-Node-ID header (in any case) */ -}}
     http-request add-header DFaaS-Node-ID {{.MyNodeID}}
 
-    {{range $funcName, $_ := .Functions -}}
+    {{/* [NEW] Replicated ACLs for visibility. */}}
+    acl has_nodeid_hdr var(req.hdrcnt_nodeid),add(0) gt 0 {{- /* The ",add(0)" is needed here, for some reason (maybe haproxy bug? like int/str conversion or something... if you remove it there will be problems!!!) */}}
+    {{range $nodeID, $_ := $.Nodes}}
+    acl is_node_{{$nodeID}} req.hdr(DFaaS-Node-ID) -m str {{$nodeID}}
+    {{end}}
+
+    {{range $funcName, $func := .Functions -}}
     acl is_func_{{$funcName}} path_beg /function/{{$funcName}}
     {{/* Track all clients (this works because dst_port is 80 for every possible request) */ -}}
     http-request track-sc2 dst_port table st_local_func_{{$funcName}} if is_func_{{$funcName}} {{- /* Using Sticky-Counter #2 */}}
+    
+    {{/* [NEW] ########### TRACKING WITH STICK TABLES FWD MESSAGED ########## */ -}}
+    {{/* How it works?
+            - If a message has a header "DFaaSNode..." it comes from another DFaaS node, indeed the message
+              has been forwarded.
+            - If a message has been forwarded from another node, increment specific row in a specific stick table.
+            - AND if a node is a known one.
+    */ -}}
+    {{range $nodeID, $_ := $func.LimitsIn -}}
+    http-request track-sc0 dst_port table st_other_node_{{$funcName}}_{{$nodeID}} if is_func_{{$funcName}} has_nodeid_hdr is_node_{{$nodeID}} {{/*is_hdr_nodeID_known*/ -}} {{- /* Using Sticky-Counter #0 */}}
+    {{end}}
+    
     {{end}}
 
     server myself {{.OpenFaaSHost}}:{{.OpenFaaSPort}} check
@@ -215,3 +234,10 @@ backend be_others_func_{{$funcName}}
     {{end -}}
     {{end}}
 {{end}}
+
+{{/* [NEW] #################### BACKEND FOR DENY EXCEEDING LINITIN REQUESTS #################### */ -}}
+{{/* Note: It could be divided in alla specific be for nodes and functions and returns a specific error message */ -}}
+{{/* I can use 503 (Service Unavailable), 429 for test purpose. */}}
+backend be_limitInExceeds
+    http-request deny deny_status 429
+

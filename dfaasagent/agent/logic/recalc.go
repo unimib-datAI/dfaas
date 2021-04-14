@@ -127,19 +127,21 @@ func recalcStep1() error {
 	}
 	debugHAProxyUserRates(_recalc.userRates)
 
-	//////////////////// GATHER INFO FOR STICKTABLES OF DATA FROM OTHER NODES ////////////////////
+	//////////////////// [NEW] GATHER INFO FOR STICKTABLES OF DATA FROM OTHER NODES ////////////////////
 	// TODO: Here I could insert print of other stick table to insert in Agent log.
 	for funcName := range _recalc.funcs {
-		stName := fmt.Sprintf("st_other_nodes_func_%s", funcName)
-		stContent, err := hasock.ReadStickTable(&_hasockClient, stName)
+		for _, nodeID := range _recalc.nodeIDs {
+			stName := fmt.Sprintf("st_other_node_%s_%s", funcName, nodeID.String())
+			stContent, err := hasock.ReadStickTable(&_hasockClient, stName)
 
-		if err != nil {
-			errWrap := errors.Wrap(err, "Error while reading the stick-table \""+stName+"\" from the HAProxy socket")
-			logger.Error(errWrap)
-			logger.Warn("Not changing userRates for stick-table \"" + stName + "\" but this should be ok")
+			if err != nil {
+				errWrap := errors.Wrap(err, "Error while reading the stick-table \""+stName+"\" from the HAProxy socket")
+				logger.Error(errWrap)
+				logger.Warn("Not changing userRates for stick-table \"" + stName + "\" but this should be ok")
+			}
+
+			debugStickTable(stName, stContent)
 		}
-
-		debugStickTable(stName, stContent)
 	}
 
 	//////////////////// GATHER INFO FROM PROMETHEUS //////////////////// --> TODO
