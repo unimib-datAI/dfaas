@@ -128,6 +128,7 @@ frontend fe_main
     {{range $nodeID, $limitIn := $func.LimitsIn -}}
     http-request set-var(req.rate_other_node_{{$funcName}}_{{$nodeID}}) dst_port,table_http_req_rate(st_other_node_{{$funcName}}_{{$nodeID}})
     acl limitIn_saturated_{{$funcName}}_{{$nodeID}} var(req.rate_other_node_{{$funcName}}_{{$nodeID}}),add(0) ge {{$limitIn}}  {{- /* The ",add(0)" needed also here (see above for explanation) */}}
+    http-request capture str({{$funcName}}_{{$nodeID}}:),concat(,req.rate_other_node_{{$funcName}}_{{$nodeID}},) len 100 {{- /* e.g. "figlet_nodeID:5" */}}
     {{end}}
     {{end}}
 
