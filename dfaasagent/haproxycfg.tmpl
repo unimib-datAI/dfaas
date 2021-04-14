@@ -34,14 +34,13 @@ The size is set to 10, but setting it t!bgo 1 should be already enough. */ -}}
 backend st_local_func_{{$funcName}}
     stick-table type integer size 10 expire {{$.StrRecalc}} store http_req_cnt,http_req_rate(1s)
 
-{{/* [NEW] Stick-Table for counting request from others agesnts:
-    - String keys with node IDs.
-    - Register number of http requests with header "DFaaS...". 
-    - One row for every node that has comunicated with this agent.
+{{/* [NEW] Stick-Table for counting request from others agents:
+    - One table for each tuple (node, function).
+    - Key is destination port (80).
+    - Counting request num and rate.
     - RecalTime for expiring why LimitIn are updated every "RecalPeriod" time.
     - Count number of requests and check rate for periods of 1 sec.
 */ -}}
-
 {{range $nodeID, $_ := $func.LimitsIn -}}
 backend st_other_node_{{$funcName}}_{{$nodeID}}
     stick-table type integer size 10 expire {{$.StrRecalc}} store http_req_cnt,http_req_rate(1s)
@@ -114,8 +113,7 @@ frontend fe_main
     {{/* [NEW] ########### ACLs FOR CHECKING IF A NODE IS KNOWN ######### */ -}}
     {{/* Multiple conditions in the same line are joined togheter with an AND 
         instead named ACLs named multiple times are joined with OR.
-        is_hdr_nodeID_known check that another node has forwarded the req (if hdr is present)
-        and if a nodeID is known (someone that has communicated with this node).
+            - acl is_node_{{$nodeID}} check that the http request came from {nodeID} node. 
     */ -}}
     {{range $nodeID, $_ := $.Nodes}}
     {{/*acl is_hdr_nodeID_known req.hdr(DFaaS-Node-ID) -m str {{$nodeID}} */ -}}
@@ -198,8 +196,8 @@ backend be_myself
     {{/* How it works?
             - If a message has a header "DFaaSNode..." it comes from another DFaaS node, indeed the message
               has been forwarded.
-            - If a message has been forwarded from another node, increment specific row in a specific stick table.
-            - AND if a node is a known one.
+            - If a message has been forwarded from another node, increment row in a specific stick table.
+        If the above condition are satisfied increment specific table.
     */ -}}
     {{range $nodeID, $_ := $func.LimitsIn -}}
     http-request track-sc0 dst_port table st_other_node_{{$funcName}}_{{$nodeID}} if is_func_{{$funcName}} has_nodeid_hdr is_node_{{$nodeID}} {{/*is_hdr_nodeID_known*/ -}} {{- /* Using Sticky-Counter #0 */}}
@@ -237,7 +235,8 @@ backend be_others_func_{{$funcName}}
 
 {{/* [NEW] #################### BACKEND FOR DENY EXCEEDING LINITIN REQUESTS #################### */ -}}
 {{/* Note: It could be divided in alla specific be for nodes and functions and returns a specific error message */ -}}
-{{/* I can use 503 (Service Unavailable), 429 for test purpose. */}}
+{{/* 503 (Service Unavailable) status code can be used.
+    At the moment 429 has been used for test purpose. */}}
 backend be_limitInExceeds
     http-request deny deny_status 429
 
