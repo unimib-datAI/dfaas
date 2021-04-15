@@ -127,8 +127,23 @@ func recalcStep1() error {
 	}
 	debugHAProxyUserRates(_recalc.userRates)
 
+	//////////////////// [NEW] GATHER INFO FROM HAPROXY STICKTABLES st_local_func_* ////////////////////
+
+	for funcName := range _recalc.funcs {
+		stName := fmt.Sprintf("st_local_func_%s", funcName)
+		stContent, err := hasock.ReadStickTable(&_hasockClient, stName)
+
+		if err != nil {
+			errWrap := errors.Wrap(err, "Error while reading the stick-table \""+stName+"\" from the HAProxy socket")
+			logger.Error(errWrap)
+			logger.Warn("Not changing local rates for stick-table \"" + stName + "\" but this should be ok")
+		}
+
+		debugStickTable(stName, stContent)
+	}
+
 	//////////////////// [NEW] GATHER INFO FOR STICKTABLES OF DATA FROM OTHER NODES ////////////////////
-	// TODO: Here I could insert print of other stick table to insert in Agent log.
+
 	for funcName := range _recalc.funcs {
 		for _, nodeID := range _recalc.nodeIDs {
 			stName := fmt.Sprintf("st_other_node_%s_%s", funcName, nodeID.String())
@@ -137,7 +152,7 @@ func recalcStep1() error {
 			if err != nil {
 				errWrap := errors.Wrap(err, "Error while reading the stick-table \""+stName+"\" from the HAProxy socket")
 				logger.Error(errWrap)
-				logger.Warn("Not changing userRates for stick-table \"" + stName + "\" but this should be ok")
+				logger.Warn("Not changing other nodes rates for stick-table \"" + stName + "\" but this should be ok")
 			}
 
 			debugStickTable(stName, stContent)
