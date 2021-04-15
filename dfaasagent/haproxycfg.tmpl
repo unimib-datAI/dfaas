@@ -116,7 +116,7 @@ frontend fe_main
             - acl is_node_{{$nodeID}} check that the http request came from {nodeID} node. 
     */ -}}
     {{range $nodeID, $_ := $.Nodes}}
-    {{/*acl is_hdr_nodeID_known req.hdr(DFaaS-Node-ID) -m str {{$nodeID}} */ -}}
+    acl is_hdr_nodeID_known req.hdr(DFaaS-Node-ID) -m str {{$nodeID}} {{/* Conditions with same name, called multiple times are joined with OR */}}
     acl is_node_{{$nodeID}} req.hdr(DFaaS-Node-ID) -m str {{$nodeID}}
     {{end}}
 
@@ -132,8 +132,11 @@ frontend fe_main
     {{end}}
     {{end}}
 
-    {{/* [NEW] If a hdr DFaaS-Node-ID is not known deny request */ -}}
-    {{/*http-request deny deny_status 500 if has_nodeid_hdr !is_hdr_nodeID_known */ -}}
+    {{/* [NEW] If a hdr DFaaS-Node-ID is present AND is not known deny request. 
+        * Returned message is 403 "Forbidden": The access to the resource is forbidden by this client.
+            * A different status code is useful for testing purpose; can be changed.
+    */ -}}
+    http-request deny deny_status 403 if has_nodeid_hdr !is_hdr_nodeID_known
     
     {{/* [NEW] Deny requests that exceed limitIn */ -}}
     {{/*
