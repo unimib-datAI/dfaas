@@ -1,0 +1,375 @@
+2021-04-19T20:09:00.085197624Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_users_func_funca" content:
+2021-04-19T20:09:00.092953602Z [35mDEBUG[0m	logic/dbglogging.go:115	Invocation rates of requests from users only (calculated from HAProxy stick-table):
+2021-04-19T20:09:00.100184762Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_funcc" content:
+2021-04-19T20:09:00.105646318Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_nodeinfo" content:
+2021-04-19T20:09:00.108302407Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_funca" content:
+2021-04-19T20:09:00.110424657Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_funcb" content:
+2021-04-19T20:09:00.112228556Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_figlet" content:
+2021-04-19T20:09:00.115493276Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funcc_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:09:00.117171184Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funcc_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:09:00.118931865Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_nodeinfo_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:09:00.120500054Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_nodeinfo_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:09:00.122935112Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funca_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:09:00.124543512Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funca_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:09:00.125562027Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funcb_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:09:00.126911842Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funcb_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:09:00.127637379Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_figlet_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:09:00.128808223Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_figlet_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:09:00.129334679Z [35mDEBUG[0m	logic/dbglogging.go:156	Functions overload/underload modes:
+2021-04-19T20:09:00.129607868Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC figlet: Underload
+2021-04-19T20:09:00.129764871Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC funca: Underload
+2021-04-19T20:09:00.130268428Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC funcb: Underload
+2021-04-19T20:09:00.130776630Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC funcc: Underload
+2021-04-19T20:09:00.131058998Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC nodeinfo: Underload
+2021-04-19T20:09:00.131815295Z [35mDEBUG[0m	logic/dbglogging.go:182	Content of nodestbl:
+2021-04-19T20:09:00.132111967Z [35mDEBUG[0m	logic/dbglogging.go:186	  - NODE QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z (HAProxy=node3:80)
+2021-04-19T20:09:00.132486814Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC figlet: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:09:00.132794192Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funca: LimitIn=5.00 LimitOut=15.00 NodeWeight=0
+2021-04-19T20:09:00.133038814Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcb: LimitIn=5.00 LimitOut=15.00 NodeWeight=0
+2021-04-19T20:09:00.133345600Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcc: LimitIn=5.00 LimitOut=15.00 NodeWeight=0
+2021-04-19T20:09:00.133795517Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC nodeinfo: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:09:00.133977691Z [35mDEBUG[0m	logic/dbglogging.go:186	  - NODE QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR (HAProxy=node2:80)
+2021-04-19T20:09:00.134468006Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC figlet: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:09:00.134671227Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funca: LimitIn=5.00 LimitOut=10.00 NodeWeight=0
+2021-04-19T20:09:00.134914064Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcb: LimitIn=5.00 LimitOut=10.00 NodeWeight=0
+2021-04-19T20:09:00.135125098Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcc: LimitIn=5.00 LimitOut=10.00 NodeWeight=0
+2021-04-19T20:09:00.135341613Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC nodeinfo: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:09:30.002851318Z [35mDEBUG[0m	logic/recalc.go:314	#################### RECALC: STEP 2 (UnixMillis 1618862970002) ####################
+2021-04-19T20:09:30.002920948Z [35mDEBUG[0m	logic/dbglogging.go:182	Content of nodestbl:
+2021-04-19T20:09:30.002940445Z [35mDEBUG[0m	logic/dbglogging.go:186	  - NODE QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z (HAProxy=node3:80)
+2021-04-19T20:09:30.002957272Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC figlet: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:09:30.003473180Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funca: LimitIn=5.00 LimitOut=15.00 NodeWeight=0
+2021-04-19T20:09:30.003512500Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcb: LimitIn=5.00 LimitOut=15.00 NodeWeight=0
+2021-04-19T20:09:30.003529773Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcc: LimitIn=5.00 LimitOut=15.00 NodeWeight=0
+2021-04-19T20:09:30.004465275Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC nodeinfo: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:09:30.004497852Z [35mDEBUG[0m	logic/dbglogging.go:186	  - NODE QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR (HAProxy=node2:80)
+2021-04-19T20:09:30.004883736Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC figlet: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:09:30.004964965Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funca: LimitIn=5.00 LimitOut=10.00 NodeWeight=0
+2021-04-19T20:09:30.004982446Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcb: LimitIn=5.00 LimitOut=10.00 NodeWeight=0
+2021-04-19T20:09:30.005076144Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcc: LimitIn=5.00 LimitOut=10.00 NodeWeight=0
+2021-04-19T20:09:30.005155451Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC nodeinfo: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:10:00.005859212Z [35mDEBUG[0m	logic/recalc.go:73	#################### RECALC: STEP 1 (UnixMillis 1618863000000) ####################
+2021-04-19T20:10:00.006014201Z [35mDEBUG[0m	logic/dbglogging.go:45	Currently connected nodes: YkR t4Z
+2021-04-19T20:10:00.031046225Z [35mDEBUG[0m	logic/dbglogging.go:135	Available functions:
+2021-04-19T20:10:00.031081800Z [35mDEBUG[0m	logic/dbglogging.go:137	  - FUNC figlet: limit 50 req/s
+2021-04-19T20:10:00.031094760Z [35mDEBUG[0m	logic/dbglogging.go:137	  - FUNC funca: limit 10 req/s
+2021-04-19T20:10:00.031104744Z [35mDEBUG[0m	logic/dbglogging.go:137	  - FUNC funcb: limit 10 req/s
+2021-04-19T20:10:00.031114608Z [35mDEBUG[0m	logic/dbglogging.go:137	  - FUNC funcc: limit 10 req/s
+2021-04-19T20:10:00.031124572Z [35mDEBUG[0m	logic/dbglogging.go:137	  - FUNC nodeinfo: limit 50 req/s
+2021-04-19T20:10:00.033421819Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_users_func_funcb" content:
+2021-04-19T20:10:00.033541573Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_users_func_figlet" content:
+2021-04-19T20:10:00.037585999Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_users_func_funcc" content:
+2021-04-19T20:10:00.041047103Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_users_func_nodeinfo" content:
+2021-04-19T20:10:00.045489027Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_users_func_funca" content:
+2021-04-19T20:10:00.046621418Z [35mDEBUG[0m	logic/dbglogging.go:227	  - key=80: cnt=703 rate=49
+2021-04-19T20:10:00.049306155Z [35mDEBUG[0m	logic/dbglogging.go:115	Invocation rates of requests from users only (calculated from HAProxy stick-table):
+2021-04-19T20:10:00.049352042Z [35mDEBUG[0m	logic/dbglogging.go:117	  - FUNC funca: 23.43 req/s
+2021-04-19T20:10:00.049362826Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_funcc" content:
+2021-04-19T20:10:00.057285089Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_nodeinfo" content:
+2021-04-19T20:10:00.061654573Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_funca" content:
+2021-04-19T20:10:00.061681048Z [35mDEBUG[0m	logic/dbglogging.go:227	  - key=80: cnt=141 rate=10
+2021-04-19T20:10:00.068890502Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_funcb" content:
+2021-04-19T20:10:00.072183427Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_figlet" content:
+2021-04-19T20:10:00.072217360Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funcc_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:10:00.073189806Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funcc_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:10:00.074490739Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_nodeinfo_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:10:00.076660018Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_nodeinfo_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:10:00.079654263Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funca_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:10:00.084830153Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funca_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:10:00.091917703Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funcb_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:10:00.091988316Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funcb_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:10:00.093731846Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_figlet_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:10:00.096642890Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_figlet_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:10:00.097284909Z [35mDEBUG[0m	logic/dbglogging.go:156	Functions overload/underload modes:
+2021-04-19T20:10:00.097659385Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC figlet: Underload
+2021-04-19T20:10:00.097679986Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC funca: Overload
+2021-04-19T20:10:00.098143598Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC funcb: Underload
+2021-04-19T20:10:00.098221097Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC funcc: Underload
+2021-04-19T20:10:00.098383507Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC nodeinfo: Underload
+2021-04-19T20:10:00.099137064Z [35mDEBUG[0m	logic/dbglogging.go:182	Content of nodestbl:
+2021-04-19T20:10:00.100496747Z [35mDEBUG[0m	logic/dbglogging.go:186	  - NODE QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z (HAProxy=node3:80)
+2021-04-19T20:10:00.100521971Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC figlet: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:10:00.100546669Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funca: LimitIn=0.00 LimitOut=15.00 NodeWeight=0
+2021-04-19T20:10:00.100553352Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcb: LimitIn=5.00 LimitOut=15.00 NodeWeight=0
+2021-04-19T20:10:00.100559216Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcc: LimitIn=5.00 LimitOut=15.00 NodeWeight=0
+2021-04-19T20:10:00.100565005Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC nodeinfo: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:10:00.100570921Z [35mDEBUG[0m	logic/dbglogging.go:186	  - NODE QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR (HAProxy=node2:80)
+2021-04-19T20:10:00.100576867Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC figlet: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:10:00.100582639Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funca: LimitIn=0.00 LimitOut=10.00 NodeWeight=0
+2021-04-19T20:10:00.100588431Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcb: LimitIn=5.00 LimitOut=10.00 NodeWeight=0
+2021-04-19T20:10:00.100594166Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcc: LimitIn=5.00 LimitOut=10.00 NodeWeight=0
+2021-04-19T20:10:00.100599933Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC nodeinfo: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:10:30.016670937Z [35mDEBUG[0m	logic/recalc.go:314	#################### RECALC: STEP 2 (UnixMillis 1618863030007) ####################
+2021-04-19T20:10:30.016867625Z [35mDEBUG[0m	logic/dbglogging.go:182	Content of nodestbl:
+2021-04-19T20:10:30.016917973Z [35mDEBUG[0m	logic/dbglogging.go:186	  - NODE QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z (HAProxy=node3:80)
+2021-04-19T20:10:30.016947292Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC figlet: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:10:30.016973756Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funca: LimitIn=0.00 LimitOut=15.00 NodeWeight=75
+2021-04-19T20:10:30.016999692Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcb: LimitIn=5.00 LimitOut=15.00 NodeWeight=0
+2021-04-19T20:10:30.017025406Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcc: LimitIn=5.00 LimitOut=15.00 NodeWeight=0
+2021-04-19T20:10:30.017051594Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC nodeinfo: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:10:30.017078381Z [35mDEBUG[0m	logic/dbglogging.go:186	  - NODE QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR (HAProxy=node2:80)
+2021-04-19T20:10:30.017104334Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC figlet: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:10:30.017132853Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funca: LimitIn=0.00 LimitOut=5.00 NodeWeight=25
+2021-04-19T20:10:30.017159382Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcb: LimitIn=5.00 LimitOut=10.00 NodeWeight=0
+2021-04-19T20:10:30.017220331Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcc: LimitIn=5.00 LimitOut=10.00 NodeWeight=0
+2021-04-19T20:10:30.017246258Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC nodeinfo: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:11:00.002606688Z [35mDEBUG[0m	logic/recalc.go:73	#################### RECALC: STEP 1 (UnixMillis 1618863060001) ####################
+2021-04-19T20:11:00.002722162Z [35mDEBUG[0m	logic/dbglogging.go:45	Currently connected nodes: YkR t4Z
+2021-04-19T20:11:00.023929618Z [35mDEBUG[0m	logic/dbglogging.go:135	Available functions:
+2021-04-19T20:11:00.023971033Z [35mDEBUG[0m	logic/dbglogging.go:137	  - FUNC figlet: limit 50 req/s
+2021-04-19T20:11:00.023982717Z [35mDEBUG[0m	logic/dbglogging.go:137	  - FUNC funca: limit 10 req/s
+2021-04-19T20:11:00.026912978Z [35mDEBUG[0m	logic/dbglogging.go:137	  - FUNC funcb: limit 10 req/s
+2021-04-19T20:11:00.026926471Z [35mDEBUG[0m	logic/dbglogging.go:137	  - FUNC funcc: limit 10 req/s
+2021-04-19T20:11:00.026935456Z [35mDEBUG[0m	logic/dbglogging.go:137	  - FUNC nodeinfo: limit 50 req/s
+2021-04-19T20:11:00.026944045Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_users_func_figlet" content:
+2021-04-19T20:11:00.026952862Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_users_func_funcc" content:
+2021-04-19T20:11:00.026961523Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_users_func_nodeinfo" content:
+2021-04-19T20:11:00.026970255Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_users_func_funca" content:
+2021-04-19T20:11:00.026978824Z [35mDEBUG[0m	logic/dbglogging.go:227	  - key=80: cnt=1469 rate=49
+2021-04-19T20:11:00.026987287Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_users_func_funcb" content:
+2021-04-19T20:11:00.026995923Z [35mDEBUG[0m	logic/dbglogging.go:115	Invocation rates of requests from users only (calculated from HAProxy stick-table):
+2021-04-19T20:11:00.027004582Z [35mDEBUG[0m	logic/dbglogging.go:117	  - FUNC funca: 48.97 req/s
+2021-04-19T20:11:00.028150946Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_figlet" content:
+2021-04-19T20:11:00.056672291Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_funcc" content:
+2021-04-19T20:11:00.063657676Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_nodeinfo" content:
+2021-04-19T20:11:00.063749811Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_funca" content:
+2021-04-19T20:11:00.063816195Z [35mDEBUG[0m	logic/dbglogging.go:227	  - key=80: cnt=294 rate=9
+2021-04-19T20:11:00.063878567Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_funcb" content:
+2021-04-19T20:11:00.067144625Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_nodeinfo_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:11:00.072812416Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_nodeinfo_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:11:00.078143682Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funca_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:11:00.083731845Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funca_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:11:00.087341206Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funcb_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:11:00.090975699Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funcb_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:11:00.091327774Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_figlet_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:11:00.092356856Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_figlet_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:11:00.093243632Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funcc_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:11:00.094409744Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funcc_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:11:00.094451510Z [35mDEBUG[0m	logic/dbglogging.go:156	Functions overload/underload modes:
+2021-04-19T20:11:00.094731074Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC figlet: Underload
+2021-04-19T20:11:00.094757881Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC funca: Overload
+2021-04-19T20:11:00.095539099Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC funcb: Underload
+2021-04-19T20:11:00.095578966Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC funcc: Underload
+2021-04-19T20:11:00.095749540Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC nodeinfo: Underload
+2021-04-19T20:11:00.096738949Z [35mDEBUG[0m	logic/dbglogging.go:182	Content of nodestbl:
+2021-04-19T20:11:00.096849647Z [35mDEBUG[0m	logic/dbglogging.go:186	  - NODE QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z (HAProxy=node3:80)
+2021-04-19T20:11:00.097544848Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC figlet: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:11:00.097613687Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funca: LimitIn=0.00 LimitOut=15.00 NodeWeight=75
+2021-04-19T20:11:00.097640396Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcb: LimitIn=5.00 LimitOut=15.00 NodeWeight=0
+2021-04-19T20:11:00.097677922Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcc: LimitIn=5.00 LimitOut=15.00 NodeWeight=0
+2021-04-19T20:11:00.097689003Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC nodeinfo: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:11:00.098231449Z [35mDEBUG[0m	logic/dbglogging.go:186	  - NODE QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR (HAProxy=node2:80)
+2021-04-19T20:11:00.098291774Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC figlet: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:11:00.098328883Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funca: LimitIn=0.00 LimitOut=0.00 NodeWeight=25
+2021-04-19T20:11:00.098339659Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcb: LimitIn=5.00 LimitOut=10.00 NodeWeight=0
+2021-04-19T20:11:00.098349341Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcc: LimitIn=5.00 LimitOut=10.00 NodeWeight=0
+2021-04-19T20:11:00.100299320Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC nodeinfo: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:11:30.022425392Z [35mDEBUG[0m	logic/recalc.go:314	#################### RECALC: STEP 2 (UnixMillis 1618863090002) ####################
+2021-04-19T20:11:30.022471078Z [35mDEBUG[0m	logic/dbglogging.go:182	Content of nodestbl:
+2021-04-19T20:11:30.022506100Z [35mDEBUG[0m	logic/dbglogging.go:186	  - NODE QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z (HAProxy=node3:80)
+2021-04-19T20:11:30.022540360Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC figlet: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:11:30.022564370Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funca: LimitIn=0.00 LimitOut=15.00 NodeWeight=100
+2021-04-19T20:11:30.025435844Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcb: LimitIn=5.00 LimitOut=15.00 NodeWeight=0
+2021-04-19T20:11:30.025486339Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcc: LimitIn=5.00 LimitOut=15.00 NodeWeight=0
+2021-04-19T20:11:30.025504910Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC nodeinfo: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:11:30.025519844Z [35mDEBUG[0m	logic/dbglogging.go:186	  - NODE QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR (HAProxy=node2:80)
+2021-04-19T20:11:30.025534541Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC figlet: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:11:30.025644506Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funca: LimitIn=0.00 LimitOut=0.00 NodeWeight=0
+2021-04-19T20:11:30.025690487Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcb: LimitIn=5.00 LimitOut=10.00 NodeWeight=0
+2021-04-19T20:11:30.025797358Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcc: LimitIn=5.00 LimitOut=10.00 NodeWeight=0
+2021-04-19T20:11:30.025887552Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC nodeinfo: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:12:00.002031952Z [35mDEBUG[0m	logic/recalc.go:73	#################### RECALC: STEP 1 (UnixMillis 1618863120001) ####################
+2021-04-19T20:12:00.002101619Z [35mDEBUG[0m	logic/dbglogging.go:45	Currently connected nodes: YkR t4Z
+2021-04-19T20:12:00.017592706Z [35mDEBUG[0m	logic/dbglogging.go:135	Available functions:
+2021-04-19T20:12:00.017689214Z [35mDEBUG[0m	logic/dbglogging.go:137	  - FUNC figlet: limit 50 req/s
+2021-04-19T20:12:00.017713004Z [35mDEBUG[0m	logic/dbglogging.go:137	  - FUNC funca: limit 10 req/s
+2021-04-19T20:12:00.020299813Z [35mDEBUG[0m	logic/dbglogging.go:137	  - FUNC funcb: limit 10 req/s
+2021-04-19T20:12:00.020332125Z [35mDEBUG[0m	logic/dbglogging.go:137	  - FUNC funcc: limit 10 req/s
+2021-04-19T20:12:00.020343448Z [35mDEBUG[0m	logic/dbglogging.go:137	  - FUNC nodeinfo: limit 50 req/s
+2021-04-19T20:12:00.020353076Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_users_func_funcc" content:
+2021-04-19T20:12:00.039057564Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_users_func_nodeinfo" content:
+2021-04-19T20:12:00.039101575Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_users_func_funca" content:
+2021-04-19T20:12:00.039118282Z [35mDEBUG[0m	logic/dbglogging.go:227	  - key=80: cnt=1469 rate=49
+2021-04-19T20:12:00.039128522Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_users_func_funcb" content:
+2021-04-19T20:12:00.039138254Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_users_func_figlet" content:
+2021-04-19T20:12:00.039148286Z [35mDEBUG[0m	logic/dbglogging.go:115	Invocation rates of requests from users only (calculated from HAProxy stick-table):
+2021-04-19T20:12:00.039158030Z [35mDEBUG[0m	logic/dbglogging.go:117	  - FUNC funca: 48.97 req/s
+2021-04-19T20:12:00.039167912Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_funcc" content:
+2021-04-19T20:12:00.039177570Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_nodeinfo" content:
+2021-04-19T20:12:00.039187130Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_funca" content:
+2021-04-19T20:12:00.039196758Z [35mDEBUG[0m	logic/dbglogging.go:227	  - key=80: cnt=293 rate=10
+2021-04-19T20:12:00.039208808Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_funcb" content:
+2021-04-19T20:12:00.039257315Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_figlet" content:
+2021-04-19T20:12:00.039271718Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_figlet_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:12:00.039294565Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_figlet_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:12:00.039304015Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funcc_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:12:00.039312908Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funcc_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:12:00.039321776Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_nodeinfo_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:12:00.039330790Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_nodeinfo_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:12:00.039340163Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funca_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:12:00.039351233Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funca_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:12:00.047675216Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funcb_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:12:00.047727688Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funcb_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:12:00.047794310Z [35mDEBUG[0m	logic/dbglogging.go:156	Functions overload/underload modes:
+2021-04-19T20:12:00.047814028Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC figlet: Underload
+2021-04-19T20:12:00.048291410Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC funca: Overload
+2021-04-19T20:12:00.048320684Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC funcb: Underload
+2021-04-19T20:12:00.048378855Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC funcc: Underload
+2021-04-19T20:12:00.048398378Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC nodeinfo: Underload
+2021-04-19T20:12:00.048447160Z [35mDEBUG[0m	logic/dbglogging.go:182	Content of nodestbl:
+2021-04-19T20:12:00.048465499Z [35mDEBUG[0m	logic/dbglogging.go:186	  - NODE QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z (HAProxy=node3:80)
+2021-04-19T20:12:00.048587156Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC figlet: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:12:00.048661673Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funca: LimitIn=0.00 LimitOut=15.00 NodeWeight=100
+2021-04-19T20:12:00.048726606Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcb: LimitIn=5.00 LimitOut=15.00 NodeWeight=0
+2021-04-19T20:12:00.048746183Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcc: LimitIn=5.00 LimitOut=15.00 NodeWeight=0
+2021-04-19T20:12:00.050767075Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC nodeinfo: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:12:00.050787864Z [35mDEBUG[0m	logic/dbglogging.go:186	  - NODE QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR (HAProxy=node2:80)
+2021-04-19T20:12:00.050797326Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC figlet: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:12:00.050805453Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funca: LimitIn=0.00 LimitOut=0.00 NodeWeight=0
+2021-04-19T20:12:00.050814663Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcb: LimitIn=5.00 LimitOut=10.00 NodeWeight=0
+2021-04-19T20:12:00.050822847Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcc: LimitIn=5.00 LimitOut=10.00 NodeWeight=0
+2021-04-19T20:12:00.050830745Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC nodeinfo: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:12:30.016373001Z [35mDEBUG[0m	logic/recalc.go:314	#################### RECALC: STEP 2 (UnixMillis 1618863150003) ####################
+2021-04-19T20:12:30.016454778Z [35mDEBUG[0m	logic/dbglogging.go:182	Content of nodestbl:
+2021-04-19T20:12:30.016478926Z [35mDEBUG[0m	logic/dbglogging.go:186	  - NODE QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z (HAProxy=node3:80)
+2021-04-19T20:12:30.016499193Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC figlet: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:12:30.016519085Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funca: LimitIn=0.00 LimitOut=15.00 NodeWeight=100
+2021-04-19T20:12:30.016538807Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcb: LimitIn=5.00 LimitOut=15.00 NodeWeight=0
+2021-04-19T20:12:30.016558141Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcc: LimitIn=5.00 LimitOut=15.00 NodeWeight=0
+2021-04-19T20:12:30.016577413Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC nodeinfo: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:12:30.016597253Z [35mDEBUG[0m	logic/dbglogging.go:186	  - NODE QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR (HAProxy=node2:80)
+2021-04-19T20:12:30.016618823Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC figlet: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:12:30.016638455Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funca: LimitIn=0.00 LimitOut=0.00 NodeWeight=0
+2021-04-19T20:12:30.016743809Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcb: LimitIn=5.00 LimitOut=10.00 NodeWeight=0
+2021-04-19T20:12:30.016769802Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcc: LimitIn=5.00 LimitOut=10.00 NodeWeight=0
+2021-04-19T20:12:30.016791100Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC nodeinfo: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:13:00.005668715Z [35mDEBUG[0m	logic/recalc.go:73	#################### RECALC: STEP 1 (UnixMillis 1618863180000) ####################
+2021-04-19T20:13:00.005785955Z [35mDEBUG[0m	logic/dbglogging.go:45	Currently connected nodes: YkR t4Z
+2021-04-19T20:13:00.039753465Z [35mDEBUG[0m	logic/dbglogging.go:135	Available functions:
+2021-04-19T20:13:00.039794427Z [35mDEBUG[0m	logic/dbglogging.go:137	  - FUNC figlet: limit 50 req/s
+2021-04-19T20:13:00.039808876Z [35mDEBUG[0m	logic/dbglogging.go:137	  - FUNC funca: limit 10 req/s
+2021-04-19T20:13:00.039819150Z [35mDEBUG[0m	logic/dbglogging.go:137	  - FUNC funcb: limit 10 req/s
+2021-04-19T20:13:00.039828214Z [35mDEBUG[0m	logic/dbglogging.go:137	  - FUNC funcc: limit 10 req/s
+2021-04-19T20:13:00.039837133Z [35mDEBUG[0m	logic/dbglogging.go:137	  - FUNC nodeinfo: limit 50 req/s
+2021-04-19T20:13:00.039846942Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_users_func_funcc" content:
+2021-04-19T20:13:00.039858120Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_users_func_nodeinfo" content:
+2021-04-19T20:13:00.039872303Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_users_func_funca" content:
+2021-04-19T20:13:00.039887583Z [35mDEBUG[0m	logic/dbglogging.go:227	  - key=80: cnt=1455 rate=50
+2021-04-19T20:13:00.039898609Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_users_func_funcb" content:
+2021-04-19T20:13:00.051178419Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_users_func_figlet" content:
+2021-04-19T20:13:00.051194119Z [35mDEBUG[0m	logic/dbglogging.go:115	Invocation rates of requests from users only (calculated from HAProxy stick-table):
+2021-04-19T20:13:00.051200372Z [35mDEBUG[0m	logic/dbglogging.go:117	  - FUNC funca: 48.50 req/s
+2021-04-19T20:13:00.053622980Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_figlet" content:
+2021-04-19T20:13:00.067219114Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_funcc" content:
+2021-04-19T20:13:00.078300374Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_nodeinfo" content:
+2021-04-19T20:13:00.082515515Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_funca" content:
+2021-04-19T20:13:00.082554251Z [35mDEBUG[0m	logic/dbglogging.go:227	  - key=80: cnt=291 rate=10
+2021-04-19T20:13:00.082747313Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_funcb" content:
+2021-04-19T20:13:00.084515295Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funca_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:13:00.085350204Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funca_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:13:00.090264195Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funcb_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:13:00.090295439Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funcb_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:13:00.095185575Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_figlet_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:13:00.095329512Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_figlet_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:13:00.097824826Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funcc_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:13:00.097931828Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funcc_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:13:00.098071066Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_nodeinfo_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:13:00.102021325Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_nodeinfo_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:13:00.102052808Z [35mDEBUG[0m	logic/dbglogging.go:156	Functions overload/underload modes:
+2021-04-19T20:13:00.102060433Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC figlet: Underload
+2021-04-19T20:13:00.102065877Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC funca: Overload
+2021-04-19T20:13:00.102071083Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC funcb: Underload
+2021-04-19T20:13:00.102076206Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC funcc: Underload
+2021-04-19T20:13:00.102081305Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC nodeinfo: Underload
+2021-04-19T20:13:00.102174450Z [35mDEBUG[0m	logic/dbglogging.go:182	Content of nodestbl:
+2021-04-19T20:13:00.102184780Z [35mDEBUG[0m	logic/dbglogging.go:186	  - NODE QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z (HAProxy=node3:80)
+2021-04-19T20:13:00.102192843Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC figlet: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:13:00.102200915Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funca: LimitIn=0.00 LimitOut=15.00 NodeWeight=100
+2021-04-19T20:13:00.102208100Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcb: LimitIn=5.00 LimitOut=15.00 NodeWeight=0
+2021-04-19T20:13:00.102215904Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcc: LimitIn=5.00 LimitOut=15.00 NodeWeight=0
+2021-04-19T20:13:00.102223749Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC nodeinfo: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:13:00.102315547Z [35mDEBUG[0m	logic/dbglogging.go:186	  - NODE QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR (HAProxy=node2:80)
+2021-04-19T20:13:00.104264588Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC figlet: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:13:00.104291622Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funca: LimitIn=0.00 LimitOut=0.00 NodeWeight=0
+2021-04-19T20:13:00.104299062Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcb: LimitIn=5.00 LimitOut=10.00 NodeWeight=0
+2021-04-19T20:13:00.104304632Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcc: LimitIn=5.00 LimitOut=10.00 NodeWeight=0
+2021-04-19T20:13:00.104310008Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC nodeinfo: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:13:30.010837490Z [35mDEBUG[0m	logic/recalc.go:314	#################### RECALC: STEP 2 (UnixMillis 1618863210004) ####################
+2021-04-19T20:13:30.011028120Z [35mDEBUG[0m	logic/dbglogging.go:182	Content of nodestbl:
+2021-04-19T20:13:30.012139649Z [35mDEBUG[0m	logic/dbglogging.go:186	  - NODE QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z (HAProxy=node3:80)
+2021-04-19T20:13:30.013020673Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC figlet: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:13:30.013109559Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funca: LimitIn=0.00 LimitOut=15.00 NodeWeight=100
+2021-04-19T20:13:30.015375023Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcb: LimitIn=5.00 LimitOut=15.00 NodeWeight=0
+2021-04-19T20:13:30.019441983Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcc: LimitIn=5.00 LimitOut=15.00 NodeWeight=0
+2021-04-19T20:13:30.019522014Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC nodeinfo: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:13:30.019541424Z [35mDEBUG[0m	logic/dbglogging.go:186	  - NODE QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR (HAProxy=node2:80)
+2021-04-19T20:13:30.019555057Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC figlet: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:13:30.019567921Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funca: LimitIn=0.00 LimitOut=0.00 NodeWeight=0
+2021-04-19T20:13:30.019580440Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcb: LimitIn=5.00 LimitOut=10.00 NodeWeight=0
+2021-04-19T20:13:30.019593317Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcc: LimitIn=5.00 LimitOut=10.00 NodeWeight=0
+2021-04-19T20:13:30.019606334Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC nodeinfo: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:14:00.006359329Z [35mDEBUG[0m	logic/recalc.go:73	#################### RECALC: STEP 1 (UnixMillis 1618863240002) ####################
+2021-04-19T20:14:00.006393399Z [35mDEBUG[0m	logic/dbglogging.go:45	Currently connected nodes: YkR t4Z
+2021-04-19T20:14:00.032414133Z [35mDEBUG[0m	logic/dbglogging.go:135	Available functions:
+2021-04-19T20:14:00.032445987Z [35mDEBUG[0m	logic/dbglogging.go:137	  - FUNC figlet: limit 50 req/s
+2021-04-19T20:14:00.032458802Z [35mDEBUG[0m	logic/dbglogging.go:137	  - FUNC funca: limit 10 req/s
+2021-04-19T20:14:00.032467686Z [35mDEBUG[0m	logic/dbglogging.go:137	  - FUNC funcb: limit 10 req/s
+2021-04-19T20:14:00.032476463Z [35mDEBUG[0m	logic/dbglogging.go:137	  - FUNC funcc: limit 10 req/s
+2021-04-19T20:14:00.032485283Z [35mDEBUG[0m	logic/dbglogging.go:137	  - FUNC nodeinfo: limit 50 req/s
+2021-04-19T20:14:00.058680609Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_users_func_funcb" content:
+2021-04-19T20:14:00.058728691Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_users_func_figlet" content:
+2021-04-19T20:14:00.060241929Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_users_func_funcc" content:
+2021-04-19T20:14:00.061765542Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_users_func_nodeinfo" content:
+2021-04-19T20:14:00.061794209Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_users_func_funca" content:
+2021-04-19T20:14:00.061802885Z [35mDEBUG[0m	logic/dbglogging.go:227	  - key=80: cnt=1441 rate=49
+2021-04-19T20:14:00.061808870Z [35mDEBUG[0m	logic/dbglogging.go:115	Invocation rates of requests from users only (calculated from HAProxy stick-table):
+2021-04-19T20:14:00.061814764Z [35mDEBUG[0m	logic/dbglogging.go:117	  - FUNC funca: 48.03 req/s
+2021-04-19T20:14:00.062730271Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_funcb" content:
+2021-04-19T20:14:00.092782557Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_figlet" content:
+2021-04-19T20:14:00.094191944Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_funcc" content:
+2021-04-19T20:14:00.096073721Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_nodeinfo" content:
+2021-04-19T20:14:00.114048536Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_local_func_funca" content:
+2021-04-19T20:14:00.114116711Z [35mDEBUG[0m	logic/dbglogging.go:227	  - key=80: cnt=287 rate=10
+2021-04-19T20:14:00.114995182Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funca_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:14:00.116410005Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funca_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:14:00.119072811Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funcb_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:14:00.119783981Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funcb_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:14:00.120777987Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_figlet_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:14:00.121694305Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_figlet_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:14:00.123735235Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funcc_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:14:00.128965583Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_funcc_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:14:00.130390255Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_nodeinfo_QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR" content:
+2021-04-19T20:14:00.131886135Z [35mDEBUG[0m	logic/dbglogging.go:224	Stick-table "st_other_node_nodeinfo_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z" content:
+2021-04-19T20:14:00.131939637Z [35mDEBUG[0m	logic/dbglogging.go:156	Functions overload/underload modes:
+2021-04-19T20:14:00.131959968Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC figlet: Underload
+2021-04-19T20:14:00.131974025Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC funca: Overload
+2021-04-19T20:14:00.131987162Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC funcb: Underload
+2021-04-19T20:14:00.132421337Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC funcc: Underload
+2021-04-19T20:14:00.132522347Z [35mDEBUG[0m	logic/dbglogging.go:164	  - FUNC nodeinfo: Underload
+2021-04-19T20:14:00.132532948Z [35mDEBUG[0m	logic/dbglogging.go:182	Content of nodestbl:
+2021-04-19T20:14:00.133090833Z [35mDEBUG[0m	logic/dbglogging.go:186	  - NODE QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z (HAProxy=node3:80)
+2021-04-19T20:14:00.133122780Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC figlet: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:14:00.133133623Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funca: LimitIn=0.00 LimitOut=15.00 NodeWeight=100
+2021-04-19T20:14:00.134253378Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcb: LimitIn=5.00 LimitOut=15.00 NodeWeight=0
+2021-04-19T20:14:00.134978539Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcc: LimitIn=5.00 LimitOut=15.00 NodeWeight=0
+2021-04-19T20:14:00.135010296Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC nodeinfo: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:14:00.136018895Z [35mDEBUG[0m	logic/dbglogging.go:186	  - NODE QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR (HAProxy=node2:80)
+2021-04-19T20:14:00.137324162Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC figlet: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:14:00.137370107Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funca: LimitIn=0.00 LimitOut=0.00 NodeWeight=0
+2021-04-19T20:14:00.137380435Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcb: LimitIn=5.00 LimitOut=10.00 NodeWeight=0
+2021-04-19T20:14:00.138452692Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcc: LimitIn=5.00 LimitOut=10.00 NodeWeight=0
+2021-04-19T20:14:00.138640074Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC nodeinfo: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:14:30.008375468Z [35mDEBUG[0m	logic/recalc.go:314	#################### RECALC: STEP 2 (UnixMillis 1618863270003) ####################
+2021-04-19T20:14:30.008616481Z [35mDEBUG[0m	logic/dbglogging.go:182	Content of nodestbl:
+2021-04-19T20:14:30.008638512Z [35mDEBUG[0m	logic/dbglogging.go:186	  - NODE QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z (HAProxy=node3:80)
+2021-04-19T20:14:30.008653041Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC figlet: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:14:30.008666362Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funca: LimitIn=0.00 LimitOut=15.00 NodeWeight=100
+2021-04-19T20:14:30.008679400Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcb: LimitIn=5.00 LimitOut=15.00 NodeWeight=0
+2021-04-19T20:14:30.008693113Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcc: LimitIn=5.00 LimitOut=15.00 NodeWeight=0
+2021-04-19T20:14:30.008707261Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC nodeinfo: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:14:30.008720574Z [35mDEBUG[0m	logic/dbglogging.go:186	  - NODE QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR (HAProxy=node2:80)
+2021-04-19T20:14:30.008733787Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC figlet: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
+2021-04-19T20:14:30.008747842Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funca: LimitIn=0.00 LimitOut=0.00 NodeWeight=0
+2021-04-19T20:14:30.008761149Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcb: LimitIn=5.00 LimitOut=10.00 NodeWeight=0
+2021-04-19T20:14:30.008774101Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC funcc: LimitIn=5.00 LimitOut=10.00 NodeWeight=0
+2021-04-19T20:14:30.008787656Z [35mDEBUG[0m	logic/dbglogging.go:201	    - FUNC nodeinfo: LimitIn=25.00 LimitOut=25.00 NodeWeight=0
