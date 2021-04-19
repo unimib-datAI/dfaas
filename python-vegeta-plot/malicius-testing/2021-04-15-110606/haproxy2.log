@@ -1,0 +1,137 @@
+2021-04-15T09:05:30.185101298Z [WARNING] 104/090530 (322) : Stopping backend st_users_func_figlet in 0 ms.
+2021-04-15T09:05:30.188551612Z [WARNING] 104/090530 (322) : Stopping backend st_local_func_figlet in 0 ms.
+2021-04-15T09:05:30.188569310Z [WARNING] 104/090530 (322) : Stopping backend st_other_node_figlet_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z in 0 ms.
+2021-04-15T09:05:30.188573629Z [WARNING] 104/090530 (322) : Stopping backend st_other_node_figlet_QmUb2Rxy3oV7ZsENnkSG3nZDQySEaymzuxKxWQJE9Fu3Qb in 0 ms.
+2021-04-15T09:05:30.188577237Z [WARNING] 104/090530 (322) : Stopping backend st_users_func_funca in 0 ms.
+2021-04-15T09:05:30.188580742Z [WARNING] 104/090530 (322) : Stopping backend st_local_func_funca in 0 ms.
+2021-04-15T09:05:30.188584261Z [WARNING] 104/090530 (322) : Stopping backend st_other_node_funca_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z in 0 ms.
+2021-04-15T09:05:30.188587904Z [WARNING] 104/090530 (322) : Stopping backend st_other_node_funca_QmUb2Rxy3oV7ZsENnkSG3nZDQySEaymzuxKxWQJE9Fu3Qb in 0 ms.
+2021-04-15T09:05:30.192649017Z [WARNING] 104/090530 (322) : Stopping backend st_users_func_funcb in 0 ms.
+2021-04-15T09:05:30.192667371Z [WARNING] 104/090530 (322) : Stopping backend st_local_func_funcb in 0 ms.
+2021-04-15T09:05:30.192671687Z [WARNING] 104/090530 (322) : Stopping backend st_other_node_funcb_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z in 0 ms.
+2021-04-15T09:05:30.192675293Z [WARNING] 104/090530 (322) : Stopping backend st_other_node_funcb_QmUb2Rxy3oV7ZsENnkSG3nZDQySEaymzuxKxWQJE9Fu3Qb in 0 ms.
+2021-04-15T09:05:30.192678859Z [WARNING] 104/090530 (322) : Stopping backend st_users_func_funcc in 0 ms.
+2021-04-15T09:05:30.192686312Z [WARNING] 104/090530 (322) : Stopping backend st_local_func_funcc in 0 ms.
+2021-04-15T09:05:30.192690070Z [WARNING] 104/090530 (322) : Stopping backend st_other_node_funcc_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z in 0 ms.
+2021-04-15T09:05:30.192693809Z [WARNING] 104/090530 (322) : Stopping backend st_other_node_funcc_QmUb2Rxy3oV7ZsENnkSG3nZDQySEaymzuxKxWQJE9Fu3Qb in 0 ms.
+2021-04-15T09:05:30.192697341Z [WARNING] 104/090530 (322) : Stopping backend st_users_func_nodeinfo in 0 ms.
+2021-04-15T09:05:30.192700766Z [WARNING] 104/090530 (322) : Stopping backend st_local_func_nodeinfo in 0 ms.
+2021-04-15T09:05:30.192704225Z [WARNING] 104/090530 (322) : Stopping backend st_other_node_nodeinfo_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z in 0 ms.
+2021-04-15T09:05:30.192707750Z [WARNING] 104/090530 (322) : Stopping backend st_other_node_nodeinfo_QmUb2Rxy3oV7ZsENnkSG3nZDQySEaymzuxKxWQJE9Fu3Qb in 0 ms.
+2021-04-15T09:05:30.192711357Z [WARNING] 104/090530 (322) : Stopping backend be_ok in 0 ms.
+2021-04-15T09:05:30.192714792Z [WARNING] 104/090530 (322) : Stopping backend be_myself in 0 ms.
+2021-04-15T09:05:30.192718239Z [WARNING] 104/090530 (322) : Stopping backend be_others_func_figlet in 0 ms.
+2021-04-15T09:05:30.192721695Z [WARNING] 104/090530 (322) : Stopping backend be_others_func_funca in 0 ms.
+2021-04-15T09:05:30.192725113Z [WARNING] 104/090530 (322) : Stopping backend be_others_func_funcb in 0 ms.
+2021-04-15T09:05:30.192728549Z [WARNING] 104/090530 (322) : Stopping backend be_others_func_funcc in 0 ms.
+2021-04-15T09:05:30.192731988Z [WARNING] 104/090530 (322) : Stopping backend be_others_func_nodeinfo in 0 ms.
+2021-04-15T09:05:30.192735469Z [WARNING] 104/090530 (322) : Stopping backend be_limitInExceeds in 0 ms.
+2021-04-15T09:05:30.192818817Z <132>Apr 15 09:05:30 haproxy[322]: Stopping backend st_users_func_funcb in 0 ms.
+2021-04-15T09:05:30.192875122Z <132>Apr 15 09:05:30 haproxy[322]: Stopping backend st_local_func_funcb in 0 ms.
+2021-04-15T09:05:30.192881893Z <132>Apr 15 09:05:30 haproxy[322]: Stopping backend st_other_node_funcb_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z in 0 ms.
+2021-04-15T09:05:30.192886140Z <132>Apr 15 09:05:30 haproxy[322]: Stopping backend st_other_node_funcb_QmUb2Rxy3oV7ZsENnkSG3nZDQySEaymzuxKxWQJE9Fu3Qb in 0 ms.
+2021-04-15T09:05:30.192890201Z <132>Apr 15 09:05:30 haproxy[322]: Stopping backend st_users_func_funcc in 0 ms.
+2021-04-15T09:05:30.192894158Z <132>Apr 15 09:05:30 haproxy[322]: Stopping backend st_local_func_funcc in 0 ms.
+2021-04-15T09:05:30.192911371Z <132>Apr 15 09:05:30 haproxy[322]: Stopping backend st_other_node_funcc_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z in 0 ms.
+2021-04-15T09:05:30.192915080Z <132>Apr 15 09:05:30 haproxy[322]: Stopping backend st_other_node_funcc_QmUb2Rxy3oV7ZsENnkSG3nZDQySEaymzuxKxWQJE9Fu3Qb in 0 ms.
+2021-04-15T09:05:30.192918864Z <132>Apr 15 09:05:30 haproxy[322]: Stopping backend st_users_func_nodeinfo in 0 ms.
+2021-04-15T09:05:30.192922428Z <132>Apr 15 09:05:30 haproxy[322]: Stopping backend st_local_func_nodeinfo in 0 ms.
+2021-04-15T09:05:30.192928386Z <132>Apr 15 09:05:30 haproxy[322]: Stopping backend st_other_node_nodeinfo_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z in 0 ms.
+2021-04-15T09:05:30.192932163Z <132>Apr 15 09:05:30 haproxy[322]: Stopping backend st_other_node_nodeinfo_QmUb2Rxy3oV7ZsENnkSG3nZDQySEaymzuxKxWQJE9Fu3Qb in 0 ms.
+2021-04-15T09:05:30.192935780Z <132>Apr 15 09:05:30 haproxy[322]: Stopping backend be_ok in 0 ms.
+2021-04-15T09:05:30.192939297Z <132>Apr 15 09:05:30 haproxy[322]: Stopping backend be_myself in 0 ms.
+2021-04-15T09:05:30.192942789Z <132>Apr 15 09:05:30 haproxy[322]: Stopping backend be_others_func_figlet in 0 ms.
+2021-04-15T09:05:30.192946322Z <132>Apr 15 09:05:30 haproxy[322]: Stopping backend be_others_func_funca in 0 ms.
+2021-04-15T09:05:30.192949812Z <132>Apr 15 09:05:30 haproxy[322]: Stopping backend be_others_func_funcb in 0 ms.
+2021-04-15T09:05:30.192953282Z <132>Apr 15 09:05:30 haproxy[322]: Stopping backend be_others_func_funcc in 0 ms.
+2021-04-15T09:05:30.192956764Z <132>Apr 15 09:05:30 haproxy[322]: Stopping backend be_others_func_nodeinfo in 0 ms.
+2021-04-15T09:05:30.192960294Z <132>Apr 15 09:05:30 haproxy[322]: Stopping backend be_limitInExceeds in 0 ms.
+2021-04-15T09:05:30.213818550Z [NOTICE] 104/090530 (1) : New worker #1 (325) forked
+2021-04-15T09:05:30.247507848Z [WARNING] 104/090530 (1) : Former worker #1 (322) exited with code 0 (Exit)
+2021-04-15T09:06:30.556883873Z [WARNING] 104/090630 (1) : Reexecuting Master process
+2021-04-15T09:06:30.602306892Z [WARNING] 104/090630 (1) : unexpected character '0' after the timer value '1m0s', only (us=microseconds,ms=milliseconds,s=seconds,m=minutes,h=hours,d=days) are supported. This will be reported as an error in next versions.
+2021-04-15T09:06:30.602331568Z [WARNING] 104/090630 (1) : unexpected character '0' after the timer value '1m0s', only (us=microseconds,ms=milliseconds,s=seconds,m=minutes,h=hours,d=days) are supported. This will be reported as an error in next versions.
+2021-04-15T09:06:30.602336744Z [WARNING] 104/090630 (1) : unexpected character '0' after the timer value '1m0s', only (us=microseconds,ms=milliseconds,s=seconds,m=minutes,h=hours,d=days) are supported. This will be reported as an error in next versions.
+2021-04-15T09:06:30.612458111Z [WARNING] 104/090630 (1) : unexpected character '0' after the timer value '1m0s', only (us=microseconds,ms=milliseconds,s=seconds,m=minutes,h=hours,d=days) are supported. This will be reported as an error in next versions.
+2021-04-15T09:06:30.612590766Z [WARNING] 104/090630 (1) : unexpected character '0' after the timer value '1m0s', only (us=microseconds,ms=milliseconds,s=seconds,m=minutes,h=hours,d=days) are supported. This will be reported as an error in next versions.
+2021-04-15T09:06:30.612605483Z [WARNING] 104/090630 (1) : unexpected character '0' after the timer value '1m0s', only (us=microseconds,ms=milliseconds,s=seconds,m=minutes,h=hours,d=days) are supported. This will be reported as an error in next versions.
+2021-04-15T09:06:30.612610414Z [WARNING] 104/090630 (1) : unexpected character '0' after the timer value '1m0s', only (us=microseconds,ms=milliseconds,s=seconds,m=minutes,h=hours,d=days) are supported. This will be reported as an error in next versions.
+2021-04-15T09:06:30.612623740Z [WARNING] 104/090630 (1) : unexpected character '0' after the timer value '1m0s', only (us=microseconds,ms=milliseconds,s=seconds,m=minutes,h=hours,d=days) are supported. This will be reported as an error in next versions.
+2021-04-15T09:06:30.612628293Z [WARNING] 104/090630 (1) : unexpected character '0' after the timer value '1m0s', only (us=microseconds,ms=milliseconds,s=seconds,m=minutes,h=hours,d=days) are supported. This will be reported as an error in next versions.
+2021-04-15T09:06:30.612635677Z [WARNING] 104/090630 (1) : unexpected character '0' after the timer value '1m0s', only (us=microseconds,ms=milliseconds,s=seconds,m=minutes,h=hours,d=days) are supported. This will be reported as an error in next versions.
+2021-04-15T09:06:30.612639805Z [WARNING] 104/090630 (1) : unexpected character '0' after the timer value '1m0s', only (us=microseconds,ms=milliseconds,s=seconds,m=minutes,h=hours,d=days) are supported. This will be reported as an error in next versions.
+2021-04-15T09:06:30.612643760Z [WARNING] 104/090630 (1) : unexpected character '0' after the timer value '1m0s', only (us=microseconds,ms=milliseconds,s=seconds,m=minutes,h=hours,d=days) are supported. This will be reported as an error in next versions.
+2021-04-15T09:06:30.612647715Z [WARNING] 104/090630 (1) : unexpected character '0' after the timer value '1m0s', only (us=microseconds,ms=milliseconds,s=seconds,m=minutes,h=hours,d=days) are supported. This will be reported as an error in next versions.
+2021-04-15T09:06:30.612651698Z [WARNING] 104/090630 (1) : unexpected character '0' after the timer value '1m0s', only (us=microseconds,ms=milliseconds,s=seconds,m=minutes,h=hours,d=days) are supported. This will be reported as an error in next versions.
+2021-04-15T09:06:30.612655629Z [WARNING] 104/090630 (1) : unexpected character '0' after the timer value '1m0s', only (us=microseconds,ms=milliseconds,s=seconds,m=minutes,h=hours,d=days) are supported. This will be reported as an error in next versions.
+2021-04-15T09:06:30.612659561Z [WARNING] 104/090630 (1) : unexpected character '0' after the timer value '1m0s', only (us=microseconds,ms=milliseconds,s=seconds,m=minutes,h=hours,d=days) are supported. This will be reported as an error in next versions.
+2021-04-15T09:06:30.612663532Z [WARNING] 104/090630 (1) : unexpected character '0' after the timer value '1m0s', only (us=microseconds,ms=milliseconds,s=seconds,m=minutes,h=hours,d=days) are supported. This will be reported as an error in next versions.
+2021-04-15T09:06:30.625514789Z [WARNING] 104/090630 (1) : unexpected character '0' after the timer value '1m0s', only (us=microseconds,ms=milliseconds,s=seconds,m=minutes,h=hours,d=days) are supported. This will be reported as an error in next versions.
+2021-04-15T09:06:30.625594283Z [WARNING] 104/090630 (1) : unexpected character '0' after the timer value '1m0s', only (us=microseconds,ms=milliseconds,s=seconds,m=minutes,h=hours,d=days) are supported. This will be reported as an error in next versions.
+2021-04-15T09:06:30.625600889Z [WARNING] 104/090630 (1) : unexpected character '0' after the timer value '1m0s', only (us=microseconds,ms=milliseconds,s=seconds,m=minutes,h=hours,d=days) are supported. This will be reported as an error in next versions.
+2021-04-15T09:06:30.982247547Z <132>Apr 15 09:06:30 haproxy[325]: Proxy fe_main stopped (cumulated conns: FE: 0, BE: 0).
+2021-04-15T09:06:30.986755330Z <132>Apr 15 09:06:30 haproxy[325]: Stopping backend st_users_func_figlet in 0 ms.
+2021-04-15T09:06:30.986769612Z <132>Apr 15 09:06:30 haproxy[325]: Stopping backend st_local_func_figlet in 0 ms.
+2021-04-15T09:06:30.986776683Z <132>Apr 15 09:06:30 haproxy[325]: Stopping backend st_other_node_figlet_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z in 0 ms.
+2021-04-15T09:06:30.986782800Z <132>Apr 15 09:06:30 haproxy[325]: Stopping backend st_other_node_figlet_QmUb2Rxy3oV7ZsENnkSG3nZDQySEaymzuxKxWQJE9Fu3Qb in 0 ms.
+2021-04-15T09:06:30.986789191Z <132>Apr 15 09:06:30 haproxy[325]: Stopping backend st_users_func_funca in 0 ms.
+2021-04-15T09:06:30.986794581Z <132>Apr 15 09:06:30 haproxy[325]: Stopping backend st_local_func_funca in 0 ms.
+2021-04-15T09:06:30.986799786Z <132>Apr 15 09:06:30 haproxy[325]: Stopping backend st_other_node_funca_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z in 0 ms.
+2021-04-15T09:06:30.986805438Z <132>Apr 15 09:06:30 haproxy[325]: Stopping backend st_other_node_funca_QmUb2Rxy3oV7ZsENnkSG3nZDQySEaymzuxKxWQJE9Fu3Qb in 0 ms.
+2021-04-15T09:06:30.986811574Z <132>Apr 15 09:06:30 haproxy[325]: Stopping backend st_users_func_funcb in 0 ms.
+2021-04-15T09:06:30.986817315Z <132>Apr 15 09:06:30 haproxy[325]: Stopping backend st_local_func_funcb in 0 ms.
+2021-04-15T09:06:30.986823258Z <132>Apr 15 09:06:30 haproxy[325]: Stopping backend st_other_node_funcb_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z in 0 ms.
+2021-04-15T09:06:30.986829294Z <132>Apr 15 09:06:30 haproxy[325]: Stopping backend st_other_node_funcb_QmUb2Rxy3oV7ZsENnkSG3nZDQySEaymzuxKxWQJE9Fu3Qb in 0 ms.
+2021-04-15T09:06:30.986839326Z <132>Apr 15 09:06:30 haproxy[325]: Stopping backend st_users_func_funcc in 0 ms.
+2021-04-15T09:06:30.986844357Z <132>Apr 15 09:06:30 haproxy[325]: Stopping backend st_local_func_funcc in 0 ms.
+2021-04-15T09:06:30.986848571Z <132>Apr 15 09:06:30 haproxy[325]: Stopping backend st_other_node_funcc_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z in 0 ms.
+2021-04-15T09:06:30.986852785Z <132>Apr 15 09:06:30 haproxy[325]: Stopping backend st_other_node_funcc_QmUb2Rxy3oV7ZsENnkSG3nZDQySEaymzuxKxWQJE9Fu3Qb in 0 ms.
+2021-04-15T09:06:30.986881692Z <132>Apr 15 09:06:30 haproxy[325]: Stopping backend st_users_func_nodeinfo in 0 ms.
+2021-04-15T09:06:30.986887093Z <132>Apr 15 09:06:30 haproxy[325]: Stopping backend st_local_func_nodeinfo in 0 ms.
+2021-04-15T09:06:30.986893009Z <132>Apr 15 09:06:30 haproxy[325]: Stopping backend st_other_node_nodeinfo_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z in 0 ms.
+2021-04-15T09:06:30.986897342Z <132>Apr 15 09:06:30 haproxy[325]: Stopping backend st_other_node_nodeinfo_QmUb2Rxy3oV7ZsENnkSG3nZDQySEaymzuxKxWQJE9Fu3Qb in 0 ms.
+2021-04-15T09:06:30.982281254Z [WARNING] 104/090630 (325) : Proxy fe_main stopped (cumulated conns: FE: 0, BE: 0).
+2021-04-15T09:06:30.998750386Z [NOTICE] 104/090630 (1) : haproxy version is 2.3.7-2d39ce3
+2021-04-15T09:06:30.998789916Z [NOTICE] 104/090630 (1) : path to executable is /usr/local/sbin/haproxy
+2021-04-15T09:06:30.998855355Z [ALERT] 104/090630 (1) : [haproxy.main()] Cannot fork.
+2021-04-15T09:06:30.998862023Z [WARNING] 104/090630 (1) : Reexecuting Master process in waitpid mode
+2021-04-15T09:06:30.998866413Z [WARNING] 104/090630 (1) : Reexecuting Master process
+2021-04-15T09:06:30.998870654Z [WARNING] 104/090630 (325) : Stopping frontend GLOBAL in 0 ms.
+2021-04-15T09:06:30.998874892Z [WARNING] 104/090630 (325) : Stopping backend st_users_func_figlet in 0 ms.
+2021-04-15T09:06:30.998879181Z [WARNING] 104/090630 (325) : Stopping backend st_local_func_figlet in 0 ms.
+2021-04-15T09:06:30.998883408Z [WARNING] 104/090630 (325) : Stopping backend st_other_node_figlet_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z in 0 ms.
+2021-04-15T09:06:30.998887836Z [WARNING] 104/090630 (325) : Stopping backend st_other_node_figlet_QmUb2Rxy3oV7ZsENnkSG3nZDQySEaymzuxKxWQJE9Fu3Qb in 0 ms.
+2021-04-15T09:06:30.998892500Z [WARNING] 104/090630 (325) : Stopping backend st_users_func_funca in 0 ms.
+2021-04-15T09:06:30.998896882Z [WARNING] 104/090630 (325) : Stopping backend st_local_func_funca in 0 ms.
+2021-04-15T09:06:30.998901144Z [WARNING] 104/090630 (325) : Stopping backend st_other_node_funca_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z in 0 ms.
+2021-04-15T09:06:30.998905487Z [WARNING] 104/090630 (325) : Stopping backend st_other_node_funca_QmUb2Rxy3oV7ZsENnkSG3nZDQySEaymzuxKxWQJE9Fu3Qb in 0 ms.
+2021-04-15T09:06:30.998910061Z [WARNING] 104/090630 (325) : Stopping backend st_users_func_funcb in 0 ms.
+2021-04-15T09:06:30.998915823Z [WARNING] 104/090630 (325) : Stopping backend st_local_func_funcb in 0 ms.
+2021-04-15T09:06:30.998921702Z [WARNING] 104/090630 (325) : Stopping backend st_other_node_funcb_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z in 0 ms.
+2021-04-15T09:06:30.998927600Z [WARNING] 104/090630 (325) : Stopping backend st_other_node_funcb_QmUb2Rxy3oV7ZsENnkSG3nZDQySEaymzuxKxWQJE9Fu3Qb in 0 ms.
+2021-04-15T09:06:30.998933781Z [WARNING] 104/090630 (325) : Stopping backend st_users_func_funcc in 0 ms.
+2021-04-15T09:06:30.998940016Z [WARNING] 104/090630 (325) : Stopping backend st_local_func_funcc in 0 ms.
+2021-04-15T09:06:30.998946465Z [WARNING] 104/090630 (325) : Stopping backend st_other_node_funcc_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z in 0 ms.
+2021-04-15T09:06:30.998952999Z [WARNING] 104/090630 (325) : Stopping backend st_other_node_funcc_QmUb2Rxy3oV7ZsENnkSG3nZDQySEaymzuxKxWQJE9Fu3Qb in 0 ms.
+2021-04-15T09:06:30.999020957Z [WARNING] 104/090630 (325) : Stopping backend st_users_func_nodeinfo in 0 ms.
+2021-04-15T09:06:30.999028383Z [WARNING] 104/090630 (325) : Stopping backend st_local_func_nodeinfo in 0 ms.
+2021-04-15T09:06:30.999032770Z [WARNING] 104/090630 (325) : Stopping backend st_other_node_nodeinfo_QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z in 0 ms.
+2021-04-15T09:06:30.999037211Z [WARNING] 104/090630 (325) : Stopping backend st_other_node_nodeinfo_QmUb2Rxy3oV7ZsENnkSG3nZDQySEaymzuxKxWQJE9Fu3Qb in 0 ms.
+2021-04-15T09:06:31.014574754Z <132>Apr 15 09:06:30 haproxy[325]: Stopping backend be_ok in 0 ms.
+2021-04-15T09:06:31.014606843Z <132>Apr 15 09:06:30 haproxy[325]: Stopping backend be_myself in 0 ms.
+2021-04-15T09:06:31.014612548Z <132>Apr 15 09:06:30 haproxy[325]: Stopping backend be_others_func_figlet in 0 ms.
+2021-04-15T09:06:31.014651101Z <132>Apr 15 09:06:30 haproxy[325]: Stopping backend be_others_func_funca in 0 ms.
+2021-04-15T09:06:31.014657605Z <132>Apr 15 09:06:30 haproxy[325]: Stopping backend be_others_func_funcb in 0 ms.
+2021-04-15T09:06:31.014661966Z <132>Apr 15 09:06:30 haproxy[325]: Stopping backend be_others_func_funcc in 0 ms.
+2021-04-15T09:06:31.014666272Z <132>Apr 15 09:06:30 haproxy[325]: Stopping backend be_others_func_nodeinfo in 0 ms.
+2021-04-15T09:06:31.014670624Z <132>Apr 15 09:06:30 haproxy[325]: Stopping backend be_limitInExceeds in 0 ms.
+2021-04-15T09:06:31.014690720Z [WARNING] 104/090630 (325) : Stopping backend be_ok in 0 ms.
+2021-04-15T09:06:31.014696340Z [WARNING] 104/090630 (325) : Stopping backend be_myself in 0 ms.
+2021-04-15T09:06:31.014700666Z [WARNING] 104/090630 (325) : Stopping backend be_others_func_figlet in 0 ms.
+2021-04-15T09:06:31.014704913Z [WARNING] 104/090630 (325) : Stopping backend be_others_func_funca in 0 ms.
+2021-04-15T09:06:31.014709147Z [WARNING] 104/090630 (325) : Stopping backend be_others_func_funcb in 0 ms.
+2021-04-15T09:06:31.014713377Z [WARNING] 104/090630 (325) : Stopping backend be_others_func_funcc in 0 ms.
+2021-04-15T09:06:31.014717596Z [WARNING] 104/090630 (325) : Stopping backend be_others_func_nodeinfo in 0 ms.
+2021-04-15T09:06:31.014721864Z [WARNING] 104/090630 (325) : Stopping backend be_limitInExceeds in 0 ms.
+2021-04-15T09:06:31.870233965Z [WARNING] 104/090631 (1) : Former worker #1 (325) exited with code 0 (Exit)
+2021-04-15T09:06:31.871587896Z [WARNING] 104/090631 (1) : All workers exited. Exiting... (0)
