@@ -39,7 +39,7 @@ echo "Started haproxy3 log capture with PID $JOBPID_haproxy3"
 VEG_port=8002
 VEG_func=funca
 VEG_duration=5m
-VEG_rate=30 # req/s
+VEG_rate=50 # req/s
 VEG_every=200ms
 echo "Starting vegeta attack with duration $VEG_duration . . ."
 echo "GET http://127.0.0.1:$VEG_port/function/$VEG_func" | \

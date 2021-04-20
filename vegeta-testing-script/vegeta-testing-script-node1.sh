@@ -36,7 +36,7 @@ docker logs haproxy3 -ft --tail 50 > $VEGFOLDER/haproxy3.log 2>&1 &
 JOBPID_haproxy3=$!
 echo "Started haproxy3 log capture with PID $JOBPID_haproxy3"
 
-VEG_port=8003
+VEG_port=8001
 VEG_func=funca
 VEG_duration=5m
 VEG_rate=50 # req/s
