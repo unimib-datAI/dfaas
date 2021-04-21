@@ -2,6 +2,7 @@
 
 import numpy as np
 import pandas as pd
+import sys
 import json
 import os
 import matplotlib.pyplot as plt
@@ -46,21 +47,21 @@ def compute_df_columns(df):
     return df
 
 '''
-    Group row by 50, obtaining one row for each minute of test.
+    Group row by 'rate', obtaining one row for each minute of test.
     
     Columns mantained are one for each status code, with number of times that 
-    the code occurs in this minute (among 50 responses).
+    the code occurs in this minute (among 'rate' responses).
     This function also add to new dataset a column containing timestamp for each second
     of testing. This column is used as index in new dataset.
     
     This function takes as input the source dataset and return grouped dataset.
 '''
-def group_by_resp_for_minutes(df):
-    df_by_second = df.groupby(lambda x: x // 50)[df["code"].unique()].sum()
+def group_by_resp_for_minutes(df, rate):
+    df_by_second = df.groupby(lambda x: x // rate)[df["code"].unique()].sum()
     #print((df_by_second.sum(axis=1) == 50).all())
     
     # Attach for each second corresponding timestamp.
-    column = [df["timestamp"][i] for i in range(0, len(df), 50)]
+    column = [df["timestamp"][i] for i in range(0, len(df), rate)]
     #print(len(column))
     
     df_by_second["start timestamp"] =  column
@@ -82,7 +83,7 @@ def setup_plot():
     Computer chart for each row in the dataset, passed as param.
 '''
 def compute_chart(df):
-    for col in df.columns:
+    for col in sorted(df.columns):
         plt.plot(df.index, df[col], label=status_code_map[col])
 
 '''
@@ -98,18 +99,20 @@ def export_plot(path):
     #plt.show()
     plt.savefig(path)
 
-def main():
+def main(argv):
+    file_input, file_output, rate = str(argv[0]), str(argv[1]), int(argv[2])
+    
     # Reading datasets from json files.
-    df1 = read_json('malicius-testing/2021-04-15-110606/results.json')
-    df2 = read_json('malicius-testing/2021-04-15-110614/results.json')
+    df1 = read_json(file_input)
+    #df2 = read_json('malicius-testing/2021-04-15-110614/results.json')
     
     # Calcolate additional columns (one for each error code.).
     df1 = compute_df_columns(df1)
-    df2 = compute_df_columns(df2)
+    #df2 = compute_df_columns(df2)
     
-    # Group rows by 50 --> one for each second.
-    df_by_second1 = group_by_resp_for_minutes(df1)
-    df_by_second2 = group_by_resp_for_minutes(df2)
+    # Group rows by 'rate' --> one for each second.
+    df_by_second1 = group_by_resp_for_minutes(df1, rate)
+    #df_by_second2 = group_by_resp_for_minutes(df2)
     
     # Debugging.
     #print("######### DF1 #########")
@@ -126,10 +129,10 @@ def main():
     
     # Draw chart.
     compute_chart(df_by_second1)
-    compute_chart(df_by_second2)
+    #compute_chart(df_by_second2)
     
     # Export on png file.
-    export_plot("testing-2021-04-15.png")
+    export_plot(file_output)
     
 if __name__ == '__main__':
-    main()
+    main(sys.argv[1:])
