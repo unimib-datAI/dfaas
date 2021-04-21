@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
 )
 
 // This package is for communicating with a Prometheus instance of an OpenFaaS
@@ -25,6 +26,7 @@ type Client struct {
 // hostnameAndPort parameter can be like "myhostname:9090" or "myhostname"
 // (implicit port 80) "192.168.15.101:9090" (specifying the IP address)
 func (client *Client) Query(query string) (string, error) {
+	logger := logging.Logger()
 	strURL := fmt.Sprintf("http://%s:%d/api/v1/query", client.Hostname, client.Port)
 
 	httpClient := &http.Client{}
@@ -37,8 +39,13 @@ func (client *Client) Query(query string) (string, error) {
 	q := req.URL.Query()
 	q.Add("query", query)
 	req.URL.RawQuery = q.Encode()
-
+	logger.Debug("Prometheus URL: " + strURL)
 	resp, err := httpClient.Do(req)
+
+	logger.Debug("Prometherus Request: " + req.URL.String())
+	logger.Debug("Prometheus Response: %d", resp.StatusCode)
+	//logger.Debug(err)
+
 	if err != nil {
 		return "", errors.Wrap(err, "Error while performing an HTTP request to the Prometheus API endpoint")
 	}
@@ -151,15 +158,17 @@ func (client *Client) queryRate(query string) (map[string]float64, error) {
 // seconds) as measured over the specified time span. The returned map has
 // function names as keys
 func (client *Client) QueryAFET(timeSpan time.Duration) (map[string]float64, error) {
-	strTimeSpan := timeSpan.String()
+	strTimeSpan := fmt.Sprintf("%.0fm", timeSpan.Minutes())
 	query := fmt.Sprintf("rate(gateway_functions_seconds_sum[%s]) / rate(gateway_functions_seconds_count[%s])", strTimeSpan, strTimeSpan)
+	//logging.Logger().Debug(query)
 	return client.queryRate(query)
 }
 
 // QueryInvoc returns, for each function, the total invocation count as measured
 // over the previous time span. The returned map has function names as keys
 func (client *Client) QueryInvoc(timeSpan time.Duration) (map[string]float64, error) {
-	strTimeSpan := timeSpan.String()
+	//strTimeSpan := timeSpan.String()
+	strTimeSpan := fmt.Sprintf("%.0fm", timeSpan.Minutes())
 	query := fmt.Sprintf("rate(gateway_function_invocation_total[%s])", strTimeSpan)
 	return client.queryRate(query)
 }

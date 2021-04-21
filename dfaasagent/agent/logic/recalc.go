@@ -159,19 +159,19 @@ func recalcStep1() error {
 		}
 	}
 
-	//////////////////// GATHER INFO FROM PROMETHEUS //////////////////// --> TODO
+	//////////////////// GATHER INFO FROM PROMETHEUS ////////////////////
 
-	//_recalc.afet, err = _ofpromqClient.QueryAFET(_flags.RecalcPeriod)
-	//if err != nil {
-	//	return errors.Wrap(err, "Error while execting Prometheus query")
-	//}
-	//debugPromAFET(_flags.RecalcPeriod, _recalc.afet)
+	_recalc.afet, err = _ofpromqClient.QueryAFET(_flags.RecalcPeriod)
+	if err != nil {
+		return errors.Wrap(err, "Error while execting Prometheus query")
+	}
+	debugPromAFET(_flags.RecalcPeriod, _recalc.afet)
 
-	//_recalc.invoc, err = _ofpromqClient.QueryInvoc(_flags.RecalcPeriod)
-	//if err != nil {
-	//	return errors.Wrap(err, "Error while executing Prometheus query")
-	//}
-	//debugPromInvoc(_flags.RecalcPeriod, _recalc.invoc)
+	_recalc.invoc, err = _ofpromqClient.QueryInvoc(_flags.RecalcPeriod)
+	if err != nil {
+		return errors.Wrap(err, "Error while executing Prometheus query")
+	}
+	debugPromInvoc(_flags.RecalcPeriod, _recalc.invoc)
 
 	//////////////////// OVERLOAD / UNDERLOAD MODE DECISION ////////////////////
 
