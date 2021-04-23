@@ -19,8 +19,13 @@
 - aprire una shell come amministratore e digitare il comando `choco install gsudo git virtualbox php faas-cli golang` per installare i pacchetti necessari
 - consigliato: aprire una finestra di Git Bash e digitare: `curl -o "$HOME/.minttyrc" https://raw.githubusercontent.com/dmotte/minttyrc/master/.minttyrc`
 - installare WSL (Windows Subsystem for Linux). Consigliata la distro Debian
-- aggiungere il contenuto del file `ssh-client-config/ssh-client-config.txt` di questo repo in coda al file `C:\Users\<nome>\.ssh\config`
+- aggiungere il contenuto del file `ssh-client-config/ssh-client-config.txt` di questo repo in coda al file `C:\Program Files\Git\etc\ssh`
 - installare Ansible all'interno di WSL (https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html#installing-ansible-on-debian)
+- installare rsync su WSL ( tramite il comando "sudo apt install rsync" se la distro usata é Debian/Ubuntu)
+- installare wget su Git Bash:
+  - scaricare l'eseguibile wget.exe da https://eternallybored.org/misc/wget/
+  - spostarlo nella directory "bin" di Git ( C:\Program Files\Git\mingw64\bin\ )
+  - da una finestra Git Bash, digitare il comando `export PATH=$PATH:/c/Program\ Files/Git/mingw64/bin/`
 
 ### Creazione macchine virtuali
 
