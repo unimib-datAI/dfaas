@@ -39,7 +39,7 @@ scrape_configs:
   - job_name: node
     static_configs:
       - targets:
-        - host.docker.internal:9100
+        - node_exporter:9100
 
 alerting:
   alertmanagers:

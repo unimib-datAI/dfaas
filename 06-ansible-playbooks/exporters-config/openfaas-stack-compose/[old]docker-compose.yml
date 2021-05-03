@@ -170,8 +170,8 @@ services:
         # For check if host is added correctly see "cat /etc/hosts" inside prometheus container
         # See: https://stackoverflow.com/questions/24319662/from-inside-of-a-docker-container-how-do-i-connect-to-the-localhost-of-the-mach
         # See also: https://stackoverflow.com/questions/29076194/using-add-host-or-extra-hosts-with-docker-compose
-        #extra_hosts:
-        # - "host.docker.internal:host-gateway"
+        extra_hosts:
+         - "host.docker.internal:host-gateway"
         ports:
             - 9090:9090
         networks:
@@ -215,22 +215,6 @@ services:
               target: /alertmanager.yml
         secrets:
             - basic-auth-password
-
-    # [NEW] Add node exporter service.
-    node_exporter:
-        image: quay.io/prometheus/node-exporter:latest
-        #container_name: node_exporter
-        restart: unless-stopped
-        networks:
-            - functions
-        volumes:
-            - /home/debian/node_exporter:/host:ro,rslave
-        deploy:
-            mode: global # Deploying on all nodes (Docker Swarm to be replaced).
-            resources:
-                limits:
-                    memory: 200M
-
 
 configs:
     prometheus_config:

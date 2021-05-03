@@ -13,17 +13,17 @@
     # For running command see: https://github.com/prometheus/node_exporter
     # Using "host" network mode, container share host network stack
     # Node exporter exposes metrics on "localhost:9100"
-    - name: Run container based on node-exporter image
-      become: yes
-      docker_container:
-        name: node-exporter
-        image: quay.io/prometheus/node-exporter:latest
-        restart_policy: unless-stopped
-        network_mode: "host"
-        pid_mode: "host"
-        volumes:
-          - /home/debian/node_exporter:/host:ro,rslave
-        command: --path.rootfs=/host # Check this for data retention.
+    # - name: Run container based on node-exporter image
+    #   become: yes
+    #   docker_container:
+    #     name: node-exporter
+    #     image: quay.io/prometheus/node-exporter:latest
+    #     restart_policy: unless-stopped
+    #     network_mode: "host"
+    #     pid_mode: "host"
+    #     volumes:
+    #       - /home/debian/node_exporter:/host:ro,rslave
+    #     command: --path.rootfs=/host # Check this for data retention.
 
     # This task copy on controlled machines prometheus modified config file
     # This file scrape metrics of "node_exporter" from localhost:9100
@@ -47,7 +47,7 @@
         dest: "/home/debian/exporters-config"
         perms: no # Do not preserve permissions (since we may run this playbook from WSL on Windows, hence permissions are rwx for everyone)
 
-    - name: Replace CRLF with LF in coker-compose.yml file of OpenFaaS deploy stack
+    - name: Replace CRLF with LF in docker-compose.yml file of OpenFaaS deploy stack
       replace:
         path: /home/debian/exporters-config/docker-compose.yml
         regexp: '\r\n'
@@ -55,7 +55,7 @@
 
     # This task stop docker stack running on DFaaSNodes. 
     # Change configuration file for prometheus is not possible while running.
-    - name: Remove running OpanFaaS stack
+    - name: Remove running OpenFaaS stack
       command: docker stack rm func
       ignore_errors: yes
       
