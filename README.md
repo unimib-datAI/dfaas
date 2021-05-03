@@ -67,6 +67,9 @@
 - eseguire lo script `06-ansible-playbooks/reset-ssh-keys-wsl.sh` all'interno di Git Bash
 - eseguire lo script `06-ansible-playbooks/script-setup-client.sh` all'interno di Git Bash
 - eseguire lo script `06-ansible-playbooks/script-setup-functions.sh` all'interno di Git Bash (deve essere eseguito una sola volta)
+  - per eseguire il deployment degli exporters eseguire lo script `06-ansible-playbooks/script-deploy-exporters.sh` all'interno di Git Bash
+    - durante l'esecuzione di questo script, nello step `Remove running OpenFaaS stack` del playbook Ansible si potrebbero verificare degli errori che vengono però **ignorati** e quindi non risultano essere bloccanti.
+      - questo può avvenire qualora vengano rideployati gli exporter mentre le funzioni stanno runnando; in questo modo la rete overlay non può viene rimossa in quanto presenta dei container ad essa collegati
 - eseguire lo script `06-ansible-playbooks/script-deploy-functions.sh` all'interno di Git Bash (puo' essere rieseguito in futuro per ri-deployare le funzioni)
 
 ### Configurazione vm dfaasctrl
