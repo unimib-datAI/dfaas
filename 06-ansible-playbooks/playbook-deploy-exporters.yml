@@ -10,21 +10,6 @@
 
   tasks:
 
-    # For running command see: https://github.com/prometheus/node_exporter
-    # Using "host" network mode, container share host network stack
-    # Node exporter exposes metrics on "localhost:9100"
-    # - name: Run container based on node-exporter image
-    #   become: yes
-    #   docker_container:
-    #     name: node-exporter
-    #     image: quay.io/prometheus/node-exporter:latest
-    #     restart_policy: unless-stopped
-    #     network_mode: "host"
-    #     pid_mode: "host"
-    #     volumes:
-    #       - /home/debian/node_exporter:/host:ro,rslave
-    #     command: --path.rootfs=/host # Check this for data retention.
-
     # This task copy on controlled machines prometheus modified config file
     # This file scrape metrics of "node_exporter" from localhost:9100
     - name: Upload prometheus configuration file
