@@ -211,6 +211,7 @@ services:
             - basic-auth-password
 
     # [NEW] Add node exporter service.
+    # See: https://github.com/prometheus/node_exporter
     node_exporter:
         image: quay.io/prometheus/node-exporter:latest
         #container_name: node_exporter
@@ -224,6 +225,34 @@ services:
             resources:
                 limits:
                     memory: 200M
+    
+    # [NEW] Add cAdvisor service.
+    # Remember that cAdvisor has its own WebUI, bit for this purpose only prom is used.
+    # See: https://prometheus.io/docs/guides/cadvisor/
+    cadvisor:
+        image: gcr.io/cadvisor/cadvisor
+        hostname: '{{.Node.Hostname}}'
+        #container_name: cadvisor
+        #ports:
+        #    - 9400:8080  # 9400 is a random-chosen port; instad, 8080 is default port for cAdvisor.
+        restart: unless-stopped
+        volumes:
+            - /:/rootfs:ro
+            - /var/run:/var/run:rw
+            - /sys:/sys:ro
+            - /var/lib/docker/:/var/lib/docker:ro
+            #- /cgroup:/sys/fs/cgroup:ro
+            - /dev/disk/:/dev/disk:ro
+        networks:
+            - functions
+        deploy:
+            mode: global # Deploying on all nodes (Docker Swarm to be replaced).
+            resources:
+                limits:
+                  memory: 128M
+                reservations:
+                  memory: 64M
+
 
 
 configs:
