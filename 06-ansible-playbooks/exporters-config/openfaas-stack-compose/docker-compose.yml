@@ -169,6 +169,8 @@ services:
         #   - '-storage.local.path=/prometheus'
         ports:
             - 9090:9090
+        volumes:
+            - prometheus-data:/prometheus # [NEW] Share data collected by prometheus available in docker host (VMs).
         networks:
             - functions
         deploy:
@@ -255,7 +257,6 @@ services:
                   memory: 64M
 
 
-
 configs:
     prometheus_config:
         # Changed promtheus configuration file.
@@ -279,3 +280,7 @@ secrets:
         external: true
     basic-auth-password:
         external: true
+
+# [NEW] Volume for share prometheus data with host
+volumes:
+    prometheus-data:
