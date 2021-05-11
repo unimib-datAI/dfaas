@@ -165,6 +165,7 @@ services:
               target: /etc/prometheus/alert.rules.yml
         command:
             - "--config.file=/etc/prometheus/prometheus.yml"
+            - "--storage.tsdb.retention.time=3d" # [NEW] Data persisted for 3 days.
         #   - '-storage.local.path=/prometheus'
         ports:
             - 9090:9090
