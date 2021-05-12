@@ -20,12 +20,13 @@ import (
 // Private struct containing variables specific to the recalc algorithm, which
 // need to be shared amongst the two recalc steps
 var _recalc = struct {
-	nodeIDs   []peer.ID          // IDs of the connected p2p nodes
-	stats     []*haproxy.Stat    // HAProxy stats
-	funcs     map[string]uint    // Our OpenFaaS functions with dfaas.maxrate limits
-	userRates map[string]float64 // Invocation rates for users only (in req/s) (from HAProxy stick-tables)
-	afet      map[string]float64 // Average Function Execution Times (from Prometheus)
-	invoc     map[string]float64 // Invocation rates (in req/s) (from Prometheus)
+	nodeIDs      []peer.ID          // IDs of the connected p2p nodes
+	stats        []*haproxy.Stat    // HAProxy stats
+	funcs        map[string]uint    // Our OpenFaaS functions with dfaas.maxrate limits
+	userRates    map[string]float64 // Invocation rates for users only (in req/s) (from HAProxy stick-tables)
+	afet         map[string]float64 // Average Function Execution Times (from Prometheus)
+	invoc        map[string]float64 // Invocation rates (in req/s) (from Prometheus)
+	serviceCount map[string]float64
 
 	// For each function, the value is true if the node is currently in overload
 	// mode (req/s >= maxrate), false if underload
@@ -172,6 +173,12 @@ func recalcStep1() error {
 		return errors.Wrap(err, "Error while executing Prometheus query")
 	}
 	debugPromInvoc(_flags.RecalcPeriod, _recalc.invoc)
+
+	_recalc.serviceCount, err = _ofpromqClient.QueryServiceCount()
+	if err != nil {
+		return errors.Wrap(err, "Error while executing Prometheus query")
+	}
+	debugPromServiceCount(_recalc.serviceCount)
 
 	//////////////////// OVERLOAD / UNDERLOAD MODE DECISION ////////////////////
 

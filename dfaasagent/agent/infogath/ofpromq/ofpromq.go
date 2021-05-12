@@ -43,7 +43,7 @@ func (client *Client) Query(query string) (string, error) {
 	resp, err := httpClient.Do(req)
 
 	logger.Debug("Prometherus Request: " + req.URL.String())
-	logger.Debug("Prometheus Response: %d", resp.StatusCode)
+	logger.Debug("Prometheus Response status: " + resp.Status)
 	//logger.Debug(err)
 
 	if err != nil {
@@ -170,5 +170,12 @@ func (client *Client) QueryInvoc(timeSpan time.Duration) (map[string]float64, er
 	//strTimeSpan := timeSpan.String()
 	strTimeSpan := fmt.Sprintf("%.0fm", timeSpan.Minutes())
 	query := fmt.Sprintf("rate(gateway_function_invocation_total[%s])", strTimeSpan)
+	return client.queryRate(query)
+}
+
+func (client *Client) QueryServiceCount() (map[string]float64, error) {
+	//strTimeSpan := timeSpan.String()
+	//strTimeSpan := fmt.Sprintf("%.0fm", timeSpan.Minutes())
+	query := fmt.Sprintf("gateway_service_count")
 	return client.queryRate(query)
 }

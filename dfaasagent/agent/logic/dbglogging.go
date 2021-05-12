@@ -98,6 +98,26 @@ func debugPromInvoc(timeSpan time.Duration, data map[string]float64) {
 	}
 }
 
+func debugPromServiceCount(data map[string]float64) {
+	if !logging.GetDebugMode() {
+		return
+	}
+
+	logger := logging.Logger()
+
+	keys := make([]string, 0, len(data))
+	for k := range data {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	logger.Debug("Functions service counts:")
+	for _, funcName := range keys {
+		logger.Debugf("  - FUNC %s: %.0f active function replicas", funcName, data[funcName])
+	}
+}
+
 func debugHAProxyUserRates(data map[string]float64) {
 	if !logging.GetDebugMode() {
 		return
