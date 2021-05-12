@@ -74,6 +74,19 @@ type rateResponse struct {
 	} `json:"data"`
 }
 
+type cpuUsageResponse struct {
+	Status string `json:"status"`
+	Data   struct {
+		ResultType string `json:"resultType"`
+		Result     []struct {
+			Metric struct {
+				Instance string `json:"instance"`
+			} `json:"metric"`
+			Value []interface{} `json:"value"`
+		} `json:"result"`
+	} `json:"data"`
+}
+
 /*
 	Example of Prometheus' responses for the "rate(gateway_functions_seconds_sum[20s]) / rate(gateway_functions_seconds_count[20s])" query:
 
@@ -128,6 +141,8 @@ type rateResponse struct {
 	}
 */
 
+//////////////// OPENFAAS GATEWAY METRICS QUERY ////////////////////
+
 // queryRate performs a custom rate(...) Prometheus query. The returned map has
 // function names as keys
 func (client *Client) queryRate(query string) (map[string]float64, error) {
@@ -178,4 +193,36 @@ func (client *Client) QueryServiceCount() (map[string]float64, error) {
 	//strTimeSpan := fmt.Sprintf("%.0fm", timeSpan.Minutes())
 	query := fmt.Sprintf("gateway_service_count")
 	return client.queryRate(query)
+}
+
+//////////////// NODE EXPORTER METRICS QUERY ////////////////////
+func (client *Client) queryCPUusage(query string) (map[string]float64, error) {
+	strJSON, err := client.Query(query)
+	if err != nil {
+		return nil, err
+	}
+
+	var respObj cpuUsageResponse
+	err = json.Unmarshal([]byte(strJSON), &respObj)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error while deserializing a JSON string from the Prometheus API endpoint")
+	}
+
+	result := map[string]float64{}
+	for _, item := range respObj.Data.Result {
+		num, err := strconv.ParseFloat(item.Value[1].(string), 64)
+		if err != nil {
+			num = math.NaN()
+		}
+		result[item.Metric.Instance] = num
+	}
+
+	return result, nil
+}
+
+func (client *Client) QueryCPUusage(timeSpan time.Duration) (map[string]float64, error) {
+	//strTimeSpan := timeSpan.String()
+	strTimeSpan := fmt.Sprintf("%.0fm", timeSpan.Minutes())
+	query := fmt.Sprintf("1 - (avg by (instance) (rate(node_cpu_seconds_total{job=\"node\",mode=\"idle\"}[%s])))", strTimeSpan)
+	return client.queryCPUusage(query)
 }

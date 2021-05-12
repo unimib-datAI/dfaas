@@ -27,6 +27,7 @@ var _recalc = struct {
 	afet         map[string]float64 // Average Function Execution Times (from Prometheus)
 	invoc        map[string]float64 // Invocation rates (in req/s) (from Prometheus)
 	serviceCount map[string]float64
+	cpuUsage     map[string]float64
 
 	// For each function, the value is true if the node is currently in overload
 	// mode (req/s >= maxrate), false if underload
@@ -179,6 +180,12 @@ func recalcStep1() error {
 		return errors.Wrap(err, "Error while executing Prometheus query")
 	}
 	debugPromServiceCount(_recalc.serviceCount)
+
+	_recalc.cpuUsage, err = _ofpromqClient.QueryCPUusage(_flags.RecalcPeriod)
+	if err != nil {
+		return errors.Wrap(err, "Error while executing Prometheus query")
+	}
+	debugPromCPUusage(_flags.RecalcPeriod, _recalc.cpuUsage)
 
 	//////////////////// OVERLOAD / UNDERLOAD MODE DECISION ////////////////////
 

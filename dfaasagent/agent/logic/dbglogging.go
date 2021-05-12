@@ -118,6 +118,26 @@ func debugPromServiceCount(data map[string]float64) {
 	}
 }
 
+func debugPromCPUusage(timeSpan time.Duration, data map[string]float64) {
+	if !logging.GetDebugMode() {
+		return
+	}
+
+	logger := logging.Logger()
+
+	keys := make([]string, 0, len(data))
+	for k := range data {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	logger.Debug("Nodes CPU usage:")
+	for _, instance := range keys {
+		logger.Debugf("  - Instance %s CPU utilization: %.4f%%", instance, data[instance])
+	}
+}
+
 func debugHAProxyUserRates(data map[string]float64) {
 	if !logging.GetDebugMode() {
 		return
