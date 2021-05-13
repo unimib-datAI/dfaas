@@ -20,14 +20,15 @@ import (
 // Private struct containing variables specific to the recalc algorithm, which
 // need to be shared amongst the two recalc steps
 var _recalc = struct {
-	nodeIDs      []peer.ID          // IDs of the connected p2p nodes
-	stats        []*haproxy.Stat    // HAProxy stats
-	funcs        map[string]uint    // Our OpenFaaS functions with dfaas.maxrate limits
-	userRates    map[string]float64 // Invocation rates for users only (in req/s) (from HAProxy stick-tables)
-	afet         map[string]float64 // Average Function Execution Times (from Prometheus)
-	invoc        map[string]float64 // Invocation rates (in req/s) (from Prometheus)
-	serviceCount map[string]float64
+	nodeIDs      []peer.ID                     // IDs of the connected p2p nodes
+	stats        []*haproxy.Stat               // HAProxy stats
+	funcs        map[string]uint               // Our OpenFaaS functions with dfaas.maxrate limits
+	userRates    map[string]float64            // Invocation rates for users only (in req/s) (from HAProxy stick-tables)
+	afet         map[string]float64            // Average Function Execution Times (from Prometheus)
+	invoc        map[string]map[string]float64 // Invocation rates (in req/s) (from Prometheus)
+	serviceCount map[string]int
 	cpuUsage     map[string]float64
+	ramUsage     map[string]float64
 
 	// For each function, the value is true if the node is currently in overload
 	// mode (req/s >= maxrate), false if underload
@@ -145,22 +146,22 @@ func recalcStep1() error {
 	}
 
 	//////////////////// [NEW] GATHER INFO FOR STICKTABLES OF DATA FROM OTHER NODES ////////////////////
+	/*
+		for funcName := range _recalc.funcs {
+			for _, nodeID := range _recalc.nodeIDs {
+				stName := fmt.Sprintf("st_other_node_%s_%s", funcName, nodeID.String())
+				stContent, err := hasock.ReadStickTable(&_hasockClient, stName)
 
-	for funcName := range _recalc.funcs {
-		for _, nodeID := range _recalc.nodeIDs {
-			stName := fmt.Sprintf("st_other_node_%s_%s", funcName, nodeID.String())
-			stContent, err := hasock.ReadStickTable(&_hasockClient, stName)
+				if err != nil {
+					errWrap := errors.Wrap(err, "Error while reading the stick-table \""+stName+"\" from the HAProxy socket")
+					logger.Error(errWrap)
+					logger.Warn("Not changing other nodes rates for stick-table \"" + stName + "\" but this should be ok")
+				}
 
-			if err != nil {
-				errWrap := errors.Wrap(err, "Error while reading the stick-table \""+stName+"\" from the HAProxy socket")
-				logger.Error(errWrap)
-				logger.Warn("Not changing other nodes rates for stick-table \"" + stName + "\" but this should be ok")
+				debugStickTable(stName, stContent)
 			}
-
-			debugStickTable(stName, stContent)
 		}
-	}
-
+	*/
 	//////////////////// GATHER INFO FROM PROMETHEUS ////////////////////
 
 	_recalc.afet, err = _ofpromqClient.QueryAFET(_flags.RecalcPeriod)
@@ -186,6 +187,12 @@ func recalcStep1() error {
 		return errors.Wrap(err, "Error while executing Prometheus query")
 	}
 	debugPromCPUusage(_flags.RecalcPeriod, _recalc.cpuUsage)
+
+	_recalc.ramUsage, err = _ofpromqClient.QueryRAMusage(_flags.RecalcPeriod)
+	if err != nil {
+		return errors.Wrap(err, "Error while executing Prometheus query")
+	}
+	debugPromRAMusage(_flags.RecalcPeriod, _recalc.ramUsage)
 
 	//////////////////// OVERLOAD / UNDERLOAD MODE DECISION ////////////////////
 
