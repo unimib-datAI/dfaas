@@ -84,6 +84,34 @@ type ramUsageResponse struct {
 	} `json:"data"`
 }
 
+// Structure that represent CPU usage (per-function) cAdvisor response.
+type perFunctionCpuUsageResponse struct {
+	Status string `json:"status"`
+	Data   struct {
+		ResultType string `json:"resultType"`
+		Result     []struct {
+			Metric struct {
+				ServiceName string `json:"container_label_com_docker_swarm_service_name"`
+			} `json:"metric"`
+			Value []interface{} `json:"value"`
+		} `json:"result"`
+	} `json:"data"`
+}
+
+// Structure that represent RAM usage (per-function) cAdvisor response.
+type perFunctionRamUsageResponse struct {
+	Status string `json:"status"`
+	Data   struct {
+		ResultType string `json:"resultType"`
+		Result     []struct {
+			Metric struct {
+				ServiceName string `json:"container_label_com_docker_swarm_service_name"`
+			} `json:"metric"`
+			Value []interface{} `json:"value"`
+		} `json:"result"`
+	} `json:"data"`
+}
+
 /*
 	Example of Prometheus' responses for the "rate(gateway_functions_seconds_sum[20s]) / rate(gateway_functions_seconds_count[20s])" query:
 

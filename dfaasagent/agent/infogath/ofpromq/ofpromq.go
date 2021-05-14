@@ -7,6 +7,7 @@ import (
 	"math"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"github.com/pkg/errors"
@@ -192,6 +193,58 @@ func (client *Client) queryRAMusage(query string) (map[string]float64, error) {
 	return result, nil
 }
 
+//////////////// cADVISOR METRICS QUERY ////////////////////
+
+// This query return the CPU usage for each specific function.
+func (client *Client) queryCPUusagePerFunction(query string) (map[string]float64, error) {
+	strJSON, err := client.Query(query)
+	if err != nil {
+		return nil, err
+	}
+
+	var respObj perFunctionCpuUsageResponse
+	err = json.Unmarshal([]byte(strJSON), &respObj)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error while deserializing a JSON string from the Prometheus API endpoint")
+	}
+
+	result := map[string]float64{}
+	for _, item := range respObj.Data.Result {
+		num, err := strconv.ParseFloat(item.Value[1].(string), 64)
+		if err != nil {
+			num = math.NaN()
+		}
+		result[item.Metric.ServiceName] = num
+	}
+
+	return result, nil
+}
+
+// This query return the RAM usage for each specific function.
+func (client *Client) queryRAMusagePerFunction(query string) (map[string]float64, error) {
+	strJSON, err := client.Query(query)
+	if err != nil {
+		return nil, err
+	}
+
+	var respObj perFunctionRamUsageResponse
+	err = json.Unmarshal([]byte(strJSON), &respObj)
+	if err != nil {
+		return nil, errors.Wrap(err, "Error while deserializing a JSON string from the Prometheus API endpoint")
+	}
+
+	result := map[string]float64{}
+	for _, item := range respObj.Data.Result {
+		num, err := strconv.ParseFloat(item.Value[1].(string), 64)
+		if err != nil {
+			num = math.NaN()
+		}
+		result[item.Metric.ServiceName] = num
+	}
+
+	return result, nil
+}
+
 ///////////////// PUBLIC INTERFACE /////////////////////
 
 // QueryAFET returns, for each function, the Average Function Execution Time (in
@@ -248,7 +301,31 @@ func (client *Client) QueryRAMusage(timeSpan time.Duration) (map[string]float64,
 		)
 	) / node_memory_MemTotal_bytes`)*/
 
-	// Sobstutude with this that allow to use avg over time on different time spans.
 	query := fmt.Sprintf("(1 - ((avg_over_time(node_memory_MemFree_bytes[%s]) + avg_over_time(node_memory_Cached_bytes[%s]) + avg_over_time(node_memory_Buffers_bytes[%s])) / avg_over_time(node_memory_MemTotal_bytes[%s])))", strTimeSpan, strTimeSpan, strTimeSpan, strTimeSpan)
 	return client.queryRAMusage(query)
+}
+
+// QueryCPUusagePerFunction returns, for each function active instance, the amount of CPU used
+// by that function (avg on function containers - same number returned by service count).
+// The returned map contains as keys the function name and the CPU usage (percentage) as value.
+func (client *Client) QueryCPUusagePerFunction(timeSpan time.Duration, funcName []string) (map[string]float64, error) {
+	//strTimeSpan := timeSpan.String()
+	strTimeSpan := fmt.Sprintf("%.0fm", timeSpan.Minutes())
+	funcFilter := strings.Join(funcName, "|")
+
+	query := fmt.Sprintf("sum(rate(container_cpu_usage_seconds_total{container_label_com_docker_swarm_service_name=~\"%s\", image!=\"\"}[%s])) by (container_label_com_docker_swarm_service_name)", funcFilter, strTimeSpan)
+	return client.queryCPUusagePerFunction(query)
+}
+
+// QueryRAMusagePerFunction returns, for each function active instance, the amount of RAM used
+// by that function on total amount on available RAM (avg on function containers - same number returned by service count).
+// The returned map contains as keys the function name and the RAM usage (percentage) as value.
+// Note: this function use metrics of cAdvisor (RAM usage of single container) and node_exporter (total amount of available RAM).
+func (client *Client) QueryRAMusagePerFunction(timeSpan time.Duration, funcName []string) (map[string]float64, error) {
+	//strTimeSpan := timeSpan.String()
+	strTimeSpan := fmt.Sprintf("%.0fm", timeSpan.Minutes())
+	funcFilter := strings.Join(funcName, "|")
+
+	query := fmt.Sprintf("(sum (avg_over_time(container_memory_usage_bytes{container_label_com_docker_swarm_service_name=~\"%s\"}[%s])) by(container_label_com_docker_swarm_service_name)) / on() group_left() (avg_over_time(node_memory_MemTotal_bytes[%s]))", funcFilter, strTimeSpan, strTimeSpan)
+	return client.queryRAMusagePerFunction(query)
 }

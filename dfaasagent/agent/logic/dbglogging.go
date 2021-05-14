@@ -160,6 +160,46 @@ func debugPromRAMusage(timeSpan time.Duration, data map[string]float64) {
 	}
 }
 
+func debugPromCPUusagePerFunction(timeSpan time.Duration, data map[string]float64) {
+	if !logging.GetDebugMode() {
+		return
+	}
+
+	logger := logging.Logger()
+
+	keys := make([]string, 0, len(data))
+	for k := range data {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	logger.Debug("Nodes CPU usage for function (over " + timeSpan.String() + " time span) and averaged on number of container:")
+	for _, funcName := range keys {
+		logger.Debugf("  - FUNC %s CPU utilization: %.2f%%", funcName, data[funcName]*100)
+	}
+}
+
+func debugPromRAMusagePerFunction(timeSpan time.Duration, data map[string]float64) {
+	if !logging.GetDebugMode() {
+		return
+	}
+
+	logger := logging.Logger()
+
+	keys := make([]string, 0, len(data))
+	for k := range data {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	logger.Debug("Nodes RAM usage for function (over " + timeSpan.String() + " time span) and averaged on number of container:")
+	for _, funcName := range keys {
+		logger.Debugf("  - FUNC %s RAM utilization: %.2f%%", funcName, data[funcName]*100)
+	}
+}
+
 func debugHAProxyUserRates(data map[string]float64) {
 	if !logging.GetDebugMode() {
 		return

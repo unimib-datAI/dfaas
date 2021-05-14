@@ -20,15 +20,17 @@ import (
 // Private struct containing variables specific to the recalc algorithm, which
 // need to be shared amongst the two recalc steps
 var _recalc = struct {
-	nodeIDs      []peer.ID                     // IDs of the connected p2p nodes
-	stats        []*haproxy.Stat               // HAProxy stats
-	funcs        map[string]uint               // Our OpenFaaS functions with dfaas.maxrate limits
-	userRates    map[string]float64            // Invocation rates for users only (in req/s) (from HAProxy stick-tables)
-	afet         map[string]float64            // Average Function Execution Times (from Prometheus)
-	invoc        map[string]map[string]float64 // Invocation rates (in req/s) (from Prometheus)
-	serviceCount map[string]int
-	cpuUsage     map[string]float64
-	ramUsage     map[string]float64
+	nodeIDs         []peer.ID                     // IDs of the connected p2p nodes
+	stats           []*haproxy.Stat               // HAProxy stats
+	funcs           map[string]uint               // Our OpenFaaS functions with dfaas.maxrate limits
+	userRates       map[string]float64            // Invocation rates for users only (in req/s) (from HAProxy stick-tables)
+	afet            map[string]float64            // Average Function Execution Times (from Prometheus)
+	invoc           map[string]map[string]float64 // Invocation rates (in req/s) (from Prometheus)
+	serviceCount    map[string]int
+	cpuUsage        map[string]float64
+	ramUsage        map[string]float64
+	perFuncCpuUsage map[string]float64
+	perFuncRamUsage map[string]float64
 
 	// For each function, the value is true if the node is currently in overload
 	// mode (req/s >= maxrate), false if underload
@@ -193,6 +195,26 @@ func recalcStep1() error {
 		return errors.Wrap(err, "Error while executing Prometheus query")
 	}
 	debugPromRAMusage(_flags.RecalcPeriod, _recalc.ramUsage)
+
+	// Get function's name as a slice.
+	funcNames := make([]string, len(_recalc.funcs))
+	i := 0
+	for k := range _recalc.funcs {
+		funcNames[i] = k
+		i++
+	}
+
+	_recalc.perFuncCpuUsage, err = _ofpromqClient.QueryCPUusagePerFunction(_flags.RecalcPeriod, funcNames)
+	if err != nil {
+		return errors.Wrap(err, "Error while executing Prometheus query")
+	}
+	debugPromCPUusagePerFunction(_flags.RecalcPeriod, _recalc.perFuncCpuUsage)
+
+	_recalc.perFuncRamUsage, err = _ofpromqClient.QueryRAMusagePerFunction(_flags.RecalcPeriod, funcNames)
+	if err != nil {
+		return errors.Wrap(err, "Error while executing Prometheus query")
+	}
+	debugPromRAMusagePerFunction(_flags.RecalcPeriod, _recalc.perFuncRamUsage) // Note: timeSpan not used.
 
 	//////////////////// OVERLOAD / UNDERLOAD MODE DECISION ////////////////////
 
