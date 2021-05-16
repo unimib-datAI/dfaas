@@ -308,12 +308,13 @@ func (client *Client) QueryRAMusage(timeSpan time.Duration) (map[string]float64,
 // QueryCPUusagePerFunction returns, for each function active instance, the amount of CPU used
 // by that function (avg on function containers - same number returned by service count).
 // The returned map contains as keys the function name and the CPU usage (percentage) as value.
+// Note: this function use metrics of cAdvisor (CPU usage of single container) and node_exporter (total amount of available CPU).
 func (client *Client) QueryCPUusagePerFunction(timeSpan time.Duration, funcName []string) (map[string]float64, error) {
 	//strTimeSpan := timeSpan.String()
 	strTimeSpan := fmt.Sprintf("%.0fm", timeSpan.Minutes())
 	funcFilter := strings.Join(funcName, "|")
 
-	query := fmt.Sprintf("sum(rate(container_cpu_usage_seconds_total{container_label_com_docker_swarm_service_name=~\"%s\", image!=\"\"}[%s])) by (container_label_com_docker_swarm_service_name)", funcFilter, strTimeSpan)
+	query := fmt.Sprintf("sum by (container_label_com_docker_swarm_service_name) (irate(container_cpu_usage_seconds_total{container_label_com_docker_swarm_service_name=~\"%s\", image!=\"\"}[%s]))  / on() group_left() sum by (instance) (irate(node_cpu_seconds_total{job=\"node\"}[%s]))", funcFilter, strTimeSpan, strTimeSpan)
 	return client.queryCPUusagePerFunction(query)
 }
 
