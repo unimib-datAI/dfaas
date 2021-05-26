@@ -20,12 +20,17 @@ import (
 // Private struct containing variables specific to the recalc algorithm, which
 // need to be shared amongst the two recalc steps
 var _recalc = struct {
-	nodeIDs   []peer.ID          // IDs of the connected p2p nodes
-	stats     []*haproxy.Stat    // HAProxy stats
-	funcs     map[string]uint    // Our OpenFaaS functions with dfaas.maxrate limits
-	userRates map[string]float64 // Invocation rates for users only (in req/s) (from HAProxy stick-tables)
-	afet      map[string]float64 // Average Function Execution Times (from Prometheus)
-	invoc     map[string]float64 // Invocation rates (in req/s) (from Prometheus)
+	nodeIDs         []peer.ID                     // IDs of the connected p2p nodes
+	stats           []*haproxy.Stat               // HAProxy stats
+	funcs           map[string]uint               // Our OpenFaaS functions with dfaas.maxrate limits
+	userRates       map[string]float64            // Invocation rates for users only (in req/s) (from HAProxy stick-tables)
+	afet            map[string]float64            // Average Function Execution Times (from Prometheus)
+	invoc           map[string]map[string]float64 // Invocation rates (in req/s) (from Prometheus)
+	serviceCount    map[string]int
+	cpuUsage        map[string]float64
+	ramUsage        map[string]float64
+	perFuncCpuUsage map[string]float64
+	perFuncRamUsage map[string]float64
 
 	// For each function, the value is true if the node is currently in overload
 	// mode (req/s >= maxrate), false if underload
@@ -127,19 +132,89 @@ func recalcStep1() error {
 	}
 	debugHAProxyUserRates(_recalc.userRates)
 
+	//////////////////// [NEW] GATHER INFO FROM HAPROXY STICKTABLES st_local_func_* ////////////////////
+
+	for funcName := range _recalc.funcs {
+		stName := fmt.Sprintf("st_local_func_%s", funcName)
+		stContent, err := hasock.ReadStickTable(&_hasockClient, stName)
+
+		if err != nil {
+			errWrap := errors.Wrap(err, "Error while reading the stick-table \""+stName+"\" from the HAProxy socket")
+			logger.Error(errWrap)
+			logger.Warn("Not changing local rates for stick-table \"" + stName + "\" but this should be ok")
+		}
+
+		debugStickTable(stName, stContent)
+	}
+
+	//////////////////// [NEW] GATHER INFO FOR STICKTABLES OF DATA FROM OTHER NODES ////////////////////
+	/*
+		for funcName := range _recalc.funcs {
+			for _, nodeID := range _recalc.nodeIDs {
+				stName := fmt.Sprintf("st_other_node_%s_%s", funcName, nodeID.String())
+				stContent, err := hasock.ReadStickTable(&_hasockClient, stName)
+
+				if err != nil {
+					errWrap := errors.Wrap(err, "Error while reading the stick-table \""+stName+"\" from the HAProxy socket")
+					logger.Error(errWrap)
+					logger.Warn("Not changing other nodes rates for stick-table \"" + stName + "\" but this should be ok")
+				}
+
+				debugStickTable(stName, stContent)
+			}
+		}
+	*/
 	//////////////////// GATHER INFO FROM PROMETHEUS ////////////////////
 
-	//_recalc.afet, err = _ofpromqClient.QueryAFET(_flags.RecalcPeriod)
-	//if err != nil {
-	//	return errors.Wrap(err, "Error while execting Prometheus query")
-	//}
-	//debugPromAFET(_flags.RecalcPeriod, _recalc.afet)
+	_recalc.afet, err = _ofpromqClient.QueryAFET(_flags.RecalcPeriod)
+	if err != nil {
+		return errors.Wrap(err, "Error while execting Prometheus query")
+	}
+	debugPromAFET(_flags.RecalcPeriod, _recalc.afet)
 
-	//_recalc.invoc, err = _ofpromqClient.QueryInvoc(_flags.RecalcPeriod)
-	//if err != nil {
-	//	return errors.Wrap(err, "Error while executing Prometheus query")
-	//}
-	//debugPromInvoc(_flags.RecalcPeriod, _recalc.invoc)
+	_recalc.invoc, err = _ofpromqClient.QueryInvoc(_flags.RecalcPeriod)
+	if err != nil {
+		return errors.Wrap(err, "Error while executing Prometheus query")
+	}
+	debugPromInvoc(_flags.RecalcPeriod, _recalc.invoc)
+
+	_recalc.serviceCount, err = _ofpromqClient.QueryServiceCount()
+	if err != nil {
+		return errors.Wrap(err, "Error while executing Prometheus query")
+	}
+	debugPromServiceCount(_recalc.serviceCount)
+
+	_recalc.cpuUsage, err = _ofpromqClient.QueryCPUusage(_flags.RecalcPeriod)
+	if err != nil {
+		return errors.Wrap(err, "Error while executing Prometheus query")
+	}
+	debugPromCPUusage(_flags.RecalcPeriod, _recalc.cpuUsage)
+
+	_recalc.ramUsage, err = _ofpromqClient.QueryRAMusage(_flags.RecalcPeriod)
+	if err != nil {
+		return errors.Wrap(err, "Error while executing Prometheus query")
+	}
+	debugPromRAMusage(_flags.RecalcPeriod, _recalc.ramUsage)
+
+	// Get function's name as a slice.
+	funcNames := make([]string, len(_recalc.funcs))
+	i := 0
+	for k := range _recalc.funcs {
+		funcNames[i] = k
+		i++
+	}
+
+	_recalc.perFuncCpuUsage, err = _ofpromqClient.QueryCPUusagePerFunction(_flags.RecalcPeriod, funcNames)
+	if err != nil {
+		return errors.Wrap(err, "Error while executing Prometheus query")
+	}
+	debugPromCPUusagePerFunction(_flags.RecalcPeriod, _recalc.perFuncCpuUsage)
+
+	_recalc.perFuncRamUsage, err = _ofpromqClient.QueryRAMusagePerFunction(_flags.RecalcPeriod, funcNames)
+	if err != nil {
+		return errors.Wrap(err, "Error while executing Prometheus query")
+	}
+	debugPromRAMusagePerFunction(_flags.RecalcPeriod, _recalc.perFuncRamUsage) // Note: timeSpan not used.
 
 	//////////////////// OVERLOAD / UNDERLOAD MODE DECISION ////////////////////
 
@@ -154,7 +229,7 @@ func recalcStep1() error {
 			_recalc.overloads[funcName] = true
 		}
 	}
-	//debugOverloads(_recalc.overloads)
+	debugOverloads(_recalc.overloads) // Debug purpose.
 
 	//////////////////// LIMITS AND WEIGHTS CALCULATIONS ////////////////////
 
@@ -190,6 +265,10 @@ func recalcStep1() error {
 				for _, entry := range entries {
 					funcData, present := entry.FuncsData[funcName]
 					if present {
+						// Weights represent likelihood of send a request toward i-th
+						// function instance.
+						// Considering that this function instance is labelled as "underload"
+						// it is not necessary to send request towards other nodes.
 						funcData.NodeWeight = 0
 						nNodes++
 					}
@@ -285,6 +364,9 @@ func recalcStep2() error {
 			_nodestbl.SafeExec(func(entries map[string]*nodestbl.Entry) error {
 				totLimitsOut := float64(0)
 
+				// Loop on all node in _nodestbl, check if that node
+				// has this function running; if is present sum the amount of
+				// req/sec forwardable to this node.
 				for _, entry := range entries {
 					funcData, present := entry.FuncsData[funcName]
 					if present {
@@ -299,6 +381,14 @@ func recalcStep2() error {
 					totLimitsOut = 1
 				}
 
+				// Loop on all all node in _nodestbl, if function funcName is present in this node
+				// that is in "oveload" state, is present also in i-th node, calculate
+				// weight for the instance of function in i-th node.
+				// Weight is based on LimitOut (number of req/sec forwardable to this node)
+				// divided by total forwardable request.
+				// All multiplied by 100, that is the sum of weights; this op allow to
+				// express weights as the percentage of requests forwarded by this node to
+				// other functions that runs on other nodes.
 				for _, entry := range entries {
 					funcData, present := entry.FuncsData[funcName]
 					if present {

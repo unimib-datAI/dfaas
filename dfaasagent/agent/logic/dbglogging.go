@@ -78,7 +78,7 @@ func debugPromAFET(timeSpan time.Duration, data map[string]float64) {
 	}
 }
 
-func debugPromInvoc(timeSpan time.Duration, data map[string]float64) {
+func debugPromInvoc(timeSpan time.Duration, data map[string]map[string]float64) {
 	if !logging.GetDebugMode() {
 		return
 	}
@@ -94,7 +94,109 @@ func debugPromInvoc(timeSpan time.Duration, data map[string]float64) {
 
 	logger.Debug("Functions invocation counts (over " + timeSpan.String() + " time span):")
 	for _, funcName := range keys {
-		logger.Debugf("  - FUNC %s: %.2f req/s", funcName, data[funcName])
+		for code, rate := range data[funcName] {
+			logger.Debugf("  - FUNC %s, CODE %s: %.2f req/s", funcName, code, rate)
+		}
+	}
+}
+
+func debugPromServiceCount(data map[string]int) {
+	if !logging.GetDebugMode() {
+		return
+	}
+
+	logger := logging.Logger()
+
+	keys := make([]string, 0, len(data))
+	for k := range data {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	logger.Debug("Functions service counts:")
+	for _, funcName := range keys {
+		logger.Debugf("  - FUNC %s: %d active function replicas", funcName, data[funcName])
+	}
+}
+
+func debugPromCPUusage(timeSpan time.Duration, data map[string]float64) {
+	if !logging.GetDebugMode() {
+		return
+	}
+
+	logger := logging.Logger()
+
+	keys := make([]string, 0, len(data))
+	for k := range data {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	logger.Debug("Nodes CPU usage (over " + timeSpan.String() + " time span):")
+	for _, instance := range keys {
+		logger.Debugf("  - Instance %s CPU utilization: %.2f%%", instance, data[instance]*100)
+	}
+}
+
+func debugPromRAMusage(timeSpan time.Duration, data map[string]float64) {
+	if !logging.GetDebugMode() {
+		return
+	}
+
+	logger := logging.Logger()
+
+	keys := make([]string, 0, len(data))
+	for k := range data {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	logger.Debug("Nodes RAM usage (over " + timeSpan.String() + " time span):")
+	for _, instance := range keys {
+		logger.Debugf("  - Instance %s RAM utilization: %.2f%%", instance, data[instance]*100)
+	}
+}
+
+func debugPromCPUusagePerFunction(timeSpan time.Duration, data map[string]float64) {
+	if !logging.GetDebugMode() {
+		return
+	}
+
+	logger := logging.Logger()
+
+	keys := make([]string, 0, len(data))
+	for k := range data {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	logger.Debug("Nodes CPU usage for function (over " + timeSpan.String() + " time span) and averaged on number of container:")
+	for _, funcName := range keys {
+		logger.Debugf("  - FUNC %s CPU utilization: %.2f%%", funcName, data[funcName]*100)
+	}
+}
+
+func debugPromRAMusagePerFunction(timeSpan time.Duration, data map[string]float64) {
+	if !logging.GetDebugMode() {
+		return
+	}
+
+	logger := logging.Logger()
+
+	keys := make([]string, 0, len(data))
+	for k := range data {
+		keys = append(keys, k)
+	}
+
+	sort.Strings(keys)
+
+	logger.Debug("Nodes RAM usage for function (over " + timeSpan.String() + " time span) and averaged on number of container:")
+	for _, funcName := range keys {
+		logger.Debugf("  - FUNC %s RAM utilization: %.2f%%", funcName, data[funcName]*100)
 	}
 }
 

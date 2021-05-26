@@ -63,6 +63,7 @@
     - name: Deploy the functions
       shell:
         chdir: /home/debian/example-functions
-        cmd: faas-cli deploy --yaml func{{item}}.yml --label dfaas.maxrate={{dfaas_node_id}}0
+        cmd: faas-cli deploy --yaml func{{item}}.yml --label dfaas.maxrate={{dfaas_node_id}}0 
+        # --label com.openfaas.scale.min=2 --> scaling more replicas.
         # {{[item] | map('extract', {'a':1, 'b':2, 'c':3}) | first}}
       loop: "{{dfaas_functions}}"

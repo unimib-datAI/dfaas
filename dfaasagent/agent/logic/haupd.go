@@ -74,6 +74,7 @@ func createHACfgObject(
 		Functions: map[string]*HACfgFunc{},
 	}
 
+	// For each function in this node set limit (maxrate).
 	for funcName, limit := range funcLimits {
 		hacfg.Functions[funcName] = &HACfgFunc{
 			Limit:    limit,
@@ -82,17 +83,25 @@ func createHACfgObject(
 		}
 	}
 
+	// For each node write Host and port.
 	for nodeID, entry := range entries {
 		hacfg.Nodes[nodeID] = &HACfgNode{
 			HAProxyHost: entry.HAProxyHost,
 			HAProxyPort: entry.HAProxyPort,
 		}
 
+		// For each function on selected node check if this function
+		// is also present in that node.
+		// If it is not present on this node set limit to 0 and
+		// weight and Limit in empty.
 		for funcName, funcData := range entry.FuncsData {
 			_, present := hacfg.Functions[funcName]
 
 			if !present {
-				// We do not have this function on our OpenFaaS
+				// We do not have this function on our OpenFaaS.
+				// Set limit (maxrate) to 0 --> can't accept request for
+				// this function in local FaaS cluster, but can
+				// fwd to another node.
 				hacfg.Functions[funcName] = &HACfgFunc{
 					Limit:    0,
 					Weights:  map[string]uint{},
@@ -100,8 +109,15 @@ func createHACfgObject(
 				}
 			}
 
+			// For the function funcName in nodeID set weights and LimitsIn written
+			// previously during the 2 phases of racalc algo.
 			hacfg.Functions[funcName].Weights[nodeID] = funcData.NodeWeight
-			hacfg.Functions[funcName].LimitsIn[nodeID] = uint(funcData.LimitIn)
+			hacfg.Functions[funcName].LimitsIn[nodeID] = uint(funcData.LimitIn) // Note: Seems that is not written in template file.
+
+			// Weight are used in template file for load-balancing, with custom
+			// weights toward other nodes of p2p net.
+			// See: https://serverfault.com/questions/113637/haproxy-roundrobin-weights
+			// Also doc: http://cbonte.github.io/haproxy-dconv/configuration-1.4.html#5-weight
 		}
 	}
 
@@ -113,5 +129,11 @@ func createHACfgObject(
 func updateHAProxyConfig(hacfg *HACfg) error {
 	hacfg.Now = time.Now()
 
+	// hacfg is a struct of type HACfg, that is use as content
+	// for writing template file.
+	// Indeed, in template file is possible to access fields
+	// of this struct (see file of template .tmpl).
+	// Template is referred to a data structure, in that case HACfg type.
+	// See https://golang.org/pkg/text/template/.
 	return _hacfgupdater.UpdateHAConfig(hacfg)
 }
