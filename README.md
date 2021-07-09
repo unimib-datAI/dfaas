@@ -1,6 +1,6 @@
 # DFaaS: Decentralized Function-as-a-Service for Federated Edge
 
-## Motivating scenario
+## Scenario
 
 ![Scenario](images/Scenario-crop.png)
 
