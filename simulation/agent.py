@@ -4,12 +4,16 @@ import numpy as np
 from enum import Enum
 from threading import Thread
 
+# Enum for metric relation type:
+#   - DIRECT: high value --> high weight
+#   - INVERT: high value --> low weight
 class MetricType(Enum):
     DIRECT = 1
     INVERT = 2
 
 class Agent(): # Inherit by Thread in () bratches
     
+    # Each analytic has its own relation type
     ANALYTICS = {
         "service_count" : MetricType.DIRECT,
         "invoc_rate"    : MetricType.INVERT,
@@ -42,9 +46,13 @@ class Agent(): # Inherit by Thread in () bratches
         self._prefix = "THREAD: " + self._id
         self._logger = logger
 
+    # Used when this class extends Thread
     def run(self):
         self.loop()
 
+    '''
+        M(E)APE control loop
+    '''
     def loop(self):
         self.monitor()
         self.exchange()
@@ -89,10 +97,14 @@ class Agent(): # Inherit by Thread in () bratches
         self._logger.info("=======================")
         self._logger.info("3. ANALYZE")
         self._logger.info("=======================")
+
         ws = self.analytics_weights()
+
         self._logger.info("======== Metric weights ========")
         self._logger.info(ws)
+
         w = self.weights_aggregation(ws)
+
         self._logger.info("======== Aggregated weights ========")
         self._logger.info(w)
         return w
@@ -104,6 +116,9 @@ class Agent(): # Inherit by Thread in () bratches
         self._logger.info("=======================")
         self._logger.info("4. PLAN")
         self._logger.info("=======================")
+
+        # For each function and for each weight towards other nodes
+        # add a probabilistic rumor to previous calculated weights
         for func, node_weights in w.items():
             self._logger.info("Weights for func " + func)
             for node, wi in node_weights.items():
@@ -141,7 +156,10 @@ class Agent(): # Inherit by Thread in () bratches
         return w
 
     '''
-        Not mocked: write weights on configuration file.
+        Not mocked: write weights in a file for logging purposes (not on a HA-proxy config file).
+        Weights are multiply by 100 to obtain a percentage score that sum to 100.
+        Note that to weights array are added also 0% weights toward nodes that can 
+        not help for a specific function.
     '''
     def execute(self, w):
         self._logger.info("=======================")
@@ -214,7 +232,7 @@ class Agent(): # Inherit by Thread in () bratches
                             break
 
                 # Call a method that truly calculate analytics weight based on helpers node
-                # For each function call weight calciulation
+                # For each function call --> weight calculation
                 ws[func["name"]] = self.compute_weight(helpers)
             else:
                 self._logger.info("FUNC: " + func["name"] + " is UNDERLOADED")
@@ -246,6 +264,8 @@ class Agent(): # Inherit by Thread in () bratches
             # For each tuple (node, function) calculate sum of anlytics on each node
             # Depending on the metric/analytic type use DIRECT or INVERTED formula
             # for analytics weight
+            
+            # For each node extract value of the specific metric in this iteration
             for node, values in functions.items():
                 den += values[metric]
                 if metric == "invoc_rate":
@@ -296,6 +316,9 @@ class Agent(): # Inherit by Thread in () bratches
             for node, weight in w_metric.items():
                 ws[node][metric] = weight
 
+        # As output I have value for each node and for each metric
+        # This map contains a weight for each towards each node for each metric
+        # (they form a probability distribution)
         return ws
 
     """
