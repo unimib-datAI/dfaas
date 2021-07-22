@@ -23,10 +23,10 @@ class Agent(): # Inherit by Thread in () bratches
 
     # Default values are useful only when there is a 0 value in an INVERT analytic
     ANALYTICS_DEFAULT_VALUES = {
-        "service_count" : 0, # DIRECT -- no risk of divison by zero
+        "service_count" : 1, # DIRECT -- no risk of divison by zero
         "invoc_rate"    : 1, # INVERTED
         "afet"          : 0.001, # INVERTED
-        "margin"        : "max-rate - invoc_rate", # DIRECT -- no risk of division by zero
+        "margin"        : "max-rate - invoc_rate", # DIRECT -- no risk of division by zero (if margin = 0 --> OVERLOADED func)
         "ram_usage"     : 0.01,  # 1% -- INVERTED
         "cpu_usage"     : 0.01,  # 1% -- INVERTED
         "ram_xfunc"     : 0.01,  # 1% -- INVERTED
@@ -243,7 +243,7 @@ class Agent(): # Inherit by Thread in () bratches
             den = 0
             w_metric = {}
 
-            # For each tuple (node, function) caculate sum of anlytics on each node
+            # For each tuple (node, function) calculate sum of anlytics on each node
             # Depending on the metric/analytic type use DIRECT or INVERTED formula
             # for analytics weight
             for node, values in functions.items():
@@ -269,6 +269,18 @@ class Agent(): # Inherit by Thread in () bratches
                     w_metric[node] = values[metric]
 
             if rel == MetricType.DIRECT:
+                # Is possible that this line could generate a runtime error
+                # iff all values of a specific metric are 0 in all node
+                # 
+                # Since w_metric contain values for a metric for each node
+                # (node_id is the key), if all nodes has value 0 for a specific metric, 
+                # the sum (den) is equal to 0, so a division by zero is performed
+                #
+                # The only two metric with a DIRECT proportionality are service_count
+                # and margin. Both of them could not be zero since service_count = 0 
+                # means that there are no function replicas on this node, and margin = 0
+                # means that the function is OVERLOADED and so it is not considered
+                # in weights calculations
                 w_metric = {k: v / den for k, v in w_metric.items()}
             else:
                 # Note: there will be an error for metrics that has value = 0

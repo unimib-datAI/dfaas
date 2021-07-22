@@ -9,7 +9,7 @@ import matplotlib.pyplot as plt
 #configuration = "2.json"
 #agent_num = 6
 
-mypath = "config/experiment/"
+mypath = "config/experiment2/"
 experiment_files = sorted([f for f in listdir(mypath) if isfile(join(mypath, f))])
 execution_times = []
 
