@@ -67,16 +67,28 @@ plt.xlabel("Experiment file")
 plt.ylabel("MAPE loop -- execution time (seconds)")
 
 # Execution of first experiment
+print("======== START EXP 1 ========")
 path = "config/experiment/"
 df1 = perform_experiment(path, "experiment1")
 # Plotting of first experiment
 plt.plot(df1["experiment"], df1["time"], label="Node with 2 overloaded function")
+print("======== END EXP 1 ========")
 
 # Execution of second experiment
+print("======== START EXP 2 ========")
 path = "config/experiment2/"
 df2 = perform_experiment(path, "experiment2")
 # Plotting of first experiment
 plt.plot(df2["experiment"], df2["time"], label="Node with 4 overloaded function")
+print("======== END EXP 2 ========")
+
+# Execution of third experiment
+print("======== START EXP 3 ========")
+path = "config/experiment3/"
+df2 = perform_experiment(path, "experiment3")
+# Plotting of first experiment
+plt.plot(df2["experiment"], df2["time"], label="Node with 6 overloaded function")
+print("======== END EXP 3 ========")
 
 # Plot configurations
 plt.legend(loc="upper left")
