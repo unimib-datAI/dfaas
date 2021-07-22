@@ -6,15 +6,7 @@ from os import listdir
 from os.path import isfile, join
 import matplotlib.pyplot as plt
 
-#configuration = "2.json"
-#agent_num = 6
-
-mypath = "config/experiment2/"
-experiment_files = sorted([f for f in listdir(mypath) if isfile(join(mypath, f))])
-execution_times = []
-
-print(experiment_files)
-
+# Get a specific logger with passed configurations
 def get_logger(name, log_file, level=logging.INFO):
     handler = logging.FileHandler(log_file)
     logger = logging.getLogger(name)
@@ -23,49 +15,74 @@ def get_logger(name, log_file, level=logging.INFO):
 
     return logger
 
-# I want to run a single agent (node_0 agent) that do calcolous based on his situation
-# Note that agents is not more a thread for timing
-for configuration in experiment_files:
-    # This run takes into account of agent file logs
-    a = Agent(0, join(mypath, configuration), get_logger("agent" + str(0), "node_" + str(0) + ".log"))
+#configuration = "2.json"
+#agent_num = 6
+
+def perform_experiment(path, label):
+    mypath = path # "config/experiment2/"
+    experiment_files = sorted([f for f in listdir(mypath) if isfile(join(mypath, f))])
+    execution_times = []
+
+    print(experiment_files)
+
+    # I want to run a single agent (node_0 agent) that do calcolous based on his situation
+    # Note that agents is not more a thread for timing
+    for configuration in experiment_files:
+        # This run takes into account of agent file logs
+        a = Agent(0, join(mypath, configuration), get_logger("agent" + str(0), "node_" + str(0) + ".log"))
+        
+        # time.perf_counter() returns elapsed time in seconds
+        # It is the best way to measure performance
+        # See: https://www.geeksforgeeks.org/time-perf_counter-function-in-python/
+        start = time.perf_counter()
+        a.loop()
+        end = time.perf_counter()
+        execution = end - start
+
+        execution_times.append(execution)
+
+        print(configuration)
+        print(execution)
+
+    df = pd.DataFrame()
+
+    df["experiment"] = experiment_files
+    df["time"] = execution_times
+
+    print(experiment_files)
+    print(execution_times)
+
+    print(df)
+
+    #df.plot()
+
+    df.to_csv(label + '.csv')
     
-    # time.perf_counter() returns elapsed time in seconds
-    # It is the best way to measure performance
-    # See: https://www.geeksforgeeks.org/time-perf_counter-function-in-python/
-    start = time.perf_counter()
-    a.loop()
-    end = time.perf_counter()
-    execution = end - start
+    return df
 
-    execution_times.append(execution)
-
-    print(configuration)
-    print(execution)
-
-df = pd.DataFrame()
-
-df["experiment"] = experiment_files
-df["time"] = execution_times
-
-print(experiment_files)
-print(execution_times)
-
-print(df)
-
-df.plot()
-
-df.to_csv('out.csv')
-
+# Plot configurations
 plt.figure(figsize=(20, 10))
 plt.title("Agent execution time in function of the p2p net size or the number of neighbours")
-plt.xlabel("Experiment")
-plt.ylabel("MAPE loop -- execution time")
+plt.xlabel("Experiment file")
+plt.ylabel("MAPE loop -- execution time (seconds)")
 
-plt.plot(df["experiment"], df["time"])
-#plt.legend(loc="upper right")
+# Execution of first experiment
+path = "config/experiment/"
+df1 = perform_experiment(path, "experiment1")
+# Plotting of first experiment
+plt.plot(df1["experiment"], df1["time"], label="Node with 2 overloaded function")
+
+# Execution of second experiment
+path = "config/experiment2/"
+df2 = perform_experiment(path, "experiment2")
+# Plotting of first experiment
+plt.plot(df2["experiment"], df2["time"], label="Node with 4 overloaded function")
+
+# Plot configurations
+plt.legend(loc="upper left")
 plt.grid()
 
-plt.savefig("prova.png")
+plt.savefig("comparison.png")
 
 # for i in range(0, agent_num):
 #     a = Agent(i, configuration, get_logger("agent" + str(i), "node_" + str(i) + ".log"))

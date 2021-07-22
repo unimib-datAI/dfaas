@@ -251,6 +251,10 @@ class Agent(): # Inherit by Thread in () bratches
                 if metric == "invoc_rate":
                     if values[metric] != 0:
                         # Express the utilization rate
+                        # If max_rate = 0 will be done a divion by zero, 
+                        # but max_rate = 0 seems to be very strange
+                        # If a function has max_rate = 0, it means that it could
+                        # not accept requests from users or other nodes
                         w_metric[node] = values[metric] / values["max_rate"]
                     else:
                         # Note: if invocation rate is 0 the next division is not correct
