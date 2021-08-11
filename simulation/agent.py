@@ -308,7 +308,8 @@ class Agent(): # Inherit by Thread in () bratches
                 w_metric = {k: v / den for k, v in w_metric.items()}
             else:
                 # Note: there will be an error for metrics that has value = 0
-                w_metric = {k: 1 / v if v != 0 else 1 /
+                # Use default value if v == 0 or if v < of default value
+                w_metric = {k: 1 / v if v != 0 and v >= self.ANALYTICS_DEFAULT_VALUES[metric] else 1 /
                             self.ANALYTICS_DEFAULT_VALUES[metric] for k, v in w_metric.items()}
                 den = sum(w_metric.values())
                 w_metric = {k: v / den for k, v in w_metric.items()}
