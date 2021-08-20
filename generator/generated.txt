@@ -1,0 +1,385 @@
+Generating a configuration...
+Node used for experiment: node_1
+Node spec used for experiment: 
+{'ram': 2, 'cpu': 1}
+Replicas for function funca are 1
+Replicas for function funcb are 1
+Replicas for function funcc are 1
+extra-high load for function funca
+Effective load: 17.4
+Load adjusted for replicas: 17 r/s -- Maxrate for replicas: 15r/s
+Load for function funca is 17 r/s
+extra-high load for function funcb
+Effective load: 13.0
+Load adjusted for replicas: 13 r/s -- Maxrate for replicas: 10r/s
+Load for function funcb is 13 r/s
+low load for function funcc
+Effective load: 0.13
+Load adjusted for replicas: 0 r/s -- Maxrate for replicas: 1r/s
+Load for function funcc is 0 r/s
+=================== CONFIGURATION 0 ===================
+{
+    "input": {
+        "funca_num": 1,
+        "funca_wl": 17,
+        "funcb_num": 1,
+        "funcb_wl": 13,
+        "funcc_num": 1,
+        "funcc_wl": 0,
+        "node": "node_1"
+    },
+    "output": [
+        {}
+    ]
+}
+========================================================
+Generating a configuration...
+Node used for experiment: node_1
+Node spec used for experiment: 
+{'ram': 2, 'cpu': 1}
+Replicas for function funca are 5
+Replicas for function funcb are 3
+Replicas for function funcc are 0
+low load for function funca
+Effective load: 3.6
+Load adjusted for replicas: 18 r/s -- Maxrate for replicas: 75r/s
+Load for function funca is 18 r/s
+extra-high load for function funcb
+Effective load: 11.7
+Load adjusted for replicas: 35 r/s -- Maxrate for replicas: 30r/s
+Load for function funcb is 35 r/s
+extra-high load for function funcc
+Effective load: 1.12
+Load adjusted for replicas: 0 r/s -- Maxrate for replicas: 0r/s
+Load for function funcc is 0 r/s
+=================== CONFIGURATION 1 ===================
+{
+    "input": {
+        "funca_num": 5,
+        "funca_wl": 18,
+        "funcb_num": 3,
+        "funcb_wl": 35,
+        "funcc_num": 0,
+        "funcc_wl": 0,
+        "node": "node_1"
+    },
+    "output": [
+        {}
+    ]
+}
+========================================================
+Generating a configuration...
+Node used for experiment: node_1
+Node spec used for experiment: 
+{'ram': 2, 'cpu': 1}
+Replicas for function funca are 0
+Replicas for function funcb are 2
+Replicas for function funcc are 1
+high load for function funca
+Effective load: 14.7
+Load adjusted for replicas: 0 r/s -- Maxrate for replicas: 0r/s
+Load for function funca is 0 r/s
+extra-high load for function funcb
+Effective load: 13.0
+Load adjusted for replicas: 26 r/s -- Maxrate for replicas: 20r/s
+Load for function funcb is 26 r/s
+high load for function funcc
+Effective load: 0.97
+Load adjusted for replicas: 1 r/s -- Maxrate for replicas: 1r/s
+Load for function funcc is 1 r/s
+=================== CONFIGURATION 2 ===================
+{
+    "input": {
+        "funca_num": 0,
+        "funca_wl": 0,
+        "funcb_num": 2,
+        "funcb_wl": 26,
+        "funcc_num": 1,
+        "funcc_wl": 1,
+        "node": "node_1"
+    },
+    "output": [
+        {}
+    ]
+}
+========================================================
+Generating a configuration...
+Node used for experiment: node_1
+Node spec used for experiment: 
+{'ram': 2, 'cpu': 1}
+Replicas for function funca are 0
+Replicas for function funcb are 0
+Replicas for function funcc are 1
+extra-high load for function funca
+Effective load: 16.65
+Load adjusted for replicas: 0 r/s -- Maxrate for replicas: 0r/s
+Load for function funca is 0 r/s
+low load for function funcb
+Effective load: 2.9
+Load adjusted for replicas: 0 r/s -- Maxrate for replicas: 0r/s
+Load for function funcb is 0 r/s
+medium load for function funcc
+Effective load: 0.53
+Load adjusted for replicas: 1 r/s -- Maxrate for replicas: 1r/s
+Load for function funcc is 1 r/s
+=================== CONFIGURATION 3 ===================
+{
+    "input": {
+        "funca_num": 0,
+        "funca_wl": 0,
+        "funcb_num": 0,
+        "funcb_wl": 0,
+        "funcc_num": 1,
+        "funcc_wl": 1,
+        "node": "node_1"
+    },
+    "output": [
+        {}
+    ]
+}
+========================================================
+Generating a configuration...
+Node used for experiment: node_1
+Node spec used for experiment: 
+{'ram': 2, 'cpu': 1}
+Replicas for function funca are 4
+Replicas for function funcb are 2
+Replicas for function funcc are 1
+extra-high load for function funca
+Effective load: 18.15
+Load adjusted for replicas: 73 r/s -- Maxrate for replicas: 60r/s
+Load for function funca is 73 r/s
+high load for function funcb
+Effective load: 8.2
+Load adjusted for replicas: 16 r/s -- Maxrate for replicas: 20r/s
+Load for function funcb is 16 r/s
+medium load for function funcc
+Effective load: 0.57
+Load adjusted for replicas: 1 r/s -- Maxrate for replicas: 1r/s
+Load for function funcc is 1 r/s
+=================== CONFIGURATION 4 ===================
+{
+    "input": {
+        "funca_num": 4,
+        "funca_wl": 73,
+        "funcb_num": 2,
+        "funcb_wl": 16,
+        "funcc_num": 1,
+        "funcc_wl": 1,
+        "node": "node_1"
+    },
+    "output": [
+        {}
+    ]
+}
+========================================================
+Generating a configuration...
+Node used for experiment: node_1
+Node spec used for experiment: 
+{'ram': 2, 'cpu': 1}
+Replicas for function funca are 5
+Replicas for function funcb are 1
+Replicas for function funcc are 0
+high load for function funca
+Effective load: 14.1
+Load adjusted for replicas: 70 r/s -- Maxrate for replicas: 75r/s
+Load for function funca is 70 r/s
+high load for function funcb
+Effective load: 7.3
+Load adjusted for replicas: 7 r/s -- Maxrate for replicas: 10r/s
+Load for function funcb is 7 r/s
+extra-high load for function funcc
+Effective load: 1.32
+Load adjusted for replicas: 0 r/s -- Maxrate for replicas: 0r/s
+Load for function funcc is 0 r/s
+=================== CONFIGURATION 5 ===================
+{
+    "input": {
+        "funca_num": 5,
+        "funca_wl": 70,
+        "funcb_num": 1,
+        "funcb_wl": 7,
+        "funcc_num": 0,
+        "funcc_wl": 0,
+        "node": "node_1"
+    },
+    "output": [
+        {}
+    ]
+}
+========================================================
+Generating a configuration...
+Node used for experiment: node_1
+Node spec used for experiment: 
+{'ram': 2, 'cpu': 1}
+Replicas for function funca are 1
+Replicas for function funcb are 1
+Replicas for function funcc are 1
+high load for function funca
+Effective load: 14.7
+Load adjusted for replicas: 15 r/s -- Maxrate for replicas: 15r/s
+Load for function funca is 15 r/s
+high load for function funcb
+Effective load: 9.7
+Load adjusted for replicas: 10 r/s -- Maxrate for replicas: 10r/s
+Load for function funcb is 10 r/s
+medium load for function funcc
+Effective load: 0.47
+Load adjusted for replicas: 0 r/s -- Maxrate for replicas: 1r/s
+Load for function funcc is 0 r/s
+=================== CONFIGURATION 6 ===================
+{
+    "input": {
+        "funca_num": 1,
+        "funca_wl": 15,
+        "funcb_num": 1,
+        "funcb_wl": 10,
+        "funcc_num": 1,
+        "funcc_wl": 0,
+        "node": "node_1"
+    },
+    "output": [
+        {}
+    ]
+}
+========================================================
+Generating a configuration...
+Node used for experiment: node_1
+Node spec used for experiment: 
+{'ram': 2, 'cpu': 1}
+Replicas for function funca are 3
+Replicas for function funcb are 0
+Replicas for function funcc are 0
+medium load for function funca
+Effective load: 7.5
+Load adjusted for replicas: 22 r/s -- Maxrate for replicas: 45r/s
+Load for function funca is 22 r/s
+low load for function funcb
+Effective load: 3.1
+Load adjusted for replicas: 0 r/s -- Maxrate for replicas: 0r/s
+Load for function funcb is 0 r/s
+extra-high load for function funcc
+Effective load: 1.14
+Load adjusted for replicas: 0 r/s -- Maxrate for replicas: 0r/s
+Load for function funcc is 0 r/s
+=================== CONFIGURATION 7 ===================
+{
+    "input": {
+        "funca_num": 3,
+        "funca_wl": 22,
+        "funcb_num": 0,
+        "funcb_wl": 0,
+        "funcc_num": 0,
+        "funcc_wl": 0,
+        "node": "node_1"
+    },
+    "output": [
+        {}
+    ]
+}
+========================================================
+Generating a configuration...
+Node used for experiment: node_1
+Node spec used for experiment: 
+{'ram': 2, 'cpu': 1}
+Replicas for function funca are 4
+Replicas for function funcb are 3
+Replicas for function funcc are 1
+low load for function funca
+Effective load: 4.65
+Load adjusted for replicas: 19 r/s -- Maxrate for replicas: 60r/s
+Load for function funca is 19 r/s
+medium load for function funcb
+Effective load: 6.2
+Load adjusted for replicas: 19 r/s -- Maxrate for replicas: 30r/s
+Load for function funcb is 19 r/s
+low load for function funcc
+Effective load: 0.06
+Load adjusted for replicas: 0 r/s -- Maxrate for replicas: 1r/s
+Load for function funcc is 0 r/s
+=================== CONFIGURATION 8 ===================
+{
+    "input": {
+        "funca_num": 4,
+        "funca_wl": 19,
+        "funcb_num": 3,
+        "funcb_wl": 19,
+        "funcc_num": 1,
+        "funcc_wl": 0,
+        "node": "node_1"
+    },
+    "output": [
+        {}
+    ]
+}
+========================================================
+Generating a configuration...
+Node used for experiment: node_1
+Node spec used for experiment: 
+{'ram': 2, 'cpu': 1}
+Replicas for function funca are 2
+Replicas for function funcb are 2
+Replicas for function funcc are 0
+high load for function funca
+Effective load: 13.65
+Load adjusted for replicas: 27 r/s -- Maxrate for replicas: 30r/s
+Load for function funca is 27 r/s
+medium load for function funcb
+Effective load: 5.5
+Load adjusted for replicas: 11 r/s -- Maxrate for replicas: 20r/s
+Load for function funcb is 11 r/s
+medium load for function funcc
+Effective load: 0.63
+Load adjusted for replicas: 0 r/s -- Maxrate for replicas: 0r/s
+Load for function funcc is 0 r/s
+=================== CONFIGURATION 9 ===================
+{
+    "input": {
+        "funca_num": 2,
+        "funca_wl": 27,
+        "funcb_num": 2,
+        "funcb_wl": 11,
+        "funcc_num": 0,
+        "funcc_wl": 0,
+        "node": "node_1"
+    },
+    "output": [
+        {}
+    ]
+}
+========================================================
+Generating a configuration...
+Node used for experiment: node_1
+Node spec used for experiment: 
+{'ram': 2, 'cpu': 1}
+Replicas for function funca are 1
+Replicas for function funcb are 1
+Replicas for function funcc are 0
+medium load for function funca
+Effective load: 6.15
+Load adjusted for replicas: 6 r/s -- Maxrate for replicas: 15r/s
+Load for function funca is 6 r/s
+medium load for function funcb
+Effective load: 4.6
+Load adjusted for replicas: 5 r/s -- Maxrate for replicas: 10r/s
+Load for function funcb is 5 r/s
+extra-high load for function funcc
+Effective load: 1.07
+Load adjusted for replicas: 0 r/s -- Maxrate for replicas: 0r/s
+Load for function funcc is 0 r/s
+=================== CONFIGURATION 10 ===================
+{
+    "input": {
+        "funca_num": 1,
+        "funca_wl": 6,
+        "funcb_num": 1,
+        "funcb_wl": 5,
+        "funcc_num": 0,
+        "funcc_wl": 0,
+        "node": "node_1"
+    },
+    "output": [
+        {}
+    ]
+}
+========================================================
