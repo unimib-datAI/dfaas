@@ -36,6 +36,7 @@ RUN apt-get install -y wget && \
 WORKDIR /agent
 COPY --from=build /go/src/dfaasagent/dfaasagent .
 COPY haproxycfg.tmpl .
+COPY experiments/ ./experiments/
 
 # Main DFaaS Docker volume
 VOLUME /dfaasvolume
