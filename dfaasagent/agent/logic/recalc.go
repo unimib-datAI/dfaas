@@ -277,7 +277,7 @@ func recalcStep1() error {
 		name := funcName                               // Func name
 		serviceCount := _recalc.serviceCount[funcName] // Service count
 
-		invocRate, present := _recalc.userRates[funcName] // Invoc rate (users only)
+		invocRate, present := _recalc.userRates[funcName] // Invoc rate (users only) -- from HAproxy
 		maxRate := _recalc.funcs[funcName]                // Max Rate
 		var margin uint
 		margin = 0
@@ -290,11 +290,11 @@ func recalcStep1() error {
 			}
 		}
 
-		// Invocation rate (returned by gateway -- real), sum on different status codes
-		//irate := 0
-		//for _, rate := range _recalc.invoc[funcName] { // loop on (code, rate)
-		//	irate += int(rate)
-		//}
+		// Invocation rate (returned by gateway (prometheus) -- real), sum on different status codes
+		irate := 0.0
+		for _, rate := range _recalc.invoc[funcName] { // loop on (code, rate)
+			irate += rate
+		}
 
 		// Afet
 		afet := 0.001
@@ -314,15 +314,16 @@ func recalcStep1() error {
 		}
 
 		f := Function{
-			Name:         name,
-			ServiceCount: serviceCount,
-			Margin:       margin,
-			InvocRate:    uint(invocRate), //irate,
-			Afet:         afet,
-			RamxFunc:     ram_xfunc,
-			CpuxFunc:     cpu_xfunc,
-			MaxRate:      maxRate,
-			State:        state,
+			Name:          name,
+			ServiceCount:  serviceCount,
+			Margin:        margin,
+			InvocRate:     uint(invocRate), //irate,
+			Afet:          afet,
+			RamxFunc:      ram_xfunc,
+			CpuxFunc:      cpu_xfunc,
+			MaxRate:       maxRate,
+			State:         state,
+			PromInvocRate: irate,
 		}
 
 		functionsSlice = append(functionsSlice, f)
