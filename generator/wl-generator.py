@@ -3,7 +3,7 @@ import numpy as np
 from configuration import Configuration
 
 # Active node for the experiment
-node = "node_1"
+node = "node_3"
 
 # Map of nodes with specs
 nodes = {
@@ -16,7 +16,7 @@ nodes = {
         "cpu": 2
     },
     "node_3": { # More powerful node
-        "ram": 8,
+        "ram": 6, # Not 8 Gb of ram for VB limitations
         "cpu": 4
     }
 }
@@ -25,18 +25,18 @@ nodes = {
 max_rates_for_replica = {
     "node_1": {
         "funca": 15,
-        "funcb": 10,
+        "funcb": 3,
         "funcc": 1 # Maybe 2
     },
     "node_2": {
-        "funca": 50,
-        "funcb": 30,
-        "funcc": 10
+        "funca": 20,
+        "funcb": 5,
+        "funcc": 3
     },
     "node_3": {
-        "funca": 50,
-        "funcb": 30,
-        "funcc": 10
+        "funca": 30,
+        "funcb": 10,
+        "funcc": 5
     }
 }
 
@@ -52,18 +52,18 @@ loads_percentages = {
 max_replicas_for_node = {
     "node_1": {
         "funca": (0, 6), # High number of replicas due to semplicity of funca
-        "funcb": (0, 4), # Medium number of replicas 
+        "funcb": (0, 3), # Medium number of replicas 
         "funcc": (0, 2)  # More computational expensive -- only one replica
     },
     "node_2": {
-        "funca": (0, 9),
-        "funcb": (0, 6),
-        "funcc": (0, 4)
+        "funca": (0, 6),
+        "funcb": (0, 3),
+        "funcc": (0, 2)
     },
     "node_3": {
-        "funca": (0, 11),
-        "funcb": (0, 9),
-        "funcc": (0, 6)
+        "funca": (0, 6),
+        "funcb": (0, 3),
+        "funcc": (0, 2)
     }
 }
 
@@ -91,6 +91,8 @@ def generate_configuration():
 
     # The workload and the maxrates have to be calculated starting by the number of replicas
     # Note: suppose that the load is equally distributied on the different replicas
+    # For this reason the load is generated for only one replica and then multiplied for 
+    # the number of active replicas for this function
     final_loads = {}
     for k, v in max_rates_for_replica[node].items():
         load = np.random.choice(list(loads_percentages.keys()))
