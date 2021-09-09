@@ -39,12 +39,14 @@ class Agent(): # Inherit by Thread in () bratches
 
     _json_path = ""
     
-    def __init__(self, id, file, logger):
+    def __init__(self, id, file, logger, to_be_loaded=True, config_json=None):
         super().__init__()
         self._id = "node_" + str(id)
         self._json_path = self._json_path + file
         self._prefix = "THREAD: " + self._id
         self._logger = logger
+        self._to_be_loaded = to_be_loaded
+        self._config_json = config_json
 
     # Used when this class extends Thread
     def run(self):
@@ -69,8 +71,12 @@ class Agent(): # Inherit by Thread in () bratches
         self._logger.info("=======================")
         self._logger.info("1. MONITOR")
         self._logger.info("=======================")
-        f = open(self._json_path)
-        self._data = json.load(f) # Return json file as a dictionary
+        
+        if self._to_be_loaded:
+            f = open(self._json_path)
+            self._data = json.load(f) # Return json file as a dictionary
+        else:
+            self._data = self._config_json
 
         self._logger.info("======== Read data ========")
         self._logger.info(self._data)
@@ -118,7 +124,7 @@ class Agent(): # Inherit by Thread in () bratches
         self._logger.info("=======================")
 
         # For each function and for each weight towards other nodes
-        # add a probabilistic rumor to previous calculated weights
+        # add a probabilistic noise to previous calculated weights
         for func, node_weights in w.items():
             self._logger.info("Weights for func " + func)
             for node, wi in node_weights.items():
@@ -206,7 +212,7 @@ class Agent(): # Inherit by Thread in () bratches
 
         # For each "overloaded" func on this node
         for func in self._data[self._id]["functions"]:
-            if func["state"] == "overloaded":
+            if func["state"] == "Overload":
                 self._logger.info("FUNC: " + func["name"] + " is OVERLOADED")
                 helpers = {}
                 
@@ -220,7 +226,7 @@ class Agent(): # Inherit by Thread in () bratches
                     
                     # Check "underload" same functions on other nodes
                     for f in val["functions"]:
-                        if f["name"] == func["name"] and f["state"] == "underloaded":
+                        if f["name"] == func["name"] and f["state"] == "Underload":
                             # RAM and CPU usage are added to node informations
                             f["ram_usage"] = val["ram_usage"]
                             f["cpu_usage"] = val["cpu_usage"]
@@ -309,7 +315,8 @@ class Agent(): # Inherit by Thread in () bratches
             else:
                 # Note: there will be an error for metrics that has value = 0
                 # Use default value if v == 0 or if v < of default value
-                w_metric = {k: 1 / v if v != 0 and v >= self.ANALYTICS_DEFAULT_VALUES[metric] else 1 /
+                # Removed: and v >= self.ANALYTICS_DEFAULT_VALUES[metric]
+                w_metric = {k: 1 / v if v != 0 else 1 /
                             self.ANALYTICS_DEFAULT_VALUES[metric] for k, v in w_metric.items()}
                 den = sum(w_metric.values())
                 w_metric = {k: v / den for k, v in w_metric.items()}
