@@ -37,6 +37,17 @@ class Agent(): # Inherit by Thread in () bratches
         "cpu_xfunc"     : 0.01,  # 1% -- INVERTED
     }
 
+    METRIC_WEIGHTS = {
+        "service_count" : 1,
+        "invoc_rate"    : 1,
+        "afet"          : 1,
+        "margin"        : 1,
+        "ram_usage"     : 1,
+        "cpu_usage"     : 1,
+        "ram_xfunc"     : 1,
+        "cpu_xfunc"     : 1,
+    }
+
     _json_path = ""
     
     def __init__(self, id, file, logger, to_be_loaded=True, config_json=None):
@@ -47,6 +58,9 @@ class Agent(): # Inherit by Thread in () bratches
         self._logger = logger
         self._to_be_loaded = to_be_loaded
         self._config_json = config_json
+        
+        #self._logger.isEnabledFor(50) # Used to do not print and gain in speed.
+        #self._logger.disabled = True
 
     # Used when this class extends Thread
     def run(self):
@@ -339,8 +353,9 @@ class Agent(): # Inherit by Thread in () bratches
             weights[func] = {} # Initialize a map for each func-node tuple
 
             for node in values:
-                h = np.ones((1, len(values[node].values())))        # h could be used to different weigthing of features
-                weights[func][node] = sum([i*j for i, j in zip(values[node].values(), h[0])])
+                #h = np.ones((1, len(values[node].values())))        # h could be used to different weigthing of features
+                #weights[func][node] = sum([i*j for i, j in zip(values[node].values(), h[0])])
+                weights[func][node] = sum([v*self.METRIC_WEIGHTS[k] for k, v in values[node].items()])
                 
         # Probability distribution
         for func in weights:

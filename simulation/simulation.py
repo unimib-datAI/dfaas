@@ -55,7 +55,7 @@ def simulation(nodes_number, node1_config, node2_config, node3_config):
         else:
             config = np.random.choice(node3_config)
         configurations.append(config)
-    print(configurations)
+    #print(configurations)
 
     # 2) Load selected files
     loaded_json = []
@@ -67,13 +67,14 @@ def simulation(nodes_number, node1_config, node2_config, node3_config):
     # 3) For each minute of simulation build a configuration file
     # composed by "num_nodes" entries. Each entry contains a node's
     # situation, with metric gathered during experiments
+    execution_times = []
     for minute in range(0, 7): # 6 minutes
         final_config = {}
         for i, f in zip(range(0, nodes_number), loaded_json):
             key = "node_" + str(i)
             f['output'][minute]['node'] = f['input']['node']
             final_config[key] = f['output'][minute]     
-        print(final_config)
+        #print(final_config)
 
         # Write configuration on file
         with open('config{}.json'.format(minute), 'w', encoding='utf-8') as f:
@@ -81,7 +82,53 @@ def simulation(nodes_number, node1_config, node2_config, node3_config):
 
         # 4) Call agent loop for each config that has been previously built
         a = Agent(0, "", get_logger("agent" + str(minute), "minute_" + str(minute) + ".log"), False, final_config)
+        
+        # time.perf_counter() returns elapsed time in seconds
+        # It is the best way to measure performance
+        # See: https://www.geeksforgeeks.org/time-perf_counter-function-in-python/
+        start = time.perf_counter()
         a.loop()
+        end = time.perf_counter()
+        execution = end - start
+        
+        execution_times.append(execution)
+        
+    return np.mean(execution_times)
+
+def simulation_with_graphs():
+    exp_times = []
+    for i in range(5, 105, 5):
+        repaeted_simulation_times = []
+        for _ in range(0, 20):
+            sim_time = simulation(i, node1_config, node2_config, node3_config)
+            repaeted_simulation_times.append(sim_time)
+        mean = np.mean(repaeted_simulation_times)
+        exp_times.append(mean)
+        print("Mean execution time over 10 repeated experiments with {} nodes is: {}".format(i, mean))
+
+    print(exp_times)
+
+    df = pd.DataFrame()
+
+    df["experiment"] = range(5, 105, 5)
+    df["time"] = exp_times
+
+    # Plot configurations
+    plt.figure(figsize=(20, 10))
+    plt.title(
+        "Agent execution time in function of the p2p net size or the number of neighbours")
+    plt.xlabel("Experiment file")
+    plt.ylabel("MAPE loop -- execution time (seconds)")
+
+    plt.plot(df["experiment"], df["time"],
+            label="Experiment with differents agents num")
+
+    # Plot configurations
+    plt.legend(loc="upper left")
+    plt.grid()
+
+    plt.savefig("comparison.png")
 
 node1_config, node2_config, node3_config = gather_configurations()
+#simulation_with_graphs()
 simulation(4, node1_config, node2_config, node3_config)
