@@ -3,11 +3,12 @@ import time
 import os
 import json
 import pandas as pd
+import matplotlib.pyplot as plt
+import numpy as np
 from agent import Agent
 from os import listdir
 from os.path import isfile, join
-import matplotlib.pyplot as plt
-import numpy as np
+from behaviour.empirical_strategy import EmpiricalStrategy
 
 # Get a specific logger with passed configurations
 def get_logger(name, log_file, level=logging.INFO):
@@ -81,13 +82,13 @@ def simulation(nodes_number, node1_config, node2_config, node3_config):
             json.dump(final_config, f, ensure_ascii=False, indent=4)
 
         # 4) Call agent loop for each config that has been previously built
-        a = Agent(0, "", get_logger("agent" + str(minute), "minute_" + str(minute) + ".log"), False, final_config)
+        a = Agent(EmpiricalStrategy(0, "", get_logger("agent" + str(minute), "minute_" + str(minute) + ".log"), False, final_config))
         
         # time.perf_counter() returns elapsed time in seconds
         # It is the best way to measure performance
         # See: https://www.geeksforgeeks.org/time-perf_counter-function-in-python/
         start = time.perf_counter()
-        a.loop()
+        a.run()
         end = time.perf_counter()
         execution = end - start
         
