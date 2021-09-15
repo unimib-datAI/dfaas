@@ -53,11 +53,11 @@ class EmpiricalStrategy(Strategy):
 
     _json_path = ""
     
-    def __init__(self, id, file, logger, to_be_loaded=True, config_json=None):
-        self._id = "node_" + str(id)
+    def __init__(self, file, to_be_loaded=True, config_json=None):
+        #self._id = "node_" + str(id)
         self._json_path = self._json_path + file
-        self._prefix = "THREAD: " + self._id
-        self._logger = logger
+        #self._prefix = "THREAD: " + self._id
+        #self._logger = logger
         self._to_be_loaded = to_be_loaded
         self._config_json = config_json
     
@@ -74,6 +74,13 @@ class EmpiricalStrategy(Strategy):
         w = self.analyze()
         w = self.plan(w)
         return self.execute(w)
+
+    def set_id(self, id):
+        self._id = "node_" + str(id)
+        self._prefix = "THREAD: " + self._id
+
+    def set_logger(self, logger):
+        self._logger = logger
 
     '''
         Mocked: instead of reading informations directly 

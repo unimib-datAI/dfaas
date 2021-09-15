@@ -82,7 +82,11 @@ def simulation(nodes_number, node1_config, node2_config, node3_config):
             json.dump(final_config, f, ensure_ascii=False, indent=4)
 
         # 4) Call agent loop for each config that has been previously built
-        a = Agent(EmpiricalStrategy(0, "", get_logger("agent" + str(minute), "minute_" + str(minute) + ".log"), False, final_config))
+        a = Agent(
+            0, 
+            get_logger("agent" + str(minute), "minute_" + str(minute) + ".log"), 
+            EmpiricalStrategy("", False, final_config)
+        )
         
         # time.perf_counter() returns elapsed time in seconds
         # It is the best way to measure performance

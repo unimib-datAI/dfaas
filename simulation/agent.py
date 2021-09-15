@@ -4,10 +4,13 @@ class Agent(): # Inherit by Thread in () bratches
 
     _json_path = ""
     
-    def __init__(self, behaviour: Strategy):
+    def __init__(self, id, logger, behaviour: Strategy):
         super().__init__()
+        self._id = id
         self._behaviour = behaviour
-        
+        self._behaviour.set_id(id)
+        self._behaviour.set_logger(logger)
+
         #self._logger.isEnabledFor(50) # Used to do not print and gain in speed.
         #self._logger.disabled = True
 
