@@ -21,6 +21,7 @@ def get_logger(name, log_file, level=logging.INFO):
 
 data_dir = "../data/"
 nodes = ["node1", "node2", "node3"]
+function_names = ["funca", "qrcode", "ocr"]
 
 def gather_configurations():
     node1, node2, node3 = [], [], []
@@ -40,6 +41,106 @@ def gather_configurations():
     #print(node3)
     
     return node1, node2, node3
+
+def xfunc_request_table(max_rate_table, invoc_rate_table, weights_table):
+    print("============= MAX RATE TABLE =============")
+    print(max_rate_table)
+    print("==========================================")
+    print("============= INVOC RATE TABLE ===========")
+    print(invoc_rate_table)
+    print("==========================================")
+    print("============= WEIGHTS TABLE ==============")
+    print(weights_table)
+    print("==========================================")
+    
+    fwd_requests = {}
+    for node_from, weights_x_func in weights_table.items():
+        fwd_requests[node_from] = {}
+        for func, weights_x_node in weights_x_func.items():
+            fwd_requests[node_from][func] = {}
+            for node_to, w in weights_x_node.items():
+                fwd_requests[node_from][func][node_to] = int(round((w * \
+                    (invoc_rate_table[node_from][func] - max_rate_table[node_from][func])) / 100))
+            fwd_requests[node_from][func][node_from] = invoc_rate_table[node_from][func] # Fixed at line [84-87]
+
+    print("============= [BEFORE] FORWARDING TABLE TABLE ==============")
+    print(fwd_requests)
+    print("============================================================")
+ 
+    # Fill with remianing values   
+    for node_from, weights_x_func in fwd_requests.items():
+        for f in function_names:
+            if f not in list(weights_x_func.keys()):
+                fwd_requests[node_from][f] = {}
+
+    nodes_set = set(fwd_requests.keys())
+
+    # Fill with remianing values
+    for node_from, weights_x_func in fwd_requests.items():
+        for func, weights_x_node in weights_x_func.items():
+            for node in nodes_set:
+                if node not in list(weights_x_node.keys()):
+                    fwd_requests[node_from][func][node] = 0
+            if invoc_rate_table[node_from][func] < max_rate_table[node_from][func]:
+                fwd_requests[node_from][func][node_from] = invoc_rate_table[node_from][func]
+            else:
+                fwd_requests[node_from][func][node_from] = max_rate_table[node_from][func]
+                    
+    print("============= [AFTER] FORWARDING TABLE TABLE ==============")
+    print(fwd_requests)
+    print("============================================================")
+    
+    check_table_validity(fwd_requests, invoc_rate_table, weights_table)
+    return fwd_requests
+
+def check_table_validity(table, invoc_rate_table, weights_table):
+    for node_from, functions in table.items():
+        for func, fwd_requests in functions.items():
+            s = sum(fwd_requests.values())
+            if s == invoc_rate_table[node_from][func]:
+                print("Sum for func {} from {} is equal to {} = invoc rate of {} : CHECK OK".format(
+                    func, node_from, s, invoc_rate_table[node_from][func]))
+            else:
+                print("Sum for func {} from {} is NOT equal to {} = invoc rate of {} : CHECK FAILED".format(
+                    func, node_from, s, invoc_rate_table[node_from][func]))
+
+                # Note: this is a simple code that tries to solve the problem of more
+                # requests that not exactly sum to invocation rate. 
+                # Due to the rounding of forwarded requests multiplied for weights 
+                # they do not exactly sum to invocation rate.
+                #
+                # if invoc_rate_table[node_from][func] - s == 1:
+                #     weights = [int(round(w)) for w in weights_table[node_from][func].values()]
+                #     key = np.random.choice(nodes, 1, p=weights)
+                #     table[node_from][func][key] += 1
+                #     s = sum(fwd_requests.values())
+                #     print("     > Sum for func {} from {} is NOT equal to {} = invoc rate of {} : CHECK FIXED".format(
+                #         func, node_from, s, invoc_rate_table[node_from][func]))
+
+def create_tables(fwd_requests, invoc_rate, max_rate, minute):
+    path = "test/reports/minute_" + str(minute) + "/"
+    nodes_set = sorted(set(fwd_requests.keys()))
+    for func in function_names:
+        df_x_func = pd.DataFrame([], index=nodes_set)
+        for node_from in fwd_requests:
+            df_x_func[node_from] = [fwd_requests[node_from][func][k]
+                                    for k in sorted(fwd_requests[node_from][func].keys())]
+        df_x_func = df_x_func.T
+        df_x_func.to_csv(path + func + ".csv", sep='\t', encoding='utf-8')
+        
+    df_invoc = pd.DataFrame([], index=function_names, columns=nodes_set)
+    for node in invoc_rate:
+        df_invoc[node] = [invoc_rate[node][f] for f in function_names]
+    df_invoc = df_invoc.T
+
+    df_invoc.to_csv(path + "invoc_rates.csv", sep='\t', encoding='utf-8')
+
+    df_max_rates = pd.DataFrame([], index=function_names, columns=nodes_set)
+    for node in max_rate:
+        df_max_rates[node] = [max_rate[node][f] for f in function_names]
+
+    df_max_rates = df_max_rates.T
+    df_max_rates.to_csv(path + "max_rates.csv", sep='\t', encoding='utf-8')       
 
 def simulation(nodes_number, node1_config, node2_config, node3_config):
     # 1) For each node pick a random file
@@ -71,33 +172,73 @@ def simulation(nodes_number, node1_config, node2_config, node3_config):
     execution_times = []
     for minute in range(0, 7): # 6 minutes
         final_config = {}
+        
+        # Dictionaries used for analysis
+        simulation_weights_table = {}
+        simulation_invoc_rate_table = {}        
+        simulation_max_rate_table = {}
+
         for i, f in zip(range(0, nodes_number), loaded_json):
             key = "node_" + str(i)
             f['output'][minute]['node'] = f['input']['node']
-            final_config[key] = f['output'][minute]     
+            final_config[key] = f['output'][minute]
+
+            simulation_invoc_rate_table[key] = {}
+            simulation_max_rate_table[key] = {}
+            for func in final_config[key]["functions"]:
+                # Fill tables
+                simulation_invoc_rate_table[key][func["name"]] = func["invoc_rate"]
+                simulation_max_rate_table[key][func["name"]] = func["max_rate"]
+            
         #print(final_config)
+        
+        # Fill max_rate and invoc_rate table
+        for node, weights_x_func in simulation_invoc_rate_table.items():
+            for f in function_names:
+                if f not in list(weights_x_func.keys()):
+                    simulation_invoc_rate_table[node][f] = 0
+        
+        # Fill max_rate and invoc_rate table
+        for node, weights_x_func in simulation_max_rate_table.items():
+            for f in function_names:
+                if f not in list(weights_x_func.keys()):
+                    simulation_max_rate_table[node][f] = 0                
 
         # Write configuration on file
-        with open('config{}.json'.format(minute), 'w', encoding='utf-8') as f:
+        with open('test/final_config/config{}.json'.format(minute), 'w', encoding='utf-8') as f:
             json.dump(final_config, f, ensure_ascii=False, indent=4)
 
         # 4) Call agent loop for each config that has been previously built
-        a = Agent(
-            0, 
-            get_logger("agent" + str(minute), "minute_" + str(minute) + ".log"), 
-            EmpiricalStrategy("", False, final_config)
-        )
+        for id in range(0, nodes_number):
+            a = Agent(
+                id, 
+                get_logger(
+                    "agent" + str(id) + "_minute_" + str(minute), 
+                    "test/logs/agent" + str(id) + "_minute_" + str(minute) + ".log"
+                ),
+                EmpiricalStrategy("", False, final_config)
+            )
         
-        # time.perf_counter() returns elapsed time in seconds
-        # It is the best way to measure performance
-        # See: https://www.geeksforgeeks.org/time-perf_counter-function-in-python/
-        start = time.perf_counter()
-        a.run()
-        end = time.perf_counter()
-        execution = end - start
+            # time.perf_counter() returns elapsed time in seconds
+            # It is the best way to measure performance
+            # See: https://www.geeksforgeeks.org/time-perf_counter-function-in-python/
+            start = time.perf_counter()
+            weights = a.run()
+            end = time.perf_counter()
+            execution = end - start
+            
+            execution_times.append(execution)
+            
+            simulation_weights_table["node_"+str(id)] = weights
         
-        execution_times.append(execution)
-        
+        # Create a table for forwarded requests count
+        fwd_requests = xfunc_request_table(
+            simulation_max_rate_table, 
+            simulation_invoc_rate_table,
+            simulation_weights_table
+        )    
+
+        create_tables(fwd_requests, simulation_invoc_rate_table, simulation_max_rate_table, minute)
     return np.mean(execution_times)
 
 def simulation_with_graphs():

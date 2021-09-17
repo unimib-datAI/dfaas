@@ -15,10 +15,11 @@ class Agent(): # Inherit by Thread in () bratches
         #self._logger.disabled = True
 
     # Used when this class extends Thread
-    def run(self):
+    def run(self) -> dict:
         #self.loop()
         w = self._behaviour.run()
         print(w)
+        return w
        
     @property
     def strategy(self) -> Strategy:
