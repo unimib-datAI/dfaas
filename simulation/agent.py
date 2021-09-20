@@ -11,16 +11,13 @@ class Agent(): # Inherit by Thread in () bratches
         self._behaviour.set_id(id)
         self._behaviour.set_logger(logger)
 
-        #self._logger.isEnabledFor(50) # Used to do not print and gain in speed.
-        #self._logger.disabled = True
-
     # Used when this class extends Thread
     def run(self) -> dict:
         #self.loop()
         w = self._behaviour.run()
         print(w)
         return w
-       
+
     @property
     def strategy(self) -> Strategy:
         """
@@ -38,3 +35,7 @@ class Agent(): # Inherit by Thread in () bratches
         """
 
         self._behaviour = _behaviour
+
+    def disable_logging(self):
+        #self._logger.isEnabledFor(50) # Used to do not print and gain in speed.
+        self._logger.disabled = True

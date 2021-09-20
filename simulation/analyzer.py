@@ -32,6 +32,9 @@ def calculate_rates(table, func, max_rates, invoc_rates):
     
     return success_rate, reject_rate
 
+funca_sr, funca_rr = [], []
+qrcode_sr, qrcode_rr = [], []
+ocr_sr, ocr_rr = [], []
 
 for minute in range(0, 7):
     print("MINUTE {}".format(minute))
@@ -67,8 +70,25 @@ for minute in range(0, 7):
     print(df_max_rate)
     print("====================================================")
 
-    calculate_rates(df_funca, "funca", df_max_rate["funca"], df_invoc_rate["funca"])
-    calculate_rates(df_qrcode, "qrcode", df_max_rate["qrcode"], df_invoc_rate["qrcode"])
-    calculate_rates(df_ocr, "ocr", df_max_rate["ocr"], df_invoc_rate["ocr"])
-    
-    print("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+    sr, rr = calculate_rates(df_funca, "funca", df_max_rate["funca"], df_invoc_rate["funca"])
+    funca_sr.append(sr)
+    funca_rr.append(rr)
+
+    sr, rr = calculate_rates(df_qrcode, "qrcode", df_max_rate["qrcode"], df_invoc_rate["qrcode"])
+    qrcode_sr.append(sr)
+    qrcode_rr.append(rr)
+
+    sr, rr = calculate_rates(df_ocr, "ocr", df_max_rate["ocr"], df_invoc_rate["ocr"])
+    ocr_sr.append(sr)
+    ocr_rr.append(rr)
+
+    print("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+
+print("Mean success rate for funca: {}".format(np.mean(funca_sr)))
+print("Mean reject rate for funca: {}".format(np.mean(funca_rr)))
+
+print("Mean success rate for qrcode: {}".format(np.mean(qrcode_sr)))
+print("Mean reject rate for qrcode: {}".format(np.mean(qrcode_rr)))
+
+print("Mean success rate for ocr: {}".format(np.mean(ocr_sr)))
+print("Mean reject rate for ocr: {}".format(np.mean(ocr_rr)))
