@@ -32,63 +32,68 @@ def calculate_rates(table, func, max_rates, invoc_rates):
     
     return success_rate, reject_rate
 
-funca_sr, funca_rr = [], []
-qrcode_sr, qrcode_rr = [], []
-ocr_sr, ocr_rr = [], []
+for algo in ["base_strategy", "random_strategy", "empirical_strategy"]:
+    funca_sr, funca_rr = [], []
+    qrcode_sr, qrcode_rr = [], []
+    ocr_sr, ocr_rr = [], []
 
-for minute in range(0, 7):
-    print("MINUTE {}".format(minute))
-    print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-    path = base_dir + "minute_" + str(minute) + "/"
-    
-    # Load dataframe from foulders
-    df_funca = pd.read_csv(path + "funca.csv", delimiter='\t', header=0, index_col=0)
+    print("-------------------------- ALGO {} --------------------------".format(algo))
+    base_path = base_dir + algo + "/"
+    for minute in range(0, 7):
+        print("MINUTE {}".format(minute))
+        print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+        path = base_path + "minute_" + str(minute) + "/"
+        
+        # Load dataframe from foulders
+        df_funca = pd.read_csv(path + "funca.csv", delimiter='\t', header=0, index_col=0)
 
-    print("================ FORWARDED REQUESTS FUNCA ================")
-    print(df_funca)
-    print("==========================================================")
+        print("================ FORWARDED REQUESTS FUNCA ================")
+        print(df_funca)
+        print("==========================================================")
 
-    df_qrcode = pd.read_csv(path + "qrcode.csv", delimiter='\t', header=0, index_col=0)
+        df_qrcode = pd.read_csv(path + "qrcode.csv", delimiter='\t', header=0, index_col=0)
 
-    print("================ FORWARDED REQUESTS QRCODE ================")
-    print(df_qrcode)
-    print("===========================================================")
-    
-    df_ocr = pd.read_csv(path + "ocr.csv", delimiter='\t', header=0, index_col=0)
+        print("================ FORWARDED REQUESTS QRCODE ================")
+        print(df_qrcode)
+        print("===========================================================")
+        
+        df_ocr = pd.read_csv(path + "ocr.csv", delimiter='\t', header=0, index_col=0)
 
-    print("================ FORWARDED REQUESTS OCR ================")
-    print(df_ocr)
-    print("========================================================")
+        print("================ FORWARDED REQUESTS OCR ================")
+        print(df_ocr)
+        print("========================================================")
 
-    df_invoc_rate = pd.read_csv(path + "invoc_rates.csv", delimiter='\t', header=0, index_col=0)
-    print("================ INVOCATION RATES ==================")
-    print(df_invoc_rate)
-    print("====================================================")
+        df_invoc_rate = pd.read_csv(path + "invoc_rates.csv", delimiter='\t', header=0, index_col=0)
+        print("================ INVOCATION RATES ==================")
+        print(df_invoc_rate)
+        print("====================================================")
 
-    df_max_rate = pd.read_csv(path + "max_rates.csv", delimiter='\t', header=0, index_col=0)
-    print("================ MAX RATES =========================")
-    print(df_max_rate)
-    print("====================================================")
+        df_max_rate = pd.read_csv(path + "max_rates.csv", delimiter='\t', header=0, index_col=0)
+        print("================ MAX RATES =========================")
+        print(df_max_rate)
+        print("====================================================")
 
-    sr, rr = calculate_rates(df_funca, "funca", df_max_rate["funca"], df_invoc_rate["funca"])
-    funca_sr.append(sr)
-    funca_rr.append(rr)
+        sr, rr = calculate_rates(df_funca, "funca", df_max_rate["funca"], df_invoc_rate["funca"])
+        funca_sr.append(sr)
+        funca_rr.append(rr)
 
-    sr, rr = calculate_rates(df_qrcode, "qrcode", df_max_rate["qrcode"], df_invoc_rate["qrcode"])
-    qrcode_sr.append(sr)
-    qrcode_rr.append(rr)
+        sr, rr = calculate_rates(df_qrcode, "qrcode", df_max_rate["qrcode"], df_invoc_rate["qrcode"])
+        qrcode_sr.append(sr)
+        qrcode_rr.append(rr)
 
-    sr, rr = calculate_rates(df_ocr, "ocr", df_max_rate["ocr"], df_invoc_rate["ocr"])
-    ocr_sr.append(sr)
-    ocr_rr.append(rr)
+        sr, rr = calculate_rates(df_ocr, "ocr", df_max_rate["ocr"], df_invoc_rate["ocr"])
+        ocr_sr.append(sr)
+        ocr_rr.append(rr)
 
-    print("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+        print("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+        
+    print("STATS FOR ALGO {}".format(algo))
+    print(" > Mean success rate for funca: {}".format(np.mean(funca_sr)))
+    print(" > Mean reject rate for funca: {}".format(np.mean(funca_rr)))
 
-print("Mean success rate for funca: {}".format(np.mean(funca_sr)))
-print("Mean reject rate for funca: {}".format(np.mean(funca_rr)))
+    print(" > Mean success rate for qrcode: {}".format(np.mean(qrcode_sr)))
+    print(" > Mean reject rate for qrcode: {}".format(np.mean(qrcode_rr)))
 
-print("Mean success rate for qrcode: {}".format(np.mean(qrcode_sr)))
-print("Mean reject rate for qrcode: {}".format(np.mean(qrcode_rr)))
-
-print("Mean success rate for ocr: {}".format(np.mean(ocr_sr)))
-print("Mean reject rate for ocr: {}".format(np.mean(ocr_rr)))
+    print(" > Mean success rate for ocr: {}".format(np.mean(ocr_sr)))
+    print(" > Mean reject rate for ocr: {}".format(np.mean(ocr_rr)))
+    print("----------------------------------------------------------------------------")

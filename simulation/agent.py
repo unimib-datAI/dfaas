@@ -9,13 +9,14 @@ class Agent(): # Inherit by Thread in () bratches
         self._id = id
         self._behaviour = behaviour
         self._behaviour.set_id(id)
+        self._logger = logger
         self._behaviour.set_logger(logger)
 
     # Used when this class extends Thread
     def run(self) -> dict:
         #self.loop()
         w = self._behaviour.run()
-        print(w)
+        #print(w)
         return w
 
     @property
