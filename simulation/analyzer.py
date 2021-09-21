@@ -3,6 +3,7 @@ import numpy as np
 
 base_dir = "test/reports/"
 function_names = ["funca", "qrcode", "ocr"]
+algorithms_to_compare = ["base_strategy", "random_strategy", "empirical_strategy"]
 
 def calculate_rates(table, func, max_rates, invoc_rates):
     incoming_requests_for_node = table.sum(axis=0)
@@ -32,7 +33,7 @@ def calculate_rates(table, func, max_rates, invoc_rates):
     
     return success_rate, reject_rate
 
-for algo in ["base_strategy", "random_strategy", "empirical_strategy"]:
+for algo in algorithms_to_compare:
     funca_sr, funca_rr = [], []
     qrcode_sr, qrcode_rr = [], []
     ocr_sr, ocr_rr = [], []
