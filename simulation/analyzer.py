@@ -1,9 +1,11 @@
 import pandas as pd
 import numpy as np
+import matplotlib.pyplot as plt
 
 base_dir = "test/reports/"
 function_names = ["funca", "qrcode", "ocr"]
 algorithms_to_compare = ["base_strategy", "random_strategy", "empirical_strategy"]
+rates_for_algo = {}
 
 def calculate_rates(table, func, max_rates, invoc_rates):
     incoming_requests_for_node = table.sum(axis=0)
@@ -32,6 +34,29 @@ def calculate_rates(table, func, max_rates, invoc_rates):
     print("====> SR + RR == 1: {}".format(success_rate+reject_rate == 1))
     
     return success_rate, reject_rate
+
+def export_for_minute_rates(algo, func, rates):
+    # Plot configurations
+    plt.figure(figsize=(20, 10))
+    plt.title("Success rate for function {} during 6 minutes of experiment".format(func))
+    plt.xlabel("Minute")
+    plt.ylabel("Success rate")
+
+    df = pd.DataFrame(data=rates, index=[i for i in range(0, 7)])
+    print(df)
+
+    for column in df.columns:
+        plt.plot(df.index, df[column], label="Success rate for {}".format(column))
+
+    # Plot configurations
+    plt.legend(loc="lower left")
+    plt.grid()
+
+    plt.savefig("comparison_{}.png".format(func))
+
+# Used only for initialization
+for func in function_names:
+    rates_for_algo[func] = {}
 
 for algo in algorithms_to_compare:
     funca_sr, funca_rr = [], []
@@ -77,14 +102,17 @@ for algo in algorithms_to_compare:
         sr, rr = calculate_rates(df_funca, "funca", df_max_rate["funca"], df_invoc_rate["funca"])
         funca_sr.append(sr)
         funca_rr.append(rr)
+        rates_for_algo["funca"][algo] = funca_sr
 
         sr, rr = calculate_rates(df_qrcode, "qrcode", df_max_rate["qrcode"], df_invoc_rate["qrcode"])
         qrcode_sr.append(sr)
         qrcode_rr.append(rr)
+        rates_for_algo["qrcode"][algo] = qrcode_sr
 
         sr, rr = calculate_rates(df_ocr, "ocr", df_max_rate["ocr"], df_invoc_rate["ocr"])
         ocr_sr.append(sr)
         ocr_rr.append(rr)
+        rates_for_algo["ocr"][algo] = ocr_sr
 
         print("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
         
@@ -98,3 +126,8 @@ for algo in algorithms_to_compare:
     print(" > Mean success rate for ocr: {}".format(np.mean(ocr_sr)))
     print(" > Mean reject rate for ocr: {}".format(np.mean(ocr_rr)))
     print("----------------------------------------------------------------------------")
+    
+# Export print for comparison
+export_for_minute_rates(algo, "funca", rates_for_algo["funca"])
+export_for_minute_rates(algo, "qrcode", rates_for_algo["qrcode"])
+export_for_minute_rates(algo, "ocr", rates_for_algo["ocr"])
