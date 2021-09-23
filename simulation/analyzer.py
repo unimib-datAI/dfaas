@@ -35,7 +35,7 @@ def calculate_rates(table, func, max_rates, invoc_rates):
     
     return success_rate, reject_rate
 
-def export_for_minute_rates(algo, func, rates):
+def export_for_minute_rates(func, rates):
     # Plot configurations
     plt.figure(figsize=(20, 10))
     plt.title("Success rate for function {} during 6 minutes of experiment".format(func))
@@ -128,6 +128,6 @@ for algo in algorithms_to_compare:
     print("----------------------------------------------------------------------------")
     
 # Export print for comparison
-export_for_minute_rates(algo, "funca", rates_for_algo["funca"])
-export_for_minute_rates(algo, "qrcode", rates_for_algo["qrcode"])
-export_for_minute_rates(algo, "ocr", rates_for_algo["ocr"])
+export_for_minute_rates("funca", rates_for_algo["funca"])
+export_for_minute_rates("qrcode", rates_for_algo["qrcode"])
+export_for_minute_rates("ocr", rates_for_algo["ocr"])

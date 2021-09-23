@@ -192,10 +192,10 @@ def simulation(nodes_number, node1_config, node2_config, node3_config):
     #print(configurations)
 
     # Mock loaded files [TO BE REMOVED]
-    configurations = ["exp-comparison/case2/node1.json",
-                      "exp-comparison/case2/node2.json", 
-                      "exp-comparison/case2/node3.json"]
-    print(configurations)
+    # configurations = ["exp-comparison/case2/node1.json",
+    #                   "exp-comparison/case2/node2.json", 
+    #                   "exp-comparison/case2/node3.json"]
+    # print(configurations)
 
     # 2) Load selected files
     loaded_json = []
