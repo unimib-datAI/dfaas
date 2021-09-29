@@ -28,7 +28,6 @@ def get_logger(name, log_file, level=logging.INFO):
 
     return logger
 
-
 def gather_configurations():
     node1, node2, node3 = [], [], []
     for path, subdirs, files in os.walk(os.path.join(data_dir, nodes[0])):
@@ -253,7 +252,8 @@ def simulation(nodes_number, node1_config, node2_config, node3_config):
                 id,
                 get_logger(
                     "agent" + str(id) + "_minute_" + str(minute) + "_bs",
-                    agent_logging_output_base_path + "agent" + str(id) + "_minute_" + str(minute) + "_bs.log"
+                    agent_logging_output_base_path + "agent" +
+                    str(id) + "_minute_" + str(minute) + "_bs.log"
                 ),
                 BaseStrategy("", False, final_config)
             )
@@ -269,7 +269,8 @@ def simulation(nodes_number, node1_config, node2_config, node3_config):
                 id,
                 get_logger(
                     "agent" + str(id) + "_minute_" + str(minute) + "_rs",
-                    agent_logging_output_base_path + "agent" + str(id) + "_minute_" + str(minute) + "_rs.log"
+                    agent_logging_output_base_path + "agent" +
+                    str(id) + "_minute_" + str(minute) + "_rs.log"
                 ),
                 RandomStrategy("", False, final_config)
             )
