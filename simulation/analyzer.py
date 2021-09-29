@@ -3,10 +3,13 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 base_dir = "test/reports/"
+output_path = "analyzer_output/"
 function_names = ["funca", "qrcode", "ocr"]
 algorithms_to_compare = ["base_strategy", "random_strategy", "empirical_strategy"]
+index_to_compare = ["Mean success rate", "Mean success rate (stress period)", "Tot. rejected requests"]
 simulation_minutes = 7
 rates_for_algo = {}
+index_comparison = pd.DataFrame(index=index_to_compare)
 
 def calculate_rates(table, func, max_rates, invoc_rates):
     incoming_requests_for_node = table.sum(axis=0)
@@ -50,7 +53,7 @@ def export_for_minute_rates(func, rates):
     plt.ylabel("Success rate")
 
     df = pd.DataFrame(data=rates, index=[i for i in range(0, 7)])
-    print(df)
+    #print(df)
 
     for column in df.columns:
         plt.plot(df.index, df[column], label="Success rate for {}".format(column))
@@ -59,7 +62,11 @@ def export_for_minute_rates(func, rates):
     plt.legend(loc="lower left")
     plt.grid()
 
-    plt.savefig("comparison_{}.png".format(func))
+    plt.savefig(output_path + "comparison_{}.png".format(func))
+
+
+def export_index_comparison_table(df):
+    df.to_csv(output_path + "index_comparison.csv", sep='\t', encoding='utf-8')
 
 # Used only for initialization
 for func in function_names:
@@ -140,19 +147,36 @@ for algo in algorithms_to_compare:
     # print(" > Mean success rate for ocr: {}".format(np.mean(ocr_sr)))
     # print(" > Mean reject rate for ocr: {}".format(np.mean(ocr_rr)))
     # print(" > Rejected requests for ocr: {}".format(np.sum(ocr_reject_num)))
-    
+    mean_success_rate = np.mean([np.mean(x) for x in [funca_sr, qrcode_sr, ocr_sr]]) * 100
     print("     > Mean success rate: {:0.2f}%".format(
-        np.mean([np.mean(x) for x in [funca_sr, qrcode_sr, ocr_sr]]) * 100
+        mean_success_rate
     ))
-    print("         > Mean success rate in stress period: {:0.2f}%".format(
-        np.mean([np.mean(x) for x in [funca_sr[1:6], qrcode_sr[1:6], ocr_sr[1:6]]]) * 100
+    
+    mean_success_rate_stress_period = np.mean(
+        [np.mean(x) for x in [funca_sr[1:6], qrcode_sr[1:6], ocr_sr[1:6]]]) * 100
+    print("         > Mean success rate during stress period: {:0.2f}%".format(
+        mean_success_rate_stress_period
     ))
+
+    total_reject_requests = np.sum(
+        [np.sum(x) for x in [funca_reject_num, qrcode_reject_num, ocr_reject_num]])
     print("     > Total rejected requests: {} req".format(
-        np.sum([np.sum(x) for x in [funca_reject_num, qrcode_reject_num, ocr_reject_num]])
+        total_reject_requests
     ))
     print("----------------------------------------------------------------------------")
+
+    index_comparison[algo] = [
+        mean_success_rate,
+        mean_success_rate_stress_period, 
+        total_reject_requests
+    ]
 
 # Export print for comparison
 export_for_minute_rates("funca", rates_for_algo["funca"])
 export_for_minute_rates("qrcode", rates_for_algo["qrcode"])
 export_for_minute_rates("ocr", rates_for_algo["ocr"])
+
+# Export index comparison table
+print("> INDEX COMPARISON TABLE")
+print(index_comparison.T)
+export_index_comparison_table(index_comparison.T)
