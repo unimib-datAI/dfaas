@@ -5,27 +5,31 @@ import matplotlib.pyplot as plt
 base_dir = "test/reports/"
 function_names = ["funca", "qrcode", "ocr"]
 algorithms_to_compare = ["base_strategy", "random_strategy", "empirical_strategy"]
+simulation_minutes = 7
 rates_for_algo = {}
 
 def calculate_rates(table, func, max_rates, invoc_rates):
     incoming_requests_for_node = table.sum(axis=0)
-    #print(incoming_requests_for_node)
-    #print(invoc_rates)
-    #print(max_rates)
 
     success_rate = 0
-    #reject_rate = 0
     for node in table.columns:
         if incoming_requests_for_node[node] > max_rates[node]:
             success_rate += max_rates[node]
-            #reject_rate += incoming_requests_for_node[node] - max_rates[node]
         else:
             success_rate += incoming_requests_for_node[node]
 
     tot_invoc_rate = invoc_rates.sum(axis=0)
-    #print(tot_invoc_rate)
+    reject_num = tot_invoc_rate - success_rate
+
+    print("====> Success req. ({}) + Rejected req. ({}) == {}: {}".format(
+            success_rate,
+            reject_num,
+            tot_invoc_rate,
+            success_rate + reject_num == tot_invoc_rate
+        )
+    )
+
     success_rate = (success_rate / tot_invoc_rate) if tot_invoc_rate > 0 and success_rate <= tot_invoc_rate else 1.0
-    #reject_rate = (reject_rate / tot_invoc_rate) if tot_invoc_rate > 0 else 0.0
     reject_rate = 1.0 - success_rate
 
     print("Success rate for func {} is {}".format(func, success_rate))
@@ -33,7 +37,10 @@ def calculate_rates(table, func, max_rates, invoc_rates):
     
     print("====> SR + RR == 1: {}".format(success_rate+reject_rate == 1))
     
-    return success_rate, reject_rate
+    # Reject num is multiplied by 60 that are seconds between each agent execution
+    # Note: This is based on the assumption that the traffic will be more or less 
+    # constant during this minute
+    return success_rate, reject_rate, reject_num*60
 
 def export_for_minute_rates(func, rates):
     # Plot configurations
@@ -59,13 +66,13 @@ for func in function_names:
     rates_for_algo[func] = {}
 
 for algo in algorithms_to_compare:
-    funca_sr, funca_rr = [], []
-    qrcode_sr, qrcode_rr = [], []
-    ocr_sr, ocr_rr = [], []
+    funca_sr, funca_rr, funca_reject_num = [], [], []
+    qrcode_sr, qrcode_rr, qrcode_reject_num = [], [], []
+    ocr_sr, ocr_rr, ocr_reject_num = [], [], []
 
     print("-------------------------- ALGO {} --------------------------".format(algo))
     base_path = base_dir + algo + "/"
-    for minute in range(0, 7):
+    for minute in range(0, simulation_minutes):
         print("MINUTE {}".format(minute))
         print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
         path = base_path + "minute_" + str(minute) + "/"
@@ -99,34 +106,52 @@ for algo in algorithms_to_compare:
         print(df_max_rate)
         print("====================================================")
 
-        sr, rr = calculate_rates(df_funca, "funca", df_max_rate["funca"], df_invoc_rate["funca"])
+        sr, rr, rn = calculate_rates(df_funca, "funca", df_max_rate["funca"], df_invoc_rate["funca"])
         funca_sr.append(sr)
         funca_rr.append(rr)
+        funca_reject_num.append(rn)
         rates_for_algo["funca"][algo] = funca_sr
 
-        sr, rr = calculate_rates(df_qrcode, "qrcode", df_max_rate["qrcode"], df_invoc_rate["qrcode"])
+        sr, rr, rn = calculate_rates(df_qrcode, "qrcode", df_max_rate["qrcode"], df_invoc_rate["qrcode"])
         qrcode_sr.append(sr)
         qrcode_rr.append(rr)
+        qrcode_reject_num.append(rn)
         rates_for_algo["qrcode"][algo] = qrcode_sr
 
-        sr, rr = calculate_rates(df_ocr, "ocr", df_max_rate["ocr"], df_invoc_rate["ocr"])
+        sr, rr, rn = calculate_rates(df_ocr, "ocr", df_max_rate["ocr"], df_invoc_rate["ocr"])
         ocr_sr.append(sr)
         ocr_rr.append(rr)
+        ocr_reject_num.append(rn)
         rates_for_algo["ocr"][algo] = ocr_sr
 
         print("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
         
     print("STATS FOR ALGO {}".format(algo))
-    print(" > Mean success rate for funca: {}".format(np.mean(funca_sr)))
-    print(" > Mean reject rate for funca: {}".format(np.mean(funca_rr)))
-
-    print(" > Mean success rate for qrcode: {}".format(np.mean(qrcode_sr)))
-    print(" > Mean reject rate for qrcode: {}".format(np.mean(qrcode_rr)))
-
-    print(" > Mean success rate for ocr: {}".format(np.mean(ocr_sr)))
-    print(" > Mean reject rate for ocr: {}".format(np.mean(ocr_rr)))
-    print("----------------------------------------------------------------------------")
     
+    # Utility print for success/reject rate and reject nume for func
+    # print(" > Mean success rate for funca: {}".format(np.mean(funca_sr)))
+    # print(" > Mean reject rate for funca: {}".format(np.mean(funca_rr)))
+    # print(" > Rejected requests for funca: {}".format(np.sum(funca_reject_num)))
+
+    # print(" > Mean success rate for qrcode: {}".format(np.mean(qrcode_sr)))
+    # print(" > Mean reject rate for qrcode: {}".format(np.mean(qrcode_rr)))
+    # print(" > Rejected requests for qrcode: {}".format(np.sum(qrcode_reject_num)))
+
+    # print(" > Mean success rate for ocr: {}".format(np.mean(ocr_sr)))
+    # print(" > Mean reject rate for ocr: {}".format(np.mean(ocr_rr)))
+    # print(" > Rejected requests for ocr: {}".format(np.sum(ocr_reject_num)))
+    
+    print("     > Mean success rate: {:0.2f}%".format(
+        np.mean([np.mean(x) for x in [funca_sr, qrcode_sr, ocr_sr]]) * 100
+    ))
+    print("         > Mean success rate in stress period: {:0.2f}%".format(
+        np.mean([np.mean(x) for x in [funca_sr[1:6], qrcode_sr[1:6], ocr_sr[1:6]]]) * 100
+    ))
+    print("     > Total rejected requests: {} req".format(
+        np.sum([np.sum(x) for x in [funca_reject_num, qrcode_reject_num, ocr_reject_num]])
+    ))
+    print("----------------------------------------------------------------------------")
+
 # Export print for comparison
 export_for_minute_rates("funca", rates_for_algo["funca"])
 export_for_minute_rates("qrcode", rates_for_algo["qrcode"])
