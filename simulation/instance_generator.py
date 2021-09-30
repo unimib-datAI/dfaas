@@ -109,6 +109,8 @@ def build_output_json(seed, nodes_num, G):
     instance = {}
     instance["seed"] = seed
     instance["nodes_number"] = nodes_num
+
+    # Iterate over all graph nodes
     for node in G.nodes(data=True):
         key, config = node[0], node[1]
         instance[key] = config["config"]["input"]
@@ -134,7 +136,7 @@ def export_instance_file(instance):
 def main():
     # Get args passed as params
     kargs = get_args()
-    print(kargs)
+    #print(kargs)
     nodes_num = kargs["nodesnum"]
     seed = kargs["seed"]
     probability = kargs["edgeprob"]
@@ -143,6 +145,8 @@ def main():
     loaded_files = load_configurations(nodes_num)
 
     # Create a random graph with "nodes_num" nodes
+    # Nodes are touple of (node_id, json_config)
+    # json_config is used as a node property
     nodes = []
     for i, config in zip(range(0, nodes_num), loaded_files):
         key = "node_" + str(i)
