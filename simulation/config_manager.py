@@ -18,9 +18,9 @@ class ConfigManager(object):
     SIMULATION_MINUTES = 7
     FUNCTION_NAMES = ["funca", "qrcode", "ocr"]
     STRATEGIES = ["base_strategy", "random_strategy", "empirical_strategy"]
-    BASE_STRATEGY = "base_strategy"
-    RANDOM_STRATEGY = "random_strategy"
-    EMPIRICAL_STRATEGY = "empirical_strategy"
+    BASE_STRATEGY = STRATEGIES[0]
+    RANDOM_STRATEGY = STRATEGIES[1]
+    EMPIRICAL_STRATEGY = STRATEGIES[2]
     SIMULATION_COMPLETE_CONFIGURATION_OUTPUT_PATH = "test/final_config/"
     SIMULATION_TABLES_OUTPUT_PATH = "test/reports/"
     SIMULATION_AGENT_LOGGING_BASE_PATH = "test/logs/"
