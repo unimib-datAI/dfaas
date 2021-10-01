@@ -3,14 +3,7 @@ import numpy as np
 from .strategy import Strategy
 
 class RandomStrategy(Strategy):
-    _json_path = ""
-
-    def __init__(self, file, to_be_loaded=True, config_json=None):
-        #self._id = "node_" + str(id)
-        self._json_path = self._json_path + file
-        #self._prefix = "THREAD: " + self._id
-        #self._logger = logger
-        self._to_be_loaded = to_be_loaded
+    def __init__(self, config_json):
         self._config_json = config_json
 
     def run(self) -> dict:
@@ -21,11 +14,7 @@ class RandomStrategy(Strategy):
     '''
 
     def loop(self) -> dict:
-        if self._to_be_loaded:
-            f = open(self._json_path)
-            self._data = json.load(f)  # Return json file as a dictionary
-        else:
-            self._data = self._config_json
+        self._data = self._config_json
         
         weights = {}
         for func in self._data[self._id]["functions"]:

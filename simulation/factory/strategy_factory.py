@@ -8,10 +8,10 @@ class StrategyFactory():
     def create_strategy(strategy_type, config_file):
         config_manager = ConfigManager()
         if strategy_type == config_manager.BASE_STRATEGY:
-            return BaseStrategy("", False, config_file)
+            return BaseStrategy(config_file)
         elif strategy_type == config_manager.RANDOM_STRATEGY:
-            return RandomStrategy("", False, config_file)
+            return RandomStrategy(config_file)
         elif strategy_type == config_manager.EMPIRICAL_STRATEGY:
-            return EmpiricalStrategy("", False, config_file)
+            return EmpiricalStrategy(config_file)
         else: # Default behaviour
-            return BaseStrategy("", False, config_file)
+            return BaseStrategy(config_file)

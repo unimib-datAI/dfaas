@@ -50,15 +50,8 @@ class EmpiricalStrategy(Strategy):
         "ram_xfunc": 1,
         "cpu_xfunc": 1,
     }
-
-    _json_path = ""
     
-    def __init__(self, file, to_be_loaded=True, config_json=None):
-        #self._id = "node_" + str(id)
-        self._json_path = self._json_path + file
-        #self._prefix = "THREAD: " + self._id
-        #self._logger = logger
-        self._to_be_loaded = to_be_loaded
+    def __init__(self, config_json):
         self._config_json = config_json
     
     def run(self) -> dict:
@@ -93,20 +86,11 @@ class EmpiricalStrategy(Strategy):
         self._logger.info("1. MONITOR")
         self._logger.info("=======================")
 
-        if self._to_be_loaded:
-            f = open(self._json_path)
-            self._data = json.load(f)  # Return json file as a dictionary
-        else:
-            self._data = self._config_json
+        self._data = self._config_json
 
         self._logger.info("======== Read data ========")
         self._logger.info(self._data)
         self._logger.info("=======================")
-        # self._logger.info(self._data["node_" + str(self._id)])
-        # self._logger.info("=======================")
-        # self._logger.info(self._data["node_" + str(self._id)]["functions"][0])
-        # self._logger.info("=======================")
-        # self._logger.info(self._data["node_" + str(self._id)]["functions"][0]["afet"])
 
     '''
         Mocked: communication in this simulation is not a key point.
