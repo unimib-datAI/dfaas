@@ -242,7 +242,7 @@ def simulation(nodes_number, config_file):
                     ),
                     strategy
                 )
-                agent.disable_logging() # Disable logging for speed
+                #agent.disable_logging() # Disable logging for speed
                 weights, execution_time = run_agent(agent)
                 execution_times[s].append(execution_time)
                 simulation_weights_table[s][key] = weights
