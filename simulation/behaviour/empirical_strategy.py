@@ -4,6 +4,7 @@ import numpy as np
 from enum import Enum
 from threading import Thread
 from .strategy import Strategy
+from config_manager import ConfigManager
 
 # Enum for metric relation type:
 #   - DIRECT: high value --> high weight
@@ -53,15 +54,15 @@ class EmpiricalStrategy(Strategy):
     
     def __init__(self, config_json):
         self._config_json = config_json
+        self._config_manager = ConfigManager()
     
     def run(self) -> dict:
         return self.loop()
     
-    '''
-        M(E)APE control loop
-    '''
-
     def loop(self) -> dict:
+        """
+        M(E)APE control loop
+        """
         self.monitor()
         self.exchange()
         w = self.analyze()
@@ -69,19 +70,18 @@ class EmpiricalStrategy(Strategy):
         return self.execute(w)
 
     def set_id(self, id):
-        self._id = "node_" + str(id)
+        self._id = self._config_manager.NODE_KEY_PREFIX + str(id)
         self._prefix = "THREAD: " + self._id
 
     def set_logger(self, logger):
         self._logger = logger
 
-    '''
+    def monitor(self):
+        """
         Mocked: instead of reading informations directly 
         from the cluster read info from a json file with the 
         complete configuration.
-    '''
-
-    def monitor(self):
+        """
         self._logger.info("=======================")
         self._logger.info("1. MONITOR")
         self._logger.info("=======================")
@@ -92,21 +92,19 @@ class EmpiricalStrategy(Strategy):
         self._logger.info(self._data)
         self._logger.info("=======================")
 
-    '''
-        Mocked: communication in this simulation is not a key point.
-    '''
-
     def exchange(self):
+        """
+        Mocked: communication in this simulation is not a key point.
+        """
         self._logger.info("=======================")
         self._logger.info("2. EXCHANGE (pass)")
         self._logger.info("=======================")
         pass
 
-    '''
-        Not mocked: but it is one of the most tricky part of the algorithm.
-    '''
-
     def analyze(self):
+        """
+        Not mocked: but it is one of the most tricky part of the algorithm.
+        """
         self._logger.info("=======================")
         self._logger.info("3. ANALYZE")
         self._logger.info("=======================")
@@ -122,11 +120,10 @@ class EmpiricalStrategy(Strategy):
         self._logger.info(w)
         return w
 
-    '''
-        Not mocked: applies probabilistic strategy and add rumor to weights.
-    '''
-
     def plan(self, w):
+        """
+        Not mocked: applies probabilistic strategy and add rumor to weights.
+        """
         self._logger.info("=======================")
         self._logger.info("4. PLAN")
         self._logger.info("=======================")
@@ -170,14 +167,13 @@ class EmpiricalStrategy(Strategy):
 
         return w
 
-    '''
+    def execute(self, w):
+        """
         Not mocked: write weights in a file for logging purposes (not on a HA-proxy config file).
         Weights are multiply by 100 to obtain a percentage score that sum to 100.
         Note that to weights array are added also 0% weights toward nodes that can 
         not help for a specific function.
-    '''
-
-    def execute(self, w):
+        """
         self._logger.info("=======================")
         self._logger.info("5. EXECUTE")
         self._logger.info("=======================")
@@ -211,11 +207,10 @@ class EmpiricalStrategy(Strategy):
             
         return w
 
-    """
-        Compute weight for single analytics.
-    """
-
     def analytics_weights(self):
+        """
+        Compute weight for single analytics.
+        """
         ws = {}  # Map with key "overloaded" functions name and as value a nested map
         # The nested map has as key node_id and as value helpers functions map
         # Three nested map
@@ -261,13 +256,12 @@ class EmpiricalStrategy(Strategy):
         #self._logger.info(ws)  # Three nested map
         return ws
 
-    """
+    def compute_weight(self, functions):
+        """
         Method that calculate weight for a specific "overloaded" function to
         all other nodes and for each analytics.
             - "functions" param represent the map containing info of helpers functions.
-    """
-
-    def compute_weight(self, functions):
+        """
         self._logger.info(
             "======== Helpers functions on other nodes: ========")
         self._logger.info(functions)
@@ -345,11 +339,10 @@ class EmpiricalStrategy(Strategy):
         # (they form a probability distribution)
         return ws
 
-    """
-        Aggregate weights for single metrics in a unique weight for each function and for each node
-    """
-
     def weights_aggregation(self, ws):
+        """
+        Aggregate weights for single metrics in a unique weight for each function and for each node
+        """
         weights = {}
 
         for func, values in ws.items():

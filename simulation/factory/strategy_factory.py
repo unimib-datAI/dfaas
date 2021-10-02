@@ -6,6 +6,9 @@ from config_manager import ConfigManager
 class StrategyFactory():
     @staticmethod
     def create_strategy(strategy_type, config_file):
+        """
+        Create strategy based on type passed as first parameter
+        """
         config_manager = ConfigManager()
         if strategy_type == config_manager.BASE_STRATEGY:
             return BaseStrategy(config_file)

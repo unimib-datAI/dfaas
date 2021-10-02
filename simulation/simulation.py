@@ -9,9 +9,6 @@ import numpy as np
 from agent import Agent
 from os import listdir
 from os.path import isfile, join
-from behaviour.empirical_strategy import EmpiricalStrategy
-from behaviour.random_strategy import RandomStrategy
-from behaviour.base_strategy import BaseStrategy
 from config_manager import ConfigManager
 from factory.strategy_factory import StrategyFactory
 
@@ -19,6 +16,9 @@ config_manager = ConfigManager()
 
 # Get a specific logger with passed configurations
 def get_logger(name, log_file, level=logging.INFO):
+    """
+    Get logger for agent logging
+    """
     handler = logging.FileHandler(log_file)
     logger = logging.getLogger(name)
     logger.setLevel(level)
@@ -27,6 +27,10 @@ def get_logger(name, log_file, level=logging.INFO):
     return logger
 
 def xfunc_request_table(max_rate_table, invoc_rate_table, weights_table):
+    """
+    Functions that calculate forwarding requests for each function starting by
+    weights dictionary passed as param
+    """
     # Utility prints
     # print("============= MAX RATE TABLE =============")
     # print(max_rate_table)
@@ -92,6 +96,11 @@ def xfunc_request_table(max_rate_table, invoc_rate_table, weights_table):
     return fwd_requests
 
 def create_tables(fwd_requests, invoc_rate, max_rate, minute, strategy_type):
+    """
+    Starting by forwarding requests create a table and export it in a CSV file
+    Also invocation rate and max rate table are create and exported in the same 
+    format
+    """
     path = config_manager.SIMULATION_TABLES_OUTPUT_PATH + \
         strategy_type + "/minute_" + str(minute) + "/"
     nodes_set = sorted(set(fwd_requests.keys()))
@@ -129,6 +138,22 @@ def create_tables(fwd_requests, invoc_rate, max_rate, minute, strategy_type):
     print("     > MAX_RATE_TABLE")
     print(df_max_rates)
 
+
+def run_agent(agent):
+    """
+    Run agent loop, calculate execution time and return it along with weights
+    """
+    # time.perf_counter() returns elapsed time in seconds
+    # It is the best way to measure performance
+    #
+    # See: https://www.geeksforgeeks.org/time-perf_counter-function-in-python/
+    start = time.perf_counter()
+    weights = agent.run()
+    end = time.perf_counter()
+    execution = end - start
+
+    return weights, execution
+
 def simulation(nodes_number, config_file):
     """
     This function allow to simulate various strategies for workload distribution
@@ -137,8 +162,11 @@ def simulation(nodes_number, config_file):
     # Execution time dictionary
     execution_times = {}
 
-    for minute in range(0, config_manager.SIMULATION_MINUTES): # 6 minutes
+    # Initialize execution time map for each strategy
+    for s in config_manager.STRATEGIES:
+        execution_times[s] = []
 
+    for minute in range(0, config_manager.SIMULATION_MINUTES): # 6 minutes
         # Dictionary that contains final json configuration
         final_config = {}
 
@@ -150,15 +178,14 @@ def simulation(nodes_number, config_file):
         # Forwarding requests dictionary
         fwd_requests = {}
 
-        # Initialize map for weights map
+        # Initialize maps for each strategy
         for s in config_manager.STRATEGIES:
             simulation_weights_table[s] = {}
             fwd_requests[s] = {}
-            execution_times[s] = []
 
         # Create global configuration file with info of all nodes
         for i in range(0, nodes_number):
-            key = "node_" + str(i)
+            key = config_manager.NODE_KEY_PREFIX + str(i)
             final_config[key] = config_file[key]["exp_history"][minute]
 
             # Create and fill invoc_rate and max_rate dictionaries with loaded values
@@ -191,11 +218,12 @@ def simulation(nodes_number, config_file):
         # With last update this code is executed for each type of behaviour
         # (base, random and empirical) and for each agent in the network
         for id in range(0, nodes_number):
-            key = "node_" + str(id)
+            key = config_manager.NODE_KEY_PREFIX + str(id)
             config_with_neigh = {}
             config_with_neigh[key] = final_config[key] # Add this node
             neighbours = config_file[key]["neighbours"]
 
+            # Create configuration file with only neighbours
             for neighbour in neighbours:
                 config_with_neigh[neighbour] = final_config[neighbour]
 
@@ -237,18 +265,6 @@ def simulation(nodes_number, config_file):
         print("> END MINUTE {}".format(minute))
 
     return {k: np.mean(times_for_algo) for k, times_for_algo in execution_times.items()}
-
-def run_agent(agent):
-    # time.perf_counter() returns elapsed time in seconds
-    # It is the best way to measure performance
-    #
-    # See: https://www.geeksforgeeks.org/time-perf_counter-function-in-python/
-    start = time.perf_counter()
-    weights = agent.run()
-    end = time.perf_counter()
-    execution = end - start
-    
-    return weights, execution
 
 def main():
     f = open(config_manager.OUTPUT_INSTANCE_JSON_FILE_PATH)

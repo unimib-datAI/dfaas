@@ -13,6 +13,7 @@ class ConfigManager(object):
     DATA_DIR = "../data/" # Directory that contains experiment files
     NODES_TYPE = ["node1", "node2", "node3"] # Nodes type used in experiments
     NODES_TYPE_PROBABILITY_DISTRIBUTION = [0.5, 0.3, 0.2]
+    NODE_KEY_PREFIX = "node_"
 
     # Constants used in simulation script
     SIMULATION_MINUTES = 7

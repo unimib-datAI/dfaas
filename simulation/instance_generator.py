@@ -49,7 +49,10 @@ def load_configurations(nodes_number):
     # Mock loaded files [TO BE REMOVED]
     # configurations = ["exp-comparison/case3/node1.json",
     #                   "exp-comparison/case3/node2.json",
-    #                   "exp-comparison/case3/node3.json"]
+    #                   "exp-comparison/case3/node3.json",
+    #                   "exp-comparison/case2/node1.json",
+    #                   "exp-comparison/case2/node2.json",
+    #                   ]
     # print(configurations)
 
     # Load selected files
@@ -136,7 +139,7 @@ def export_instance_file(instance):
 def main():
     # Get args passed as params
     kargs = get_args()
-    #print(kargs)
+    print(kargs)
     nodes_num = kargs["nodesnum"]
     seed = kargs["seed"]
     probability = kargs["edgeprob"]
@@ -149,7 +152,7 @@ def main():
     # json_config is used as a node property
     nodes = []
     for i, config in zip(range(0, nodes_num), loaded_files):
-        key = "node_" + str(i)
+        key = config_manager.NODE_KEY_PREFIX + str(i)
         nodes.append((key, {"config": config}))
 
     random.seed(seed)
@@ -157,7 +160,7 @@ def main():
 
     G = gnp_random_connected_graph(nodes, probability)
 
-    # Try to export an image of graph
+    # Export an image of graph
     plot_graph(G)
 
     # Print neghbour foreach node

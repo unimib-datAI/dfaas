@@ -1,18 +1,16 @@
 import json
 import numpy as np
 from .strategy import Strategy
+from config_manager import ConfigManager
 
 
 class BaseStrategy(Strategy):
     def __init__(self, config_json):
         self._config_json = config_json
+        self._config_manager = ConfigManager()
 
     def run(self) -> dict:
         return self.loop()
-
-    '''
-        M(E)APE control loop
-    '''
 
     def loop(self) -> dict:
         self._data = self._config_json
@@ -29,7 +27,7 @@ class BaseStrategy(Strategy):
         return weights
 
     def set_id(self, id):
-        self._id = "node_" + str(id)
+        self._id = self._config_manager.NODE_KEY_PREFIX + str(id)
         self._prefix = "THREAD: " + self._id
 
     def set_logger(self, logger):
