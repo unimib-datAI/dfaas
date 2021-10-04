@@ -26,6 +26,14 @@ class ConfigManager(object):
     SIMULATION_TABLES_OUTPUT_PATH = "test/reports/"
     SIMULATION_AGENT_LOGGING_BASE_PATH = "test/logs/"
 
+    # Constant used in analyzer
+    INDEX_TO_COMPARE = [
+        "Mean success rate",
+        "Mean success rate (stress period)",
+        "Tot. rejected requests"
+    ]
+    ANALYZER_OUTPUT_PATH = "analyzer_output/"
+
     def __new__(self):
         # if is not define create new instance otherwise return only instance of thi class.
         if not isinstance(self._config_manager, self):

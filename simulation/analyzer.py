@@ -1,15 +1,9 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
+from config_manager import ConfigManager
 
-base_dir = "test/reports/"
-output_path = "analyzer_output/"
-function_names = ["funca", "qrcode", "ocr"]
-algorithms_to_compare = ["base_strategy", "random_strategy", "empirical_strategy"]
-index_to_compare = ["Mean success rate", "Mean success rate (stress period)", "Tot. rejected requests"]
-simulation_minutes = 7
-rates_for_algo = {}
-index_comparison = pd.DataFrame(index=index_to_compare)
+config_manager = ConfigManager()
 
 def calculate_rates(table, func, max_rates, invoc_rates):
     incoming_requests_for_node = table.sum(axis=0)
@@ -62,121 +56,127 @@ def export_for_minute_rates(func, rates):
     plt.legend(loc="lower left")
     plt.grid()
 
-    plt.savefig(output_path + "comparison_{}.png".format(func))
+    plt.savefig(config_manager.ANALYZER_OUTPUT_PATH + 
+                "comparison_{}.png".format(func))
 
 
 def export_index_comparison_table(df):
-    df.to_csv(output_path + "index_comparison.csv", sep='\t', encoding='utf-8')
+    df.to_csv(config_manager.ANALYZER_OUTPUT_PATH +
+              "index_comparison.csv", sep='\t', encoding='utf-8')
 
-# Used only for initialization
-for func in function_names:
-    rates_for_algo[func] = {}
 
-for algo in algorithms_to_compare:
-    funca_sr, funca_rr, funca_reject_num = [], [], []
-    qrcode_sr, qrcode_rr, qrcode_reject_num = [], [], []
-    ocr_sr, ocr_rr, ocr_reject_num = [], [], []
+def main():
+    rates_for_algo = {}
+    index_comparison = pd.DataFrame(index=config_manager.INDEX_TO_COMPARE)
 
-    print("-------------------------- ALGO {} --------------------------".format(algo))
-    base_path = base_dir + algo + "/"
-    for minute in range(0, simulation_minutes):
-        print("MINUTE {}".format(minute))
-        print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
-        path = base_path + "minute_" + str(minute) + "/"
+    # Used only for initialization
+    for func in config_manager.FUNCTION_NAMES:
+        rates_for_algo[func] = {}
+
+    for algo in config_manager.STRATEGIES:
+        x_func_success_rate = {}
+        x_func_reject_rate = {}
+        x_func_reject_num = {}
         
-        # Load dataframe from foulders
-        df_funca = pd.read_csv(path + "funca.csv", delimiter='\t', header=0, index_col=0)
+        for func in config_manager.FUNCTION_NAMES:
+            x_func_success_rate[func] = []
+            x_func_reject_rate[func] = []
+            x_func_reject_num[func] = []
 
-        print("================ FORWARDED REQUESTS FUNCA ================")
-        print(df_funca)
-        print("==========================================================")
+        print("-------------------------- ALGO {} --------------------------".format(algo))
 
-        df_qrcode = pd.read_csv(path + "qrcode.csv", delimiter='\t', header=0, index_col=0)
+        # Create path for recover tables        
+        base_path = config_manager.SIMULATION_TABLES_OUTPUT_PATH + algo + "/"
 
-        print("================ FORWARDED REQUESTS QRCODE ================")
-        print(df_qrcode)
-        print("===========================================================")
-        
-        df_ocr = pd.read_csv(path + "ocr.csv", delimiter='\t', header=0, index_col=0)
+        for minute in range(0, config_manager.SIMULATION_MINUTES):
+            print("MINUTE {}".format(minute))
+            print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 
-        print("================ FORWARDED REQUESTS OCR ================")
-        print(df_ocr)
-        print("========================================================")
+            # Complete path for load tables
+            path = base_path + "minute_" + str(minute) + "/"
 
-        df_invoc_rate = pd.read_csv(path + "invoc_rates.csv", delimiter='\t', header=0, index_col=0)
-        print("================ INVOCATION RATES ==================")
-        print(df_invoc_rate)
-        print("====================================================")
+            # For each minute load invocaion_rate and max_rate table
+            df_invoc_rate = pd.read_csv(path + "invoc_rates.csv", delimiter='\t', header=0, index_col=0)
+            print("================ INVOCATION RATES ==================")
+            print(df_invoc_rate)
+            print("====================================================")
 
-        df_max_rate = pd.read_csv(path + "max_rates.csv", delimiter='\t', header=0, index_col=0)
-        print("================ MAX RATES =========================")
-        print(df_max_rate)
-        print("====================================================")
+            df_max_rate = pd.read_csv(path + "max_rates.csv", delimiter='\t', header=0, index_col=0)
+            print("================ MAX RATES =========================")
+            print(df_max_rate)
+            print("====================================================")
 
-        sr, rr, rn = calculate_rates(df_funca, "funca", df_max_rate["funca"], df_invoc_rate["funca"])
-        funca_sr.append(sr)
-        funca_rr.append(rr)
-        funca_reject_num.append(rn)
-        rates_for_algo["funca"][algo] = funca_sr
+            # For each minute and foreach function load datafram
+            for func in config_manager.FUNCTION_NAMES:
+                df = pd.read_csv(path + func + ".csv", delimiter='\t', header=0, index_col=0)
 
-        sr, rr, rn = calculate_rates(df_qrcode, "qrcode", df_max_rate["qrcode"], df_invoc_rate["qrcode"])
-        qrcode_sr.append(sr)
-        qrcode_rr.append(rr)
-        qrcode_reject_num.append(rn)
-        rates_for_algo["qrcode"][algo] = qrcode_sr
+                print("================ FORWARDED REQUESTS for {} ================".format(func))
+                print(df)
+                print("==========================================================")
 
-        sr, rr, rn = calculate_rates(df_ocr, "ocr", df_max_rate["ocr"], df_invoc_rate["ocr"])
-        ocr_sr.append(sr)
-        ocr_rr.append(rr)
-        ocr_reject_num.append(rn)
-        rates_for_algo["ocr"][algo] = ocr_sr
+                sr, rr, rn = calculate_rates(df, func, df_max_rate[func], df_invoc_rate[func])
+                x_func_success_rate[func].append(sr)
+                x_func_reject_rate[func].append(rr)
+                x_func_reject_num[func].append(rn)
+                rates_for_algo[func][algo] = x_func_success_rate[func]
 
-        print("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
-        
-    print("STATS FOR ALGO {}".format(algo))
-    
-    # Utility print for success/reject rate and reject nume for func
-    # print(" > Mean success rate for funca: {}".format(np.mean(funca_sr)))
-    # print(" > Mean reject rate for funca: {}".format(np.mean(funca_rr)))
-    # print(" > Rejected requests for funca: {}".format(np.sum(funca_reject_num)))
+            print("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
 
-    # print(" > Mean success rate for qrcode: {}".format(np.mean(qrcode_sr)))
-    # print(" > Mean reject rate for qrcode: {}".format(np.mean(qrcode_rr)))
-    # print(" > Rejected requests for qrcode: {}".format(np.sum(qrcode_reject_num)))
+        print("STATS FOR ALGO {}".format(algo))
 
-    # print(" > Mean success rate for ocr: {}".format(np.mean(ocr_sr)))
-    # print(" > Mean reject rate for ocr: {}".format(np.mean(ocr_rr)))
-    # print(" > Rejected requests for ocr: {}".format(np.sum(ocr_reject_num)))
-    mean_success_rate = np.mean([np.mean(x) for x in [funca_sr, qrcode_sr, ocr_sr]]) * 100
-    print("     > Mean success rate: {:0.2f}%".format(
-        mean_success_rate
-    ))
-    
-    mean_success_rate_stress_period = np.mean(
-        [np.mean(x) for x in [funca_sr[1:6], qrcode_sr[1:6], ocr_sr[1:6]]]) * 100
-    print("         > Mean success rate during stress period: {:0.2f}%".format(
-        mean_success_rate_stress_period
-    ))
+        # Utility print for success/reject rate and reject nume for func
+        # TODO: fix it to work with new dictionaties
+        #
+        # print(" > Mean success rate for funca: {}".format(np.mean(funca_sr)))
+        # print(" > Mean reject rate for funca: {}".format(np.mean(funca_rr)))
+        # print(" > Rejected requests for funca: {}".format(np.sum(funca_reject_num)))
 
-    total_reject_requests = np.sum(
-        [np.sum(x) for x in [funca_reject_num, qrcode_reject_num, ocr_reject_num]])
-    print("     > Total rejected requests: {} req".format(
-        total_reject_requests
-    ))
-    print("----------------------------------------------------------------------------")
+        # print(" > Mean success rate for qrcode: {}".format(np.mean(qrcode_sr)))
+        # print(" > Mean reject rate for qrcode: {}".format(np.mean(qrcode_rr)))
+        # print(" > Rejected requests for qrcode: {}".format(np.sum(qrcode_reject_num)))
 
-    index_comparison[algo] = [
-        mean_success_rate,
-        mean_success_rate_stress_period, 
-        total_reject_requests
-    ]
+        # print(" > Mean success rate for ocr: {}".format(np.mean(ocr_sr)))
+        # print(" > Mean reject rate for ocr: {}".format(np.mean(ocr_rr)))
+        # print(" > Rejected requests for ocr: {}".format(np.sum(ocr_reject_num)))
 
-# Export print for comparison
-export_for_minute_rates("funca", rates_for_algo["funca"])
-export_for_minute_rates("qrcode", rates_for_algo["qrcode"])
-export_for_minute_rates("ocr", rates_for_algo["ocr"])
+        # Other utility prints
+        mean_success_rate = np.mean([np.mean(srates) for k, srates in x_func_success_rate.items()]) * 100
+        print("     > Mean success rate: {:0.2f}%".format(
+            mean_success_rate
+        ))
 
-# Export index comparison table
-print("> INDEX COMPARISON TABLE")
-print(index_comparison.T)
-export_index_comparison_table(index_comparison.T)
+        # Mean success rate calculated during high traffic preiod (minutes from 1 to 5)
+        mean_success_rate_stress_period = np.mean(
+            [np.mean(srates[1:6]) for k, srates in x_func_success_rate.items()]) * 100
+        print("         > Mean success rate during stress period (from minute 1 to 5): {:0.2f}%".format(
+            mean_success_rate_stress_period
+        ))
+
+        # Total rejected requests num calculated for each algorithm across minutes
+        total_reject_requests = np.sum(
+            [np.sum(rejnums) for k, rejnums in x_func_reject_num.items()])
+        print("     > Total rejected requests: {} req".format(
+            total_reject_requests
+        ))
+        print(
+            "----------------------------------------------------------------------------")
+
+        index_comparison[algo] = [
+            mean_success_rate,
+            mean_success_rate_stress_period,
+            total_reject_requests
+        ]
+
+    # Export print for comparison
+    for func in config_manager.FUNCTION_NAMES:
+        export_for_minute_rates(func, rates_for_algo[func])
+
+    # Export index comparison table
+    print("> INDEX COMPARISON TABLE")
+    print(index_comparison.T)
+    export_index_comparison_table(index_comparison.T)
+
+
+# Call main program.
+if __name__ == "__main__":
+    main()
