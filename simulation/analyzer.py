@@ -6,6 +6,11 @@ from config_manager import ConfigManager
 config_manager = ConfigManager()
 
 def calculate_rates(table, func, max_rates, invoc_rates):
+    """
+    This function calculate success and reject rate for [func] function
+    This function also return total number of reject during this minure 
+    (assuming that workload is more or less constant during the last minute)
+    """
     incoming_requests_for_node = table.sum(axis=0)
 
     success_rate = 0
@@ -39,14 +44,18 @@ def calculate_rates(table, func, max_rates, invoc_rates):
     # constant during this minute
     return success_rate, reject_rate, reject_num*60
 
+
 def export_for_minute_rates(func, rates):
+    """
+    Export plot that represent success rate during all minutes of experiment
+    """
     # Plot configurations
     plt.figure(figsize=(20, 10))
     plt.title("Success rate for function {} during 6 minutes of experiment".format(func))
     plt.xlabel("Minute")
     plt.ylabel("Success rate")
 
-    df = pd.DataFrame(data=rates, index=[i for i in range(0, 7)])
+    df = pd.DataFrame(data=rates, index=[i for i in range(0, config_manager.SIMULATION_MINUTES)])
     #print(df)
 
     for column in df.columns:
@@ -61,6 +70,9 @@ def export_for_minute_rates(func, rates):
 
 
 def export_index_comparison_table(df):
+    """
+    Export index comparison table of different strategies as CSV file
+    """
     df.to_csv(config_manager.ANALYZER_OUTPUT_PATH +
               "index_comparison.csv", sep='\t', encoding='utf-8')
 
@@ -158,8 +170,7 @@ def main():
         print("     > Total rejected requests: {} req".format(
             total_reject_requests
         ))
-        print(
-            "----------------------------------------------------------------------------")
+        print("----------------------------------------------------------------------------")
 
         index_comparison[algo] = [
             mean_success_rate,
