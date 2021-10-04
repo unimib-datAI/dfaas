@@ -8,7 +8,8 @@ config_manager = ConfigManager()
 def calculate_rates(table, func, max_rates, invoc_rates):
     """
     This function calculate success and reject rate for [func] function
-    This function also return total number of reject during this minure 
+    This function also return total number of reject during this minure
+    Indeed, rejected requestes are multiplied by 60 (number of seconds in one minute)
     (assuming that workload is more or less constant during the last minute)
     """
     incoming_requests_for_node = table.sum(axis=0)
@@ -37,7 +38,7 @@ def calculate_rates(table, func, max_rates, invoc_rates):
     print("Success rate for func {} is {}".format(func, success_rate))
     print("Reject rate for func {} is {}".format(func, reject_rate))
     
-    print("====> SR + RR == 1: {}".format(success_rate+reject_rate == 1))
+    # print("====> SR + RR == 1: {}".format(success_rate+reject_rate == 1))
     
     # Reject num is multiplied by 60 that are seconds between each agent execution
     # Note: This is based on the assumption that the traffic will be more or less 
@@ -85,6 +86,8 @@ def main():
     for func in config_manager.FUNCTION_NAMES:
         rates_for_algo[func] = {}
 
+    # For each strategy type, for each minute and for each function read data exported
+    # by the simulation and use them to calculate rates and indexes for comparison
     for algo in config_manager.STRATEGIES:
         x_func_success_rate = {}
         x_func_reject_rate = {}
