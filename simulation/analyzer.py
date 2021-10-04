@@ -89,7 +89,8 @@ def main():
         x_func_success_rate = {}
         x_func_reject_rate = {}
         x_func_reject_num = {}
-        
+
+        # Initialize dictionary of rates for all functions
         for func in config_manager.FUNCTION_NAMES:
             x_func_success_rate[func] = []
             x_func_reject_rate[func] = []
@@ -118,7 +119,7 @@ def main():
             print(df_max_rate)
             print("====================================================")
 
-            # For each minute and foreach function load datafram
+            # For each minute and foreach function load dataframe
             for func in config_manager.FUNCTION_NAMES:
                 df = pd.read_csv(path + func + ".csv", delimiter='\t', header=0, index_col=0)
 
