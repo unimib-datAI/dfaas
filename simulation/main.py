@@ -1,3 +1,8 @@
+"""
+TODO: this script does not work due to the fact that program has been refactored
+from the beginning of the project. Adapt ro new agent interface, with different
+behaviours
+"""
 import logging
 import time
 import pandas as pd

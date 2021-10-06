@@ -8,8 +8,8 @@ class ConfigManager(object):
     _config_manager = None  # Singletoon instance of this class.
 
     # Constants used in instance generator script
-    OUTPUT_INSTANCE_JSON_FILE_PATH = "instance/instance.json" # Path for output instance json file
-    OUTPUT_INSTANCE_GRAPH_FILE_PATH = "instance/graph.png"
+    OUTPUT_INSTANCE_JSON_FILE_PATH = "instance_gen_output/instance.json" # Path for output instance json file
+    OUTPUT_INSTANCE_GRAPH_FILE_PATH = "instance_gen_output/graph.png"
     DATA_DIR = "../data/" # Directory that contains experiment files
     NODES_TYPE = ["node1", "node2", "node3"] # Nodes type used in experiments
     NODES_TYPE_PROBABILITY_DISTRIBUTION = [0.5, 0.3, 0.2]
@@ -22,9 +22,9 @@ class ConfigManager(object):
     BASE_STRATEGY = STRATEGIES[0]
     RANDOM_STRATEGY = STRATEGIES[1]
     EMPIRICAL_STRATEGY = STRATEGIES[2]
-    SIMULATION_COMPLETE_CONFIGURATION_OUTPUT_PATH = "test/final_config/"
-    SIMULATION_TABLES_OUTPUT_PATH = "test/reports/"
-    SIMULATION_AGENT_LOGGING_BASE_PATH = "test/logs/"
+    SIMULATION_COMPLETE_CONFIGURATION_OUTPUT_PATH = "simulation_output/final_config/"
+    SIMULATION_TABLES_OUTPUT_PATH = "simulation_output/reports/"
+    SIMULATION_AGENT_LOGGING_BASE_PATH = "simulation_output/logs/"
 
     # Constant used in analyzer
     INDEX_TO_COMPARE = [
