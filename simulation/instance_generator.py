@@ -52,6 +52,11 @@ def load_configurations(nodes_number):
     #                   "exp-comparison/case3/node3.json",
     #                   "exp-comparison/case2/node1.json",
     #                   "exp-comparison/case2/node2.json",
+    #                   "exp-comparison/case4/node1.json",
+    #                   "exp-comparison/case4/node2.json",
+    #                   "exp-comparison/case4/node3.json",
+    #                   "exp-comparison/case4/node4.json",
+    #                   "exp-comparison/case4/node5.json",
     #                   ]
     # print(configurations)
 
@@ -105,13 +110,14 @@ def dict_key_substitution(data, old, new):
     data[new] = data[old]
     del data[old]
 
-def build_output_json(seed, nodes_num, G):
+def build_output_json(seed, nodes_num, edge_prob, G):
     """
     Function used to build output json file that represent the instance
     """
     instance = {}
     instance["seed"] = seed
     instance["nodes_number"] = nodes_num
+    instance["edge_prob"] = edge_prob
 
     # Iterate over all graph nodes
     for node in G.nodes(data=True):
@@ -170,7 +176,7 @@ def main():
         print("     > Node {} neighbours: {}".format(n[0], G[n[0]]))
 
     # Build instance file (JSON file) with all informations
-    instance_json = build_output_json(seed, nodes_num, G)
+    instance_json = build_output_json(seed, nodes_num, probability, G)
 
     # Export instance file
     export_instance_file(instance_json)
