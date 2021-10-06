@@ -33,6 +33,13 @@ class ConfigManager(object):
         "Tot. rejected requests"
     ]
     ANALYZER_OUTPUT_PATH = "analyzer_output/"
+    INDEX_COMPARISON_FILE = ANALYZER_OUTPUT_PATH + "index_comparison.csv"
+
+    # Constant used in simulation controller
+    NUMBER_OF_SIMULATION_EXECUTION = 5
+    SIMULATION_CONTROLLER_OUTPUT_PATH = "simulation_controller_output/"
+    SIMULATION_CONTROLLER_OUTPUT_FILE = SIMULATION_CONTROLLER_OUTPUT_PATH + \
+                                        "experiment_results.csv"
 
     def __new__(self):
         # if is not define create new instance otherwise return only instance of thi class.

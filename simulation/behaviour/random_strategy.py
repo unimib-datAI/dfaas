@@ -22,7 +22,7 @@ class RandomStrategy(Strategy):
                 weights[func["name"]] = {}
                 for node, val in self._data.items():
                     if node != self._id:
-                        weights[func["name"]][node] = np.random.randint(0, 101)
+                        weights[func["name"]][node] = np.random.randint(1, 101)
                 
                 self._logger.info("Weights not normalized for func {}".format(func["name"]))
                 self._logger.info(weights[func["name"]])

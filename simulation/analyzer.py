@@ -74,8 +74,7 @@ def export_index_comparison_table(df):
     """
     Export index comparison table of different strategies as CSV file
     """
-    df.to_csv(config_manager.ANALYZER_OUTPUT_PATH +
-              "index_comparison.csv", sep='\t', encoding='utf-8')
+    df.to_csv(config_manager.INDEX_COMPARISON_FILE, sep='\t', encoding='utf-8')
 
 
 def main():
