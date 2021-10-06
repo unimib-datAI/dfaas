@@ -51,8 +51,8 @@ def main():
         else:
             final_df = pd.concat([final_df, df])
 
-        print(final_df)
-        time.sleep(5)
+        # print(final_df)
+        # time.sleep(5)
 
     print("> STEP 5 - Export final results table...")
     print(final_df)
