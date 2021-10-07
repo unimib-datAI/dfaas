@@ -1,0 +1,4 @@
+	Mean success rate	Mean success rate (stress period)	Tot. rejected requests
+base_strategy	95.73260961576996	95.40131483773932	17400.0
+random_strategy	98.36518586593897	98.02872052977489	5700.0
+empirical_strategy	99.44140065874177	99.21796092223846	3420.0

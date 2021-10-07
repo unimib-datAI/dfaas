@@ -8,8 +8,9 @@ class ConfigManager(object):
     _config_manager = None  # Singletoon instance of this class.
 
     # Constants used in instance generator script
-    OUTPUT_INSTANCE_JSON_FILE_PATH = "instance_gen_output/instance.json" # Path for output instance json file
-    OUTPUT_INSTANCE_GRAPH_FILE_PATH = "instance_gen_output/graph.png"
+    OUTPUT_INSTANCE_PATH = "instance_gen_output/"
+    OUTPUT_INSTANCE_JSON_FILE_PATH = OUTPUT_INSTANCE_PATH + "instance.json" # Path for output instance json file
+    OUTPUT_INSTANCE_GRAPH_FILE_PATH = OUTPUT_INSTANCE_PATH + "graph.png"
     DATA_DIR = "../data/" # Directory that contains experiment files
     NODES_TYPE = ["node1", "node2", "node3"] # Nodes type used in experiments
     NODES_TYPE_PROBABILITY_DISTRIBUTION = [0.5, 0.3, 0.2]
@@ -40,6 +41,10 @@ class ConfigManager(object):
     SIMULATION_CONTROLLER_OUTPUT_PATH = "simulation_controller_output/"
     SIMULATION_CONTROLLER_OUTPUT_FILE = SIMULATION_CONTROLLER_OUTPUT_PATH + \
                                         "experiment_results.csv"
+
+    # Constant used for store resume of simulation controller
+    SIMULATION_CONTROLLER_ARCHIVE_PATH = "archive/"
+    SIMULATION_CONTROLLER_ARCHIVE_COMPARISON_FILE_NAME = "final_comparison.txt"
 
     def __new__(self):
         # if is not define create new instance otherwise return only instance of thi class.
