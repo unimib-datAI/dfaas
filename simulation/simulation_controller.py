@@ -14,6 +14,9 @@ from config_manager import ConfigManager
 config_manager = ConfigManager()
 
 def create_folder():
+    """
+    This function create a directory with timestamp as name
+    """
     dir_path = config_manager.SIMULATION_CONTROLLER_ARCHIVE_PATH + \
         datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
     mydir = os.path.join(
@@ -28,6 +31,9 @@ def create_folder():
     return dir_path
 
 def copy_dir(src, dest):
+    """
+    Copy content of directory [src] to directory [dest]
+    """
     src_files = os.listdir(src)
     for file_name in src_files:
         full_file_name = os.path.join(src, file_name)
@@ -42,6 +48,7 @@ def main():
     # simulation data
     dir_path = create_folder()
 
+    # 1) Generate instance configuration
     print("> STEP 1 - Generating instance configuration...")
     instance_generator.main()
 
@@ -52,25 +59,31 @@ def main():
     for i in range(0, config_manager.NUMBER_OF_SIMULATION_EXECUTION):
 
         # Generate a random seed for the experiment
+        # Note: this is a very important point for experiment reproduction
+        # Is very important set seed for both library (random and np)
         seed = np.random.randint(0, 4096)
         random.seed(seed)
         np.random.seed(seed)
 
+        # 2) Single simulation based on configuration file generated before
         print("> STEP 2 - Simulation of instance...")
         simulation.main()
         
         #time.sleep(2)
 
+        # 3) Analyze simulation output
         print("> STEP 3 - Analyze output...")
         analyzer.main()
 
         # Create a dir for each iteration of the simulation
+        # Move analyzer output files to final foulder (separated for each iteration)
         path = dir_path + "/iteration_{}".format(i)
         os.makedirs(path)
         copy_dir(config_manager.ANALYZER_OUTPUT_PATH, path)
 
         #time.sleep(2)
 
+        # 4) Load analyzer output file that contains index for comparison
         print("> STEP 4 - Load Index df...")
         df = pd.read_csv(config_manager.INDEX_COMPARISON_FILE,
                          delimiter='\t', header=0, index_col=0)
@@ -89,6 +102,7 @@ def main():
         # print(final_df)
         # time.sleep(5)
 
+    # 5) Export final results comparison table
     print("> STEP 5 - Export final results table...")
     print(final_df)
 
