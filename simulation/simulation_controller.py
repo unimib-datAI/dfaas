@@ -122,8 +122,8 @@ def main():
 
             for index in config_manager.INDEX_TO_COMPARE:
                 val = res[index].mean()      
-                print("     > {}: {}".format(index, val))
-                f.write("     > {}: {}\n".format(index, val))
+                print("     > {}: {:0.2f}".format(index, val))
+                f.write("     > {}: {:0.2f}\n".format(index, val))
 
 # Call main program.
 if __name__ == "__main__":
