@@ -150,6 +150,9 @@ def main():
     seed = kargs["seed"]
     probability = kargs["edgeprob"]
 
+    random.seed(seed)
+    np.random.seed(seed)
+
     # Load "nodes_num" configuration file
     loaded_files = load_configurations(nodes_num)
 
@@ -160,9 +163,6 @@ def main():
     for i, config in zip(range(0, nodes_num), loaded_files):
         key = config_manager.NODE_KEY_PREFIX + str(i)
         nodes.append((key, {"config": config}))
-
-    random.seed(seed)
-    np.random.seed(seed)
 
     G = gnp_random_connected_graph(nodes, probability)
 
