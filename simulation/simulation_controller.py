@@ -10,6 +10,7 @@ import numpy as np
 import random
 import shutil
 from config_manager import ConfigManager
+from cli import get_args
 
 config_manager = ConfigManager()
 
@@ -30,6 +31,12 @@ def create_folder():
             raise  # This was not a "directory exist" error..
     return dir_path
 
+def copy_file(full_file_name, dest):
+    """
+    Copy file [full_file_name] to [dest]
+    """
+    shutil.copy(full_file_name, dest)
+
 def copy_dir(src, dest):
     """
     Copy content of directory [src] to directory [dest]
@@ -38,9 +45,14 @@ def copy_dir(src, dest):
     for file_name in src_files:
         full_file_name = os.path.join(src, file_name)
         if os.path.isfile(full_file_name):
-            shutil.copy(full_file_name, dest)
+            copy_file(full_file_name, dest)
 
 def main():
+    # Get cli args
+    kargs = get_args()
+    print(kargs)
+    instance = kargs["instance"]
+    
     # Final dataframe containing data for each experiment of the simulation
     final_df = pd.DataFrame()
 
@@ -48,12 +60,15 @@ def main():
     # simulation data
     dir_path = create_folder()
 
-    # 1) Generate instance configuration
-    print("> STEP 1 - Generating instance configuration...")
-    instance_generator.main()
-
-    # Move instance generator output to final folder
-    copy_dir(config_manager.OUTPUT_INSTANCE_PATH, dir_path)
+    if instance == "":
+        # 1) Generate instance configuration
+        print("> STEP 1 - Generating instance configuration...")
+        instance_generator.main()
+        # Move instance generator output to final folder
+        copy_dir(config_manager.OUTPUT_INSTANCE_PATH, dir_path)
+    else:
+        print("> STEP 1 - Skip -- instance passed as param: {}...".format(instance))
+        copy_file(instance, dir_path)
 
     # Execute each instance for a predefined number of times (ex. 5)
     for i in range(0, config_manager.NUMBER_OF_SIMULATION_EXECUTION):
@@ -67,8 +82,8 @@ def main():
 
         # 2) Single simulation based on configuration file generated before
         print("> STEP 2 - Simulation of instance...")
-        simulation.main()
-        
+        simulation.main(instance)
+
         #time.sleep(2)
 
         # 3) Analyze simulation output

@@ -266,8 +266,11 @@ def simulation(nodes_number, config_file):
 
     return {k: np.mean(times_for_algo) for k, times_for_algo in execution_times.items()}
 
-def main():
-    f = open(config_manager.OUTPUT_INSTANCE_JSON_FILE_PATH)
+def main(instance_file=""):
+    if instance_file == "":
+        instance_file = config_manager.OUTPUT_INSTANCE_JSON_FILE_PATH
+        
+    f = open(instance_file)
     config_file = json.load(f)
     simulation(config_file["nodes_number"], config_file)
 

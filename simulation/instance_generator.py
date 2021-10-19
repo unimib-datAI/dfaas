@@ -30,6 +30,9 @@ def gather_configurations():
     return exp_files_path
 
 def load_configurations(nodes_number):
+    """
+    Load configuration files
+    """
     nodes_type = config_manager.NODES_TYPE
     nodes_type_prib_dist = config_manager.NODES_TYPE_PROBABILITY_DISTRIBUTION
     config_files = gather_configurations()
@@ -47,17 +50,33 @@ def load_configurations(nodes_number):
     #print(configurations)
 
     # Mock loaded files [TO BE REMOVED]
-    # configurations = ["exp-comparison/case3/node1.json",
-    #                   "exp-comparison/case3/node2.json",
-    #                   "exp-comparison/case3/node3.json",
-    #                   "exp-comparison/case2/node1.json",
-    #                   "exp-comparison/case2/node2.json",
-    #                   "exp-comparison/case4/node1.json",
-    #                   "exp-comparison/case4/node2.json",
-    #                   "exp-comparison/case4/node3.json",
-    #                   "exp-comparison/case4/node4.json",
-    #                   "exp-comparison/case4/node5.json",
-    #                   ]
+    # configurations = [
+        # "exp-comparison/case4/node1.json",
+        # "exp-comparison/case4/node2.json",
+        # "exp-comparison/case4/node3.json",
+        # "exp-comparison/case4/node4.json",
+        # "exp-comparison/case4/node5.json",
+        # "exp-comparison/exp_pool/node1.json",
+        # "exp-comparison/exp_pool/node2.json",
+        # "exp-comparison/exp_pool/node3.json",
+        # "exp-comparison/exp_pool/node4.json",
+        # "exp-comparison/exp_pool/node5.json",
+        # "exp-comparison/exp_pool/node6.json",
+        # "exp-comparison/exp_pool/node7.json",
+        # "exp-comparison/exp_pool/node8.json",
+        # "exp-comparison/exp_pool/node9.json",
+        # "exp-comparison/exp_pool/node10.json",
+        # "exp-comparison/exp_pool/node11.json",
+        # "exp-comparison/exp_pool/node12.json",
+        # "exp-comparison/exp_pool/node13.json",
+        # "exp-comparison/exp_pool/node14.json",
+        # "exp-comparison/exp_pool/node15.json",
+        # "exp-comparison/exp_pool/node16.json",
+        # "exp-comparison/exp_pool/node17.json",
+        # "exp-comparison/exp_pool/node18.json",
+        # "exp-comparison/exp_pool/node19.json",
+        # "exp-comparison/exp_pool/node20.json",
+    #]
     # print(configurations)
 
     # Load selected files
@@ -149,6 +168,16 @@ def main():
     nodes_num = kargs["nodesnum"]
     seed = kargs["seed"]
     probability = kargs["edgeprob"]
+
+    # Assign default values to params if not defined
+    if nodes_num == -1:
+        nodes_num = 10
+    if seed == -1:
+        seed = np.random.randint(4097)
+    if probability == -1.0:
+        probability = 0.1
+
+    print(*(nodes_num, seed, probability))
 
     random.seed(seed)
     np.random.seed(seed)
