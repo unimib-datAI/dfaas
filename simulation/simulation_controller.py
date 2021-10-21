@@ -2,79 +2,15 @@ import instance_generator
 import simulation
 import analyzer
 import time
-import os
 import errno
-from datetime import datetime
 import pandas as pd
 import numpy as np
 import random
-import shutil
+from utils import *
 from config_manager import ConfigManager
 from cli import get_args
 
 config_manager = ConfigManager()
-
-def create_folder():
-    """
-    This function create a directory with timestamp as name
-    """
-    dir_path = config_manager.SIMULATION_CONTROLLER_ARCHIVE_PATH + \
-        datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
-    mydir = os.path.join(
-        os.getcwd(),
-        dir_path
-    )
-    try:
-        os.makedirs(mydir)
-    except OSError as e:
-        if e.errno != errno.EEXIST:
-            raise  # This was not a "directory exist" error..
-    return dir_path
-
-def copy_file(full_file_name, dest):
-    """
-    Copy file [full_file_name] to [dest]
-    """
-    shutil.copy(full_file_name, dest)
-
-def copy_dir(src, dest):
-    """
-    Copy content of directory [src] to directory [dest]
-    """
-    src_files = os.listdir(src)
-    for file_name in src_files:
-        full_file_name = os.path.join(src, file_name)
-        if os.path.isfile(full_file_name):
-            copy_file(full_file_name, dest)
-
-def remove_file(path):
-    """
-    Remove an existing file
-    """
-    os.remove(path)
-
-def remove_dir_content(dir):
-    """
-    Remove all files from a directory [dir]
-    """
-    files = os.listdir(dir)
-    for file_name in files:
-        path = os.path.join(dir, file_name)
-        if os.path.isfile(path):
-            remove_file(path)
-
-def remove_dir_with_content(dir):
-    """
-    Remove dir [dir] along with all its files
-    """
-    shutil.rmtree(dir)
-
-def zip_foulder(dir, out_path, format="zip"):
-    """
-    Zip foulder specified by [dir] in [out_path] using [format] format
-    Default format is "zip"
-    """
-    shutil.make_archive(out_path, format, dir)
 
 def main():
     # Get cli args
@@ -87,7 +23,7 @@ def main():
 
     # Create folder with timestamp as name for storing
     # simulation data
-    dir_path = create_folder()
+    dir_path = create_timestamp_folder(config_manager.SIMULATION_CONTROLLER_ARCHIVE_PATH)
 
     if instance == "":
         # 1) Generate instance configuration
