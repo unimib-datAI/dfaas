@@ -15,7 +15,7 @@ from factory.strategy_factory import StrategyFactory
 config_manager = ConfigManager()
 
 # Get a specific logger with passed configurations
-def get_logger(name, log_file, level=logging.INFO):
+def get_logger(name, log_file, level=logging.DEBUG):
     """
     Get logger for agent logging
     """
@@ -229,17 +229,27 @@ def simulation(nodes_number, config_file):
 
             #print(config_with_neigh)
 
+            logger = get_logger(
+                "agent" + str(id) + "_minute_" + str(minute),
+                config_manager.SIMULATION_AGENT_LOGGING_BASE_PATH + "agent_" +
+                str(id) + ".log",
+                logging.INFO
+                #"agent" + str(id) + "_minute_" + str(minute) + "_" + s,
+                #config_manager.SIMULATION_AGENT_LOGGING_BASE_PATH + "agent" +
+                #str(id) + "_minute_" + str(minute) + "_" + s + ".log"
+            )
+
+            logger.info("\n")
+            logger.info("-------- MINUTE {} --------".format(minute))
+
             # Execute agent loop for each strategy
             for s in config_manager.STRATEGIES:
                 # Build correct strategy
                 strategy = StrategyFactory.create_strategy(s, config_with_neigh)
+                logger.info("   > STRATEGY: {} <".format(s))
                 agent = Agent(
                     id,
-                    get_logger(
-                        "agent" + str(id) + "_minute_" + str(minute) + "_" + s,
-                        config_manager.SIMULATION_AGENT_LOGGING_BASE_PATH + "agent" +
-                        str(id) + "_minute_" + str(minute) + "_" + s + ".log"
-                    ),
+                    logger,
                     strategy
                 )
                 #agent.disable_logging() # Disable logging for speed

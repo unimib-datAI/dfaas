@@ -17,20 +17,25 @@ class RandomStrategy(Strategy):
         weights = {}
         for func in self._data[self._id]["functions"]:
             if func["state"] == "Overload":
-                self._logger.info("FUNC: " + func["name"] + " is OVERLOADED")
+                self._logger.debug("FUNC: " + func["name"] + " is OVERLOADED")
                 
                 weights[func["name"]] = {}
                 for node, val in self._data.items():
                     if node != self._id:
                         weights[func["name"]][node] = np.random.randint(1, 101)
                 
-                self._logger.info("Weights not normalized for func {}".format(func["name"]))
-                self._logger.info(weights[func["name"]])
+                #self._logger.debug("Weights not normalized for func {}".format(func["name"]))
+                #self._logger.debug(weights[func["name"]])
                 
                 weights[func["name"]] = self.recalc_distribution(weights[func["name"]])
 
-                self._logger.info("Weights normalized for func {}".format(func["name"]))
-                self._logger.info(weights[func["name"]])
+                self._logger.debug("Weights normalized for func {}".format(func["name"]))
+                self._logger.debug(weights[func["name"]])
+                
+                #self._logger.info("Weights normalized for func {}".format(func["name"]))
+                #self._logger.info(weights[func["name"]])
+                self._logger.info("Weights normalized for func {}: {}".format(
+                    func["name"], weights[func["name"]]))
 
         return weights
 

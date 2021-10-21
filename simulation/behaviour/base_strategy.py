@@ -22,8 +22,13 @@ class BaseStrategy(Strategy):
                 if node != self._id:
                     weights[func["name"]][node] = 0
 
-            self._logger.info("Weights normalized for func {}".format(func["name"]))
-            self._logger.info(weights[func["name"]])
+            self._logger.debug("Weights normalized for func {}".format(func["name"]))
+            self._logger.debug(weights[func["name"]])
+
+            #self._logger.info("Weights normalized for func {}".format(func["name"]))
+            #self._logger.info(weights[func["name"]])
+            self._logger.info("Weights normalized for func {}: {}".format(func["name"], weights[func["name"]]))
+
         return weights
 
     def set_id(self, id):

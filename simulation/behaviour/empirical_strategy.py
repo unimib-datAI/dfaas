@@ -82,58 +82,58 @@ class EmpiricalStrategy(Strategy):
         from the cluster read info from a json file with the 
         complete configuration.
         """
-        self._logger.info("=======================")
-        self._logger.info("1. MONITOR")
-        self._logger.info("=======================")
+        self._logger.debug("=======================")
+        self._logger.debug("1. MONITOR")
+        self._logger.debug("=======================")
 
         self._data = self._config_json
 
-        self._logger.info("======== Read data ========")
-        self._logger.info(self._data)
-        self._logger.info("=======================")
+        self._logger.debug("======== Read data ========")
+        self._logger.debug(self._data)
+        self._logger.debug("=======================")
 
     def exchange(self):
         """
         Mocked: communication in this simulation is not a key point.
         """
-        self._logger.info("=======================")
-        self._logger.info("2. EXCHANGE (pass)")
-        self._logger.info("=======================")
+        self._logger.debug("=======================")
+        self._logger.debug("2. EXCHANGE (pass)")
+        self._logger.debug("=======================")
         pass
 
     def analyze(self):
         """
         Not mocked: but it is one of the most tricky part of the algorithm.
         """
-        self._logger.info("=======================")
-        self._logger.info("3. ANALYZE")
-        self._logger.info("=======================")
+        self._logger.debug("=======================")
+        self._logger.debug("3. ANALYZE")
+        self._logger.debug("=======================")
 
         ws = self.analytics_weights()
 
-        self._logger.info("======== Metric weights ========")
-        self._logger.info(ws)
+        self._logger.debug("======== Metric weights ========")
+        self._logger.debug(ws)
 
         w = self.weights_aggregation(ws)
 
-        self._logger.info("======== Aggregated weights ========")
-        self._logger.info(w)
+        self._logger.debug("======== Aggregated weights ========")
+        self._logger.debug(w)
         return w
 
     def plan(self, w):
         """
         Not mocked: applies probabilistic strategy and add rumor to weights.
         """
-        self._logger.info("=======================")
-        self._logger.info("4. PLAN")
-        self._logger.info("=======================")
+        self._logger.debug("=======================")
+        self._logger.debug("4. PLAN")
+        self._logger.debug("=======================")
 
         # For each function and for each weight towards other nodes
         # add a probabilistic noise to previous calculated weights
         for func, node_weights in w.items():
-            self._logger.info("Weights for func " + func)
+            self._logger.debug("Weights for func " + func)
             for node, wi in node_weights.items():
-                self._logger.info("Node " + node + " -- w = " + str(wi))
+                self._logger.debug("Node " + node + " -- w = " + str(wi))
 
                 rnd = np.random.uniform(0, 1)
 
@@ -152,17 +152,17 @@ class EmpiricalStrategy(Strategy):
                 else:
                     w[func][node] = wi - rumor
 
-            self._logger.info("-----")
+            self._logger.debug("-----")
 
             # Recalc distribution of weight for func[x] towards all other nodes
             w[func] = self.recalc_distribution(w[func])
 
-        self._logger.info("======== Final Weights ========")
-        self._logger.info(w)
+        self._logger.debug("======== Final Weights ========")
+        self._logger.debug(w)
 
-        self._logger.info("======== Final Weights Sum ========")
+        self._logger.debug("======== Final Weights Sum ========")
         for func, val in w.items():
-            self._logger.info("Sum for func " + func +
+            self._logger.debug("Sum for func " + func +
                               " = " + str(sum(val.values())))
 
         return w
@@ -174,9 +174,9 @@ class EmpiricalStrategy(Strategy):
         Note that to weights array are added also 0% weights toward nodes that can 
         not help for a specific function.
         """
-        self._logger.info("=======================")
-        self._logger.info("5. EXECUTE")
-        self._logger.info("=======================")
+        self._logger.debug("=======================")
+        self._logger.debug("5. EXECUTE")
+        self._logger.debug("=======================")
 
         # This is loop used for add weights for all nodes that not has
         # an "underloaded" function (need to have 0% of weight)
@@ -190,19 +190,22 @@ class EmpiricalStrategy(Strategy):
                     w[func][node] = 0
 
         # Remember to return weigths that sum to 100 (not 1)
-        self._logger.info("======== Before moltiplication ========")
-        self._logger.info(w)
+        self._logger.debug("======== Before moltiplication ========")
+        self._logger.debug(w)
 
         # Transform weight to obtain 100 as sum
         for func in w:
             w[func] = {k: v * 100 for k, v in w[func].items()}
 
-        self._logger.info("======== After moltiplication ========")
-        self._logger.info(w)
+        self._logger.debug("======== After moltiplication ========")
+        self._logger.debug(w)
 
-        self._logger.info("======== Final Weights Sum ========")
         for func, val in w.items():
-            self._logger.info("Sum for func " + func +
+            self._logger.info("Weights normalized for func {}: {}".format(func, val))
+
+        self._logger.debug("======== Final Weights Sum ========")
+        for func, val in w.items():
+            self._logger.debug("Sum for func " + func +
                               " = " + str(sum(val.values())))
             
         return w
@@ -222,15 +225,15 @@ class EmpiricalStrategy(Strategy):
         # For each "overloaded" func on this node
         for func in self._data[self._id]["functions"]:
             if func["state"] == "Overload":
-                self._logger.info("FUNC: " + func["name"] + " is OVERLOADED")
+                self._logger.debug("FUNC: " + func["name"] + " is OVERLOADED")
                 helpers = {}
 
                 # Iterate over json dictionary to found node that can help overloaded functions
                 for node, val in self._data.items():
-                    self._logger.info("Check NODE: " + node)
+                    self._logger.debug("Check NODE: " + node)
                     # This is the same node that search for help --> skip
                     if node == self._id:
-                        self._logger.info(" > Skip -- same node")
+                        self._logger.debug(" > Skip -- same node")
                         continue
 
                     # Check "underload" same functions on other nodes
@@ -250,10 +253,10 @@ class EmpiricalStrategy(Strategy):
                 # For each function call --> weight calculation
                 ws[func["name"]] = self.compute_weight(helpers)
             else:
-                self._logger.info("FUNC: " + func["name"] + " is UNDERLOADED")
+                self._logger.debug("FUNC: " + func["name"] + " is UNDERLOADED")
 
-        #self._logger.info("======== WS MAP ========")
-        #self._logger.info(ws)  # Three nested map
+        #self._logger.debug("======== WS MAP ========")
+        #self._logger.debug(ws)  # Three nested map
         return ws
 
     def compute_weight(self, functions):
@@ -262,9 +265,9 @@ class EmpiricalStrategy(Strategy):
         all other nodes and for each analytics.
             - "functions" param represent the map containing info of helpers functions.
         """
-        self._logger.info(
+        self._logger.debug(
             "======== Helpers functions on other nodes: ========")
-        self._logger.info(functions)
+        self._logger.debug(functions)
 
         ws = {}  # Map that has as key node_id and as values a nested map
         # The nested map has as key the metric name and as value the analytic's weight
@@ -359,9 +362,9 @@ class EmpiricalStrategy(Strategy):
             weights[func] = {k: v / sum(weights[func].values())
                              for k, v in weights[func].items()}
 
-        self._logger.info(weights)
+        self._logger.debug(weights)
         for func, val in weights.items():
-            self._logger.info("Sum for function " + func +
+            self._logger.debug("Sum for function " + func +
                               " = " + str(sum(val.values())))
         return weights
 

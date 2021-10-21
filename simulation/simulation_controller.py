@@ -47,6 +47,22 @@ def copy_dir(src, dest):
         if os.path.isfile(full_file_name):
             copy_file(full_file_name, dest)
 
+def remove_file(path):
+    """
+    Remove an existing file
+    """
+    os.remove(path)
+
+def remove_dir_content(dir):
+    """
+    Remove all files from a directory [dir]
+    """
+    files = os.listdir(dir)
+    for file_name in files:
+        path = os.path.join(dir, file_name)
+        if os.path.isfile(path):
+            remove_file(path)
+
 def main():
     # Get cli args
     kargs = get_args()
@@ -69,6 +85,9 @@ def main():
     else:
         print("> STEP 1 - Skip -- instance passed as param: {}...".format(instance))
         copy_file(instance, dir_path)
+
+    # Before simulations starts, remove all agent logs file from base foulder
+    remove_dir_content(config_manager.SIMULATION_AGENT_LOGGING_BASE_PATH)
 
     # Execute each instance for a predefined number of times (ex. 5)
     for i in range(0, config_manager.NUMBER_OF_SIMULATION_EXECUTION):
@@ -95,6 +114,11 @@ def main():
         path = dir_path + "/iteration_{}".format(i)
         os.makedirs(path)
         copy_dir(config_manager.ANALYZER_OUTPUT_PATH, path)
+        
+        # Copy to this foulder also simulation results (weights for each agent)
+        # Also clean src dir of all content (avoiding file overwriting)
+        copy_dir(config_manager.SIMULATION_AGENT_LOGGING_BASE_PATH, path)
+        remove_dir_content(config_manager.SIMULATION_AGENT_LOGGING_BASE_PATH)
 
         #time.sleep(2)
 

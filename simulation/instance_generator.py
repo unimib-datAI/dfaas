@@ -50,17 +50,17 @@ def load_configurations(nodes_number):
     #print(configurations)
 
     # Mock loaded files [TO BE REMOVED]
-    # configurations = [
+    configurations = [
         # "exp-comparison/case4/node1.json",
         # "exp-comparison/case4/node2.json",
         # "exp-comparison/case4/node3.json",
         # "exp-comparison/case4/node4.json",
         # "exp-comparison/case4/node5.json",
-        # "exp-comparison/exp_pool/node1.json",
-        # "exp-comparison/exp_pool/node2.json",
-        # "exp-comparison/exp_pool/node3.json",
-        # "exp-comparison/exp_pool/node4.json",
-        # "exp-comparison/exp_pool/node5.json",
+        "exp-comparison/exp_pool/node1.json",
+        "exp-comparison/exp_pool/node2.json",
+        "exp-comparison/exp_pool/node3.json",
+        "exp-comparison/exp_pool/node4.json",
+        "exp-comparison/exp_pool/node5.json",
         # "exp-comparison/exp_pool/node6.json",
         # "exp-comparison/exp_pool/node7.json",
         # "exp-comparison/exp_pool/node8.json",
@@ -76,7 +76,7 @@ def load_configurations(nodes_number):
         # "exp-comparison/exp_pool/node18.json",
         # "exp-comparison/exp_pool/node19.json",
         # "exp-comparison/exp_pool/node20.json",
-    #]
+    ]
     # print(configurations)
 
     # Load selected files
