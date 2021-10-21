@@ -63,6 +63,19 @@ def remove_dir_content(dir):
         if os.path.isfile(path):
             remove_file(path)
 
+def remove_dir_with_content(dir):
+    """
+    Remove dir [dir] along with all its files
+    """
+    shutil.rmtree(dir)
+
+def zip_foulder(dir, out_path, format="zip"):
+    """
+    Zip foulder specified by [dir] in [out_path] using [format] format
+    Default format is "zip"
+    """
+    shutil.make_archive(out_path, format, dir)
+
 def main():
     # Get cli args
     kargs = get_args()
@@ -163,6 +176,12 @@ def main():
                 val = res[index].mean()
                 print("     > {}: {:0.2f}".format(index, val))
                 f.write("     > {}: {:0.2f}\n".format(index, val))
+
+    # Zip archive foulder with all previous gathered data
+    zip_foulder(dir_path, dir_path)
+
+    # Remove dir previously zipped
+    remove_dir_with_content(dir_path)
 
 # Call main program.
 if __name__ == "__main__":
