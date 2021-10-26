@@ -2,6 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from config_manager import ConfigManager
+from utils import flatten
 
 config_manager = ConfigManager()
 
@@ -154,31 +155,109 @@ def main():
         # print(" > Mean reject rate for ocr: {}".format(np.mean(ocr_rr)))
         # print(" > Rejected requests for ocr: {}".format(np.sum(ocr_reject_num)))
 
-        # Other utility prints
+        # TEST
+        #print(x_func_success_rate)
+        #print(x_func_reject_rate)
+        #print(x_func_reject_num)
+
+        # Metrics prints
+
+        ##### SUCCESS RATES METRICS #####
+        # Mean success rate
         mean_success_rate = np.mean([np.mean(srates) for k, srates in x_func_success_rate.items()]) * 100
         print("     > Mean success rate: {:0.2f}%".format(
             mean_success_rate
         ))
+        
+        # Success rate variance
+        flat_list = [i * 100 for i in flatten(list(x_func_success_rate.values()))]
+        success_rate_variance = np.var(flat_list)
+        print("     > Success rate variance: {:0.2f}".format(success_rate_variance))
 
-        # Mean success rate calculated during high traffic preiod (minutes from 1 to 5)
-        mean_success_rate_stress_period = np.mean(
-            [np.mean(srates[1:6]) for k, srates in x_func_success_rate.items()]) * 100
+        # Success rate median
+        flat_list = flatten(list(x_func_success_rate.values()))
+        success_rate_median = np.median(flat_list) * 100
+        print("     > Success rate median: {:0.2f}%".format(success_rate_median))
+
+        # Success rate percentile
+        flat_list = flatten(list(x_func_success_rate.values()))
+        success_rate_percentile = np.percentile(flat_list, config_manager.ANALYSIS_PERCENTILE) * 100
+        print("     > Success rate {}% percentile: {:0.2f}%".format(
+                config_manager.ANALYSIS_PERCENTILE,
+                success_rate_percentile
+            )
+        )
+
+        ##### SUCCESS RATES (STRESS PERIOD) METRICS #####
+        # Mean success rate calculated during high traffic period (minutes from 1 to 5)
+        mean_success_rate_stress_period = np.mean([np.mean(srates[1:6]) for k, srates in x_func_success_rate.items()]) * 100
         print("         > Mean success rate during stress period (from minute 1 to 5): {:0.2f}%".format(
             mean_success_rate_stress_period
         ))
 
+        # Success rate variance (stress period)
+        flat_list = [i * 100 for i in flatten([item[1:6] for item in list(x_func_success_rate.values())])]
+        success_rate_stress_period_variance = np.var(flat_list)
+        print("         > Success rate variance during stress period (from minute 1 to 5): {:0.2f}"
+            .format(success_rate_stress_period_variance))
+
+        # Success rate median (stress period)
+        flat_list = flatten([item[1:6] for item in list(x_func_success_rate.values())])
+        success_rate_stress_period_median = np.median(flat_list) * 100
+        print("         > Success rate median during stress period (from minute 1 to 5): {:0.2f}%"
+            .format(success_rate_stress_period_median))
+
+        # Success rate percentile (stress period)
+        flat_list = flatten([item[1:6] for item in list(x_func_success_rate.values())])
+        success_rate_stress_period_percentile = np.percentile(flat_list, config_manager.ANALYSIS_PERCENTILE) * 100
+        print("         > Success rate {}% percentile during stress period (from minute 1 to 5): {:0.2f}%"
+            .format(
+                config_manager.ANALYSIS_PERCENTILE,
+                success_rate_stress_period_percentile
+            )
+        )
+
+        ##### REJECT RATES METRICS #####
         # Total rejected requests num calculated for each algorithm across minutes
-        total_reject_requests = np.sum(
-            [np.sum(rejnums) for k, rejnums in x_func_reject_num.items()])
+        total_reject_requests = np.sum([np.sum(rejnums) for k, rejnums in x_func_reject_num.items()])
         print("     > Total rejected requests: {} req".format(
             total_reject_requests
         ))
+
+        # Reject number variance
+        flat_list = flatten(list(x_func_reject_num.values()))
+        reject_number_variance = np.var(flat_list)
+        print("     > Reject num variance: {:0.2f}".format(reject_number_variance))
+
+        # Reject number median
+        flat_list = flatten(list(x_func_reject_num.values()))
+        reject_number_median = np.median(flat_list)
+        print("     > Reject num median: {:0.2f}".format(reject_number_median))
+
+        # Reject number percentile
+        flat_list = flatten(list(x_func_reject_num.values()))
+        reject_number_percentile = np.percentile(flat_list, config_manager.ANALYSIS_PERCENTILE)
+        print("     > Reject num {}% percentile: {:0.2f}".format(
+                config_manager.ANALYSIS_PERCENTILE,
+                reject_number_percentile
+            )
+        )
+
         print("----------------------------------------------------------------------------")
 
         index_comparison[algo] = [
             mean_success_rate,
+            success_rate_variance,
+            success_rate_median,
+            success_rate_percentile,
             mean_success_rate_stress_period,
-            total_reject_requests
+            success_rate_stress_period_variance,
+            success_rate_stress_period_median,
+            success_rate_stress_period_percentile,
+            total_reject_requests,
+            reject_number_variance,
+            reject_number_median,
+            reject_number_percentile,
         ]
 
     # Export print for comparison

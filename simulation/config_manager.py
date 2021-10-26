@@ -28,10 +28,20 @@ class ConfigManager(object):
     SIMULATION_AGENT_LOGGING_BASE_PATH = "simulation_output/logs/"
 
     # Constant used in analyzer
+    ANALYSIS_PERCENTILE = 90
     INDEX_TO_COMPARE = [
         "Mean success rate",
+        "Success rate variance",
+        "Success rate median",
+        "Success rate {}% percentile".format(ANALYSIS_PERCENTILE),
         "Mean success rate (stress period)",
-        "Tot. rejected requests"
+        "Success rate variance (stress period)",
+        "Success rate median stress period",
+        "Success rate {}% percentile stress period".format(ANALYSIS_PERCENTILE),
+        "Tot. rejected requests",
+        "Reject num variance",
+        "Reject num median",
+        "Reject num {}% percentile".format(ANALYSIS_PERCENTILE),
     ]
     ANALYZER_OUTPUT_PATH = "analyzer_output/"
     INDEX_COMPARISON_FILE = ANALYZER_OUTPUT_PATH + "index_comparison.csv"

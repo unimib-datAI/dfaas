@@ -69,3 +69,10 @@ def zip_foulder(dir, out_path, format="zip"):
     Default format is "zip"
     """
     shutil.make_archive(out_path, format, dir)
+
+def flatten(t):
+    """
+    Flat list [t] passed as param
+    Returns a new flatten list
+    """
+    return [item for sublist in t for item in sublist]
