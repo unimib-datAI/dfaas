@@ -108,7 +108,7 @@ def main():
             f.write("> Strategy {}\n".format(s))
             res = final_df.query("strategy == @s")
 
-            for index in config_manager.INDEX_TO_COMPARE:
+            for index in config_manager.INDEX_TO_MEAN_FOR_COMPARISON_FOR_TXT_FILE:
                 #print(res[index])
                 val = res[index].mean()
                 print("     > {}: {:0.2f}".format(index, val))

@@ -51,6 +51,14 @@ class ConfigManager(object):
     SIMULATION_CONTROLLER_OUTPUT_PATH = "simulation_controller_output/"
     SIMULATION_CONTROLLER_OUTPUT_FILE = SIMULATION_CONTROLLER_OUTPUT_PATH + \
                                         "experiment_results.csv"
+    INDEX_TO_MEAN_FOR_COMPARISON_FOR_TXT_FILE = [
+        "Mean success rate",
+        "Success rate variance",
+        "Mean success rate (stress period)",
+        "Success rate variance (stress period)",
+        "Tot. rejected requests",
+        "Reject num variance",
+    ]
 
     # Constant used for store resume of simulation controller
     SIMULATION_CONTROLLER_ARCHIVE_PATH = "archive/"
