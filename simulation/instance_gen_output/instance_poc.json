@@ -1,0 +1,51 @@
+{
+    "seed": 372,
+    "nodes_number": 5,
+    "edge_prob": 0.1,
+    "node_0": {
+        "replicas": { 
+            "funca_num": 2,
+            "funcb_num": 2,
+            "funcc_num": 1
+        },
+        "node_type": "node_1",
+        "neighbours": [
+            "node_1",
+            "node_4"
+        ],
+        "exp_history": [
+            {
+                "functions": [
+                    {
+                        "name": "funca",
+                        "invoc_rate": 0
+                    },
+                    {
+                        "name": "ocr",
+                        "invoc_rate": 0
+                    },
+                    {
+                        "name": "qrcode",
+                        "invoc_rate": 0
+                    }
+                ]
+            },
+            {
+                "functions": [
+                    {
+                        "name": "funca",
+                        "invoc_rate": 18
+                    },
+                    {
+                        "name": "ocr",
+                        "invoc_rate": 0
+                    },
+                    {
+                        "name": "qrcode",
+                        "invoc_rate": 1
+                    }
+                ]
+            }
+        ]
+    }
+}

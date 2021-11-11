@@ -129,6 +129,36 @@ def dict_key_substitution(data, old, new):
     data[new] = data[old]
     del data[old]
 
+def create_node_representation(key, start_config, G):
+    """
+    Create node json representation in new format of instance file
+    """
+    node_config = {}   
+
+    # Move all fields for replicas num inner "replicas" key
+    node_config["replicas"] = {}
+    for func in config_manager.FUNCTION_NAMES:
+        replicas_key_name = func + "_num"
+        node_config["replicas"][replicas_key_name] = start_config["input"][replicas_key_name]
+
+    node_config["node_type"] = start_config["input"]["node"]
+    node_config["neighbours"] = list(G[key].keys())
+
+    # Adaption of history field
+    node_config["exp_history"] = []
+    for idx_1, minute in enumerate(start_config["output"]):
+        node_config["exp_history"].append({})
+        node_config["exp_history"][idx_1]["functions"] = []
+        for idx_2, func in enumerate(minute["functions"]):
+            node_config["exp_history"][idx_1]["functions"].append(
+                {
+                    "name": func["name"],
+                    "invoc_rate": func["invoc_rate"]
+                }
+            )
+
+    return node_config
+
 def build_output_json(seed, nodes_num, edge_prob, G):
     """
     Function used to build output json file that represent the instance
@@ -141,10 +171,19 @@ def build_output_json(seed, nodes_num, edge_prob, G):
     # Iterate over all graph nodes
     for node in G.nodes(data=True):
         key, config = node[0], node[1]
-        instance[key] = config["config"]["input"]
+        #instance[key] = config["config"]["input"]
+
+        # TO BE REMOVED
+        # This transformation is used to adapt nume of functions
+        # dict_key_substitution(config["config"]["input"], "funcb_num", "qrcode_num")
+        # dict_key_substitution(config["config"]["input"], "funcc_num", "ocr_num")
+        # dict_key_substitution(config["config"]["input"], "funcb_wl", "qrcode_wl")
+        # dict_key_substitution(config["config"]["input"], "funcc_wl", "ocr_wl")
+
+        instance[key] = create_node_representation(key, config["config"], G)
 
         # Keys transformations
-        dict_key_substitution(instance[key], "node", "node_type")
+        #dict_key_substitution(instance[key], "node", "node_type")
         
         # Key specific for three functions: funca, qrcode, ocr
         # dict_key_substitution(instance[key], "funcb_num", "qrcode_num")
@@ -152,8 +191,8 @@ def build_output_json(seed, nodes_num, edge_prob, G):
         # dict_key_substitution(instance[key], "funcb_wl", "qrcode_wl")
         # dict_key_substitution(instance[key], "funcc_wl", "ocr_wl")
 
-        instance[key]["neighbours"] = list(G[key].keys())
-        instance[key]["exp_history"] = config["config"]["output"]
+        #instance[key]["neighbours"] = list(G[key].keys())
+        #instance[key]["exp_history"] = config["config"]["output"]
 
     return instance
 
