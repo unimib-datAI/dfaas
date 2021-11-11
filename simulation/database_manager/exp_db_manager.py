@@ -6,13 +6,13 @@ class ExpDbManager(DbManager):
     def __init__(self, db_path) -> None:
         super().__init__(db_path)
 
-    def create_tables(self):
+    def create_tables(self) -> None:
         """ Create tables for experiment database """
         cursor = self._conn.cursor()
 
         # Create node table
         cursor.execute('''
-            CREATE TABLE IF NOT EXISTS `db_prova`.`NODE` (
+            CREATE TABLE IF NOT EXISTS `NODE` (
                 `ID` INT NOT NULL AUTO_INCREMENT,
                 `Name` VARCHAR(20) NOT NULL,
                 `Ram` DECIMAL(4,1) NOT NULL,
@@ -24,7 +24,7 @@ class ExpDbManager(DbManager):
 
         # Creare function table
         cursor.execute('''
-            CREATE TABLE IF NOT EXISTS `db_prova`.`FUNCTION` (
+            CREATE TABLE IF NOT EXISTS `FUNCTION` (
                 `ID` INT NOT NULL AUTO_INCREMENT,
                 `Name` VARCHAR(20) NOT NULL,
                 `Description` VARCHAR(100) NULL,
@@ -34,7 +34,7 @@ class ExpDbManager(DbManager):
 
         # Create experiment instant table
         cursor.execute('''
-            CREATE TABLE `db_prova`.`EXPERIMENT_INSTANT` (
+            CREATE TABLE `EXPERIMENT_INSTANT` (
                 `ID` INT NOT NULL AUTO_INCREMENT,
                 `Timestamp` DATETIME NOT NULL,
                 `NodeID` INT NOT NULL,
@@ -71,7 +71,7 @@ class ExpDbManager(DbManager):
         
         # Create deploy table
         cursor.execute('''
-            CREATE TABLE IF NOT EXISTS `db_prova`.`DEPLOY` (
+            CREATE TABLE IF NOT EXISTS `DEPLOY` (
                 `ExpInstantID` INT NOT NULL,
                 `FunctionID` INT NOT NULL,
                 `MaxRate` INT NOT NULL,
@@ -92,5 +92,81 @@ class ExpDbManager(DbManager):
         ''')
 
         self._conn.commit()
+        
+    def insert_node(self, name, ram, cpu) -> None:
+        cursor = self._conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO `NODE` (`Name`, `Ram`, `Cpu`)
+            VALUES ( {}, {}, {} );
+        '''.format(name, ram, cpu))
 
+        self._conn.commit()
+
+    def insert_function(self, name, description) -> None:
+        cursor = self._conn.cursor()
+        
+        cursor.execute('''
+            INSERT INTO `FUNCTION` ( `Name`, `Description`)
+            VALUES ( {}, {} );
+        '''.format(name, description))
+
+        self._conn.commit()
+
+    def insert_function(self, name, description) -> None:
+        cursor = self._conn.cursor()
+
+        cursor.execute('''
+            INSERT INTO `FUNCTION` ( `Name`, `Description`)
+            VALUES ( {}, {} );
+        '''.format(name, description))
+
+        self._conn.commit()
+
+    def insert_exp_instant(self, ts, node_id) -> None:
+        cursor = self._conn.cursor()
+
+        cursor.execute('''
+            INSERT INTO `EXPERIMENT_INSTANT`( `Timestamp`, `NodeID` )
+            VALUES ( {}, {} );
+        '''.format(ts, node_id))
+
+        self._conn.commit()
+
+    def insert_metric(self, name, type, unit, desc, exp_instant_id, function_id, node_id = None) -> None:
+        cursor = self._conn.cursor()
+
+        if function_id != None and node_id == None:
+            cursor.execute('''
+                INSERT INTO `METRIC` ( `Name`, `Type`, `Unit`, `Description`, `ExpInstantID`, `FunctionID`)
+                VALUES ( {}, {}, {}, {}, {}, {});
+            '''.format(name, type, unit, desc, exp_instant_id, function_id))
+        elif node_id != None and function_id == None:
+            cursor.execute('''
+                INSERT INTO `METRIC` ( `Name`, `Type`, `Unit`, `Description`, `ExpInstantID`, `NodeID`)
+                VALUES ( {}, {}, {}, {}, {}, {});
+            '''.format(name, type, unit, desc, exp_instant_id, node_id))
+        else:
+            print("Params function_id and node_id cannot be both not None")
+
+        self._conn.commit()
     
+    def insert_exp_instant(self, ts, node_id) -> None:
+        cursor = self._conn.cursor()
+
+        cursor.execute('''
+            INSERT INTO `EXPERIMENT_INSTANT`( `Timestamp`, `NodeID` )
+            VALUES ( {}, {} );
+        '''.format(ts, node_id))
+
+        self._conn.commit()
+
+    def insert_deploy(self, exp_instant_id, function_id, max_rate, num_replicas, wl) -> None:
+        cursor = self._conn.cursor()
+
+        cursor.execute('''
+            INSERT INTO `DEPLOY` ( `ExpInstantID`, `FunctionID`, `MaxRate`, `NumReplicas`, `Workload` )
+            VALUES ( {}, {}, {}, {}, {});
+        '''.format(exp_instant_id, function_id, max_rate, num_replicas, wl))
+
+        self._conn.commit()
