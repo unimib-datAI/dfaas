@@ -146,11 +146,11 @@ def create_node_representation(key, start_config, G):
 
     # Adaption of history field
     node_config["exp_history"] = []
-    for idx_1, minute in enumerate(start_config["output"]):
+    for idx, minute in enumerate(start_config["output"]):
         node_config["exp_history"].append({})
-        node_config["exp_history"][idx_1]["functions"] = []
-        for idx_2, func in enumerate(minute["functions"]):
-            node_config["exp_history"][idx_1]["functions"].append(
+        node_config["exp_history"][idx]["functions"] = []
+        for _, func in enumerate(minute["functions"]):
+            node_config["exp_history"][idx]["functions"].append(
                 {
                     "name": func["name"],
                     "invoc_rate": func["invoc_rate"]
@@ -171,28 +171,7 @@ def build_output_json(seed, nodes_num, edge_prob, G):
     # Iterate over all graph nodes
     for node in G.nodes(data=True):
         key, config = node[0], node[1]
-        #instance[key] = config["config"]["input"]
-
-        # TO BE REMOVED
-        # This transformation is used to adapt nume of functions
-        # dict_key_substitution(config["config"]["input"], "funcb_num", "qrcode_num")
-        # dict_key_substitution(config["config"]["input"], "funcc_num", "ocr_num")
-        # dict_key_substitution(config["config"]["input"], "funcb_wl", "qrcode_wl")
-        # dict_key_substitution(config["config"]["input"], "funcc_wl", "ocr_wl")
-
         instance[key] = create_node_representation(key, config["config"], G)
-
-        # Keys transformations
-        #dict_key_substitution(instance[key], "node", "node_type")
-        
-        # Key specific for three functions: funca, qrcode, ocr
-        # dict_key_substitution(instance[key], "funcb_num", "qrcode_num")
-        # dict_key_substitution(instance[key], "funcc_num", "ocr_num")
-        # dict_key_substitution(instance[key], "funcb_wl", "qrcode_wl")
-        # dict_key_substitution(instance[key], "funcc_wl", "ocr_wl")
-
-        #instance[key]["neighbours"] = list(G[key].keys())
-        #instance[key]["exp_history"] = config["config"]["output"]
 
     return instance
 
