@@ -5,8 +5,6 @@ import random
 import matplotlib.pyplot as plt
 import numpy as np
 from cli import get_args
-from os import listdir
-from os.path import isfile, join
 from itertools import combinations, groupby
 from config_manager import ConfigManager
 
