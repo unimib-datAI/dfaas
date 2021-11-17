@@ -1,9 +1,11 @@
 import sqlite3
 import pandas as pd
-from sqlite3 import Error
 from .db_manager import DbManager
+from data_loader.request.config_request import ConfigRequest
+
 
 class ExpDbManager(DbManager):
+
     def __init__(self, db_path) -> None:
         super().__init__(db_path)
 
@@ -51,7 +53,7 @@ class ExpDbManager(DbManager):
                 `ID` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
                 `Type` TEXT CHECK( Type IN ('node','func') ) NOT NULL,
                 `Name` TEXT NOT NULL,
-                `Value` REALNULL,
+                `Value` REAL NULL,
                 `Unit` TEXT NOT NULL,
                 `Description` TEXT DEFAULT NULL,
                 `ExpInstantID` INTEGER NOT NULL,
@@ -71,6 +73,8 @@ class ExpDbManager(DbManager):
                 `MaxRate` INTEGER NOT NULL,
                 `NumReplicas` INTEGER NOT NULL,
                 `Workload` INTEGER NOT NULL,
+                `Margin` INTEGER NOT NULL,
+                `State` TEXT NOT NULL,
                 PRIMARY KEY(`ExpInstantID`, `FunctionID`),
                 CONSTRAINT `ExpInstantIDdeploy`
                 FOREIGN KEY(`ExpInstantID`)
@@ -88,7 +92,7 @@ class ExpDbManager(DbManager):
 
     ############ Insert statements ############
 
-    def insert_node(self, name, ram, cpu) -> None:
+    def insert_node(self, name, ram, cpu) -> int:
         conn = sqlite3.connect(self._path)
         cursor = conn.cursor()
 
@@ -98,19 +102,21 @@ class ExpDbManager(DbManager):
         '''.format(name, ram, cpu))
 
         conn.commit()
+        return cursor.lastrowid
 
-    def insert_function(self, name, description) -> None:
+    def insert_function(self, name, description) -> int:
         conn = sqlite3.connect(self._path)
         cursor = conn.cursor()
-        
+
         cursor.execute('''
             INSERT INTO `FUNCTION` ( `Name`, `Description`)
             VALUES ( "{}", "{}" );
         '''.format(name, description))
 
         conn.commit()
+        return cursor.lastrowid
 
-    def insert_exp_instant(self, ts, node_id) -> None:
+    def insert_exp_instant(self, ts, node_id) -> int:
         conn = sqlite3.connect(self._path)
         cursor = conn.cursor()
 
@@ -120,8 +126,9 @@ class ExpDbManager(DbManager):
         '''.format(ts, node_id))
 
         conn.commit()
+        return cursor.lastrowid
 
-    def insert_metric(self, name, type, unit, val, desc, exp_instant_id, function_id = None, node_id = None) -> None:
+    def insert_metric(self, name, type, unit, val, desc, exp_instant_id, function_id = None, node_id = None) -> int:
         conn = sqlite3.connect(self._path)
         cursor = conn.cursor()
 
@@ -139,15 +146,16 @@ class ExpDbManager(DbManager):
             print("Params function_id and node_id cannot be both not None")
 
         conn.commit()
+        return cursor.lastrowid
 
-    def insert_deploy(self, exp_instant_id, function_id, max_rate, num_replicas, wl) -> None:
+    def insert_deploy(self, exp_instant_id, function_id, max_rate, num_replicas, wl, margin, state) -> None:
         conn = sqlite3.connect(self._path)
         cursor = conn.cursor()
 
         cursor.execute('''
-            INSERT INTO `DEPLOY` ( `ExpInstantID`, `FunctionID`, `MaxRate`, `NumReplicas`, `Workload` )
-            VALUES ( {}, {}, {}, {}, {});
-        '''.format(exp_instant_id, function_id, max_rate, num_replicas, wl))
+            INSERT INTO `DEPLOY` ( `ExpInstantID`, `FunctionID`, `MaxRate`, `NumReplicas`, `Workload`, `Margin`, `State` )
+            VALUES ( {}, {}, {}, {}, {}, {}, "{}");
+        '''.format(exp_instant_id, function_id, max_rate, num_replicas, wl, margin, state))
 
         conn.commit()
 
@@ -158,9 +166,12 @@ class ExpDbManager(DbManager):
         c = conn.cursor()
 
         c.execute('''
-                SELECT a.ExpInstantID, a.FunctionID, a.MaxRate, a.NumReplicas, a.Workload, b.Name, b.Description
+                SELECT a.ExpInstantID, a.MaxRate, a.NumReplicas, a.Workload, b.Name, b.Description
                 FROM DEPLOY a
                 JOIN FUNCTION b ON a.FunctionID = b.ID
+                WHERE b.Name == "qrcode"
+                ORDER BY a.Workload DESC
+                LIMIT 5
         ''')
 
         fetch_data = c.fetchall()
@@ -170,7 +181,7 @@ class ExpDbManager(DbManager):
         df = pd.DataFrame(fetch_data, columns=["ExpInstantID", "FunctionID", "MaxRate", "NumReplicas", "Workload", "Name", "Description"])
         print(df)
 
-    def get_metrics(self, conf_request) -> pd.DataFrame:
+    def get_metrics(self, conf_request: ConfigRequest) -> pd.DataFrame and pd.DataFrame:
         func_count = len(conf_request.get_functions())
         node_type = conf_request.get_node_type()
 
@@ -179,15 +190,15 @@ class ExpDbManager(DbManager):
         where_condition += "( "
 
         for idx, func_req in enumerate(conf_request.get_functions()):
-            where_condition += "( \
-                f.Name == '{}'   AND \
-                d.Workload == {}   AND \
-                d.NumReplicas == {}    \
+            where_condition += "(       \
+                f.Name == '{}'      AND \
+                d.Workload == {}    AND \
+                d.NumReplicas == {}     \
             ) ".format(func_req.get_name(), func_req.get_wl(), func_req.get_replicas_num())
 
             if idx != func_count - 1:
                 where_condition += "OR"
-        
+
         where_condition += ")"
 
         query = '''
@@ -216,8 +227,11 @@ class ExpDbManager(DbManager):
 
         # Select all metrics for this specific config request
         query = '''
-                    SELECT m.ID, m.Type, m.Unit, m.ExpInstantID, m.NodeID, m.FunctionID
+                    SELECT  m.ID, m.Type, m.Name, m.Value, m.Unit, m.Description, m.ExpInstantID, 
+                            m.NodeID, n.Name, m.FunctionID, f.Name
                     FROM METRIC m
+                    LEFT JOIN FUNCTION   f ON m.FunctionID = f.ID
+                    LEFT JOIN NODE       n ON m.NodeID = n.ID
                     WHERE m.ExpInstantID IN ({})
                 '''.format(",".join(experiments_id_list))
 
@@ -225,7 +239,15 @@ class ExpDbManager(DbManager):
 
         print("Final result: Metrics for Experiments {}".format(experiments_id_list))
         df = pd.DataFrame(c.fetchall(),
-                          columns=["ID", "Type", "Unit", "ExpInstantID", "NodeID", "FunctionID"])
-        print(df)
+                          columns=["ID", "Type", "Name", "Value", "Unit", "Description",
+                                   "ExpInstantID", "NodeID", "NodeName", "FunctionID",
+                                   "FunctionName"])
+        #print(df)
 
-        return df
+        df_node_metrics = df[df["Type"] == "node"].drop(columns=["FunctionID", "FunctionName"])
+        df_func_metrics = df[df["Type"] == "func"].drop(columns=["NodeID", "NodeName"])
+
+        print(df_node_metrics)
+        print(df_func_metrics)
+
+        return df_node_metrics, df_func_metrics

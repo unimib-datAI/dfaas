@@ -49,14 +49,14 @@ def load_configurations(nodes_number):
 
     # Mock loaded files [TO BE REMOVED]
     configurations = [
-        # "exp-comparison/case4/node1.json",
-        # "exp-comparison/case4/node2.json",
-        # "exp-comparison/case4/node3.json",
+        # "exp-comparison/case4/node_1.json",
+        # "exp-comparison/case4/node_2.json",
+        # "exp-comparison/case4/node_3.json",
         # "exp-comparison/case4/node4.json",
         # "exp-comparison/case4/node5.json",
-        "exp-comparison/exp_pool/node1.json",
-        "exp-comparison/exp_pool/node2.json",
-        "exp-comparison/exp_pool/node3.json",
+        "exp-comparison/exp_pool/node_1.json",
+        "exp-comparison/exp_pool/node_2.json",
+        "exp-comparison/exp_pool/node_3.json",
         "exp-comparison/exp_pool/node4.json",
         "exp-comparison/exp_pool/node5.json",
         # "exp-comparison/exp_pool/node6.json",
