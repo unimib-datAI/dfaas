@@ -7,22 +7,25 @@ import json
 from config_manager import ConfigManager
 from database_manager.exp_db_manager import ExpDbManager
 
-
 class DataLoader:
+    """
+    This class is used to populate database with experiments data
+    """
 
-    _config_manager = ConfigManager()
-    _nodes_ids = {}
-    _functions_ids = {}
+    __config_manager = ConfigManager()
+    __nodes_ids = {}
+    __functions_ids = {}
 
     def __init__(self):
-        self._db_manager = ExpDbManager(self._config_manager.EXPERIMENT_DB_PATH)
+        self.__db_manager = ExpDbManager(self.__config_manager.EXPERIMENT_DB_PATH)
 
-        if not os.path.exists(self._config_manager.EXPERIMENT_DB_PATH):
+        if not os.path.exists(self.__config_manager.EXPERIMENT_DB_PATH):
             print("Creating connection to database...")
-            self._db_manager.create_connection()
+            self.__db_manager.create_connection()
             print("Done")
+
             print("Creating tables...")
-            self._db_manager.create_tables()
+            self.__db_manager.create_tables()
             print("Done")
 
             print("Loading data from disk...")
@@ -33,7 +36,12 @@ class DataLoader:
             print("DB file already exist")
 
     def get_metric_for_configuration(self, config_request) -> pd.DataFrame and pd.DataFrame:
-        df_node, df_func = self._db_manager.get_metrics(config_request)
+        """
+        This method returns all metrics gathered for a specific configuration of a node
+        :config_request: configuration request
+        :return: two dataframe, one for node's metrics and another for function's metrics
+        """
+        df_node, df_func = self.__db_manager.get_metrics(config_request)
 
         if df_node.empty and df_func.empty:
             print("Experiment with this type of configuration does not exist in the database...")
@@ -41,6 +49,9 @@ class DataLoader:
         return df_node, df_func
 
     def _parse_file(self, json_file) -> None:
+        """
+        This method parse a json data file and push data on db
+        """
         # Parse input section
         # Note: all other data from "input" section are discarded
         # because replicas and wl can be obtained from single minute metrics
@@ -57,33 +68,44 @@ class DataLoader:
                 now = datetime.datetime.now()
                 timestamp = datetime.datetime(now.year, now.month, now.day, 0, 0, idx)
 
-            exp_instant_id = self._db_manager.insert_exp_instant(timestamp, self._nodes_ids[node_type])
+            exp_instant_id = self.__db_manager.insert_exp_instant(timestamp, self.__nodes_ids[node_type])
 
-            self._db_manager.insert_metric("ram_usage", "node", self._config_manager.NODES_METRICS_UNIT["ram_usage"],
-                                           round(node_ram_usage*100, 2),
-                                           self._config_manager.NODES_METRICS["ram_usage"], exp_instant_id,
-                                           node_id=self._nodes_ids[node_type])
-            self._db_manager.insert_metric("cpu_usage", "node", self._config_manager.NODES_METRICS_UNIT["cpu_usage"],
-                                           round(node_cpu_usage * 100, 2),
-                                           self._config_manager.NODES_METRICS["cpu_usage"], exp_instant_id,
-                                           node_id=self._nodes_ids[node_type])
+            self.__db_manager.insert_metric(
+                "ram_usage", "node", self.__config_manager.NODES_METRICS_UNIT["ram_usage"],
+                round(node_ram_usage*100, 2), self.__config_manager.NODES_METRICS["ram_usage"],
+                exp_instant_id, node_id=self.__nodes_ids[node_type]
+            )
+            self.__db_manager.insert_metric(
+                "cpu_usage", "node", self.__config_manager.NODES_METRICS_UNIT["cpu_usage"],
+                round(node_cpu_usage * 100, 2), self.__config_manager.NODES_METRICS["cpu_usage"],
+                exp_instant_id, node_id=self.__nodes_ids[node_type]
+            )
 
             for _, func in enumerate(json_file["output"][idx]["functions"]):
                 func_name = func["name"]
-                if func_name in self._config_manager.FUNCTION_NAMES:
-                    self._db_manager.insert_deploy(exp_instant_id, self._functions_ids[func_name], func["max_rate"], func["service_count"], func["invoc_rate"], func["margin"], func["state"])
+                if func_name in self.__config_manager.FUNCTION_NAMES:
+                    self.__db_manager.insert_deploy(
+                        exp_instant_id, self.__functions_ids[func_name], func["max_rate"],
+                        func["service_count"], func["invoc_rate"], func["margin"], func["state"]
+                    )
+
                     for key, value in func.items():
-                        if key != "name" and key not in self._config_manager.DEPLOY_DATAS:
+                        if key != "name" and key not in self.__config_manager.DEPLOY_DATAS:
                             if key in ["ram_xfunc", "cpu_xfunc"]:
                                 value = round(value * 100, 2)
 
-                            self._db_manager.insert_metric(key, "func", self._config_manager.FUNCTION_METRICS_UNIT[key],
-                                                           value, self._config_manager.FUNCTION_METRICS[key], exp_instant_id,
-                                                           function_id=self._functions_ids[func_name])
+                            self.__db_manager.insert_metric(
+                                key, "func", self.__config_manager.FUNCTION_METRICS_UNIT[key],
+                                value, self.__config_manager.FUNCTION_METRICS[key], exp_instant_id,
+                                function_id=self.__functions_ids[func_name]
+                            )
 
     def _load_data(self) -> None:
-        data_dir = self._config_manager.DATA_DIR
-        for node_type in self._config_manager.NODES_TYPE:
+        """
+        This method read all files in data directory and parse each one of them
+        """
+        data_dir = self.__config_manager.DATA_DIR
+        for node_type in self.__config_manager.NODES_TYPE:
             for path, _, files in os.walk(os.path.join(data_dir, node_type)):
                 for config in files:
                     f = open(os.path.join(path, config))
@@ -91,22 +113,29 @@ class DataLoader:
                     self._parse_file(json_doc)
 
     def _load_static_data(self) -> None:
+        """
+        This method load all data that not changes: information about nodes
+        and  functions
+        """
         # Load node's data
-        for node_type in self._config_manager.NODES_TYPE:
-            node_id = self._db_manager.insert_node(
+        for node_type in self.__config_manager.NODES_TYPE:
+            node_id = self.__db_manager.insert_node(
                 node_type,
-                self._config_manager.NODE_CONFIGURATIONS[node_type]["ram"],
-                self._config_manager.NODE_CONFIGURATIONS[node_type]["cpu"]
+                self.__config_manager.NODE_CONFIGURATIONS[node_type]["ram"],
+                self.__config_manager.NODE_CONFIGURATIONS[node_type]["cpu"]
             )
-            self._nodes_ids[node_type] = node_id
+            self.__nodes_ids[node_type] = node_id
 
         # Load function's data
-        for func_name in self._config_manager.FUNCTION_NAMES:
-            function_id = self._db_manager.insert_function(
+        for func_name in self.__config_manager.FUNCTION_NAMES:
+            function_id = self.__db_manager.insert_function(
                 func_name,
-                self._config_manager.FUNCTIONS_DESCRPTION[func_name]
+                self.__config_manager.FUNCTIONS_DESCRPTION[func_name]
             )
-            self._functions_ids[func_name] = function_id
+            self.__functions_ids[func_name] = function_id
 
     def select_example(self):
-        self._db_manager.select_example()
+        """
+        Dummy function used to select some data and check that everything works
+        """
+        self.__db_manager.select_example()

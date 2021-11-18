@@ -127,6 +127,8 @@ class ConfigManager(object):
 
     DEPLOY_DATAS = ["service_count", "invoc_rate", "margin", "state"]
 
+    SQL_FILE_PATH_DIR = "database_manager/sql/"
+
     def __new__(self):
         # if is not define create new instance otherwise return only instance of thi class.
         if not isinstance(self._config_manager, self):

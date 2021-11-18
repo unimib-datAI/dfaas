@@ -1,168 +1,130 @@
+import datetime
 import sqlite3
 import pandas as pd
+from pathlib import Path
 from .db_manager import DbManager
 from data_loader.request.config_request import ConfigRequest
+from config_manager import ConfigManager
 
 
 class ExpDbManager(DbManager):
+    """
+    Class that represents Experiment database,
+    with all SQLLite statements to create table,
+    insert data and get metrics
+    """
+
+    __config_manager = ConfigManager()
 
     def __init__(self, db_path) -> None:
         super().__init__(db_path)
 
+    def __execute_query(self, query: str):
+        """
+        Method used to execute a generic query
+        :query: string representation of query to be executed
+        """
+        conn = sqlite3.connect(self._DbManager__path)
+        cursor = conn.cursor()
+        cursor.execute(query)
+        conn.commit()
+        return cursor.lastrowid
+
     def create_tables(self) -> None:
         """ Create tables for experiment database """
-        conn = sqlite3.connect(self._path)
-        cursor = conn.cursor()
+        self.__execute_query(Path(self.__config_manager.SQL_FILE_PATH_DIR + "create_table_node.sql").read_text())
+        self.__execute_query(Path(self.__config_manager.SQL_FILE_PATH_DIR + "create_table_function.sql").read_text())
+        self.__execute_query(Path(self.__config_manager.SQL_FILE_PATH_DIR + "create_table_exp_instant.sql").read_text())
+        self.__execute_query(Path(self.__config_manager.SQL_FILE_PATH_DIR + "create_table_metric.sql").read_text())
+        self.__execute_query(Path(self.__config_manager.SQL_FILE_PATH_DIR + "create_table_deploy.sql").read_text())
 
-        # Create node table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS `NODE` (
-                `ID` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                `Name` TEXT NOT NULL UNIQUE,
-                `Ram` REAL NOT NULL,
-                `Cpu` REAL NOT NULL
-            );
-        ''')
+    def insert_node(self, name: str, ram: float, cpu: float) -> int:
+        """
+        Insert a node into NODE table
+        :name: node's name, with unique constraint
+        :ram: ram available on this node type
+        :cpu: cpu available on this node type
+        :return: last inserted id
+        """
+        last_id = self.__execute_query(
+            Path(self.__config_manager.SQL_FILE_PATH_DIR + "insert_node.sql").read_text().format(name, ram, cpu)
+        )
+        return last_id
 
-        # Creare function table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS `FUNCTION` (
-                `ID` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                `Name` TEXT NOT NULL,
-                `Description` TEXT NULL
-            );
-        ''')
+    def insert_function(self, name: str, description: str) -> int:
+        """
+        Insert a function to FUNCTION table
+        :name: function name, with unique constraint
+        :description: function description
+        :return: last inserted id
+        """
+        last_id = self.__execute_query(
+            Path(self.__config_manager.SQL_FILE_PATH_DIR + "insert_function.sql").read_text().format(name, description)
+        )
+        return last_id
 
-        # Create experiment instant table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS `EXPERIMENT_INSTANT` (
-                `ID` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                `Timestamp` DATETIME NOT NULL,
-                `NodeID` INTEGER NOT NULL,
-                CONSTRAINT `NodeID`
-                    FOREIGN KEY (`NodeID`)
-                    REFERENCES `NODE` (`ID`)
-                    ON DELETE NO ACTION
-                    ON UPDATE NO ACTION
-            );
-        ''')
+    def insert_exp_instant(self, ts: datetime, node_id: int) -> int:
+        """
+        Insert experiment_instant to EXPERIMENT_INSTANT table
+        :ts: timestamp of experiment instant
+        :node_id: id of the node which experiment_instant is related to
+        :return: last inserted id
+        """
+        last_id = self.__execute_query(
+            Path(self.__config_manager.SQL_FILE_PATH_DIR + "insert_exp_instant.sql").read_text().format(ts, node_id)
+        )
+        return last_id
 
-        # Create metric table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS `METRIC` (
-                `ID` INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
-                `Type` TEXT CHECK( Type IN ('node','func') ) NOT NULL,
-                `Name` TEXT NOT NULL,
-                `Value` REAL NULL,
-                `Unit` TEXT NOT NULL,
-                `Description` TEXT DEFAULT NULL,
-                `ExpInstantID` INTEGER NOT NULL,
-                `NodeID` INTEGER DEFAULT NULL,
-                `FunctionID` INTEGER DEFAULT NULL,
-                CONSTRAINT `ExpInstantID` FOREIGN KEY (`ExpInstantID`) REFERENCES `EXPERIMENT_INSTANT` (`ID`) ON DELETE NO ACTION ON UPDATE NO ACTION,
-                CONSTRAINT `FunctionID` FOREIGN KEY (`FunctionID`) REFERENCES `FUNCTION` (`ID`) ON DELETE NO ACTION ON UPDATE NO ACTION,
-                CONSTRAINT `NodeIDMetic` FOREIGN KEY (`NodeID`) REFERENCES `NODE` (`ID`) ON DELETE NO ACTION ON UPDATE NO ACTION
-                );
-        ''')
-        
-        # Create deploy table
-        cursor.execute('''
-            CREATE TABLE IF NOT EXISTS `DEPLOY` (
-                `ExpInstantID` INTEGER NOT NULL,
-                `FunctionID` INTEGER NOT NULL,
-                `MaxRate` INTEGER NOT NULL,
-                `NumReplicas` INTEGER NOT NULL,
-                `Workload` INTEGER NOT NULL,
-                `Margin` INTEGER NOT NULL,
-                `State` TEXT NOT NULL,
-                PRIMARY KEY(`ExpInstantID`, `FunctionID`),
-                CONSTRAINT `ExpInstantIDdeploy`
-                FOREIGN KEY(`ExpInstantID`)
-                REFERENCES `EXPERIMENT_INSTANT` (`ID`)
-                ON DELETE NO ACTION
-                ON UPDATE NO ACTION,
-                CONSTRAINT `FunctionIDdeploy`
-                FOREIGN KEY(`FunctionID`)
-                REFERENCES `FUNCTION` (`ID`)
-                ON DELETE NO ACTION
-                ON UPDATE NO ACTION)
-        ''')
-
-        conn.commit()
-
-    ############ Insert statements ############
-
-    def insert_node(self, name, ram, cpu) -> int:
-        conn = sqlite3.connect(self._path)
-        cursor = conn.cursor()
-
-        cursor.execute('''
-            INSERT INTO `NODE` (`Name`, `Ram`, `Cpu`)
-            VALUES ( "{}", {}, {} );
-        '''.format(name, ram, cpu))
-
-        conn.commit()
-        return cursor.lastrowid
-
-    def insert_function(self, name, description) -> int:
-        conn = sqlite3.connect(self._path)
-        cursor = conn.cursor()
-
-        cursor.execute('''
-            INSERT INTO `FUNCTION` ( `Name`, `Description`)
-            VALUES ( "{}", "{}" );
-        '''.format(name, description))
-
-        conn.commit()
-        return cursor.lastrowid
-
-    def insert_exp_instant(self, ts, node_id) -> int:
-        conn = sqlite3.connect(self._path)
-        cursor = conn.cursor()
-
-        cursor.execute('''
-            INSERT INTO `EXPERIMENT_INSTANT`( `Timestamp`, `NodeID` )
-            VALUES ( "{}", {} );
-        '''.format(ts, node_id))
-
-        conn.commit()
-        return cursor.lastrowid
-
-    def insert_metric(self, name, type, unit, val, desc, exp_instant_id, function_id = None, node_id = None) -> int:
-        conn = sqlite3.connect(self._path)
-        cursor = conn.cursor()
-
-        if function_id != None and node_id == None:
-            cursor.execute('''
-                INSERT INTO `METRIC` ( `Name`, `Type`, `Unit`, `Value`, `Description`, `ExpInstantID`, `FunctionID`)
-                VALUES ( "{}", "{}", "{}", {}, "{}", {}, {});
-            '''.format(name, type, unit, val, desc, exp_instant_id, function_id))
-        elif node_id != None and function_id == None:
-            cursor.execute('''
-                INSERT INTO `METRIC` ( `Name`, `Type`, `Unit`, `Value`, `Description`, `ExpInstantID`, `NodeID`)
-                VALUES ( "{}", "{}", "{}", {}, "{}", {}, {});
-            '''.format(name, type, unit, val, desc, exp_instant_id, node_id))
+    def insert_metric(self, name: str, type: str, unit: str, val: float, desc: str,
+                      exp_instant_id: int, function_id = None, node_id = None) -> int:
+        """
+        Insert metric to METRIC table
+        :name: metric name
+        :type: metric type (func or node)
+        :unit: metric unit of measure
+        :val: metric value
+        :desc: metric description
+        :exp_instant_id: experiment instant id which metric is related to
+        :function_id: (optional) id of function which metric is related to
+        :node_id: (optional) id of node which metric is related to
+        :return: last inserted id
+        """
+        if function_id is not None and node_id is None:
+            last_id = self.__execute_query(
+                Path(self.__config_manager.SQL_FILE_PATH_DIR + "insert_metric_func.sql").read_text().format(name, type, unit, val, desc, exp_instant_id, function_id)
+            )
+        elif node_id is not None and function_id is None:
+            last_id = self.__execute_query(
+                Path(self.__config_manager.SQL_FILE_PATH_DIR + "insert_metric_node.sql").read_text().format(name, type, unit, val, desc, exp_instant_id, node_id)
+            )
         else:
             print("Params function_id and node_id cannot be both not None")
 
-        conn.commit()
-        return cursor.lastrowid
+        return last_id
 
-    def insert_deploy(self, exp_instant_id, function_id, max_rate, num_replicas, wl, margin, state) -> None:
-        conn = sqlite3.connect(self._path)
-        cursor = conn.cursor()
-
-        cursor.execute('''
-            INSERT INTO `DEPLOY` ( `ExpInstantID`, `FunctionID`, `MaxRate`, `NumReplicas`, `Workload`, `Margin`, `State` )
-            VALUES ( {}, {}, {}, {}, {}, {}, "{}");
-        '''.format(exp_instant_id, function_id, max_rate, num_replicas, wl, margin, state))
-
-        conn.commit()
-
-    #######################################
+    def insert_deploy(self, exp_instant_id: int, function_id: int, max_rate: int,
+                      num_replicas: int, wl: int, margin: int, state: str) -> None:
+        """
+        Insert deploy information on DEPLOY table
+        :exp_instant_id: experiment instant id
+        :function_id: function id
+        :max_rate: max_rate of function deployed in this experiment instant (req/s)
+        :num_replicas: number of function replicas deployed in this experiment instant
+        :wl: invocation rate to this function deployed in this experiment instant (req/s)
+        :margin: margin of requests for this function deployed in this experiment instant (req/s)
+        :state: state ("Overloaded", "Underloaded") for this function deployed in this experiment instant
+        """
+        last_id = self.__execute_query(
+            Path(self.__config_manager.SQL_FILE_PATH_DIR + "insert_deploy.sql").read_text().format(exp_instant_id, function_id, max_rate, num_replicas, wl, margin, state)
+        )
+        return last_id
 
     def select_example(self):
-        conn = sqlite3.connect(self._path)
+        """
+        Dummy select query example
+        Used to verify that everything works
+        """
+        conn = sqlite3.connect(self._DbManager__path)
         c = conn.cursor()
 
         c.execute('''
@@ -182,6 +144,11 @@ class ExpDbManager(DbManager):
         print(df)
 
     def get_metrics(self, conf_request: ConfigRequest) -> pd.DataFrame and pd.DataFrame:
+        """
+        Method used to get metrics related to a specific configuration request
+        :conf_request: configuration request
+        :return: two dataframe, one for node's metrics and another for function's metrics
+        """
         func_count = len(conf_request.get_functions())
         node_type = conf_request.get_node_type()
 
@@ -201,53 +168,38 @@ class ExpDbManager(DbManager):
 
         where_condition += ")"
 
-        query = '''
-                    SELECT e.ID
-                    FROM NODE n
-                    JOIN EXPERIMENT_INSTANT e ON n.ID = e.NodeID 
-                    JOIN DEPLOY             d ON e.ID = d.ExpInstantID
-                    JOIN FUNCTION           f ON d.FunctionID == f.ID
-                    WHERE {}
-                    GROUP BY e.ID
-                    HAVING COUNT(d.FunctionID) = {}
-                '''.format(where_condition, func_count)
+        query = Path(self.__config_manager.SQL_FILE_PATH_DIR +
+                     "select_exp_id_for_config.sql").read_text().format(where_condition, func_count)
 
-        #print(query)
-
-        conn = sqlite3.connect(self._path)
+        conn = sqlite3.connect(self._DbManager__path)
         c = conn.cursor()
         c.execute(query)
 
         experiments_id_list = [str(el[0]) for el in c.fetchall()]
 
-        print("Intermediate result: DF with experiments IDs")
-        df = pd.DataFrame(experiments_id_list,
-                          columns=["ExpInstantID"])
-        print(df)
+        #print("Intermediate result: DF with experiments IDs")
+        #df = pd.DataFrame(experiments_id_list,
+        #                  columns=["ExpInstantID"])
+        #print(df)
 
         # Select all metrics for this specific config request
-        query = '''
-                    SELECT  m.ID, m.Type, m.Name, m.Value, m.Unit, m.Description, m.ExpInstantID, 
-                            m.NodeID, n.Name, m.FunctionID, f.Name
-                    FROM METRIC m
-                    LEFT JOIN FUNCTION   f ON m.FunctionID = f.ID
-                    LEFT JOIN NODE       n ON m.NodeID = n.ID
-                    WHERE m.ExpInstantID IN ({})
-                '''.format(",".join(experiments_id_list))
+        query = Path(self.__config_manager.SQL_FILE_PATH_DIR +
+                     "select_metrics_by_exp_ids.sql").read_text().format(",".join(experiments_id_list))
 
         c.execute(query)
 
-        print("Final result: Metrics for Experiments {}".format(experiments_id_list))
+        print("Metrics for Experiments {}".format(experiments_id_list))
+        print("------------------------------------------------------------------------------")
         df = pd.DataFrame(c.fetchall(),
                           columns=["ID", "Type", "Name", "Value", "Unit", "Description",
                                    "ExpInstantID", "NodeID", "NodeName", "FunctionID",
                                    "FunctionName"])
-        #print(df)
 
         df_node_metrics = df[df["Type"] == "node"].drop(columns=["FunctionID", "FunctionName"])
         df_func_metrics = df[df["Type"] == "func"].drop(columns=["NodeID", "NodeName"])
 
         print(df_node_metrics)
+        print("------------------------------------------------------------------------------")
         print(df_func_metrics)
 
         return df_node_metrics, df_func_metrics

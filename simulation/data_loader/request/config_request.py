@@ -1,11 +1,22 @@
 class ConfigRequest:
+    """
+    Class that represents a configuration request by the simulator.
+    A configuration request is composed by a node_type and a list of
+    FunctionRequest
+    """
 
     def __init__(self, node_type, func_requests):
-        self._node_type = node_type
-        self._func_requests = func_requests
+        self.__node_type = node_type
+        self.__func_requests = func_requests
 
     def get_node_type(self):
-        return self._node_type
+        """
+        Get node type
+        """
+        return self.__node_type
 
     def get_functions(self):
-        return self._func_requests
+        """
+        Get functions list
+        """
+        return self.__func_requests
