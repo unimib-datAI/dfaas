@@ -1,23 +1,54 @@
 {
-    "seed": 711,
+    "seed": 1173,
     "nodes_number": 5,
-    "edge_prob": 0.3,
+    "edge_prob": 0.1,
     "node_0": {
         "replicas": {
-            "funca_num": 2,
-            "qrcode_num": 2,
-            "ocr_num": 1
+            "funca": 2,
+            "qrcode": 2,
+            "ocr": 1
         },
         "node_type": "node_1",
         "neighbours": [
-            "node_4",
-            "node_3"
+            "node_4"
         ],
         "exp_history": [
             {
                 "functions": [
                     {
                         "name": "funca",
+                        "invoc_rate": 0
+                    },
+                    {
+                        "name": "figlet",
+                        "invoc_rate": 0
+                    },
+                    {
+                        "name": "ocr",
+                        "invoc_rate": 0
+                    },
+                    {
+                        "name": "qrcode",
+                        "invoc_rate": 0
+                    },
+                    {
+                        "name": "nodeinfo",
+                        "invoc_rate": 0
+                    }
+                ]
+            },
+            {
+                "functions": [
+                    {
+                        "name": "nodeinfo",
+                        "invoc_rate": 0
+                    },
+                    {
+                        "name": "funca",
+                        "invoc_rate": 6
+                    },
+                    {
+                        "name": "figlet",
                         "invoc_rate": 0
                     },
                     {
@@ -34,7 +65,11 @@
                 "functions": [
                     {
                         "name": "funca",
-                        "invoc_rate": 18
+                        "invoc_rate": 31
+                    },
+                    {
+                        "name": "figlet",
+                        "invoc_rate": 0
                     },
                     {
                         "name": "ocr",
@@ -42,6 +77,82 @@
                     },
                     {
                         "name": "qrcode",
+                        "invoc_rate": 0
+                    },
+                    {
+                        "name": "nodeinfo",
+                        "invoc_rate": 0
+                    }
+                ]
+            },
+            {
+                "functions": [
+                    {
+                        "name": "figlet",
+                        "invoc_rate": 0
+                    },
+                    {
+                        "name": "ocr",
+                        "invoc_rate": 0
+                    },
+                    {
+                        "name": "qrcode",
+                        "invoc_rate": 0
+                    },
+                    {
+                        "name": "nodeinfo",
+                        "invoc_rate": 0
+                    },
+                    {
+                        "name": "funca",
+                        "invoc_rate": 31
+                    }
+                ]
+            },
+            {
+                "functions": [
+                    {
+                        "name": "funca",
+                        "invoc_rate": 31
+                    },
+                    {
+                        "name": "figlet",
+                        "invoc_rate": 0
+                    },
+                    {
+                        "name": "ocr",
+                        "invoc_rate": 0
+                    },
+                    {
+                        "name": "qrcode",
+                        "invoc_rate": 0
+                    },
+                    {
+                        "name": "nodeinfo",
+                        "invoc_rate": 0
+                    }
+                ]
+            },
+            {
+                "functions": [
+                    {
+                        "name": "qrcode",
+                        "invoc_rate": 0
+                    },
+                    {
+                        "name": "nodeinfo",
+                        "invoc_rate": 0
+                    },
+                    {
+                        "name": "funca",
+                        "invoc_rate": 31
+                    },
+                    {
+                        "name": "figlet",
+                        "invoc_rate": 0
+                    },
+                    {
+                        "name": "ocr",
                         "invoc_rate": 1
                     }
                 ]
@@ -50,7 +161,11 @@
                 "functions": [
                     {
                         "name": "funca",
-                        "invoc_rate": 39
+                        "invoc_rate": 25
+                    },
+                    {
+                        "name": "figlet",
+                        "invoc_rate": 0
                     },
                     {
                         "name": "ocr",
@@ -58,71 +173,11 @@
                     },
                     {
                         "name": "qrcode",
-                        "invoc_rate": 4
-                    }
-                ]
-            },
-            {
-                "functions": [
-                    {
-                        "name": "funca",
-                        "invoc_rate": 39
-                    },
-                    {
-                        "name": "ocr",
                         "invoc_rate": 0
                     },
                     {
-                        "name": "qrcode",
-                        "invoc_rate": 4
-                    }
-                ]
-            },
-            {
-                "functions": [
-                    {
-                        "name": "funca",
-                        "invoc_rate": 39
-                    },
-                    {
-                        "name": "ocr",
+                        "name": "nodeinfo",
                         "invoc_rate": 0
-                    },
-                    {
-                        "name": "qrcode",
-                        "invoc_rate": 4
-                    }
-                ]
-            },
-            {
-                "functions": [
-                    {
-                        "name": "funca",
-                        "invoc_rate": 39
-                    },
-                    {
-                        "name": "ocr",
-                        "invoc_rate": 0
-                    },
-                    {
-                        "name": "qrcode",
-                        "invoc_rate": 4
-                    }
-                ]
-            },
-            {
-                "functions": [
-                    {
-                        "name": "funca",
-                        "invoc_rate": 21
-                    },
-                    {
-                        "name": "ocr",
-                        "invoc_rate": 0
-                    },
-                    {
-                        "name": "qrcode",
-                        "invoc_rate": 3
                     }
                 ]
             }
@@ -130,27 +185,23 @@
     },
     "node_1": {
         "replicas": {
-            "funca_num": 5,
-            "qrcode_num": 2,
-            "ocr_num": 1
+            "funca": 1,
+            "qrcode": 1,
+            "ocr": 0
         },
         "node_type": "node_2",
         "neighbours": [
-            "node_2"
+            "node_3"
         ],
         "exp_history": [
             {
                 "functions": [
                     {
-                        "name": "funca",
-                        "invoc_rate": 0
-                    },
-                    {
                         "name": "qrcode",
                         "invoc_rate": 0
                     },
                     {
-                        "name": "ocr",
+                        "name": "funca",
                         "invoc_rate": 0
                     }
                 ]
@@ -158,95 +209,71 @@
             {
                 "functions": [
                     {
-                        "name": "funca",
-                        "invoc_rate": 174
-                    },
-                    {
                         "name": "qrcode",
-                        "invoc_rate": 0
+                        "invoc_rate": 1
                     },
                     {
-                        "name": "ocr",
-                        "invoc_rate": 9
+                        "name": "funca",
+                        "invoc_rate": 6
                     }
                 ]
             },
             {
                 "functions": [
                     {
-                        "name": "ocr",
-                        "invoc_rate": 9
+                        "name": "qrcode",
+                        "invoc_rate": 1
                     },
                     {
                         "name": "funca",
-                        "invoc_rate": 174
-                    },
-                    {
-                        "name": "qrcode",
-                        "invoc_rate": 0
+                        "invoc_rate": 6
                     }
                 ]
             },
             {
                 "functions": [
                     {
-                        "name": "ocr",
-                        "invoc_rate": 9
+                        "name": "qrcode",
+                        "invoc_rate": 1
                     },
                     {
                         "name": "funca",
-                        "invoc_rate": 177
-                    },
-                    {
-                        "name": "qrcode",
-                        "invoc_rate": 0
+                        "invoc_rate": 6
                     }
                 ]
             },
             {
                 "functions": [
                     {
-                        "name": "funca",
-                        "invoc_rate": 177
-                    },
-                    {
                         "name": "qrcode",
-                        "invoc_rate": 0
+                        "invoc_rate": 1
                     },
                     {
-                        "name": "ocr",
-                        "invoc_rate": 9
+                        "name": "funca",
+                        "invoc_rate": 6
                     }
                 ]
             },
             {
                 "functions": [
                     {
-                        "name": "funca",
-                        "invoc_rate": 177
-                    },
-                    {
                         "name": "qrcode",
-                        "invoc_rate": 0
+                        "invoc_rate": 1
                     },
                     {
-                        "name": "ocr",
-                        "invoc_rate": 9
+                        "name": "funca",
+                        "invoc_rate": 6
                     }
                 ]
             },
             {
                 "functions": [
                     {
-                        "name": "funca",
-                        "invoc_rate": 0
-                    },
-                    {
                         "name": "qrcode",
                         "invoc_rate": 0
                     },
                     {
-                        "name": "ocr",
+                        "name": "funca",
                         "invoc_rate": 0
                     }
                 ]
@@ -255,13 +282,12 @@
     },
     "node_2": {
         "replicas": {
-            "funca_num": 4,
-            "qrcode_num": 2,
-            "ocr_num": 1
+            "funca": 1,
+            "qrcode": 1,
+            "ocr": 1
         },
         "node_type": "node_3",
         "neighbours": [
-            "node_1",
             "node_3",
             "node_4"
         ],
@@ -273,11 +299,11 @@
                         "invoc_rate": 0
                     },
                     {
-                        "name": "qrcode",
+                        "name": "ocr",
                         "invoc_rate": 0
                     },
                     {
-                        "name": "ocr",
+                        "name": "qrcode",
                         "invoc_rate": 0
                     }
                 ]
@@ -286,15 +312,15 @@
                 "functions": [
                     {
                         "name": "funca",
-                        "invoc_rate": 9
-                    },
-                    {
-                        "name": "qrcode",
-                        "invoc_rate": 30
+                        "invoc_rate": 1
                     },
                     {
                         "name": "ocr",
                         "invoc_rate": 0
+                    },
+                    {
+                        "name": "qrcode",
+                        "invoc_rate": 1
                     }
                 ]
             },
@@ -302,31 +328,15 @@
                 "functions": [
                     {
                         "name": "funca",
-                        "invoc_rate": 9
-                    },
-                    {
-                        "name": "qrcode",
-                        "invoc_rate": 31
+                        "invoc_rate": 1
                     },
                     {
                         "name": "ocr",
-                        "invoc_rate": 0
-                    }
-                ]
-            },
-            {
-                "functions": [
-                    {
-                        "name": "funca",
-                        "invoc_rate": 9
+                        "invoc_rate": 1
                     },
                     {
                         "name": "qrcode",
-                        "invoc_rate": 31
-                    },
-                    {
-                        "name": "ocr",
-                        "invoc_rate": 0
+                        "invoc_rate": 1
                     }
                 ]
             },
@@ -334,15 +344,31 @@
                 "functions": [
                     {
                         "name": "qrcode",
-                        "invoc_rate": 31
-                    },
-                    {
-                        "name": "ocr",
-                        "invoc_rate": 0
+                        "invoc_rate": 1
                     },
                     {
                         "name": "funca",
-                        "invoc_rate": 9
+                        "invoc_rate": 1
+                    },
+                    {
+                        "name": "ocr",
+                        "invoc_rate": 1
+                    }
+                ]
+            },
+            {
+                "functions": [
+                    {
+                        "name": "ocr",
+                        "invoc_rate": 1
+                    },
+                    {
+                        "name": "qrcode",
+                        "invoc_rate": 1
+                    },
+                    {
+                        "name": "funca",
+                        "invoc_rate": 1
                     }
                 ]
             },
@@ -350,15 +376,15 @@
                 "functions": [
                     {
                         "name": "funca",
-                        "invoc_rate": 9
-                    },
-                    {
-                        "name": "qrcode",
-                        "invoc_rate": 31
+                        "invoc_rate": 1
                     },
                     {
                         "name": "ocr",
-                        "invoc_rate": 0
+                        "invoc_rate": 1
+                    },
+                    {
+                        "name": "qrcode",
+                        "invoc_rate": 1
                     }
                 ]
             },
@@ -369,11 +395,11 @@
                         "invoc_rate": 0
                     },
                     {
-                        "name": "qrcode",
-                        "invoc_rate": 0
+                        "name": "ocr",
+                        "invoc_rate": 1
                     },
                     {
-                        "name": "ocr",
+                        "name": "qrcode",
                         "invoc_rate": 0
                     }
                 ]
@@ -382,13 +408,13 @@
     },
     "node_3": {
         "replicas": {
-            "funca_num": 2,
-            "qrcode_num": 2,
-            "ocr_num": 1
+            "funca": 0,
+            "qrcode": 2,
+            "ocr": 1
         },
         "node_type": "node_1",
         "neighbours": [
-            "node_0",
+            "node_1",
             "node_2",
             "node_4"
         ],
@@ -396,15 +422,19 @@
             {
                 "functions": [
                     {
-                        "name": "qrcode",
-                        "invoc_rate": 0
-                    },
-                    {
-                        "name": "funca",
+                        "name": "figlet",
                         "invoc_rate": 0
                     },
                     {
                         "name": "ocr",
+                        "invoc_rate": 0
+                    },
+                    {
+                        "name": "qrcode",
+                        "invoc_rate": 0
+                    },
+                    {
+                        "name": "nodeinfo",
                         "invoc_rate": 0
                     }
                 ]
@@ -412,47 +442,19 @@
             {
                 "functions": [
                     {
-                        "name": "qrcode",
+                        "name": "figlet",
                         "invoc_rate": 0
                     },
                     {
-                        "name": "funca",
-                        "invoc_rate": 18
-                    },
-                    {
                         "name": "ocr",
-                        "invoc_rate": 6
-                    }
-                ]
-            },
-            {
-                "functions": [
-                    {
-                        "name": "ocr",
-                        "invoc_rate": 7
+                        "invoc_rate": 0
                     },
                     {
                         "name": "qrcode",
                         "invoc_rate": 0
                     },
                     {
-                        "name": "funca",
-                        "invoc_rate": 19
-                    }
-                ]
-            },
-            {
-                "functions": [
-                    {
-                        "name": "funca",
-                        "invoc_rate": 19
-                    },
-                    {
-                        "name": "ocr",
-                        "invoc_rate": 7
-                    },
-                    {
-                        "name": "qrcode",
+                        "name": "nodeinfo",
                         "invoc_rate": 0
                     }
                 ]
@@ -460,47 +462,99 @@
             {
                 "functions": [
                     {
-                        "name": "qrcode",
+                        "name": "figlet",
                         "invoc_rate": 0
                     },
                     {
-                        "name": "funca",
-                        "invoc_rate": 19
+                        "name": "ocr",
+                        "invoc_rate": 0
                     },
                     {
-                        "name": "ocr",
-                        "invoc_rate": 7
+                        "name": "qrcode",
+                        "invoc_rate": 3
+                    },
+                    {
+                        "name": "nodeinfo",
+                        "invoc_rate": 0
                     }
                 ]
             },
             {
                 "functions": [
                     {
-                        "name": "qrcode",
+                        "name": "figlet",
                         "invoc_rate": 0
                     },
                     {
-                        "name": "funca",
-                        "invoc_rate": 19
+                        "name": "ocr",
+                        "invoc_rate": 0
                     },
                     {
-                        "name": "ocr",
-                        "invoc_rate": 7
+                        "name": "qrcode",
+                        "invoc_rate": 3
+                    },
+                    {
+                        "name": "nodeinfo",
+                        "invoc_rate": 0
                     }
                 ]
             },
             {
                 "functions": [
                     {
-                        "name": "funca",
-                        "invoc_rate": 1
-                    },
-                    {
                         "name": "ocr",
-                        "invoc_rate": 1
+                        "invoc_rate": 0
                     },
                     {
                         "name": "qrcode",
+                        "invoc_rate": 3
+                    },
+                    {
+                        "name": "nodeinfo",
+                        "invoc_rate": 0
+                    },
+                    {
+                        "name": "figlet",
+                        "invoc_rate": 0
+                    }
+                ]
+            },
+            {
+                "functions": [
+                    {
+                        "name": "figlet",
+                        "invoc_rate": 0
+                    },
+                    {
+                        "name": "ocr",
+                        "invoc_rate": 0
+                    },
+                    {
+                        "name": "qrcode",
+                        "invoc_rate": 3
+                    },
+                    {
+                        "name": "nodeinfo",
+                        "invoc_rate": 0
+                    }
+                ]
+            },
+            {
+                "functions": [
+                    {
+                        "name": "figlet",
+                        "invoc_rate": 0
+                    },
+                    {
+                        "name": "ocr",
+                        "invoc_rate": 0
+                    },
+                    {
+                        "name": "qrcode",
+                        "invoc_rate": 3
+                    },
+                    {
+                        "name": "nodeinfo",
                         "invoc_rate": 0
                     }
                 ]
@@ -509,9 +563,9 @@
     },
     "node_4": {
         "replicas": {
-            "funca_num": 5,
-            "qrcode_num": 2,
-            "ocr_num": 1
+            "funca": 0,
+            "qrcode": 0,
+            "ocr": 1
         },
         "node_type": "node_2",
         "neighbours": [
@@ -523,15 +577,11 @@
             {
                 "functions": [
                     {
-                        "name": "funca",
+                        "name": "figlet",
                         "invoc_rate": 0
                     },
                     {
                         "name": "ocr",
-                        "invoc_rate": 0
-                    },
-                    {
-                        "name": "qrcode",
                         "invoc_rate": 0
                     }
                 ]
@@ -539,15 +589,11 @@
             {
                 "functions": [
                     {
-                        "name": "funca",
-                        "invoc_rate": 60
-                    },
-                    {
                         "name": "ocr",
                         "invoc_rate": 0
                     },
                     {
-                        "name": "qrcode",
+                        "name": "figlet",
                         "invoc_rate": 0
                     }
                 ]
@@ -555,15 +601,11 @@
             {
                 "functions": [
                     {
-                        "name": "funca",
-                        "invoc_rate": 158
-                    },
-                    {
                         "name": "ocr",
                         "invoc_rate": 0
                     },
                     {
-                        "name": "qrcode",
+                        "name": "figlet",
                         "invoc_rate": 0
                     }
                 ]
@@ -571,15 +613,11 @@
             {
                 "functions": [
                     {
-                        "name": "funca",
-                        "invoc_rate": 158
-                    },
-                    {
                         "name": "ocr",
                         "invoc_rate": 0
                     },
                     {
-                        "name": "qrcode",
+                        "name": "figlet",
                         "invoc_rate": 0
                     }
                 ]
@@ -587,15 +625,11 @@
             {
                 "functions": [
                     {
-                        "name": "funca",
-                        "invoc_rate": 158
-                    },
-                    {
                         "name": "ocr",
                         "invoc_rate": 0
                     },
                     {
-                        "name": "qrcode",
+                        "name": "figlet",
                         "invoc_rate": 0
                     }
                 ]
@@ -603,15 +637,11 @@
             {
                 "functions": [
                     {
-                        "name": "funca",
-                        "invoc_rate": 158
-                    },
-                    {
                         "name": "ocr",
                         "invoc_rate": 0
                     },
                     {
-                        "name": "qrcode",
+                        "name": "figlet",
                         "invoc_rate": 0
                     }
                 ]
@@ -619,15 +649,11 @@
             {
                 "functions": [
                     {
-                        "name": "qrcode",
+                        "name": "ocr",
                         "invoc_rate": 0
                     },
                     {
-                        "name": "funca",
-                        "invoc_rate": 96
-                    },
-                    {
-                        "name": "ocr",
+                        "name": "figlet",
                         "invoc_rate": 0
                     }
                 ]

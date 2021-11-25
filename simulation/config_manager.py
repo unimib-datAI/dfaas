@@ -120,12 +120,12 @@ class ConfigManager(object):
         "invoc_rate": "req/sec",
         "max_rate": "req/sec",
         "prom_invoc_rate": "req/sec",
-        "afet": "",
+        "afet": "sec",
         "ram_xfunc": "%",
         "cpu_xfunc": "%"
     }
 
-    DEPLOY_DATAS = ["service_count", "invoc_rate", "margin", "state"]
+    DEPLOY_DATAS = ["service_count", "invoc_rate", "margin", "state", "max_rate"]
 
     SQL_FILE_PATH_DIR = "database_manager/sql/"
 

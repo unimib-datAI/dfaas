@@ -10,9 +10,10 @@ from config_manager import ConfigManager
 
 config_manager = ConfigManager()
 
+
 def gather_configurations():
     """
-    Gather config file informations from data directory
+    Gather config file information from data directory
     """
     nodes_type = config_manager.NODES_TYPE
     data_dir = config_manager.DATA_DIR
@@ -23,42 +24,44 @@ def gather_configurations():
 
         for path, subdirs, files in os.walk(os.path.join(data_dir, node_type)):
             for name in files:
-                exp_files_path[node_type].append(os.path.join(path, name))
+                if name.endswith('.json'):
+                    exp_files_path[node_type].append(os.path.join(path, name))
 
     return exp_files_path
+
 
 def load_configurations(nodes_number):
     """
     Load configuration files
     """
     nodes_type = config_manager.NODES_TYPE
-    nodes_type_prib_dist = config_manager.NODES_TYPE_PROBABILITY_DISTRIBUTION
+    nodes_type_prob_dist = config_manager.NODES_TYPE_PROBABILITY_DISTRIBUTION
     config_files = gather_configurations()
 
     # For each node pick a random file
     configurations = []
 
     # Not used a uniform distribution because is more likely to have a
-    # high number of node of type 1, with minor specs due to gerarchic
+    # high number of node of type 1, with minor specs due to hierarchic
     # cloud infrastructure
-    choiches = np.random.choice(nodes_type, nodes_number, p=nodes_type_prib_dist)
+    choiches = np.random.choice(nodes_type, nodes_number, p=nodes_type_prob_dist)
     for choice in choiches:
         config = np.random.choice(config_files[choice])
         configurations.append(config)
     #print(configurations)
 
     # Mock loaded files [TO BE REMOVED]
-    configurations = [
+    #configurations = [
         # "exp-comparison/case4/node_1.json",
         # "exp-comparison/case4/node_2.json",
         # "exp-comparison/case4/node_3.json",
         # "exp-comparison/case4/node4.json",
         # "exp-comparison/case4/node5.json",
-        "exp-comparison/exp_pool/node_1.json",
-        "exp-comparison/exp_pool/node_2.json",
-        "exp-comparison/exp_pool/node_3.json",
-        "exp-comparison/exp_pool/node4.json",
-        "exp-comparison/exp_pool/node5.json",
+        #"exp-comparison/exp_pool/node1.json",
+        #"exp-comparison/exp_pool/node2.json",
+        #"exp-comparison/exp_pool/node3.json",
+        #"exp-comparison/exp_pool/node4.json",
+        #"exp-comparison/exp_pool/node5.json",
         # "exp-comparison/exp_pool/node6.json",
         # "exp-comparison/exp_pool/node7.json",
         # "exp-comparison/exp_pool/node8.json",
@@ -74,7 +77,7 @@ def load_configurations(nodes_number):
         # "exp-comparison/exp_pool/node18.json",
         # "exp-comparison/exp_pool/node19.json",
         # "exp-comparison/exp_pool/node20.json",
-    ]
+    #]
     # print(configurations)
 
     # Load selected files
@@ -110,6 +113,7 @@ def gnp_random_connected_graph(n, p):
                 G.add_edge(*e)
     return G
 
+
 def plot_graph(G):
     """
     Plot graph and export on file
@@ -120,12 +124,14 @@ def plot_graph(G):
             node_size=2000)
     plt.savefig(config_manager.OUTPUT_INSTANCE_GRAPH_FILE_PATH)
 
+
 def dict_key_substitution(data, old, new):
     """
     Utility function used to substitute dictionary key
     """
     data[new] = data[old]
     del data[old]
+
 
 def create_node_representation(key, start_config, G):
     """
@@ -137,7 +143,7 @@ def create_node_representation(key, start_config, G):
     node_config["replicas"] = {}
     for func in config_manager.FUNCTION_NAMES:
         replicas_key_name = func + "_num"
-        node_config["replicas"][replicas_key_name] = start_config["input"][replicas_key_name]
+        node_config["replicas"][func] = start_config["input"][replicas_key_name]
 
     node_config["node_type"] = start_config["input"]["node"]
     node_config["neighbours"] = list(G[key].keys())
@@ -157,6 +163,7 @@ def create_node_representation(key, start_config, G):
 
     return node_config
 
+
 def build_output_json(seed, nodes_num, edge_prob, G):
     """
     Function used to build output json file that represent the instance
@@ -173,9 +180,11 @@ def build_output_json(seed, nodes_num, edge_prob, G):
 
     return instance
 
+
 def export_instance_file(instance):
     with open(config_manager.OUTPUT_INSTANCE_JSON_FILE_PATH, 'w', encoding='utf-8') as f:
         json.dump(instance, f, ensure_ascii=False, indent=4)
+
 
 def main():
     # Get args passed as params
@@ -202,7 +211,7 @@ def main():
     loaded_files = load_configurations(nodes_num)
 
     # Create a random graph with "nodes_num" nodes
-    # Nodes are touple of (node_id, json_config)
+    # Nodes are tuple of (node_id, json_config)
     # json_config is used as a node property
     nodes = []
     for i, config in zip(range(0, nodes_num), loaded_files):
@@ -225,6 +234,7 @@ def main():
 
     # Export instance file
     export_instance_file(instance_json)
+
 
 # Call main program.
 if __name__ == "__main__":

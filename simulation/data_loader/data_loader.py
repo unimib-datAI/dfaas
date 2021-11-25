@@ -108,9 +108,10 @@ class DataLoader:
         for node_type in self.__config_manager.NODES_TYPE:
             for path, _, files in os.walk(os.path.join(data_dir, node_type)):
                 for config in files:
-                    f = open(os.path.join(path, config))
-                    json_doc = json.load(f)  # Return json file as a dictionary
-                    self._parse_file(json_doc)
+                    if config.endswith(".json"):
+                        f = open(os.path.join(path, config))
+                        json_doc = json.load(f)  # Return json file as a dictionary
+                        self._parse_file(json_doc)
 
     def _load_static_data(self) -> None:
         """

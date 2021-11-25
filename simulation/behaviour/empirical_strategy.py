@@ -224,7 +224,7 @@ class EmpiricalStrategy(Strategy):
 
         # For each "overloaded" func on this node
         for func in self._data[self._id]["functions"]:
-            if func["state"] == "Overload":
+            if func["name"] in self._config_manager.FUNCTION_NAMES and func["state"] == "Overload":
                 self._logger.debug("FUNC: " + func["name"] + " is OVERLOADED")
                 helpers = {}
 

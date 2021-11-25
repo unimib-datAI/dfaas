@@ -1,18 +1,17 @@
 import logging
 import time
-import os
 import json
-import sys
 import pandas as pd
-import matplotlib.pyplot as plt
 import numpy as np
 from agent import Agent
-from os import listdir
-from os.path import isfile, join
 from config_manager import ConfigManager
 from factory.strategy_factory import StrategyFactory
+from data_loader.data_loader import DataLoader
+from data_loader.request.function_request import FunctionRequest
+from data_loader.request.config_request import ConfigRequest
 
 config_manager = ConfigManager()
+
 
 # Get a specific logger with passed configurations
 def get_logger(name, log_file, level=logging.DEBUG):
@@ -25,6 +24,7 @@ def get_logger(name, log_file, level=logging.DEBUG):
     logger.addHandler(handler)
 
     return logger
+
 
 def xfunc_request_table(max_rate_table, invoc_rate_table, weights_table):
     """
@@ -53,7 +53,7 @@ def xfunc_request_table(max_rate_table, invoc_rate_table, weights_table):
                 # with weights set as probability distribution
                 choiches = np.random.choice(
                     list(weights_x_node.keys()),
-                    size=(invoc_rate_table[node_from][func] - max_rate_table[node_from][func]), 
+                    size=(int(invoc_rate_table[node_from][func]) - int(max_rate_table[node_from][func])),
                     p=[w/100 for w in list(weights_x_node.values())]
                 )
 
@@ -71,7 +71,7 @@ def xfunc_request_table(max_rate_table, invoc_rate_table, weights_table):
             if f not in list(weights_x_func.keys()):
                 fwd_requests[node_from][f] = {}
 
-    nodes_set = set(fwd_requests.keys()) # Set with node keys
+    nodes_set = set(fwd_requests.keys())  # Set with node keys
 
     # Fill forwarding table with missing values (missing nodes)
     # Fill the table diagonal with max_rate if invoc_rate >= max_rate
@@ -80,13 +80,14 @@ def xfunc_request_table(max_rate_table, invoc_rate_table, weights_table):
     # directly served by the node
     for node_from, weights_x_func in fwd_requests.items():
         for func, weights_x_node in weights_x_func.items():
-            for node in nodes_set:
-                if node not in list(weights_x_node.keys()):
-                    fwd_requests[node_from][func][node] = 0
-            if invoc_rate_table[node_from][func] < max_rate_table[node_from][func]:
-                fwd_requests[node_from][func][node_from] = invoc_rate_table[node_from][func]
-            else:
-                fwd_requests[node_from][func][node_from] = max_rate_table[node_from][func]
+            if func in config_manager.FUNCTION_NAMES:
+                for node in nodes_set:
+                    if node not in list(weights_x_node.keys()):
+                        fwd_requests[node_from][func][node] = 0
+                if invoc_rate_table[node_from][func] < max_rate_table[node_from][func]:
+                    fwd_requests[node_from][func][node_from] = invoc_rate_table[node_from][func]
+                else:
+                    fwd_requests[node_from][func][node_from] = max_rate_table[node_from][func]
 
     # Utility prints
     # print("============= FORWARDING TABLE TABLE ==============")
@@ -94,6 +95,7 @@ def xfunc_request_table(max_rate_table, invoc_rate_table, weights_table):
     # print("============================================================")
 
     return fwd_requests
+
 
 def create_tables(fwd_requests, invoc_rate, max_rate, minute, strategy_type):
     """
@@ -154,11 +156,14 @@ def run_agent(agent):
 
     return weights, execution
 
+
 def simulation(nodes_number, config_file):
     """
     This function allow to simulate various strategies for workload distribution
     and use weights to distribuite the load across neighbours
     """
+    dl = DataLoader()
+
     # Execution time dictionary
     execution_times = {}
 
@@ -166,7 +171,7 @@ def simulation(nodes_number, config_file):
     for s in config_manager.STRATEGIES:
         execution_times[s] = []
 
-    for minute in range(0, config_manager.SIMULATION_MINUTES): # 6 minutes
+    for minute in range(0, config_manager.SIMULATION_MINUTES):  # 6 minutes
         # Dictionary that contains final json configuration
         final_config = {}
 
@@ -188,13 +193,59 @@ def simulation(nodes_number, config_file):
             key = config_manager.NODE_KEY_PREFIX + str(i)
             final_config[key] = config_file[key]["exp_history"][minute]
 
+            # Ask for a configuration to data loader module
+            function_requests = []
+            for func in final_config[key]["functions"]:
+                if func["name"] in config_manager.FUNCTION_NAMES:
+                    # This json objects has only "name" and "invoc_rates"
+                    function_requests.append(
+                        FunctionRequest(
+                            func["name"],
+                            config_file[key]["replicas"][func["name"]],
+                            func["invoc_rate"]
+                        )
+                    )
+
+            config_request = ConfigRequest(
+                config_file[key]["node_type"],
+                function_requests
+            )
+
+            print(config_request)
+
+            # Obtain metrics for this specific node configuration
+            df_node, df_func = dl.get_metric_for_configuration(config_request)
+
+            # Debug print on file
+            df_node.to_csv("df_node.csv")
+            df_func.to_csv("df_func.csv")
+
+            # Parse node metrics
+            for _, metric in df_node[["MetricName", "AVG(Value)"]].T.to_dict().items():
+                final_config[key][metric["MetricName"]] = metric["AVG(Value)"] / 100
+
+            # Parse function metrics
+            for func in final_config[key]["functions"]:
+                if func["name"] in config_manager.FUNCTION_NAMES:
+                    tmp_df = df_func[["MetricName", "AVG(Value)", "FunctionName", "MaxRate",
+                                      "NumReplicas", "Margin", "State"]]
+                    tmp_df = tmp_df[tmp_df["FunctionName"] == func["name"]]
+                    for _, metric in tmp_df.T.to_dict().items():
+                        func[metric["MetricName"]] = metric["AVG(Value)"]
+
+                    func["service_count"] = tmp_df["NumReplicas"].unique().item(0)
+                    func["margin"] = tmp_df["Margin"].unique().item(0)
+                    func["state"] = tmp_df["State"].unique().item(0)
+                    func["max_rate"] = tmp_df["MaxRate"].unique().item(0)
+
             # Create and fill invoc_rate and max_rate dictionaries with loaded values
             simulation_invoc_rate_table[key] = {}
             simulation_max_rate_table[key] = {}
             for func in final_config[key]["functions"]:
-                # Fill tables
-                simulation_invoc_rate_table[key][func["name"]] = func["invoc_rate"]
-                simulation_max_rate_table[key][func["name"]] = func["max_rate"]
+                if func["name"] in config_manager.FUNCTION_NAMES:
+                    # Fill tables
+                    simulation_invoc_rate_table[key][func["name"]] = func["invoc_rate"]
+                    simulation_max_rate_table[key][func["name"]] = func["max_rate"]
 
         # Fill invoc_rate table with missing values
         for node, weights_x_func in simulation_invoc_rate_table.items():
@@ -234,9 +285,6 @@ def simulation(nodes_number, config_file):
                 config_manager.SIMULATION_AGENT_LOGGING_BASE_PATH + "agent_" +
                 str(id) + ".log",
                 logging.INFO
-                #"agent" + str(id) + "_minute_" + str(minute) + "_" + s,
-                #config_manager.SIMULATION_AGENT_LOGGING_BASE_PATH + "agent" +
-                #str(id) + "_minute_" + str(minute) + "_" + s + ".log"
             )
 
             logger.info("\n")
@@ -276,6 +324,7 @@ def simulation(nodes_number, config_file):
 
     return {k: np.mean(times_for_algo) for k, times_for_algo in execution_times.items()}
 
+
 def main(instance_file=""):
     if instance_file == "":
         instance_file = config_manager.OUTPUT_INSTANCE_JSON_FILE_PATH
@@ -283,6 +332,7 @@ def main(instance_file=""):
     f = open(instance_file)
     config_file = json.load(f)
     simulation(config_file["nodes_number"], config_file)
+
 
 # Call main program.
 if __name__ == "__main__":

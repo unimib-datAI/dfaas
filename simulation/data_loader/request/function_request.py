@@ -28,3 +28,9 @@ class FunctionRequest:
         of req/s
         """
         return self.__wl
+
+    def __str__(self):
+        return "( Name: {} -- Replicas: {} -- Workload: {} )".format(self.__name, self.__replicas_num, self.__wl)
+
+    def __repr__(self):
+        return str(self)

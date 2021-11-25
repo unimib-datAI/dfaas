@@ -20,3 +20,6 @@ class ConfigRequest:
         Get functions list
         """
         return self.__func_requests
+
+    def __str__(self):
+        return "Node type: {} -- [ {} ]".format(self.__node_type, self.__func_requests)
