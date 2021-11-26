@@ -4,7 +4,7 @@ import numpy as np
 from enum import Enum
 from threading import Thread
 from .strategy import Strategy
-from config_manager import ConfigManager
+from configuration.config_manager import ConfigManager
 
 # Enum for metric relation type:
 #   - DIRECT: high value --> high weight

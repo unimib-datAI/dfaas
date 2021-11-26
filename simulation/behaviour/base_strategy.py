@@ -1,7 +1,7 @@
 import json
 import numpy as np
 from .strategy import Strategy
-from config_manager import ConfigManager
+from configuration.config_manager import ConfigManager
 
 
 class BaseStrategy(Strategy):
@@ -17,17 +17,18 @@ class BaseStrategy(Strategy):
 
         weights = {}
         for func in self._data[self._id]["functions"]:
-            weights[func["name"]] = {}
-            for node, val in self._data.items():
-                if node != self._id:
-                    weights[func["name"]][node] = 0
+            if func["name"] in self._config_manager.FUNCTION_NAMES and func["state"] == "Overload":
+                weights[func["name"]] = {}
+                for node, val in self._data.items():
+                    if node != self._id:
+                        weights[func["name"]][node] = 0
 
-            self._logger.debug("Weights normalized for func {}".format(func["name"]))
-            self._logger.debug(weights[func["name"]])
+                self._logger.debug("Weights normalized for func {}".format(func["name"]))
+                self._logger.debug(weights[func["name"]])
 
-            #self._logger.info("Weights normalized for func {}".format(func["name"]))
-            #self._logger.info(weights[func["name"]])
-            self._logger.info("Weights normalized for func {}: {}".format(func["name"], weights[func["name"]]))
+                #self._logger.info("Weights normalized for func {}".format(func["name"]))
+                #self._logger.info(weights[func["name"]])
+                self._logger.info("Weights normalized for func {}: {}".format(func["name"], weights[func["name"]]))
 
         return weights
 

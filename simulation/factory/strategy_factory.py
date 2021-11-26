@@ -1,7 +1,7 @@
 from behaviour.empirical_strategy import EmpiricalStrategy
 from behaviour.random_strategy import RandomStrategy
 from behaviour.base_strategy import BaseStrategy
-from config_manager import ConfigManager
+from configuration.config_manager import ConfigManager
 
 class StrategyFactory():
     @staticmethod

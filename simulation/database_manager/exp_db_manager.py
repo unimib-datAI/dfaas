@@ -6,7 +6,7 @@ import pandas as pd
 from pathlib import Path
 from .db_manager import DbManager
 from data_loader.request.config_request import ConfigRequest
-from config_manager import ConfigManager
+from configuration.config_manager import ConfigManager
 
 
 class ExpDbManager(DbManager):
@@ -38,8 +38,7 @@ class ExpDbManager(DbManager):
         Method used to populate a dict that maps for each function a list of experiment ids that contain this function
         """
         for func in self.__config_manager.FUNCTION_NAMES:
-            query = Path(self.__config_manager.SQL_FILE_PATH_DIR +
-                         "select_exp_ids_for_func.sql").read_text().format(func)
+            query = Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("select_exp_ids_for_func.sql")).read_text().format(func)
 
             conn = sqlite3.connect(self._DbManager__path)
             c = conn.cursor()
@@ -52,11 +51,11 @@ class ExpDbManager(DbManager):
 
     def create_tables(self) -> None:
         """ Create tables for experiment database """
-        self.__execute_insert_create_query(Path(self.__config_manager.SQL_FILE_PATH_DIR + "create_table_node.sql").read_text())
-        self.__execute_insert_create_query(Path(self.__config_manager.SQL_FILE_PATH_DIR + "create_table_function.sql").read_text())
-        self.__execute_insert_create_query(Path(self.__config_manager.SQL_FILE_PATH_DIR + "create_table_exp_instant.sql").read_text())
-        self.__execute_insert_create_query(Path(self.__config_manager.SQL_FILE_PATH_DIR + "create_table_metric.sql").read_text())
-        self.__execute_insert_create_query(Path(self.__config_manager.SQL_FILE_PATH_DIR + "create_table_deploy.sql").read_text())
+        self.__execute_insert_create_query(Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("create_table_node.sql")).read_text())
+        self.__execute_insert_create_query(Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("create_table_function.sql")).read_text())
+        self.__execute_insert_create_query(Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("create_table_exp_instant.sql")).read_text())
+        self.__execute_insert_create_query(Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("create_table_metric.sql")).read_text())
+        self.__execute_insert_create_query(Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("create_table_deploy.sql")).read_text())
 
     def insert_node(self, name: str, ram: float, cpu: float) -> int:
         """
@@ -67,7 +66,7 @@ class ExpDbManager(DbManager):
         :return: last inserted id
         """
         last_id = self.__execute_insert_create_query(
-            Path(self.__config_manager.SQL_FILE_PATH_DIR + "insert_node.sql").read_text().format(name, ram, cpu)
+            Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("insert_node.sql")).read_text().format(name, ram, cpu)
         )
         return last_id
 
@@ -79,7 +78,7 @@ class ExpDbManager(DbManager):
         :return: last inserted id
         """
         last_id = self.__execute_insert_create_query(
-            Path(self.__config_manager.SQL_FILE_PATH_DIR + "insert_function.sql").read_text().format(name, description)
+            Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("insert_function.sql")).read_text().format(name, description)
         )
         return last_id
 
@@ -91,7 +90,7 @@ class ExpDbManager(DbManager):
         :return: last inserted id
         """
         last_id = self.__execute_insert_create_query(
-            Path(self.__config_manager.SQL_FILE_PATH_DIR + "insert_exp_instant.sql").read_text().format(ts, node_id)
+            Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("insert_exp_instant.sql")).read_text().format(ts, node_id)
         )
         return last_id
 
@@ -111,11 +110,11 @@ class ExpDbManager(DbManager):
         """
         if function_id is not None and node_id is None:
             last_id = self.__execute_insert_create_query(
-                Path(self.__config_manager.SQL_FILE_PATH_DIR + "insert_metric_func.sql").read_text().format(name, type, unit, val, desc, exp_instant_id, function_id)
+                Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("insert_metric_func.sql")).read_text().format(name, type, unit, val, desc, exp_instant_id, function_id)
             )
         elif node_id is not None and function_id is None:
             last_id = self.__execute_insert_create_query(
-                Path(self.__config_manager.SQL_FILE_PATH_DIR + "insert_metric_node.sql").read_text().format(name, type, unit, val, desc, exp_instant_id, node_id)
+                Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("insert_metric_node.sql")).read_text().format(name, type, unit, val, desc, exp_instant_id, node_id)
             )
         else:
             print("Params function_id and node_id cannot be both not None")
@@ -135,7 +134,7 @@ class ExpDbManager(DbManager):
         :state: state ("Overloaded", "Underloaded") for this function deployed in this experiment instant
         """
         last_id = self.__execute_insert_create_query(
-            Path(self.__config_manager.SQL_FILE_PATH_DIR + "insert_deploy.sql").read_text().format(exp_instant_id, function_id, max_rate, num_replicas, wl, margin, state)
+            Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("insert_deploy.sql")).read_text().format(exp_instant_id, function_id, max_rate, num_replicas, wl, margin, state)
         )
         return last_id
 
@@ -323,8 +322,8 @@ class ExpDbManager(DbManager):
 
             where_condition += ")"
 
-        query = Path(self.__config_manager.SQL_FILE_PATH_DIR +
-                     "select_exp_id_for_config.sql").read_text().format(where_condition, func_count)
+        query = Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath(
+                     "select_exp_id_for_config.sql")).read_text().format(where_condition, func_count)
 
         conn = sqlite3.connect(self._DbManager__path)
         c = conn.cursor()
@@ -342,8 +341,8 @@ class ExpDbManager(DbManager):
                 experiments_id_list = [el for el in experiments_id_list if el not in self.__exp_ids_for_func[func]]
 
         # Select all metrics for this specific config request
-        query = Path(self.__config_manager.SQL_FILE_PATH_DIR +
-                     "select_metrics_by_exp_ids.sql").read_text().format(",".join(experiments_id_list))
+        query = Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath(
+                     "select_metrics_by_exp_ids.sql")).read_text().format(",".join(experiments_id_list))
         c.execute(query)
 
         print("Metrics for Experiments {}".format(experiments_id_list))

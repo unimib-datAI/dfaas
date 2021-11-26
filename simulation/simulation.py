@@ -4,7 +4,7 @@ import json
 import pandas as pd
 import numpy as np
 from agent import Agent
-from config_manager import ConfigManager
+from configuration.config_manager import ConfigManager
 from factory.strategy_factory import StrategyFactory
 from data_loader.data_loader import DataLoader
 from data_loader.request.function_request import FunctionRequest
@@ -103,8 +103,7 @@ def create_tables(fwd_requests, invoc_rate, max_rate, minute, strategy_type):
     Also invocation rate and max rate table are create and exported in the same 
     format
     """
-    path = config_manager.SIMULATION_TABLES_OUTPUT_PATH + \
-        strategy_type + "/minute_" + str(minute) + "/"
+    path = config_manager.SIMULATION_TABLES_OUTPUT_PATH.joinpath(strategy_type, "minute_" + str(minute))
     nodes_set = sorted(set(fwd_requests.keys()))
 
     # Foreach function and for each node create a dataframe with forwarded requests
@@ -115,7 +114,7 @@ def create_tables(fwd_requests, invoc_rate, max_rate, minute, strategy_type):
                                     for k in sorted(fwd_requests[node_from][func].keys())]
         # Invert rows and columns
         df_x_func = df_x_func.T
-        df_x_func.to_csv(path + func + ".csv", sep='\t', encoding='utf-8')
+        df_x_func.to_csv(path.joinpath(func + ".csv"), sep='\t', encoding='utf-8')
 
         print("     > FWD_TABLE FOR FUNC {}".format(func))
         print(df_x_func)
@@ -128,7 +127,7 @@ def create_tables(fwd_requests, invoc_rate, max_rate, minute, strategy_type):
     print("     > INVOC_RATE_TABLE")
     print(df_invoc)
 
-    df_invoc.to_csv(path + "invoc_rates.csv", sep='\t', encoding='utf-8')
+    df_invoc.to_csv(path.joinpath("invoc_rates.csv"), sep='\t', encoding='utf-8')
 
     # Create dataframe for max_rates
     df_max_rates = pd.DataFrame([], index=config_manager.FUNCTION_NAMES, columns=nodes_set)
@@ -136,7 +135,7 @@ def create_tables(fwd_requests, invoc_rate, max_rate, minute, strategy_type):
         df_max_rates[node] = [max_rate[node][f] for f in config_manager.FUNCTION_NAMES]
 
     df_max_rates = df_max_rates.T
-    df_max_rates.to_csv(path + "max_rates.csv", sep='\t', encoding='utf-8')
+    df_max_rates.to_csv(path.joinpath("max_rates.csv"), sep='\t', encoding='utf-8')
     print("     > MAX_RATE_TABLE")
     print(df_max_rates)
 
@@ -260,8 +259,8 @@ def simulation(nodes_number, config_file):
                     simulation_max_rate_table[node][f] = 0
 
         # Write configuration on json file for logging
-        with open(config_manager.SIMULATION_COMPLETE_CONFIGURATION_OUTPUT_PATH + 
-                  'config{}.json'.format(minute), 'w', encoding='utf-8') as f:
+        with open(config_manager.SIMULATION_COMPLETE_CONFIGURATION_OUTPUT_PATH.joinpath(
+                  'config{}.json'.format(minute)), 'w', encoding='utf-8') as f:
             json.dump(final_config, f, ensure_ascii=False, indent=4)
 
         # Call agent loop for each config that has been previously built
@@ -282,8 +281,8 @@ def simulation(nodes_number, config_file):
 
             logger = get_logger(
                 "agent" + str(id) + "_minute_" + str(minute),
-                config_manager.SIMULATION_AGENT_LOGGING_BASE_PATH + "agent_" +
-                str(id) + ".log",
+                config_manager.SIMULATION_AGENT_LOGGING_BASE_PATH.joinpath("agent_" +
+                str(id) + ".log"),
                 logging.INFO
             )
 

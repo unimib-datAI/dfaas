@@ -6,8 +6,8 @@ def create_timestamp_folder(base_path):
     """
     This function create a directory with timestamp as name
     """
-    dir_path = base_path + \
-        datetime.now().strftime('%Y-%m-%d_%H-%M-%S')
+    dir_path = base_path.joinpath(datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
+
     mydir = os.path.join(
         os.getcwd(),
         dir_path

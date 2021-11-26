@@ -1,13 +1,11 @@
 import instance_generator
 import simulation
 import analyzer
-import time
-import errno
 import pandas as pd
 import numpy as np
 import random
 from utils import *
-from config_manager import ConfigManager
+from configuration.config_manager import ConfigManager
 from cli import get_args
 
 config_manager = ConfigManager()
@@ -60,7 +58,7 @@ def main():
 
         # Create a dir for each iteration of the simulation
         # Move analyzer output files to final foulder (separated for each iteration)
-        path = dir_path + "/iteration_{}".format(i)
+        path = dir_path.joinpath("iteration_{}".format(i))
         os.makedirs(path)
         copy_dir(config_manager.ANALYZER_OUTPUT_PATH, path)
         
@@ -99,7 +97,7 @@ def main():
     # Move instance generator output to final folder
     copy_dir(config_manager.SIMULATION_CONTROLLER_OUTPUT_PATH, dir_path)
 
-    with open(dir_path + "/" + config_manager.SIMULATION_CONTROLLER_ARCHIVE_COMPARISON_FILE_NAME, "w") as f:
+    with open(dir_path.joinpath(config_manager.SIMULATION_CONTROLLER_ARCHIVE_COMPARISON_FILE_NAME), "w") as f:
         # Print mean result of comparison index after 5 executions
         for s in config_manager.STRATEGIES:
             print("---------------------------------------------")

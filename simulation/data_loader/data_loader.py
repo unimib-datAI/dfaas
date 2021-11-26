@@ -4,7 +4,7 @@ import pandas as pd
 import os
 import json
 
-from config_manager import ConfigManager
+from configuration.config_manager import ConfigManager
 from database_manager.exp_db_manager import ExpDbManager
 
 class DataLoader:
@@ -90,7 +90,7 @@ class DataLoader:
                     )
 
                     for key, value in func.items():
-                        if key != "name" and key not in self.__config_manager.DEPLOY_DATAS:
+                        if key != "name" and key not in self.__config_manager.DEPLOY_DATA:
                             if key in ["ram_xfunc", "cpu_xfunc"]:
                                 value = round(value * 100, 2)
 

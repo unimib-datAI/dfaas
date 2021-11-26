@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from config_manager import ConfigManager
+from configuration.config_manager import ConfigManager
 from utils import flatten
 
 config_manager = ConfigManager()
@@ -67,8 +67,7 @@ def export_for_minute_rates(func, rates):
     plt.legend(loc="lower left")
     plt.grid()
 
-    plt.savefig(config_manager.ANALYZER_OUTPUT_PATH + 
-                "comparison_{}.png".format(func))
+    plt.savefig(config_manager.ANALYZER_OUTPUT_PATH.joinpath("comparison_{}.png".format(func)))
 
 
 def export_index_comparison_table(df):
@@ -102,29 +101,29 @@ def main():
         print("-------------------------- ALGO {} --------------------------".format(algo))
 
         # Create path for recover tables        
-        base_path = config_manager.SIMULATION_TABLES_OUTPUT_PATH + algo + "/"
+        base_path = config_manager.SIMULATION_TABLES_OUTPUT_PATH.joinpath(algo)
 
         for minute in range(0, config_manager.SIMULATION_MINUTES):
             print("MINUTE {}".format(minute))
             print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
 
             # Complete path for load tables
-            path = base_path + "minute_" + str(minute) + "/"
+            path = base_path.joinpath("minute_" + str(minute))
 
             # For each minute load invocaion_rate and max_rate table
-            df_invoc_rate = pd.read_csv(path + "invoc_rates.csv", delimiter='\t', header=0, index_col=0)
+            df_invoc_rate = pd.read_csv(path.joinpath("invoc_rates.csv"), delimiter='\t', header=0, index_col=0)
             print("================ INVOCATION RATES ==================")
             print(df_invoc_rate)
             print("====================================================")
 
-            df_max_rate = pd.read_csv(path + "max_rates.csv", delimiter='\t', header=0, index_col=0)
+            df_max_rate = pd.read_csv(path.joinpath("max_rates.csv"), delimiter='\t', header=0, index_col=0)
             print("================ MAX RATES =========================")
             print(df_max_rate)
             print("====================================================")
 
             # For each minute and foreach function load dataframe
             for func in config_manager.FUNCTION_NAMES:
-                df = pd.read_csv(path + func + ".csv", delimiter='\t', header=0, index_col=0)
+                df = pd.read_csv(path.joinpath(func + ".csv"), delimiter='\t', header=0, index_col=0)
 
                 print("================ FORWARDED REQUESTS for {} ================".format(func))
                 print(df)

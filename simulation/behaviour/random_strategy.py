@@ -1,7 +1,7 @@
 import json
 import numpy as np
 from .strategy import Strategy
-from config_manager import ConfigManager
+from configuration.config_manager import ConfigManager
 
 class RandomStrategy(Strategy):
     def __init__(self, config_json):

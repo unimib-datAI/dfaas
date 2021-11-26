@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import numpy as np
 from cli import get_args
 from itertools import combinations, groupby
-from config_manager import ConfigManager
+from configuration.config_manager import ConfigManager
 
 config_manager = ConfigManager()
 
@@ -21,8 +21,7 @@ def gather_configurations():
     exp_files_path = {}
     for node_type in nodes_type:
         exp_files_path[node_type] = []
-
-        for path, subdirs, files in os.walk(os.path.join(data_dir, node_type)):
+        for path, subdirs, files in os.walk(data_dir.joinpath(node_type)):
             for name in files:
                 if name.endswith('.json'):
                     exp_files_path[node_type].append(os.path.join(path, name))
