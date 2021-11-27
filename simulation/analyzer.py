@@ -2,7 +2,7 @@ import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
 from configuration.config_manager import ConfigManager
-from utils import flatten
+from utils.utils import flatten
 
 config_manager = ConfigManager()
 

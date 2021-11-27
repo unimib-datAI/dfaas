@@ -4,7 +4,7 @@ import networkx as nx
 import random
 import matplotlib.pyplot as plt
 import numpy as np
-from cli import get_args
+from cli.cli import get_args
 from itertools import combinations, groupby
 from configuration.config_manager import ConfigManager
 

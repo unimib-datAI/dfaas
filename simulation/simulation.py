@@ -3,7 +3,7 @@ import time
 import json
 import pandas as pd
 import numpy as np
-from agent import Agent
+from agent.agent import Agent
 from configuration.config_manager import ConfigManager
 from factory.strategy_factory import StrategyFactory
 from data_loader.data_loader import DataLoader
