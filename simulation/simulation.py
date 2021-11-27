@@ -210,14 +210,17 @@ def simulation(nodes_number, config_file):
                 function_requests
             )
 
-            print(config_request)
+            print("--------------------- CONFIG REQUEST ---------------------")
+            print("Query to database for configuration: {}".format(config_request))
 
             # Obtain metrics for this specific node configuration
             df_node, df_func = dl.get_metric_for_configuration(config_request)
 
             # Debug print on file
-            df_node.to_csv("df_node.csv")
-            df_func.to_csv("df_func.csv")
+            #df_node.to_csv("df_node.csv")
+            #df_func.to_csv("df_func.csv")
+
+            print("----------------------------------------------------------")
 
             # Parse node metrics
             for _, metric in df_node[["MetricName", "AVG(Value)"]].T.to_dict().items():
