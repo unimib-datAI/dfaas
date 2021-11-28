@@ -56,11 +56,11 @@ def load_configurations(nodes_number):
         # "exp-comparison/case4/node_3.json",
         # "exp-comparison/case4/node4.json",
         # "exp-comparison/case4/node5.json",
-        #"exp-comparison/exp_pool/node1.json",
-        #"exp-comparison/exp_pool/node2.json",
-        #"exp-comparison/exp_pool/node3.json",
-        #"exp-comparison/exp_pool/node4.json",
-        #"exp-comparison/exp_pool/node5.json",
+        # config_manager.DATA_DIR.joinpath("node1.json"),
+        # config_manager.DATA_DIR.joinpath("node2.json"),
+        # config_manager.DATA_DIR.joinpath("node3.json"),
+        # config_manager.DATA_DIR.joinpath("node4.json"),
+        # config_manager.DATA_DIR.joinpath("node5.json"),
         # "exp-comparison/exp_pool/node6.json",
         # "exp-comparison/exp_pool/node7.json",
         # "exp-comparison/exp_pool/node8.json",
@@ -77,7 +77,7 @@ def load_configurations(nodes_number):
         # "exp-comparison/exp_pool/node19.json",
         # "exp-comparison/exp_pool/node20.json",
     #]
-    # print(configurations)
+    #print(configurations)
 
     # Load selected files
     loaded_json = []
