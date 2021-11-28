@@ -14,6 +14,7 @@ type Function struct {
 }
 
 type Output struct {
+    Timestamp string     `json:"timestamp"`
 	RamUsage  float64    `json:"ram_usage"`
 	CpuUsage  float64    `json:"cpu_usage"`
 	Functions []Function `json:"functions"`
@@ -23,11 +24,11 @@ type ExperimentJson struct {
 	Input struct {
 		Node          string `json:"node"`
 		FuncaReplicas int    `json:"funca_num"`
-		FuncbReplicas int    `json:"funcb_num"`
-		FunccReplicas int    `json:"funcc_num"`
+		FuncbReplicas int    `json:"qrcode_num"`
+		FunccReplicas int    `json:"ocr_num"`
 		FuncaWl       int    `json:"funca_wl"`
-		FuncbWl       int    `json:"funcb_wl"`
-		FunccWl       int    `json:"funcc_wl"`
+		FuncbWl       int    `json:"qrcode_wl"`
+		FunccWl       int    `json:"ocr_wl"`
 	} `json:"input"`
 	Outputs []Output `json:"output"`
 }
