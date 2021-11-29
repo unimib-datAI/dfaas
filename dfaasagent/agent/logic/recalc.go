@@ -329,10 +329,11 @@ func recalcStep1() error {
 		functionsSlice = append(functionsSlice, f)
 	}
 
-    timestamp := fmt.Println(time.Now().Format("%Y/%m/%d-%H:%M:%S"))
+	// TODO: check if it works correctly
+	timestamp := time.Now().Format("2006/01/02-15:04:05")
 
 	out := Output{
-	    Timestamp: timestamp,
+		Timestamp: timestamp,
 		RamUsage:  _recalc.ramUsage["node_exporter:9100"],
 		CpuUsage:  _recalc.cpuUsage["node_exporter:9100"],
 		Functions: functionsSlice,
