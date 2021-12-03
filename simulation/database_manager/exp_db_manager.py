@@ -52,6 +52,7 @@ class ExpDbManager(DbManager):
     def create_tables(self) -> None:
         """ Create tables for experiment database """
         self.__execute_insert_create_query(Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("create_table_node.sql")).read_text())
+        self.__execute_insert_create_query(Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("create_table_function_type.sql")).read_text())
         self.__execute_insert_create_query(Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("create_table_function.sql")).read_text())
         self.__execute_insert_create_query(Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("create_table_exp_instant.sql")).read_text())
         self.__execute_insert_create_query(Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("create_table_metric.sql")).read_text())
