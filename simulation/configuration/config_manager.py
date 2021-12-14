@@ -31,10 +31,11 @@ class ConfigManager(object):
     # Constants used in simulation script
     SIMULATION_MINUTES = 7
     FUNCTION_NAMES = ["funca", "qrcode", "ocr"]
-    STRATEGIES = ["base_strategy", "random_strategy", "empirical_strategy"]
+    STRATEGIES = ["base_strategy", "random_strategy", "empirical_strategy", "dfaas_static_strategy"]
     BASE_STRATEGY = STRATEGIES[0]
     RANDOM_STRATEGY = STRATEGIES[1]
     EMPIRICAL_STRATEGY = STRATEGIES[2]
+    DFAAS_STATIC_STRATEGY = STRATEGIES[3]
 
     SIMULATION_OUTPUT_DIR = output_dir.joinpath("simulation_output")
     SIMULATION_COMPLETE_CONFIGURATION_OUTPUT_PATH = SIMULATION_OUTPUT_DIR.joinpath("final_config")
@@ -80,7 +81,7 @@ class ConfigManager(object):
     SIMULATION_CONTROLLER_ARCHIVE_COMPARISON_FILE_NAME = "final_comparison.txt"
 
     # DB path
-    EXPERIMENT_DB_PATH = simulation_dir.joinpath("database_manager", "experiment_db")
+    EXPERIMENT_DB_PATH = simulation_dir.joinpath("database_manager", "db_file", "experiment_db")
 
     # Mapping info
     NODE_CONFIGURATIONS = {
