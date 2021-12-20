@@ -74,7 +74,7 @@ class DFaasStaticStrategy(Strategy):
             self._limit_in[node] = {}
             for func in metrics["functions"]:
                 if func["name"] in self._config_manager.FUNCTION_NAMES:
-                    neigh_num = self.__get_neighbours_with_this_func(node, func["name"])
+                    neigh_num = self.__neighbours_with_this_func(node, func["name"])
                     margin = func["max_rate"] - func["invoc_rate"] if func["state"] == "Underload" else 0
                     # Calculate how much request can be served for neighbours
                     self._limit_in[node][func["name"]] = margin / neigh_num if neigh_num > 0 else 0
