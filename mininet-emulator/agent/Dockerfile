@@ -36,7 +36,7 @@ RUN apt-get update && apt-get install -y \
         --strip-components 1 \
         --directory /usr/local/bin/ && \
     rm docker.tgz && \
-    && apt-get clean && rm -rf /var/lib/apt/lists/* && \
+    apt-get clean && rm -rf /var/lib/apt/lists/* && \
     docker --version
 
 # Copy the necessary files into the production stage
