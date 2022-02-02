@@ -30,3 +30,6 @@ __pycache__
 /simulation/simulation_output/
 /simulation/instance_gen_output/
 /vbox-scripts/
+venv
+.idea
+.DS_Store
