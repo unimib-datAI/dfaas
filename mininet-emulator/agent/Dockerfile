@@ -21,7 +21,7 @@ FROM ubuntu:bionic
 RUN apt-get update && apt-get install -y \
     net-tools \
     iputils-ping \
-    iproute2 \
+    iproute2
 
 # Docker installation (to be able to use the docker command inside the
 # container)
