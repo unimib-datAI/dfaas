@@ -1,2 +1,2 @@
-docker build --name=agent:latest --file=../agent/Dockerfile ../../dfaasagent
-docker build --name=proxy:latest --file=../proxy/Dockerfile ../proxy
+docker build -t=agent:latest --file=../agent/Dockerfile ../../dfaasagent
+docker build -t=proxy:latest --file=../proxy/Dockerfile ../proxy
