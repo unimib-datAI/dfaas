@@ -1,4 +1,4 @@
-FROM haproxy:lts
+FROM haproxy:lts-alpine
 
 RUN apk add --update --no-cache \
         bash \
