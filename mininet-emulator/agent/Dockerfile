@@ -19,24 +19,20 @@ RUN if [ ! -f "./dfaasagent" ]; \
 FROM ubuntu:bionic
 
 RUN apt-get update && apt-get install -y \
-    net-tools \
-    iputils-ping \
-    iproute2
-
-# Docker installation (to be able to use the docker command inside the
-# container)
-RUN apt-get update && apt-get install -y \
     wget \
     net-tools \
     iputils-ping \
     iproute2 && \
-    wget -O docker.tgz "https://download.docker.com/linux/static/stable/x86_64/docker-19.03.12.tgz" && \
+    apt-get clean && rm -rf /var/lib/apt/lists/*
+
+# Docker installation (to be able to use the docker command inside the
+# container)
+RUN wget -O docker.tgz "https://download.docker.com/linux/static/stable/x86_64/docker-19.03.12.tgz" && \
     tar --extract \
         --file docker.tgz \
         --strip-components 1 \
         --directory /usr/local/bin/ && \
     rm docker.tgz && \
-    apt-get clean && rm -rf /var/lib/apt/lists/* && \
     docker --version
 
 # Copy the necessary files into the production stage
