@@ -121,3 +121,9 @@ curl http://192.168.15.50:8001/function/funca
 WARNING! You have to wait some time (`recalc-period`) to have working functions. If you want to change the `recalc-period`, edit the parameter `--recalc-period` within the `playbook-deploy.yml` file.
 
 For a complete test you can execute the script `vegeta-testing-script/vegeta-testing-script.sh`. This script MUST be copied and executed within the home directory of the DFaaSCtrl VM. The test results will be stored within the directory `/home/debian/vegeta-results`.
+
+## Simulation
+
+In this work it has also implemented a simulator to test and compare different load balancing techniques. The simulation code is available under _simulation_ directory. For more informations read associated [**README**](simulation/README.md) file.
+
+Data, gathered by the DFaaS system, used for simulation, are available [**here**](data/).
