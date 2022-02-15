@@ -1,0 +1,307 @@
+{
+    "input": {
+        "node": "node_2",
+        "funca_num": 5,
+        "funca_wl": 27,
+        "qrcode_num": 1,
+        "ocr_num": 1,
+        "qrcode_wl": 0,
+        "ocr_wl": 4
+    },
+    "output": [
+        {
+            "ram_usage": 0.19301311152965428,
+            "cpu_usage": 0.11542237899559982,
+            "functions": [
+                {
+                    "name": "ocr",
+                    "service_count": 1,
+                    "margin": 3,
+                    "invoc_rate": 0,
+                    "afet": 0,
+                    "ram_xfunc": 0.0024131113317095265,
+                    "cpu_xfunc": 0.011870207978720022,
+                    "max_rate": 3,
+                    "state": "Underload",
+                    "prom_invoc_rate": 0
+                },
+                {
+                    "name": "funca",
+                    "service_count": 5,
+                    "margin": 100,
+                    "invoc_rate": 0,
+                    "afet": 0,
+                    "ram_xfunc": 0.017682403603386042,
+                    "cpu_xfunc": 0,
+                    "max_rate": 100,
+                    "state": "Underload",
+                    "prom_invoc_rate": 0
+                },
+                {
+                    "name": "qrcode",
+                    "service_count": 1,
+                    "margin": 5,
+                    "invoc_rate": 0,
+                    "afet": 0,
+                    "ram_xfunc": 0.00042954008529438837,
+                    "cpu_xfunc": 0,
+                    "max_rate": 5,
+                    "state": "Underload",
+                    "prom_invoc_rate": 0
+                }
+            ]
+        },
+        {
+            "ram_usage": 0.19598632399792948,
+            "cpu_usage": 0.31423532192665105,
+            "functions": [
+                {
+                    "name": "funca",
+                    "service_count": 5,
+                    "margin": 74,
+                    "invoc_rate": 26,
+                    "afet": 0.001325355899075137,
+                    "ram_xfunc": 0.02022324284872249,
+                    "cpu_xfunc": 0,
+                    "max_rate": 100,
+                    "state": "Underload",
+                    "prom_invoc_rate": 19.224
+                },
+                {
+                    "name": "qrcode",
+                    "service_count": 1,
+                    "margin": 5,
+                    "invoc_rate": 0,
+                    "afet": 0,
+                    "ram_xfunc": 0.00042954008529438837,
+                    "cpu_xfunc": 0,
+                    "max_rate": 5,
+                    "state": "Underload",
+                    "prom_invoc_rate": 0
+                },
+                {
+                    "name": "ocr",
+                    "service_count": 1,
+                    "margin": 0,
+                    "invoc_rate": 3,
+                    "afet": 0.15933053254906754,
+                    "ram_xfunc": 0.005215513984960818,
+                    "cpu_xfunc": 0.22427693653965072,
+                    "max_rate": 3,
+                    "state": "Overload",
+                    "prom_invoc_rate": 1.986
+                }
+            ]
+        },
+        {
+            "ram_usage": 0.20238142367795198,
+            "cpu_usage": 0.3603287452042837,
+            "functions": [
+                {
+                    "name": "ocr",
+                    "service_count": 1,
+                    "margin": 0,
+                    "invoc_rate": 3,
+                    "afet": 0.14540777521818166,
+                    "ram_xfunc": 0.007246262061020425,
+                    "cpu_xfunc": 0.21640856217493504,
+                    "max_rate": 3,
+                    "state": "Overload",
+                    "prom_invoc_rate": 2.999945455537172
+                },
+                {
+                    "name": "funca",
+                    "service_count": 5,
+                    "margin": 74,
+                    "invoc_rate": 26,
+                    "afet": 0.0013194304336700297,
+                    "ram_xfunc": 0.02451637576337814,
+                    "cpu_xfunc": 0.010603591294099124,
+                    "max_rate": 100,
+                    "state": "Underload",
+                    "prom_invoc_rate": 26.999509099834547
+                },
+                {
+                    "name": "qrcode",
+                    "service_count": 1,
+                    "margin": 5,
+                    "invoc_rate": 0,
+                    "afet": 0,
+                    "ram_xfunc": 0.00042954008529438837,
+                    "cpu_xfunc": 0,
+                    "max_rate": 5,
+                    "state": "Underload",
+                    "prom_invoc_rate": 0
+                }
+            ]
+        },
+        {
+            "ram_usage": 0.20640209372749418,
+            "cpu_usage": 0.35862470226731324,
+            "functions": [
+                {
+                    "name": "ocr",
+                    "service_count": 1,
+                    "margin": 0,
+                    "invoc_rate": 3,
+                    "afet": 0.1472078081818181,
+                    "ram_xfunc": 0.007940800666677884,
+                    "cpu_xfunc": 0.23411256836813238,
+                    "max_rate": 3,
+                    "state": "Overload",
+                    "prom_invoc_rate": 2.999945455537172
+                },
+                {
+                    "name": "funca",
+                    "service_count": 5,
+                    "margin": 74,
+                    "invoc_rate": 26,
+                    "afet": 0.0013322493488215474,
+                    "ram_xfunc": 0.027665581599584845,
+                    "cpu_xfunc": 0.012563529134258863,
+                    "max_rate": 100,
+                    "state": "Underload",
+                    "prom_invoc_rate": 26.999509099834547
+                },
+                {
+                    "name": "qrcode",
+                    "service_count": 1,
+                    "margin": 5,
+                    "invoc_rate": 0,
+                    "afet": 0,
+                    "ram_xfunc": 0.00042954008529438837,
+                    "cpu_xfunc": 0,
+                    "max_rate": 5,
+                    "state": "Underload",
+                    "prom_invoc_rate": 0
+                }
+            ]
+        },
+        {
+            "ram_usage": 0.20808256209114095,
+            "cpu_usage": 0.36864784276649476,
+            "functions": [
+                {
+                    "name": "ocr",
+                    "service_count": 1,
+                    "margin": 0,
+                    "invoc_rate": 3,
+                    "afet": 0.14873654133939315,
+                    "ram_xfunc": 0.007716215864017242,
+                    "cpu_xfunc": 0.25969512982284226,
+                    "max_rate": 3,
+                    "state": "Overload",
+                    "prom_invoc_rate": 3
+                },
+                {
+                    "name": "funca",
+                    "service_count": 5,
+                    "margin": 74,
+                    "invoc_rate": 26,
+                    "afet": 0.0013088395575757573,
+                    "ram_xfunc": 0.029244131987101733,
+                    "cpu_xfunc": 0.01094220494081933,
+                    "max_rate": 100,
+                    "state": "Underload",
+                    "prom_invoc_rate": 26.999999999999996
+                },
+                {
+                    "name": "qrcode",
+                    "service_count": 1,
+                    "margin": 5,
+                    "invoc_rate": 0,
+                    "afet": 0,
+                    "ram_xfunc": 0.00042954008529438837,
+                    "cpu_xfunc": 0,
+                    "max_rate": 5,
+                    "state": "Underload",
+                    "prom_invoc_rate": 0
+                }
+            ]
+        },
+        {
+            "ram_usage": 0.20889083644518947,
+            "cpu_usage": 0.3625454545454545,
+            "functions": [
+                {
+                    "name": "ocr",
+                    "service_count": 1,
+                    "margin": 0,
+                    "invoc_rate": 3,
+                    "afet": 0.14678917849090892,
+                    "ram_xfunc": 0.007434309563799074,
+                    "cpu_xfunc": 0.22028176620490908,
+                    "max_rate": 3,
+                    "state": "Overload",
+                    "prom_invoc_rate": 3.0000545464462993
+                },
+                {
+                    "name": "funca",
+                    "service_count": 5,
+                    "margin": 74,
+                    "invoc_rate": 26,
+                    "afet": 0.0012979281973063972,
+                    "ram_xfunc": 0.02997916357404789,
+                    "cpu_xfunc": 0.01112233897357686,
+                    "max_rate": 100,
+                    "state": "Underload",
+                    "prom_invoc_rate": 27.00049091801669
+                },
+                {
+                    "name": "qrcode",
+                    "service_count": 1,
+                    "margin": 5,
+                    "invoc_rate": 0,
+                    "afet": 0,
+                    "ram_xfunc": 0.00042954008529438837,
+                    "cpu_xfunc": 0,
+                    "max_rate": 5,
+                    "state": "Underload",
+                    "prom_invoc_rate": 0
+                }
+            ]
+        },
+        {
+            "ram_usage": 0.20970768840462817,
+            "cpu_usage": 0.18192729454981882,
+            "functions": [
+                {
+                    "name": "ocr",
+                    "service_count": 1,
+                    "margin": 3,
+                    "invoc_rate": 0,
+                    "afet": 0.14975132811111272,
+                    "ram_xfunc": 0.007407092162081112,
+                    "cpu_xfunc": 0.014494473076455482,
+                    "max_rate": 3,
+                    "state": "Underload",
+                    "prom_invoc_rate": 0.9818003309030744
+                },
+                {
+                    "name": "funca",
+                    "service_count": 5,
+                    "margin": 100,
+                    "invoc_rate": 0,
+                    "afet": 0.0013586042888888762,
+                    "ram_xfunc": 0.03026414240936358,
+                    "cpu_xfunc": 1.4522453035133729e-06,
+                    "max_rate": 100,
+                    "state": "Underload",
+                    "prom_invoc_rate": 7.363502481773058
+                },
+                {
+                    "name": "qrcode",
+                    "service_count": 1,
+                    "margin": 5,
+                    "invoc_rate": 0,
+                    "afet": 0,
+                    "ram_xfunc": 0.00042954008529438837,
+                    "cpu_xfunc": 5.660419527796188e-06,
+                    "max_rate": 5,
+                    "state": "Underload",
+                    "prom_invoc_rate": 0
+                }
+            ]
+        }
+    ]
+}

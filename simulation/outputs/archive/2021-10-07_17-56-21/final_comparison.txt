@@ -1,0 +1,15 @@
+---------------------------------------------
+> Strategy base_strategy
+     > Mean success rate: 95.73260961576996
+     > Mean success rate (stress period): 95.40131483773932
+     > Tot. rejected requests: 17400.0
+---------------------------------------------
+> Strategy random_strategy
+     > Mean success rate: 98.3832338795681
+     > Mean success rate (stress period): 97.9904956853636
+     > Tot. rejected requests: 6264.0
+---------------------------------------------
+> Strategy empirical_strategy
+     > Mean success rate: 99.46109797080143
+     > Mean success rate (stress period): 99.24553715912201
+     > Tot. rejected requests: 3300.0

@@ -102,16 +102,30 @@ func (client *Client) queryInvocRate(query string) (map[string]map[string]float6
 		return nil, errors.Wrap(err, "Error while deserializing a JSON string from the Prometheus API endpoint")
 	}
 
+	//logger := logging.Logger()
+
 	result := map[string]map[string]float64{}
 	for _, item := range respObj.Data.Result {
-		result[item.Metric.FunctionName] = make(map[string]float64)
+		_, present := result[item.Metric.FunctionName]
+		if !present {
+			result[item.Metric.FunctionName] = make(map[string]float64)
+		}
 		num, err := strconv.ParseFloat(item.Value[1].(string), 64)
 		if err != nil {
 			num = math.NaN()
 		}
+		//logger.Debug(item.Metric.FunctionName)
 		//logger.Debug(item.Metric.Code)
 		result[item.Metric.FunctionName][item.Metric.Code] = num
 	}
+
+	//logger.Debugf("=======================================")
+	//for key, codeRates := range result {
+	//	for code, val := range codeRates {
+	//		logger.Debugf("  - FUNC %s, CODE %s: %.2f req/s", key, code, val)
+	//	}
+	//}
+	//logger.Debugf("=======================================")
 
 	return result, nil
 }
