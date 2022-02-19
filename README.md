@@ -7,6 +7,12 @@ Our prototype is based on OpenFaaS and implements the control logic within Go P2
 
 This research work is conducted by the INteraction and SemantIcs for Innovation with Data & Services (INSID&S) Laboratory of the University of Milano - Bicocca.
 
+If you wish to reuse this source code, please consider citing our article describing the first prototype:
+
+> Michele Ciavotta, Davide Motterlini, Marco Savi, Alessandro Tundo <br>
+> [**DFaaS: Decentralized Function-as-a-Service for Federated Edge Computing**](https://doi.org/10.1109/CloudNet53349.2021.9657141), <br>	
+> 2021 IEEE 10th International Conference on Cloud Networking (CloudNet), DOI: 10.1109/CloudNet53349.2021.9657141.
+
 ## Scenario
 
 ![Scenario](images/Scenario-crop.png)
