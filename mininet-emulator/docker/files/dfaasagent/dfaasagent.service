@@ -1,0 +1,19 @@
+[Unit]
+Description=DFaaSAgent
+After=haproxy.service
+
+[Service]
+ExecStart=/agent/dfaasagent \
+    --debug \
+    --colors \
+    --listen /ip4/0.0.0.0/tcp/6000 \
+    --mdns-interval 30s \
+    --recalc-period 1m \
+    --haconfig /etc/haproxy/haproxy.cfg \
+    --haconfig-update-command "systemctl restart haproxy.service" \
+    --openfaas-pass "$(cat /var/lib/faasd/secrets/basic-auth-password)"
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target
