@@ -32,14 +32,11 @@ RUN git clone https://github.com/openfaas/faasd --depth=1
 
 WORKDIR /faasd
 
-COPY files/faasd/hack/install.sh ./hack/install.sh
-RUN chmod +x ./hack/install.sh
-
 COPY files/faasd/cmd/install.go ./cmd/install.go
 
+COPY files/faasd/hack/install.sh ./hack/install.sh
+RUN chmod +x ./hack/install.sh
 RUN ./hack/install.sh
-# RUN systemctl enable faasd.service
-# RUN systemctl enable faasd-provider.service
 
 ### Platform (OpenFaaS - faasd)
 
