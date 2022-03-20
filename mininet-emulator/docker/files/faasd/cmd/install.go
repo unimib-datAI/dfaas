@@ -68,11 +68,6 @@ func runInstall(_ *cobra.Command, _ []string) error {
 		return err
 	}
 
-/* 	err = systemd.DaemonReload()
-	if err != nil {
-		return err
-	} */
-
 	err = systemd.Enable("faasd-provider")
 	if err != nil {
 		return err
@@ -82,16 +77,6 @@ func runInstall(_ *cobra.Command, _ []string) error {
 	if err != nil {
 		return err
 	}
-
-	/* err = systemd.Start("faasd-provider")
-	if err != nil {
-		return err
-	}
-
-	err = systemd.Start("faasd")
-	if err != nil {
-		return err
-	} */
 
 	fmt.Println(`Check status with:
   sudo journalctl -u faasd --lines 100 -f
