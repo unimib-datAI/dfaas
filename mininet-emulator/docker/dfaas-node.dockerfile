@@ -38,6 +38,8 @@ COPY files/faasd/hack/install.sh ./hack/install.sh
 RUN chmod +x ./hack/install.sh
 RUN ./hack/install.sh
 
+RUN echo "admin" > /var/lib/faasd/secrets/basic-auth-password
+
 RUN systemctl enable faasd.service
 RUN systemctl enable faasd-provider.service
 
