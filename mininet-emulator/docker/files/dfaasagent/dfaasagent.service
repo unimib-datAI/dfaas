@@ -10,6 +10,7 @@ ExecStart=/agent/dfaasagent \
     --listen /ip4/0.0.0.0/tcp/6000 \
     --mdns-interval 30s \
     --recalc-period 1m \
+    --hatemplate /agent/haproxycfg.tmpl \
     --haconfig /etc/haproxy/haproxy.cfg \
     --haconfig-update-command "systemctl restart haproxy.service" \
     --openfaas-pass ${OPENFAAS_PASSWORD}

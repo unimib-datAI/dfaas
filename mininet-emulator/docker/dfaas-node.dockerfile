@@ -28,7 +28,7 @@ RUN apt-get update && apt-get install -y \
     iproute2 && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-RUN git clone https://github.com/openfaas/faasd --depth=1
+RUN git clone https://github.com/openfaas/faasd --depth=1 /faasd
 
 WORKDIR /faasd
 
