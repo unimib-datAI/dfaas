@@ -3,6 +3,7 @@ Description=DFaaSAgent
 After=haproxy.service
 
 [Service]
+Environment="OPENFAAS_PASSWORD=$(cat /var/lib/faasd/secrets/basic-auth-password)"
 ExecStart=/agent/dfaasagent \
     --debug \
     --colors \
@@ -11,7 +12,7 @@ ExecStart=/agent/dfaasagent \
     --recalc-period 1m \
     --haconfig /etc/haproxy/haproxy.cfg \
     --haconfig-update-command "systemctl restart haproxy.service" \
-    --openfaas-pass "$(cat /var/lib/faasd/secrets/basic-auth-password)"
+    --openfaas-pass ${OPENFAAS_PASSWORD}
 Restart=on-failure
 RestartSec=10s
 
