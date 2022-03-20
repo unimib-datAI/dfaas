@@ -11,7 +11,7 @@ ExecStart=/agent/dfaasagent \
     --recalc-period 1m \
     --hatemplate /agent/haproxycfg.tmpl \
     --haconfig /etc/haproxy/haproxy.cfg \
-    --haconfig-update-command "systemctl restart haproxy.service" \
+    --haconfig-update-command "systemctl restart haproxy.service"
 Restart=on-failure
 RestartSec=10s
 
