@@ -1,7 +1,7 @@
 FROM golang:1.14 as build
 
 # Copy all the necessary files needed to build the agent
-COPY dfaasagent /go/src/dfaasagent
+COPY ./ /go/src/dfaasagent
 WORKDIR /go/src/dfaasagent
 
 # Build the agent only if it was not already built outside of the container. In
