@@ -13,9 +13,9 @@ net = Containernet(controller=Controller)
 net.addController('c0')
 
 info('*** Adding container\n')
-n1 = net.addDocker('n1', ip='10.0.0.1', dcmd='/sbin/init --log-level=err', dimage="platform:latest", runtime='sysbox-runc')
-n2 = net.addDocker('n2', ip='10.0.0.2', dcmd='/sbin/init --log-level=err', dimage="platform:latest", runtime='sysbox-runc')
-n3 = net.addDocker('n3', ip='10.0.0.3', dcmd='/sbin/init --log-level=err', dimage="platform:latest", runtime='sysbox-runc')
+n1 = net.addDocker('n1', ip='10.0.0.1', dcmd='/sbin/init --log-level=err', dimage="dfaas-node:latest", runtime='sysbox-runc')
+n2 = net.addDocker('n2', ip='10.0.0.2', dcmd='/sbin/init --log-level=err', dimage="dfaas-node:latest", runtime='sysbox-runc')
+n3 = net.addDocker('n3', ip='10.0.0.3', dcmd='/sbin/init --log-level=err', dimage="dfaas-node:latest", runtime='sysbox-runc')
 
 info('*** Setup network\n')
 s1 = net.addSwitch('s1')
