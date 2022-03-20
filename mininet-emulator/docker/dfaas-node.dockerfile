@@ -1,14 +1,5 @@
 FROM nestybox/ubuntu-focal-systemd:latest
 
-### Agent
-WORKDIR /agent
-COPY --from=dfaas-agent-builder:latest /go/src/dfaasagent/dfaasagent .
-COPY files/dfaasagent/haproxycfg.tmpl ./haproxycfg.tmpl
-COPY files/dfaasagent/dfaasagent.service /etc/systemd/system/dfaasagent.service
-
-RUN systemctl enable dfaasagent.service
-### End Agent
-
 ### Proxy (HAProxy)
 
 RUN apt-get update && apt-get install -y haproxy \
@@ -44,6 +35,15 @@ RUN systemctl enable faasd.service
 RUN systemctl enable faasd-provider.service
 
 ### Platform (OpenFaaS - faasd)
+
+### Agent
+WORKDIR /agent
+COPY --from=dfaas-agent-builder:latest /go/src/dfaasagent/dfaasagent .
+COPY files/dfaasagent/haproxycfg.tmpl ./haproxycfg.tmpl
+COPY files/dfaasagent/dfaasagent.service /etc/systemd/system/dfaasagent.service
+
+RUN systemctl enable dfaasagent.service
+### End Agent
 
 WORKDIR /
 
