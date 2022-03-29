@@ -335,8 +335,8 @@ func recalcStep1() error {
 
 	out := Output{
 		Timestamp: timestamp,
-		RamUsage:  _recalc.ramUsage["node_exporter:9100"],
-		CpuUsage:  _recalc.cpuUsage["node_exporter:9100"],
+		RamUsage:  _recalc.ramUsage["localhost:9100"],
+		CpuUsage:  _recalc.cpuUsage["localhost:9100"],
 		Functions: functionsSlice,
 	}
 
