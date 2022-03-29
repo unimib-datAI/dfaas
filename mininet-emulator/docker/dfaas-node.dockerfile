@@ -37,7 +37,7 @@ RUN systemctl enable faasd.service
 RUN systemctl enable faasd-provider.service
 
 # Add cAdvisor to monitor containers
-RUN wget https://github.com/google/cadvisor/releases/download/v0.39.3/cadvisor
+RUN wget https://github.com/google/cadvisor/releases/download/v0.44.0/cadvisor
 RUN chmod +x cadvisor
 COPY files/faasd/cadvisor.service /etc/systemd/system/cadvisor.service
 RUN systemctl enable cadvisor.service
