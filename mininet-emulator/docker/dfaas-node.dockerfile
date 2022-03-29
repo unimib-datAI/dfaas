@@ -1,4 +1,4 @@
-FROM nestybox/ubuntu-focal-systemd:latest
+FROM nestybox/ubuntu-impish-systemd:latest
 
 ### Proxy (HAProxy)
 
@@ -11,6 +11,8 @@ RUN systemctl enable haproxy.service
 
 ### Platform (OpenFaaS - faasd)
 RUN apt-get update && apt-get install -y \
+    libc6 \
+    libc6-dev \
     curl \
     git \
     wget \
@@ -36,6 +38,7 @@ RUN systemctl enable faasd-provider.service
 
 # Add cAdvisor to monitor containers
 RUN wget https://github.com/google/cadvisor/releases/download/v0.39.3/cadvisor
+RUN chmod +x cadvisor
 COPY files/faasd/cadvisor.service /etc/systemd/system/cadvisor.service
 RUN systemctl enable cadvisor.service
 
