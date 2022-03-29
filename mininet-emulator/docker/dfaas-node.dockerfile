@@ -58,7 +58,6 @@ WORKDIR /agent
 COPY --from=dfaas-agent-builder:latest /go/src/dfaasagent/dfaasagent .
 COPY files/dfaasagent/haproxycfg.tmpl ./haproxycfg.tmpl
 COPY files/dfaasagent/dfaasagent.service /etc/systemd/system/dfaasagent.service
-COPY files/dfaasagent/init-functions.json ./init-functions.json
 
 RUN systemctl enable dfaasagent.service
 ### End Agent

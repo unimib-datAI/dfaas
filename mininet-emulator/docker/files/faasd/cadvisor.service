@@ -3,7 +3,7 @@ Description=cAdvisor
 After=faasd.service
 
 [Service]
-ExecStart=/faasd/cadvisor --port=10000
+ExecStart=/faasd/cadvisor --port=10000 --enable_metrics=cpu,memory
 Restart=on-failure
 RestartSec=10s
 
