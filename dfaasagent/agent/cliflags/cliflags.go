@@ -32,6 +32,7 @@ type rawValues struct {
 	DateTime  bool
 	LogColors bool
 
+    InitFunctionsFile string
 	RecalcPeriod string
 
 	HATemplateFile        string
@@ -64,6 +65,7 @@ type ParsedValues struct {
 	DateTime  bool
 	LogColors bool
 
+    InitFunctionsFile string
 	RecalcPeriod time.Duration
 
 	HATemplateFile        string
@@ -103,6 +105,7 @@ func parseRawValues() *rawValues {
 	pflag.BoolVarP(&valsRaw.DateTime, "datetime", "t", false, "Enable date and time in logging")
 	pflag.BoolVarP(&valsRaw.LogColors, "colors", "c", false, "Enable colored logging levels")
 
+    pflag.StringVar(&valsRaw.InitFunctionsFile, "init-functions", "init-functions.json", "Path to the init-functions.json file")
 	pflag.StringVar(&valsRaw.RecalcPeriod, "recalc-period", "5m", "This determines every how much to execute the recalculation function across the p2p network (publish rate limits, recalc weights, etc...). Should be > 0. It is advised to not go below 10s, to avoid problems with Prometheus")
 
 	pflag.StringVar(&valsRaw.HATemplateFile, "hatemplate", "haproxycfg.tmpl", "HAProxy configuration template file path. It must be readable")
@@ -178,6 +181,7 @@ func convertRawToParsed(valsRaw *rawValues) (*ParsedValues, error) {
 	valsParsed.DateTime = valsRaw.DateTime
 	valsParsed.LogColors = valsRaw.LogColors
 
+    valsParsed.InitFunctionsFile = valsRaw.InitFunctionsFile
 	valsParsed.RecalcPeriod, err = time.ParseDuration(valsRaw.RecalcPeriod)
 	if err != nil {
 		return nil, errors.Wrap(err, "Error while parsing RecalcPeriod")

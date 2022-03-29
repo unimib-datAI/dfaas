@@ -1,0 +1,11 @@
+[Unit]
+Description=cAdvisor
+After=faasd.service
+
+[Service]
+ExecStart=/faasd/cadvisor
+Restart=on-failure
+RestartSec=10s
+
+[Install]
+WantedBy=multi-user.target

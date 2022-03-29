@@ -56,17 +56,18 @@ func RunRecalc() error {
 	millisInterval := int64(_flags.RecalcPeriod / time.Millisecond)
 	millisIntervalHalf := millisInterval / 2
 
-	//////////////////// [NEW] READ EXPERIMENT JSON FILE /////////////////////////
+	//////////////////// [NEW] READ INIT FUNCTIONS JSON FILE /////////////////////////
 	// The file is read only the first time that agent start
 
 	// Open our jsonFile
-	jsonFile, err := os.Open("experiments/exp.json") // TODO: to change with specific name of file
+	jsonFile, err := os.Open(_flags.InitFunctionsFile)
 
 	// if we os.Open returns an error then handle it
 	if err != nil {
 		fmt.Println(err)
+	} else {
+	    fmt.Println("Successfully opened init functions file")
 	}
-	fmt.Println("Successfully Opened exp.json")
 
 	// defer the closing of our jsonFile so that we can parse it later on
 	defer jsonFile.Close()
@@ -76,7 +77,7 @@ func RunRecalc() error {
 
 	json.Unmarshal(byteValue, &expJson)
 	if err != nil {
-		fmt.Println("Error while deserializing a JSON of experiment from file")
+		fmt.Println("Error while deserializing a JSON of init functions from file")
 	}
 
 	// Debug json read
