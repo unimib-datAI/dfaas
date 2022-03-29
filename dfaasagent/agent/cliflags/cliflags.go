@@ -113,7 +113,7 @@ func parseRawValues() *rawValues {
 	pflag.StringVarP(&valsRaw.HAConfigUpdateCommand, "haconfig-update-command", "u", ":", "Command which will be executed after updating the HAProxy configuration file. The default value (\":\") is the Bash no-op command")
 	pflag.StringVar(&valsRaw.HAProxyHost, "haproxy-host", "127.0.0.1", "IP address or hostname of the local HAProxy instance. Should be reachable from the network since it will be used by the other nodes")
 	pflag.UintVar(&valsRaw.HAProxyPort, "haproxy-port", 80, "TCP port number of the local HAProxy instance. Should be reachable from the network since it will be used by the other nodes")
-	pflag.StringVar(&valsRaw.HASockPath, "hasock-path", "unix:///var/run/haproxy.sock", "Path to the HAProxy socket. Supported address schemas are tcp://hostname:port and unix:///path/to/file")
+	pflag.StringVar(&valsRaw.HASockPath, "hasock-path", "unix:///run/haproxy/admin.sock", "Path to the HAProxy socket. Supported address schemas are tcp://hostname:port and unix:///path/to/file")
 
 	pflag.StringVar(&valsRaw.OpenFaaSHost, "openfaas-host", "127.0.0.1", "IP address or hostname of the local OpenFaaS instance. Should be reachable at least by the local HAProxy instance")
 	pflag.UintVar(&valsRaw.OpenFaaSPort, "openfaas-port", 8080, "TCP port number of the local OpenFaaS instance. Should be reachable at least by the local HAProxy instance")

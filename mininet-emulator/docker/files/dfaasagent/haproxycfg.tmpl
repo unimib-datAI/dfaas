@@ -3,7 +3,7 @@
 {{/* #################### MAIN SECTION #################### */ -}}
 
 global
-    stats socket unix:///var/run/haproxy.sock mode 666 level admin
+    stats socket /run/haproxy/admin.sock mode 666 level admin
     log stdout local0
 
 defaults
