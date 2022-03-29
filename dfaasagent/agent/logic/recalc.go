@@ -42,7 +42,7 @@ var _recalc = struct {
 	overloads map[string]bool
 }{}
 
-var expJson ExperimentJson // Struct that represent Json file
+// var expJson ExperimentJson // Struct that represent Json file
 var it = 0                 // Number of agent loop iterations
 
 //////////////////// PUBLIC FUNCTIONS FOR RECALC ////////////////////
@@ -56,6 +56,7 @@ func RunRecalc() error {
 	millisInterval := int64(_flags.RecalcPeriod / time.Millisecond)
 	millisIntervalHalf := millisInterval / 2
 
+    /*
 	//////////////////// [NEW] READ INIT FUNCTIONS JSON FILE /////////////////////////
 	// The file is read only the first time that agent start
 
@@ -85,6 +86,7 @@ func RunRecalc() error {
 	fmt.Println(string(j))
 
 	expJson.Outputs = []Output{}
+	*/
 
 	for {
 		millisNow = time.Now().UnixNano() / 1000000
@@ -269,6 +271,8 @@ func recalcStep1() error {
 	}
 	debugOverloads(_recalc.overloads) // Debug purpose.
 
+    /*
+
 	///////////////////// [NEW] EXTEND EXPERIMENT JSON FILE WITH METRICS //////////////////////////
 
 	// Create slice of Functions type
@@ -353,6 +357,7 @@ func recalcStep1() error {
 		fmt.Println(err)
 		return err
 	}
+	*/
 
 	it++
 
