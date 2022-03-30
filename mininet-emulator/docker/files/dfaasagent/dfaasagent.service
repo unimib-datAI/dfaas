@@ -10,7 +10,7 @@ ExecStart=/agent/dfaasagent \
     --listen /ip4/${AGENT_IPV4}/tcp/6000 \
     --mdns-interval 30s \
     --recalc-period 1m \
-    --haproxy-host ${AGENT_IPV4}
+    --haproxy-host ${AGENT_IPV4} \
     --hatemplate /agent/haproxycfg.tmpl \
     --haconfig /etc/haproxy/haproxy.cfg \
     --haconfig-update-command "/usr/bin/systemctl restart haproxy.service"
