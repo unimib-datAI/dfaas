@@ -3,12 +3,14 @@ Description=DFaaSAgent
 After=haproxy.service
 
 [Service]
+PassEnvironment=AGENT_IPV4
 ExecStart=/agent/dfaasagent \
     --debug \
     --colors \
-    --listen /ip4/0.0.0.0/tcp/6000 \
+    --listen /ip4/${AGENT_IPV4}/tcp/6000 \
     --mdns-interval 30s \
     --recalc-period 1m \
+    --haproxy-host ${AGENT_IPV4}
     --hatemplate /agent/haproxycfg.tmpl \
     --haconfig /etc/haproxy/haproxy.cfg \
     --haconfig-update-command "/usr/bin/systemctl restart haproxy.service"

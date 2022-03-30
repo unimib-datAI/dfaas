@@ -33,7 +33,7 @@ docker build -t dfaas-agent-builder:latest -f docker/dfaas-agent-builder.dockerf
 docker build -t dfaas-node:latest -f docker/dfaas-node.dockerfile ./docker
 ```
 
-** Deploy a function in a node**
+**Deploy a function in a node**
 ```shell
 faas-cli login --password admin && faas-cli store deploy figlet --label dfaas.maxrate=10
 ```
