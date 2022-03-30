@@ -328,7 +328,7 @@ func (client *Client) QueryCPUusagePerFunction(timeSpan time.Duration, funcName 
 	strTimeSpan := fmt.Sprintf("%.0fm", timeSpan.Minutes())
 	funcFilter := strings.Join(funcName, "|")
 
-	query := fmt.Sprintf("sum by (id) (irate(container_cpu_usage_seconds_total{id=~\"%s\"}[%s]))  / on() group_left() sum by (instance) (irate(node_cpu_seconds_total{job=\"node\"}[%s]))", funcFilter, strTimeSpan, strTimeSpan)
+	query := fmt.Sprintf("sum by (id) (irate(container_cpu_usage_seconds_total{id=~\".*%s.*\"}[%s])) / on() group_left() sum by (instance) (irate(node_cpu_seconds_total{job=\"node\"}[%s]))", funcFilter, strTimeSpan, strTimeSpan)
 	return client.queryCPUusagePerFunction(query)
 }
 
@@ -341,6 +341,6 @@ func (client *Client) QueryRAMusagePerFunction(timeSpan time.Duration, funcName 
 	strTimeSpan := fmt.Sprintf("%.0fm", timeSpan.Minutes())
 	funcFilter := strings.Join(funcName, "|")
 
-	query := fmt.Sprintf("(sum (avg_over_time(container_memory_usage_bytes{id=~\"%s\"}[%s])) by(id)) / on() group_left() (avg_over_time(node_memory_MemTotal_bytes[%s]))", funcFilter, strTimeSpan, strTimeSpan)
+	query := fmt.Sprintf("(sum (avg_over_time(container_memory_usage_bytes{id=~\".*%s.*\"}[%s])) by(id)) / on() group_left() (avg_over_time(node_memory_MemTotal_bytes[%s]))", funcFilter, strTimeSpan, strTimeSpan)
 	return client.queryRAMusagePerFunction(query)
 }

@@ -32,3 +32,8 @@ sudo usermod -aG docker $USER
 docker build -t dfaas-agent-builder:latest -f docker/dfaas-agent-builder.dockerfile ../dfaasagent
 docker build -t dfaas-node:latest -f docker/dfaas-node.dockerfile ./docker
 ```
+
+** Deploy a function in a node**
+```shell
+faas-cli login --password admin && faas-cli store deploy figlet --label dfaas.maxrate=10
+```
