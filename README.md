@@ -62,8 +62,8 @@ You can follow the [official user guide](https://github.com/nestybox/sysbox/blob
 
 ```shell
 # Paths assume you are executing from the project root directory
-docker build -t dfaas-agent-builder:latest -f docker/dfaas-agent-builder.dockerfile ./dfaasagent
-docker build -t dfaas-node:latest -f docker/dfaas-node.dockerfile ./docker
+docker build -t dfaas-agent-builder:latest -f docker/dfaas-agent-builder.dockerfile dfaasagent
+docker build -t dfaas-node:latest -f docker/dfaas-node.dockerfile docker
 ```
 
 ### Run a node
@@ -74,10 +74,13 @@ docker run --rm --name dfaas-node --runtime=sysbox-runc --publish 8080:80 dfaas-
 
 ### Deploy a function in a node
 ```shell
+# Enter into the dfaas-node container
 docker exec -it dfaas-node bash
 faas-cli login --password admin
 # Deploy the Figlet function from the OpenFaaS store and set the function max rate to 10
 faas-cli store deploy figlet --label dfaas.maxrate=10
+# Enter from the the dfaas-node container
+exit
 ```
 
 ### Invoke a function
