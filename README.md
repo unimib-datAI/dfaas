@@ -27,8 +27,70 @@ The edge node can receive functions' execution _requests_, in the form of HTTP r
 
 ![Architecture](images/Arch-crop.png)
 
-## Simulation
+## Prototype
+This prototype relies on [HAProxy](https://www.haproxy.org/) to implement the proxy component,
+and on [faasd](https://github.com/openfaas/faasd) (a lightweight version of OpenFaaS) to implement the FaaS platform.
 
-In this work it has also implemented a simulator to test and compare different load balancing techniques. The simulation code is available under _simulation_ directory. For more informations read associated [**README**](simulation/README.md) file.
+Also, we exploit [Sysbox](https://github.com/nestybox/sysbox), an open-source and free container runtime
+(a specialized "runc") that enhances containers in two key ways:
 
-Data, gathered by the DFaaS system, used for simulation, are available [**here**](data/).
+- improves container isolation
+- enables containers to run same workloads as VMs
+
+Thanks to Sysbox we are able to run our prototype as a standalone Docker container that executes our agent,
+the HAProxy and faasd all together.
+This way, we can run several emulated edge nodes by simply executing multiple Docker containers.
+
+### Requirements
+
+#### Docker CE
+> Due to [Sysbox issue #502](https://github.com/nestybox/sysbox/issues/502) we need to install Docker CE v20.10.12.
+> Sysbox release 0.5.0 should fix the issue for next Docker CE versions.
+
+You can follow the [official user guide](https://docs.docker.com/engine/install/).
+
+#### Sysbox CE
+
+You can follow the [official user guide](https://github.com/nestybox/sysbox/blob/master/docs/user-guide/install-package.md).
+
+> We do not recommend to set up `sysbox-runc` as your default container, you can skip that part of the guide.
+> 
+> We instead recommend installing [shiftfs](https://github.com/nestybox/sysbox/blob/master/docs/user-guide/install-package.md#installing-shiftfs)
+> according to your kernel version as suggested by the Sysbox CE user guide.
+
+### Build Docker images
+
+```shell
+# Paths assume you are executing from the project root directory
+docker build -t dfaas-agent-builder:latest -f docker/dfaas-agent-builder.dockerfile ./dfaasagent
+docker build -t dfaas-node:latest -f docker/dfaas-node.dockerfile ./docker
+```
+
+### Run a node
+```shell
+# We bind the default proxy port (80) to the host port 8080 
+docker run --rm --name dfaas-node --runtime=sysbox-runc --publish 8080:80 dfaas-node:latest
+```
+
+### Deploy a function in a node
+```shell
+docker exec -it dfaas-node bash
+faas-cli login --password admin
+# Deploy the Figlet function from the OpenFaaS store and set the function max rate to 10
+faas-cli store deploy figlet --label dfaas.maxrate=10
+```
+
+### Invoke a function
+```shell
+curl http://localhost:8080/function/figlet -d 'Hello DFaaS world!'
+```
+
+## Emulator
+For a complex setup running several emulated edge nodes with different topologies see [emulator directory](emulator).
+We provide instructions and examples to execute DFaaS nodes via [Containernet emulator](https://containernet.github.io/).
+
+## Simulator
+
+We also provide a simulator to test and compare different load balancing techniques. The simulation code is available under _simulation_ directory. For more informations read associated [README](simulation/README.md) file.
+
+Data, gathered by the DFaaS system, used for simulation, are available [here](data).
