@@ -66,13 +66,13 @@ docker build -t dfaas-node:latest -f docker/dfaas-node.dockerfile docker
 ### Run a node
 ```shell
 # We bind the default proxy port (80) to the host port 8080 
-docker run --rm --name dfaas-node --runtime=sysbox-runc --publish 8080:80 dfaas-node:latest
+docker run --rm --name dfaas-node --runtime=sysbox-runc --publish 8080:80 --env AGENT_IPV4=127.0.0.01 dfaas-node:latest
 ```
 
 ### Deploy a function in a node
 ```shell
 # Enter into the dfaas-node container
-docker exec -it dfaas-node
+docker exec -it dfaas-node bash
 # This script waits for the OpenFaaS gateway to be up (max 20 retries, 10s delay) then deploys 4 functions from the OpenFaas store.
 # See docker/files/faasd/deploy_functions.sh for further details.
 ./deploy_functions.sh
