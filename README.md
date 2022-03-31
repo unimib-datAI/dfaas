@@ -84,6 +84,13 @@ exit
 curl http://localhost:8080/function/figlet -d 'Hello DFaaS world!'
 ```
 
+### Troubleshooting
+
+```shell
+docker exec -it dfaas-node bash
+journalctl --follow --unit dfaasagent
+```
+
 ## Emulator
 For a complex setup running several emulated edge nodes with different topologies see [emulator directory](emulator).
 We provide instructions and examples to execute DFaaS nodes via [Containernet emulator](https://containernet.github.io/).
