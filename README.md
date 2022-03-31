@@ -44,9 +44,6 @@ This way, we can run several emulated edge nodes by simply executing multiple Do
 ### Requirements
 
 #### Docker CE
-> Due to [Sysbox issue #502](https://github.com/nestybox/sysbox/issues/502) we need to install Docker CE v20.10.12.
-> Sysbox release 0.5.0 should fix the issue for next Docker CE versions.
-
 You can follow the [official user guide](https://docs.docker.com/engine/install/).
 
 #### Sysbox CE
