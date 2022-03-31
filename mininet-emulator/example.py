@@ -19,11 +19,9 @@ n3 = net.addDocker('n3', ip='10.0.0.3', dcmd='/sbin/init --log-level=err', dimag
 
 info('*** Setup network\n')
 s1 = net.addSwitch('s1')
-s2 = net.addSwitch('s2')
 net.addLink(n1, s1)
-net.addLink(s1, s2, cls=TCLink, delay='100ms', bw=1)
-net.addLink(s2, n2)
-net.addLink(s2, n3)
+net.addLink(n2, s1)
+net.addLink(n3, s1)
 
 info('*** Starting network\n')
 net.start()
