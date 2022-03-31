@@ -62,5 +62,8 @@ RUN systemctl enable dfaasagent.service
 
 WORKDIR /
 
+COPY files/faasd/deploy_functions.sh ./deploy_functions.sh
+RUN chmod +x deploy_functions.sh
+
 # Set systemd as entrypoint.
 ENTRYPOINT [ "/sbin/init", "--log-level=err" ]

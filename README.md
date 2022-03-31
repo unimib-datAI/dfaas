@@ -75,11 +75,10 @@ docker run --rm --name dfaas-node --runtime=sysbox-runc --publish 8080:80 dfaas-
 ### Deploy a function in a node
 ```shell
 # Enter into the dfaas-node container
-docker exec -it dfaas-node bash
-faas-cli login --password admin
-# Deploy the Figlet function from the OpenFaaS store and set the function max rate to 10
-faas-cli store deploy figlet --label dfaas.maxrate=10
-# Enter from the the dfaas-node container
+docker exec -it dfaas-node
+# This script waits for the OpenFaaS gateway to be up (max 20 retries, 10s delay) then deploys 4 functions from the OpenFaas store.
+# See docker/files/faasd/deploy_functions.sh for further details.
+./deploy_functions.sh
 exit
 ```
 
@@ -94,6 +93,8 @@ We provide instructions and examples to execute DFaaS nodes via [Containernet em
 
 ## Simulator
 
-We also provide a simulator to test and compare different load balancing techniques. The simulation code is available under _simulation_ directory. For more informations read associated [README](simulation/README.md) file.
+We also provide a simulator to test and compare different load balancing techniques.
+The simulation code is available into the [simulation directory](simulation).
+Data gathered by the DFaaS system used for simulation are available [here](data).
 
-Data, gathered by the DFaaS system, used for simulation, are available [here](data).
+For more information read associated [README](simulation/README.md) file.
