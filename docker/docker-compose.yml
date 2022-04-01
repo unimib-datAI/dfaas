@@ -35,11 +35,11 @@ services:
     ports:
       - "8083:80"
     environment:
-      AGENT_IPV4: 172.16.238.1
+      AGENT_IPV4: 172.16.238.3
     runtime: sysbox-runc
     networks:
       p2p-overlay:
-        ipv4_address: 172.16.238.1
+        ipv4_address: 172.16.238.3
 
 networks:
   p2p-overlay:
