@@ -91,7 +91,7 @@ type perFunctionCpuUsageResponse struct {
 		ResultType string `json:"resultType"`
 		Result     []struct {
 			Metric struct {
-				ServiceName string `json:"container_label_com_docker_swarm_service_name"`
+				ServiceName string `json:"id"`
 			} `json:"metric"`
 			Value []interface{} `json:"value"`
 		} `json:"result"`
@@ -105,7 +105,7 @@ type perFunctionRamUsageResponse struct {
 		ResultType string `json:"resultType"`
 		Result     []struct {
 			Metric struct {
-				ServiceName string `json:"container_label_com_docker_swarm_service_name"`
+				ServiceName string `json:"id"`
 			} `json:"metric"`
 			Value []interface{} `json:"value"`
 		} `json:"result"`
