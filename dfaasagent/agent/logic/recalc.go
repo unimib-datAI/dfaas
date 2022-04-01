@@ -236,25 +236,27 @@ func recalcStep1() error {
 	}
 	debugPromRAMusage(_flags.RecalcPeriod, _recalc.ramUsage)
 
-    // Get function's name as a slice.
-    funcNames := make([]string, len(_recalc.funcs))
-    i := 0
-    for k := range _recalc.funcs {
-        funcNames[i] = k
-        i++
-    }
+	if len(_recalc.funcs) > 0 {
+		// Get function's name as a slice.
+		funcNames := make([]string, len(_recalc.funcs))
+		i := 0
+		for k := range _recalc.funcs {
+			funcNames[i] = k
+			i++
+		}
 
-    _recalc.perFuncCpuUsage, err = _ofpromqClient.QueryCPUusagePerFunction(_flags.RecalcPeriod, funcNames)
-    if err != nil {
-        return errors.Wrap(err, "Error while executing Prometheus query")
-    }
-    debugPromCPUusagePerFunction(_flags.RecalcPeriod, _recalc.perFuncCpuUsage)
+		_recalc.perFuncCpuUsage, err = _ofpromqClient.QueryCPUusagePerFunction(_flags.RecalcPeriod, funcNames)
+		if err != nil {
+			return errors.Wrap(err, "Error while executing Prometheus query")
+		}
+		debugPromCPUusagePerFunction(_flags.RecalcPeriod, _recalc.perFuncCpuUsage)
 
-    _recalc.perFuncRamUsage, err = _ofpromqClient.QueryRAMusagePerFunction(_flags.RecalcPeriod, funcNames)
-    if err != nil {
-        return errors.Wrap(err, "Error while executing Prometheus query")
-    }
-    debugPromRAMusagePerFunction(_flags.RecalcPeriod, _recalc.perFuncRamUsage)
+		_recalc.perFuncRamUsage, err = _ofpromqClient.QueryRAMusagePerFunction(_flags.RecalcPeriod, funcNames)
+		if err != nil {
+			return errors.Wrap(err, "Error while executing Prometheus query")
+		}
+		debugPromRAMusagePerFunction(_flags.RecalcPeriod, _recalc.perFuncRamUsage)
+	}
 
 	//////////////////// OVERLOAD / UNDERLOAD MODE DECISION ////////////////////
 
