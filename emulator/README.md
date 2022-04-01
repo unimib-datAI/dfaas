@@ -6,15 +6,16 @@ We emulate edge scenarios with multiple nodes by relying on [Containernet](https
 ### Requirements
 - Ubuntu 20.04 (recommended)
 - Python3
-- Docker CE
-- Sysbox CE
+- Docker CE 20.10.14
+- Docker Compose v2
+- Sysbox CE 0.5.0
 
-For Docker and Sysbox you can look at the [README in the project root.](../README.md).
+For Docker CE, Docker Compose and Sysbox CE you can look at the [README in the project root.](../README.md).
 
-### Install Containernet
+### Install Containernet v3.1
 ```shell
 sudo apt-get install ansible git
-git clone https://github.com/containernet/containernet.git
+git clone --branch v3.1 https://github.com/containernet/containernet.git
 #  We opened a pull request (#243) to make this edit available directly from upstream. See the PR for further details.
 cp hack/node.py containernet/mininet/node.py
 sudo ansible-playbook -i "localhost," -c local containernet/ansible/install.yml
