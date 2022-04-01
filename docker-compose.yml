@@ -8,11 +8,11 @@ services:
     ports:
       - "8081:80"
     environment:
-      AGENT_IPV4: 172.16.238.1
+      AGENT_IPV4: 172.16.238.10
     runtime: sysbox-runc
     networks:
       p2p-overlay:
-        ipv4_address: 172.16.238.1
+        ipv4_address: 172.16.238.10
   node-2:
     image: dfaas-node:latest
     build:
@@ -25,7 +25,7 @@ services:
     runtime: sysbox-runc
     networks:
       p2p-overlay:
-        ipv4_address: 172.16.238.2
+        ipv4_address: 172.16.238.11
 
   node-3:
     image: dfaas-node:latest
@@ -35,11 +35,11 @@ services:
     ports:
       - "8083:80"
     environment:
-      AGENT_IPV4: 172.16.238.3
+      AGENT_IPV4: 172.16.238.12
     runtime: sysbox-runc
     networks:
       p2p-overlay:
-        ipv4_address: 172.16.238.3
+        ipv4_address: 172.16.238.12
 
 networks:
   p2p-overlay:
