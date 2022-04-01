@@ -43,10 +43,13 @@ This way, we can run several emulated edge nodes by simply executing multiple Do
 
 ### Requirements
 
-#### Docker CE
+#### Docker CE 20.10.14
 You can follow the [official user guide](https://docs.docker.com/engine/install/).
 
-#### Sysbox CE
+#### Docker Compose v2
+You can follow the [official user guide](https://docs.docker.com/compose/cli-command/).
+
+#### Sysbox CE 0.5.0
 
 You can follow the [official user guide](https://github.com/nestybox/sysbox/blob/master/docs/user-guide/install-package.md).
 
@@ -63,16 +66,16 @@ docker build -t dfaas-agent-builder:latest -f docker/dfaas-agent-builder.dockerf
 docker build -t dfaas-node:latest -f docker/dfaas-node.dockerfile docker
 ```
 
-### Run a node
+### Run a 3 nodes network via Docker Compose
 ```shell
-# We bind the default proxy port (80) to the host port 8080 
-docker run --rm --name dfaas-node --runtime=sysbox-runc --publish 8080:80 --env AGENT_IPV4=127.0.0.01 dfaas-node:latest
+docker compose up -d
 ```
 
 ### Deploy a function in a node
 ```shell
-# Enter into the dfaas-node container
-docker exec -it dfaas-node bash
+# Enter into the container
+# Substitute MY_CONTAINER_NAME with the actual container name
+docker exec -it MY_CONTAINER_NAME bash
 # This script waits for the OpenFaaS gateway to be up (max 20 retries, 10s delay) then deploys 4 functions from the OpenFaas store.
 # See docker/files/faasd/deploy_functions.sh for further details.
 ./deploy_functions.sh
@@ -81,13 +84,14 @@ exit
 
 ### Invoke a function
 ```shell
-curl http://localhost:8080/function/figlet -d 'Hello DFaaS world!'
+curl http://localhost:8081/function/figlet -d 'Hello DFaaS world!'
 ```
 
 ### Troubleshooting
 
 ```shell
-docker exec -it dfaas-node bash
+# N.B.: Substitute MY_CONTAINER_NAME with the actual container name
+docker exec -it MY_CONTAINER_NAME bash
 journalctl --follow --unit dfaasagent
 ```
 
