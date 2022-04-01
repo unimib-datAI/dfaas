@@ -17,7 +17,7 @@ import (
 // This package handles the Kademlia peer discovery process
 
 // kademliaDebugLogging decides wheather to enable or disable logging for this pakcage
-const kademliaDebugLogging = false
+const kademliaDebugLogging = true
 
 var _ctx context.Context
 var _p2pHost host.Host

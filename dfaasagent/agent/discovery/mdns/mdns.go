@@ -27,7 +27,7 @@ func (n *mDNSDiscNotifee) HandlePeerFound(peerInfo peer.AddrInfo) {
 }
 
 // mdnsDebugLogging decides wheather to enable or disable logging for this pakcage
-const mdnsDebugLogging = false
+const mdnsDebugLogging = true
 
 var _ctx context.Context
 var _p2pHost host.Host

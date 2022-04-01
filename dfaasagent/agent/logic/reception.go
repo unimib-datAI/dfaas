@@ -58,11 +58,14 @@ func processMsgText(sender string, msg *MsgText) error {
 
 // processMsgNodeInfo processes a node info message received from pubsub
 func processMsgNodeInfo(sender string, msg *MsgNodeInfo) error {
+	logger := logging.Logger()
 	myself := _p2pHost.ID().String()
 
 	if sender == myself {
 		return nil // Ignore ourselves
 	}
+
+	logger.Info("Received node info message from node \"", sender, "\"")
 
 	// Note: if the sender node do not "know" us (we aren't in his FuncLimits) we just ignore his message
 	funcLimits, present := msg.FuncLimits[myself]
