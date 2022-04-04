@@ -263,6 +263,7 @@ func recalcStep1() error {
 	_recalc.overloads = map[string]bool{}
 
 	for funcName, maxRate := range _recalc.funcs {
+		logger.Debugf("Computing if %s function is on overload", funcName)
 		invocRate, present := _recalc.userRates[funcName]
 
 		if !present || invocRate < float64(maxRate) {
@@ -366,8 +367,10 @@ func recalcStep1() error {
 	//////////////////// LIMITS AND WEIGHTS CALCULATIONS ////////////////////
 
 	for funcName, ovrld := range _recalc.overloads {
+		logger.Debugf("Calculating limits and weights for %s function", funcName)
 		if ovrld {
 			// Set all funcData.LimitIn to zero for this function
+			logger.Debugf("%s function is on overlad! Setting LimitIn to 0", funcName)
 			_nodestbl.SafeExec(func(entries map[string]*nodestbl.Entry) error {
 				for _, entry := range entries {
 					funcData, present := entry.FuncsData[funcName]
@@ -380,6 +383,7 @@ func recalcStep1() error {
 			})
 		} else {
 			// Calculate the rate margin
+			logger.Debugf("Calculating rate margin for %s function", funcName)
 			invocRate, present := _recalc.userRates[funcName]
 			maxRate := _recalc.funcs[funcName]
 			var margin uint
@@ -391,6 +395,7 @@ func recalcStep1() error {
 
 			// Set all funcData.Weight to zero for this function, and set the
 			// LimitIn for each node
+			logger.Debugf("Setting Weight to 0 for %s function and setting LimitIn for each node", funcName)
 			_nodestbl.SafeExec(func(entries map[string]*nodestbl.Entry) error {
 				nNodes := uint(0)
 
@@ -471,12 +476,12 @@ func recalcStep1() error {
 		HAProxyPort: _flags.HAProxyPort,
 		FuncLimits:  limits,
 	}
+	debugMsgNodeInfo(msg)
 
 	err = communication.MarshAndPublish(msg)
 	if err != nil {
 		return err
 	}
-
 	//////////////////// IF EVERYTHING OK, RETURN NIL ////////////////////
 
 	return nil

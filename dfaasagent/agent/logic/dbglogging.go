@@ -329,3 +329,18 @@ func debugStickTable(stName string, stContent map[string]*hasock.STEntry) {
 		logger.Debugf("  - key=%s: cnt=%d rate=%d", key, stEntry.HTTPReqCnt, stEntry.HTTPReqRate)
 	}
 }
+
+func debugMsgNodeInfo(msg MsgNodeInfo) {
+	if !logging.GetDebugMode() {
+		return
+	}
+
+	logger := logging.Logger()
+
+	for _nodeID, _limits := range msg.FuncLimits {
+		logger.Debugf("Functions limits for node %s (%s:%d):", _nodeID, msg.HAProxyHost, msg.HAProxyPort)
+		for funcName := range _limits {
+			logger.Debugf("	Function %s LimitOut: %f", funcName, _limits[funcName])
+		}
+	}
+}

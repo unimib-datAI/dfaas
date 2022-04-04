@@ -5,7 +5,6 @@ import (
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/pkg/errors"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/cliflags"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
 )
 
@@ -66,12 +65,12 @@ func processMsgNodeInfo(sender string, msg *MsgNodeInfo) error {
 		return nil // Ignore ourselves
 	}
 
-	if cliflags.GetValues().DebugMode {
+	if logging.GetDebugMode() {
 		logger.Debugf("Received node info message from node %s", sender)
 		for _nodeID, _limits := range msg.FuncLimits {
-			logger.Debugf("	Functions limits for node %s:", _nodeID)
+			logger.Debugf("Functions limits for node %s (%s:%d):", _nodeID, msg.HAProxyHost, msg.HAProxyPort)
 			for funcName := range _limits {
-				logger.Debugf("		Function %s LimitOut: %f", funcName, _limits[funcName])
+				logger.Debugf("	Function %s LimitOut: %f", funcName, _limits[funcName])
 			}
 		}
 	}
