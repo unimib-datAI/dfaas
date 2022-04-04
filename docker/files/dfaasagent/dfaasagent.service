@@ -8,7 +8,8 @@ ExecStart=/agent/dfaasagent \
     --debug \
     --colors \
     --listen /ip4/${AGENT_IPV4}/tcp/6000 \
-    --mdns-interval 30s \
+    --prvkey /agent/prvkey.dat \
+    --boostrap-nodes ${BOOTSTRAP_NODES} \
     --recalc-period 1m \
     --haproxy-host ${AGENT_IPV4} \
     --hatemplate /agent/haproxycfg.tmpl \

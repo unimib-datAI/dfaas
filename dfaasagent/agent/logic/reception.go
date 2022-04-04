@@ -69,7 +69,7 @@ func processMsgNodeInfo(sender string, msg *MsgNodeInfo) error {
 	if cliflags.GetValues().DebugMode {
 		logger.Debugf("Received node info message from node %s", sender)
 		for _nodeID, _limits := range msg.FuncLimits {
-			logger.Debugf("	Functions limits for %s:", _nodeID)
+			logger.Debugf("	Functions limits for node %s:", _nodeID)
 			for funcName := range _limits {
 				logger.Debugf("		Function %s LimitOut: %f", funcName, _limits[funcName])
 			}
