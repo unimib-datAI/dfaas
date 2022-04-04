@@ -9,7 +9,7 @@ ExecStart=/agent/dfaasagent \
     --colors \
     --listen /ip4/${AGENT_IPV4}/tcp/6000 \
     --prvkey /agent/prvkey.dat \
-    --bootstrap-nodes ${BOOTSTRAP_NODES} \
+    --bootstrap-nodes "${BOOTSTRAP_NODES}" \
     --recalc-period 1m \
     --haproxy-host ${AGENT_IPV4} \
     --hatemplate /agent/haproxycfg.tmpl \
