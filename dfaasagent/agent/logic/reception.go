@@ -5,6 +5,7 @@ import (
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/pkg/errors"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/cliflags"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
 )
 
@@ -51,7 +52,7 @@ func processMsgText(sender string, msg *MsgText) error {
 		return nil // Ignore ourselves
 	}
 
-	logger.Info("Received text message from node \"", sender, "\": ", msg.Text)
+	logger.Debugf("Received text message from node %s: %s", sender, msg.Text)
 
 	return nil
 }
@@ -65,7 +66,15 @@ func processMsgNodeInfo(sender string, msg *MsgNodeInfo) error {
 		return nil // Ignore ourselves
 	}
 
-	logger.Info("Received node info message from node \"", sender, "\"")
+	if cliflags.GetValues().DebugMode {
+		logger.Debugf("Received node info message from node %s", sender)
+		for _nodeID, _limits := range msg.FuncLimits {
+			logger.Debugf("	Functions limits for %s:", _nodeID)
+			for funcName := range _limits {
+				logger.Debugf("		Function %s LimitOut: %f", funcName, _limits[funcName])
+			}
+		}
+	}
 
 	// Note: if the sender node do not "know" us (we aren't in his FuncLimits) we just ignore his message
 	funcLimits, present := msg.FuncLimits[myself]
