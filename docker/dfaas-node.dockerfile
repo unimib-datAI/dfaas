@@ -11,6 +11,7 @@ RUN systemctl enable haproxy.service
 
 ### Platform (OpenFaaS - faasd)
 RUN apt-get update && apt-get install -y \
+    nano \
     libc6 \
     libc6-dev \
     curl \

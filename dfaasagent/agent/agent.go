@@ -171,9 +171,7 @@ func runAgent(flags *cliflags.ParsedValues) error {
 
 	chanErr := make(chan error, 1)
 
-	if len(flags.BootstrapNodes) > 0 {
-		go func() { chanErr <- kademlia.RunDiscovery() }()
-	}
+    go func() { chanErr <- kademlia.RunDiscovery() }()
 
 	if flags.MDNSInterval > 0 {
 		go func() { chanErr <- mdns.RunDiscovery() }()

@@ -41,7 +41,7 @@ services:
       - "8083:80"
     environment:
       AGENT_IPV4: 172.16.238.12
-      BOOTSTRAP_NODES: list:/ip4/172.16.238.10/tcp/6000/p2p/QmUb2Rxy3oV7ZsENnkSG3nZDQySEaymzuxKxWQJE9Fu3Qb,/ip4/172.16.238.12/tcp/6000/p2p/QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z
+      BOOTSTRAP_NODES: list:/ip4/172.16.238.10/tcp/6000/p2p/QmUb2Rxy3oV7ZsENnkSG3nZDQySEaymzuxKxWQJE9Fu3Qb,/ip4/172.16.238.11/tcp/6000/p2p/QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR
     runtime: sysbox-runc
     volumes:
       - ./docker/files/dfaasagent/bootstrap-nodes-prvkeys/prvkey-for-agent3.dat:/agent/prvkey.dat:ro
