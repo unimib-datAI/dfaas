@@ -1,6 +1,7 @@
 package nodestbl
 
 import (
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
 	"sync"
 	"time"
 )
@@ -59,11 +60,16 @@ func (tbl *Table) isExpired(entry *Entry) bool {
 
 // InitTable initializes a Table's fields if they are empty
 func (tbl *Table) InitTable() {
+	logger := logging.Logger()
+
 	if tbl.entries == nil {
 		tbl.entries = map[string]*Entry{}
+		logger.Debug("Initialized table entries")
 	}
+
 	if tbl.mutex == nil {
 		tbl.mutex = &sync.Mutex{}
+		logger.Debug("Initialized table mutex")
 	}
 }
 
@@ -71,15 +77,18 @@ func (tbl *Table) InitTable() {
 // (in a critical section). You can safely pass the entries map by value to
 // function, instead of a pointer, because a map is itself a pointer type
 func (tbl *Table) SafeExec(function func(entries map[string]*Entry) error) error {
+	logger := logging.Logger()
 	tbl.mutex.Lock()
 	defer tbl.mutex.Unlock()
 
 	tbl.InitTable()
 
 	// Remove expired entries before doing anything
+	logger.Debug("Removing expired table entries")
 	for nodeID, entry := range tbl.entries {
 		if tbl.isExpired(entry) {
 			delete(tbl.entries, nodeID)
+			logger.Debugf("Entry %s for node %s is expired and has been deleted", entry.ID, nodeID)
 		}
 	}
 
@@ -95,8 +104,9 @@ func (tbl *Table) SetReceivedValues(
 	haProxyPort uint,
 	funcLimits map[string]float64,
 ) error {
+	logger := logging.Logger()
+	logger.Debugf("Setting received values for node %s into table", nodeID)
 	return tbl.SafeExec(func(entries map[string]*Entry) error {
-
 		// If the message arrives from a sender node with ID nodeID that is
 		// not present in _nodesbl yet, it is added to the table.
 		_, present := entries[nodeID]
@@ -104,6 +114,7 @@ func (tbl *Table) SetReceivedValues(
 			entries[nodeID] = &Entry{
 				FuncsData: map[string]*FuncData{},
 			}
+			logger.Debugf("Node %s was not present and has been added to the table", nodeID)
 		}
 
 		entries[nodeID].TAlive = time.Now()
@@ -113,6 +124,7 @@ func (tbl *Table) SetReceivedValues(
 
 		// Remove from my table the functions limits which are no more present
 		// in the new updated message
+		logger.Debugf("Removing functions limits no more present in the received message from node %s", nodeID)
 		for funcName := range entries[nodeID].FuncsData {
 			// Once this routine executed a message from another node of the
 			// p2p net has been received.
@@ -123,11 +135,13 @@ func (tbl *Table) SetReceivedValues(
 			_, present := funcLimits[funcName]
 			if !present {
 				delete(entries[nodeID].FuncsData, funcName)
+				logger.Debugf("%s function is no more present in the received message from node %s and has been removed", funcName, nodeID)
 			}
 		}
 
 		// Update the functions limits with the received values (also add new
 		// functions which weren't present before)
+		logger.Debugf("Updating functions limits with received values from node %s", nodeID)
 		for funcName, limit := range funcLimits {
 			_, present := entries[nodeID].FuncsData[funcName]
 			if present {
@@ -140,12 +154,14 @@ func (tbl *Table) SetReceivedValues(
 				// Note: this LimitOut is updated on the base of LimitIn
 				// for this function received by i-th node (sender).
 				entries[nodeID].FuncsData[funcName].LimitOut = limit
+				logger.Debugf("Updated LimitOut to %f for %s function of node %s", limit, funcName, nodeID)
 			} else {
 				entries[nodeID].FuncsData[funcName] = &FuncData{
 					LimitIn:    0,
 					LimitOut:   limit,
 					NodeWeight: 0,
 				}
+				logger.Debugf("Set LimitOut to %f, LimitIn to 0 and NodeWeight to 0 for %s function of node %s", limit, funcName, nodeID)
 			}
 		}
 

@@ -370,7 +370,7 @@ func recalcStep1() error {
 		logger.Debugf("Calculating limits and weights for %s function", funcName)
 		if ovrld {
 			// Set all funcData.LimitIn to zero for this function
-			logger.Debugf("%s function is on overlad! Setting LimitIn to 0", funcName)
+			logger.Debugf("%s function is on overload! Setting LimitIn to 0", funcName)
 			_nodestbl.SafeExec(func(entries map[string]*nodestbl.Entry) error {
 				for _, entry := range entries {
 					funcData, present := entry.FuncsData[funcName]
@@ -386,12 +386,16 @@ func recalcStep1() error {
 			logger.Debugf("Calculating rate margin for %s function", funcName)
 			invocRate, present := _recalc.userRates[funcName]
 			maxRate := _recalc.funcs[funcName]
+			logger.Debugf("%s function invocation rate is %f", funcName, invocRate)
+			logger.Debugf("%s function max rate is %d", funcName, maxRate)
 			var margin uint
 			if present {
 				margin = maxRate - uint(invocRate)
 			} else {
 				margin = maxRate
 			}
+
+			logger.Debugf("%s function margin equal to %d", funcName, margin)
 
 			// Set all funcData.Weight to zero for this function, and set the
 			// LimitIn for each node
@@ -408,6 +412,7 @@ func recalcStep1() error {
 						// it is not necessary to send request towards other nodes.
 						funcData.NodeWeight = 0
 						nNodes++
+						logger.Debugf("Set Weight to 0 for %s function", funcName)
 					}
 				}
 
@@ -425,6 +430,7 @@ func recalcStep1() error {
 						funcData, present := entry.FuncsData[funcName]
 						if present {
 							funcData.LimitIn = float64(limitIn)
+							logger.Debugf("Set LiminIn to %f for %s function", funcData.LimitIn, funcName)
 						}
 					}
 				}

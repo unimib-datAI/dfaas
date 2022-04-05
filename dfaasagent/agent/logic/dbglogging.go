@@ -338,7 +338,7 @@ func debugMsgNodeInfo(msg MsgNodeInfo) {
 	logger := logging.Logger()
 
 	for _nodeID, _limits := range msg.FuncLimits {
-		logger.Debugf("Functions limits for node %s (%s:%d):", _nodeID, msg.HAProxyHost, msg.HAProxyPort)
+		logger.Debugf("Functions limits for node %s:", _nodeID)
 		for funcName := range _limits {
 			logger.Debugf("	Function %s LimitOut: %f", funcName, _limits[funcName])
 		}
