@@ -25,6 +25,7 @@ var _p2pHost host.Host
 var _cbOnReceived CBOnReceived
 
 var _ps *pubsub.PubSub
+var _topic *pubsub.Topic
 var _subscription *pubsub.Subscription
 
 // Initialize creates the PubSub object and subscribes to the topic.
@@ -41,9 +42,14 @@ func Initialize(
 		return errors.Wrap(err, "Error while creating the PubSub object")
 	}
 
+	topic, err := ps.Join(constants.P2pPubSubTopic)
+	if err != nil {
+		return errors.Wrap(err, "Error while joining the PubSub topic"+constants.P2pPubSubTopic)
+	}
+
 	// Subscribe to the PubSub topic
 	// All Agents subscribed to the same topc --> broadcasting of messages.
-	subscription, err := ps.Subscribe(constants.P2pPubSubTopic)
+	subscription, err := topic.Subscribe()
 	if err != nil {
 		return errors.Wrap(err, "Error while subscribing to the PubSub topic")
 	}
@@ -54,6 +60,7 @@ func Initialize(
 	_cbOnReceived = cbOnReceived
 
 	_ps = ps
+	_topic = topic
 	_subscription = subscription
 
 	return nil
@@ -67,8 +74,11 @@ func MarshAndPublish(msg interface{}) error {
 	if err != nil {
 		return errors.Wrap(err, "Error while serializing data structure for publishing")
 	}
-
-	_ps.Publish(constants.P2pPubSubTopic, bytes)
+	
+	err = _topic.Publish(_ctx, bytes)
+	if err != nil {
+		return errors.Wrap(err, "Error while publishing message to PubSub topic"+constants.P2pPubSubTopic)
+	}
 
 	return nil
 }
