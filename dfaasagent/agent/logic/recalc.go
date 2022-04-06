@@ -56,38 +56,6 @@ func RunRecalc() error {
 	millisInterval := int64(_flags.RecalcPeriod / time.Millisecond)
 	millisIntervalHalf := millisInterval / 2
 
-	/*
-		//////////////////// [NEW] READ INIT FUNCTIONS JSON FILE /////////////////////////
-		// The file is read only the first time that agent start
-
-		// Open our jsonFile
-		jsonFile, err := os.Open(_flags.InitFunctionsFile)
-
-		// if we os.Open returns an error then handle it
-		if err != nil {
-			fmt.Println(err)
-		} else {
-		    fmt.Println("Successfully opened init functions file")
-		}
-
-		// defer the closing of our jsonFile so that we can parse it later on
-		defer jsonFile.Close()
-
-		// read our opened jsonFile as a byte array.
-		byteValue, _ := ioutil.ReadAll(jsonFile)
-
-		json.Unmarshal(byteValue, &expJson)
-		if err != nil {
-			fmt.Println("Error while deserializing a JSON of init functions from file")
-		}
-
-		// Debug json read
-		j, _ := json.MarshalIndent(expJson, "", "  ")
-		fmt.Println(string(j))
-
-		expJson.Outputs = []Output{}
-	*/
-
 	for {
 		millisNow = time.Now().UnixNano() / 1000000
 		millisSleep = millisInterval - (millisNow % millisInterval)
@@ -273,94 +241,6 @@ func recalcStep1() error {
 		}
 	}
 	debugOverloads(_recalc.overloads) // Debug purpose.
-
-	/*
-
-		///////////////////// [NEW] EXTEND EXPERIMENT JSON FILE WITH METRICS //////////////////////////
-
-		// Create slice of Functions type
-		functionsSlice := []Function{}
-
-		for _, funcName := range funcNames {
-			name := funcName                               // Func name
-			serviceCount := _recalc.serviceCount[funcName] // Service count
-
-			invocRate, present := _recalc.userRates[funcName] // Invoc rate (users only) -- from HAproxy
-			maxRate := _recalc.funcs[funcName]                // Max Rate
-			var margin uint
-			margin = 0
-
-			if !_recalc.overloads[funcName] {
-				if present {
-					margin = maxRate - uint(invocRate)
-				} else {
-					margin = maxRate
-				}
-			}
-
-			// Invocation rate (returned by gateway (prometheus) -- real), sum on different status codes
-			irate := 0.0
-			for _, rate := range _recalc.invoc[funcName] { // loop on (code, rate)
-				irate += rate
-			}
-
-			// Afet
-			afet := 0.001
-			if !math.IsNaN(_recalc.afet[funcName]) {
-				afet = _recalc.afet[funcName]
-			}
-
-			ram_xfunc := _recalc.perFuncRamUsage[funcName] // Ram x func
-			cpu_xfunc := _recalc.perFuncCpuUsage[funcName] // CPU x func
-
-			// State
-			state := ""
-			if _recalc.overloads[funcName] {
-				state = "Overload"
-			} else {
-				state = "Underload"
-			}
-
-			f := Function{
-				Name:          name,
-				ServiceCount:  serviceCount,
-				Margin:        margin,
-				InvocRate:     uint(invocRate), //irate,
-				Afet:          afet,
-				RamxFunc:      ram_xfunc,
-				CpuxFunc:      cpu_xfunc,
-				MaxRate:       maxRate,
-				State:         state,
-				PromInvocRate: irate,
-			}
-
-			functionsSlice = append(functionsSlice, f)
-		}
-
-		// TODO: check if it works correctly
-		timestamp := time.Now().Format("2006/01/02-15:04:05")
-
-		out := Output{
-			Timestamp: timestamp,
-			RamUsage:  _recalc.ramUsage["localhost:9100"],
-			CpuUsage:  _recalc.cpuUsage["localhost:9100"],
-			Functions: functionsSlice,
-		}
-
-		expJson.Outputs = append(expJson.Outputs, out)
-
-		jsonEncoding, err := json.MarshalIndent(expJson, "", " ")
-		if err != nil {
-			fmt.Println(err)
-			return err
-		}
-
-		err = ioutil.WriteFile("exp"+strconv.Itoa(it)+".json", jsonEncoding, 0644)
-		if err != nil {
-			fmt.Println(err)
-			return err
-		}
-	*/
 
 	it++
 

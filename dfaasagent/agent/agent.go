@@ -126,35 +126,35 @@ func runAgent(flags *cliflags.ParsedValues) error {
 	if err != nil {
 		return err
 	}
+	logger.Debug("PubSub initialization completed")
 
-	// Prefer mDNS over Kademlia bootstrap nodes
+	////////// KADEMLIA DHT INITIALIZATION //////////
+
+	// Kademlia and DHT initialization, with connection to bootstrap nodes
+	err = kademlia.Initialize(
+		ctx,
+		_p2pHost,
+		flags.BootstrapNodes,
+		flags.BootstrapForce,
+		flags.Rendezvous,
+		flags.KadIdleTime,
+	)
+
+	if err != nil {
+		return err
+	}
+
+	logger.Debug("Connection to Kademlia bootstrap nodes completed")
+
+	////////// mDNS INITIALIZATION //////////
+
 	if flags.MDNSInterval > 0 {
-		////////// mDNS INITIALIZATION //////////
-
 		// mDNS discovery service initialization
 		err = mdns.Initialize(ctx, _p2pHost, flags.Rendezvous, flags.MDNSInterval)
 		if err != nil {
 			return err
 		}
-
 		logger.Debug("mDNS discovery service is enabled and initialized")
-	} else {
-		////////// KADEMLIA DHT INITIALIZATION //////////
-
-		// Kademlia and DHT initialization, with connection to bootstrap nodes
-		err = kademlia.Initialize(
-			ctx,
-			_p2pHost,
-			flags.BootstrapNodes,
-			flags.BootstrapForce,
-			flags.Rendezvous,
-			flags.KadIdleTime,
-		)
-		if err != nil {
-			return err
-		}
-
-		logger.Debug("Connection to Kademlia bootstrap nodes completed")
 	}
 
 	////////// LOGIC INITIALIZATION //////////
@@ -171,7 +171,7 @@ func runAgent(flags *cliflags.ParsedValues) error {
 
 	chanErr := make(chan error, 1)
 
-    go func() { chanErr <- kademlia.RunDiscovery() }()
+	go func() { chanErr <- kademlia.RunDiscovery() }()
 
 	if flags.MDNSInterval > 0 {
 		go func() { chanErr <- mdns.RunDiscovery() }()
