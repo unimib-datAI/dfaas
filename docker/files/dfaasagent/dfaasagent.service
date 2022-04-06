@@ -3,6 +3,7 @@ Description=DFaaSAgent
 After=haproxy.service
 
 [Service]
+PassEnvironment=AGENT_LISTEN AGENT_HAPROXY_HOST
 ExecStart=/agent/dfaasagent
 Restart=on-failure
 RestartSec=10s
