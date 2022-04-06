@@ -21,7 +21,7 @@ type BootstrapNodes []multiaddr.Multiaddr
 // - inline comma-separated list:             "list:/ip4/1.2.3.4/...,/ip4/..."
 // - txt file path (newline-separated list):  "file:./bootstrap.txt"
 // - libp2p public DHT bootstrap peers list:  "public"
-// - no bootstrap nodes list specified:       "none""
+// - no bootstrap nodes list specified:       "none"
 type Listen []multiaddr.Multiaddr
 
 // Configuration holds the post-processed configuration values
@@ -71,6 +71,8 @@ func LoadConfig(path string) (config Configuration, err error) {
 	if err != nil {
 		return
 	}
+
+	viper.Debug()
 
 	err = viper.Unmarshal(&config, viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
 		mapstructure.StringToTimeDurationHookFunc(), // default hook
