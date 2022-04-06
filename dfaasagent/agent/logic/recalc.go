@@ -1,12 +1,7 @@
 package logic
 
 import (
-	// "encoding/json"
 	"fmt"
-	// "io/ioutil"
-	// "math"
-	// "os"
-	// "strconv"
 	"time"
 
 	"github.com/bcicen/go-haproxy"
@@ -53,7 +48,7 @@ func RunRecalc() error {
 	var millisNow, millisSleep int64
 	var err error
 
-	millisInterval := int64(_flags.RecalcPeriod / time.Millisecond)
+	millisInterval := int64(_config.RecalcPeriod / time.Millisecond)
 	millisIntervalHalf := millisInterval / 2
 
 	for {
@@ -131,7 +126,7 @@ func recalcStep1() error {
 		} else {
 			for _, stEntry := range stContent {
 				// There should be only one line, with key "80", which is the port of the HAProxy frontend
-				_recalc.userRates[funcName] = float64(stEntry.HTTPReqCnt) / float64(_flags.RecalcPeriod/time.Second) * 2
+				_recalc.userRates[funcName] = float64(stEntry.HTTPReqCnt) / float64(_config.RecalcPeriod/time.Second) * 2
 				// Note: the whole formula is multiplied by two at the end because we know we restarted HAProxy at the end of recalcStep2
 			}
 		}
@@ -174,17 +169,17 @@ func recalcStep1() error {
 	*/
 	//////////////////// GATHER INFO FROM PROMETHEUS ////////////////////
 
-	_recalc.afet, err = _ofpromqClient.QueryAFET(_flags.RecalcPeriod)
+	_recalc.afet, err = _ofpromqClient.QueryAFET(_config.RecalcPeriod)
 	if err != nil {
 		return errors.Wrap(err, "Error while execting Prometheus query")
 	}
-	debugPromAFET(_flags.RecalcPeriod, _recalc.afet)
+	debugPromAFET(_config.RecalcPeriod, _recalc.afet)
 
-	_recalc.invoc, err = _ofpromqClient.QueryInvoc(_flags.RecalcPeriod)
+	_recalc.invoc, err = _ofpromqClient.QueryInvoc(_config.RecalcPeriod)
 	if err != nil {
 		return errors.Wrap(err, "Error while executing Prometheus query")
 	}
-	debugPromInvoc(_flags.RecalcPeriod, _recalc.invoc)
+	debugPromInvoc(_config.RecalcPeriod, _recalc.invoc)
 
 	_recalc.serviceCount, err = _ofpromqClient.QueryServiceCount()
 	if err != nil {
@@ -192,17 +187,17 @@ func recalcStep1() error {
 	}
 	debugPromServiceCount(_recalc.serviceCount)
 
-	_recalc.cpuUsage, err = _ofpromqClient.QueryCPUusage(_flags.RecalcPeriod)
+	_recalc.cpuUsage, err = _ofpromqClient.QueryCPUusage(_config.RecalcPeriod)
 	if err != nil {
 		return errors.Wrap(err, "Error while executing Prometheus query")
 	}
-	debugPromCPUusage(_flags.RecalcPeriod, _recalc.cpuUsage)
+	debugPromCPUusage(_config.RecalcPeriod, _recalc.cpuUsage)
 
-	_recalc.ramUsage, err = _ofpromqClient.QueryRAMusage(_flags.RecalcPeriod)
+	_recalc.ramUsage, err = _ofpromqClient.QueryRAMusage(_config.RecalcPeriod)
 	if err != nil {
 		return errors.Wrap(err, "Error while executing Prometheus query")
 	}
-	debugPromRAMusage(_flags.RecalcPeriod, _recalc.ramUsage)
+	debugPromRAMusage(_config.RecalcPeriod, _recalc.ramUsage)
 
 	if len(_recalc.funcs) > 0 {
 		// Get function's name as a slice.
@@ -213,17 +208,17 @@ func recalcStep1() error {
 			i++
 		}
 
-		_recalc.perFuncCpuUsage, err = _ofpromqClient.QueryCPUusagePerFunction(_flags.RecalcPeriod, funcNames)
+		_recalc.perFuncCpuUsage, err = _ofpromqClient.QueryCPUusagePerFunction(_config.RecalcPeriod, funcNames)
 		if err != nil {
 			return errors.Wrap(err, "Error while executing Prometheus query")
 		}
-		debugPromCPUusagePerFunction(_flags.RecalcPeriod, _recalc.perFuncCpuUsage)
+		debugPromCPUusagePerFunction(_config.RecalcPeriod, _recalc.perFuncCpuUsage)
 
-		_recalc.perFuncRamUsage, err = _ofpromqClient.QueryRAMusagePerFunction(_flags.RecalcPeriod, funcNames)
+		_recalc.perFuncRamUsage, err = _ofpromqClient.QueryRAMusagePerFunction(_config.RecalcPeriod, funcNames)
 		if err != nil {
 			return errors.Wrap(err, "Error while executing Prometheus query")
 		}
-		debugPromRAMusagePerFunction(_flags.RecalcPeriod, _recalc.perFuncRamUsage)
+		debugPromRAMusagePerFunction(_config.RecalcPeriod, _recalc.perFuncRamUsage)
 	}
 
 	//////////////////// OVERLOAD / UNDERLOAD MODE DECISION ////////////////////
@@ -358,8 +353,8 @@ func recalcStep1() error {
 
 	msg := MsgNodeInfo{
 		MsgType:     StrMsgNodeInfoType,
-		HAProxyHost: _flags.HAProxyHost,
-		HAProxyPort: _flags.HAProxyPort,
+		HAProxyHost: _config.HAProxyHost,
+		HAProxyPort: _config.HAProxyPort,
 		FuncLimits:  limits,
 	}
 	debugMsgNodeInfo(msg)
@@ -439,9 +434,9 @@ func recalcStep2() error {
 	_nodestbl.SafeExec(func(entries map[string]*nodestbl.Entry) error {
 		hacfg = createHACfgObject(
 			strMyself,
-			_flags.OpenFaaSHost,
-			_flags.OpenFaaSPort,
-			_flags.RecalcPeriod,
+			_config.OpenFaaSHost,
+			_config.OpenFaaSPort,
+			_config.RecalcPeriod,
 			entries,
 			_recalc.funcs,
 		)

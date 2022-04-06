@@ -3,7 +3,7 @@ package logic
 import (
 	"github.com/bcicen/go-haproxy"
 	"github.com/libp2p/go-libp2p-core/host"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/cliflags"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/config"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/hacfgupd"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/offuncs"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/ofpromq"
@@ -15,7 +15,7 @@ import (
 //////////////////// MAIN PRIVATE VARS AND INIT FUNCTION ////////////////////
 
 var _p2pHost host.Host
-var _flags *cliflags.ParsedValues
+var _config config.Configuration
 
 var _nodestbl *nodestbl.Table
 var _hacfgupdater hacfgupd.Updater
@@ -25,39 +25,39 @@ var _ofpromqClient ofpromq.Client
 var _offuncsClient offuncs.Client
 
 // Initialize initializes this package (sets some vars, etc...)
-func Initialize(p2pHost host.Host) error {
+func Initialize(p2pHost host.Host, config config.Configuration) error {
 	_p2pHost = p2pHost
-	_flags = cliflags.GetValues()
+	_config = config
 
 	_nodestbl = &nodestbl.Table{
 		// Set validity to 120% of RecalcPeriod
-		EntryValidity: _flags.RecalcPeriod + (_flags.RecalcPeriod / 5),
+		EntryValidity: _config.RecalcPeriod + (_config.RecalcPeriod / 5),
 	}
 	_nodestbl.InitTable()
 
 	_hacfgupdater = hacfgupd.Updater{
-		HAConfigFilePath: _flags.HAConfigFile,
-		CmdOnUpdated:     _flags.HAConfigUpdateCommand,
+		HAConfigFilePath: _config.HAProxyConfigFile,
+		CmdOnUpdated:     _config.HAProxyConfigUpdateCommand,
 	}
-	err := _hacfgupdater.LoadTemplate(_flags.HATemplateFile)
+	err := _hacfgupdater.LoadTemplate(_config.HAPRoxyTemplateFile)
 	if err != nil {
 		return err
 	}
 
 	_hasockClient = haproxy.HAProxyClient{
-		Addr: _flags.HASockPath,
+		Addr: _config.HAProxySockPath,
 	}
 
 	_ofpromqClient = ofpromq.Client{
-		Hostname: _flags.PrometheusHost,
-		Port:     _flags.PrometheusPort,
+		Hostname: _config.PrometheusHost,
+		Port:     _config.PrometheusPort,
 	}
 
 	_offuncsClient = offuncs.Client{
-		Hostname: _flags.OpenFaaSHost,
-		Port:     _flags.OpenFaaSPort,
-		Username: _flags.OpenFaaSUser,
-		Password: _flags.OpenFaaSPass,
+		Hostname: _config.OpenFaaSHost,
+		Port:     _config.OpenFaaSPort,
+		Username: _config.OpenFaaSUser,
+		Password: _config.OpenFaaSPass,
 	}
 
 	return nil

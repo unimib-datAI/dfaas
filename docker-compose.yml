@@ -7,12 +7,14 @@ services:
       dockerfile: docker/dfaas-node.dockerfile
     ports:
       - "8081:80"
+    env_file:
+      - dfaasagent.env
     environment:
-      AGENT_IPV4: 172.16.238.10
-      BOOTSTRAP_NODES: list:/ip4/172.16.238.11/tcp/6000/p2p/QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR,/ip4/172.16.238.12/tcp/6000/p2p/QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z
+      AGENT_LISTEN: /ip4/172.16.238.10/tcp/6000
+      AGENT_HAPROXY_HOST: 172.16.238.10
     runtime: sysbox-runc
     volumes:
-      - ./docker/files/dfaasagent/bootstrap-nodes-prvkeys/prvkey-for-agent1.dat:/agent/prvkey.dat:ro
+      - ./dfaasagent.env:/agent/dfaasagent.env
     networks:
       p2p-overlay:
         ipv4_address: 172.16.238.10
@@ -23,12 +25,14 @@ services:
       dockerfile: docker/dfaas-node.dockerfile
     ports:
       - "8082:80"
+    env_file:
+      - dfaasagent.env
     environment:
-      AGENT_IPV4: 172.16.238.11
-      BOOTSTRAP_NODES: list:/ip4/172.16.238.10/tcp/6000/p2p/QmUb2Rxy3oV7ZsENnkSG3nZDQySEaymzuxKxWQJE9Fu3Qb,/ip4/172.16.238.12/tcp/6000/p2p/QmTbLEbrDn41dTaYk6tUFTAKa5hHiAm3n96tBAfNBmHt4Z
+      AGENT_LISTEN: /ip4/172.16.238.11/tcp/6000
+      AGENT_HAPROXY_HOST: 172.16.238.11
     runtime: sysbox-runc
     volumes:
-      - ./docker/files/dfaasagent/bootstrap-nodes-prvkeys/prvkey-for-agent2.dat:/agent/prvkey.dat:ro
+      - ./dfaasagent.env:/agent/dfaasagent.env
     networks:
       p2p-overlay:
         ipv4_address: 172.16.238.11
@@ -39,12 +43,14 @@ services:
       dockerfile: docker/dfaas-node.dockerfile
     ports:
       - "8083:80"
+    env_file:
+      - dfaasagent.env
     environment:
-      AGENT_IPV4: 172.16.238.12
-      BOOTSTRAP_NODES: list:/ip4/172.16.238.10/tcp/6000/p2p/QmUb2Rxy3oV7ZsENnkSG3nZDQySEaymzuxKxWQJE9Fu3Qb,/ip4/172.16.238.11/tcp/6000/p2p/QmVaHQKEvZfkgPU5Bf7wVy5F9TRT1BzQMHeFBC7dZFrYkR
+      AGENT_LISTEN: /ip4/172.16.238.12/tcp/6000
+      AGENT_HAPROXY_HOST: 172.16.238.12
     runtime: sysbox-runc
     volumes:
-      - ./docker/files/dfaasagent/bootstrap-nodes-prvkeys/prvkey-for-agent3.dat:/agent/prvkey.dat:ro
+      - ./dfaasagent.env:/agent/dfaasagent.env
     networks:
       p2p-overlay:
         ipv4_address: 172.16.238.12

@@ -3,11 +3,9 @@ package communication
 import (
 	"context"
 	"encoding/json"
-
 	"github.com/libp2p/go-libp2p-core/host"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/pkg/errors"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
 )
 
 // This package handles the p2p communication with PubSub
@@ -22,6 +20,7 @@ type CBOnReceived func(msg *pubsub.Message) error
 
 var _ctx context.Context
 var _p2pHost host.Host
+var _topicName string
 var _cbOnReceived CBOnReceived
 
 var _ps *pubsub.PubSub
@@ -34,6 +33,7 @@ var _subscription *pubsub.Subscription
 func Initialize(
 	ctx context.Context,
 	p2pHost host.Host,
+	topicName string,
 	cbOnReceived CBOnReceived,
 ) error {
 	// Create a new PubSub object using GossipSub as the router
@@ -42,9 +42,9 @@ func Initialize(
 		return errors.Wrap(err, "Error while creating the PubSub object")
 	}
 
-	topic, err := ps.Join(constants.P2pPubSubTopic)
+	topic, err := ps.Join(topicName)
 	if err != nil {
-		return errors.Wrap(err, "Error while joining the PubSub topic"+constants.P2pPubSubTopic)
+		return errors.Wrap(err, "Error while joining the PubSub topic"+topicName)
 	}
 
 	// Subscribe to the PubSub topic
@@ -57,6 +57,7 @@ func Initialize(
 	// If everything successful, set the package's static vars
 	_ctx = ctx
 	_p2pHost = p2pHost
+	_topicName = topicName
 	_cbOnReceived = cbOnReceived
 
 	_ps = ps
@@ -74,10 +75,10 @@ func MarshAndPublish(msg interface{}) error {
 	if err != nil {
 		return errors.Wrap(err, "Error while serializing data structure for publishing")
 	}
-	
+
 	err = _topic.Publish(_ctx, bytes)
 	if err != nil {
-		return errors.Wrap(err, "Error while publishing message to PubSub topic"+constants.P2pPubSubTopic)
+		return errors.Wrap(err, "Error while publishing message to PubSub topic"+_topicName)
 	}
 
 	return nil

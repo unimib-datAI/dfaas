@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	cryptorand "crypto/rand"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/config"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -15,7 +16,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/pkg/errors"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/cliflags"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/communication"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/discovery/kademlia"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/discovery/mdns"
@@ -85,7 +85,7 @@ func getPrivateKey(filePath string) (crypto.PrivKey, error) {
 
 // runAgent is the main function to be called once we got some very basic setup,
 // such as parsed CLI flags and a usable logger
-func runAgent(flags *cliflags.ParsedValues) error {
+func runAgent(config config.Configuration) error {
 	// Obtain the global logger object
 	logger := logging.Logger()
 
@@ -97,13 +97,13 @@ func runAgent(flags *cliflags.ParsedValues) error {
 	////////// LIBP2P INITIALIZATION //////////
 
 	// RSA key pair for this p2p host
-	prvKey, err := getPrivateKey(flags.PrivateKeyFile)
+	prvKey, err := getPrivateKey(config.PrivateKeyFile)
 	if err != nil {
 		return err
 	}
 
 	// Construct a new libp2p Host
-	_p2pHost, err = libp2p.New(ctx, libp2p.ListenAddrs(flags.Listen...), libp2p.Identity(prvKey))
+	_p2pHost, err = libp2p.New(ctx, libp2p.ListenAddrs(config.Listen...), libp2p.Identity(prvKey))
 	if err != nil {
 		return errors.Wrap(err, "Error while creating the libp2p Host")
 	}
@@ -122,7 +122,7 @@ func runAgent(flags *cliflags.ParsedValues) error {
 
 	// The PubSub initialization must be done before the Kademlia one. Otherwise
 	// the agent won't be able to publish or subscribe.
-	err = communication.Initialize(ctx, _p2pHost, logic.OnReceived)
+	err = communication.Initialize(ctx, _p2pHost, config.PubSubTopic, logic.OnReceived)
 	if err != nil {
 		return err
 	}
@@ -134,10 +134,10 @@ func runAgent(flags *cliflags.ParsedValues) error {
 	err = kademlia.Initialize(
 		ctx,
 		_p2pHost,
-		flags.BootstrapNodes,
-		flags.BootstrapForce,
-		flags.Rendezvous,
-		flags.KadIdleTime,
+		config.BootstrapNodes,
+		config.BootstrapForce,
+		config.Rendezvous,
+		config.KadIdleTime,
 	)
 
 	if err != nil {
@@ -148,9 +148,9 @@ func runAgent(flags *cliflags.ParsedValues) error {
 
 	////////// mDNS INITIALIZATION //////////
 
-	if flags.MDNSInterval > 0 {
+	if config.MDNSInterval > 0 {
 		// mDNS discovery service initialization
-		err = mdns.Initialize(ctx, _p2pHost, flags.Rendezvous, flags.MDNSInterval)
+		err = mdns.Initialize(ctx, _p2pHost, config.Rendezvous, config.MDNSInterval)
 		if err != nil {
 			return err
 		}
@@ -159,7 +159,7 @@ func runAgent(flags *cliflags.ParsedValues) error {
 
 	////////// LOGIC INITIALIZATION //////////
 
-	err = logic.Initialize(_p2pHost)
+	err = logic.Initialize(_p2pHost, config)
 	if err != nil {
 		return err
 	}
@@ -173,7 +173,7 @@ func runAgent(flags *cliflags.ParsedValues) error {
 
 	go func() { chanErr <- kademlia.RunDiscovery() }()
 
-	if flags.MDNSInterval > 0 {
+	if config.MDNSInterval > 0 {
 		go func() { chanErr <- mdns.RunDiscovery() }()
 	}
 
@@ -199,24 +199,20 @@ func Main() {
 	// Initializes Go random number generator
 	rand.Seed(int64(time.Now().Nanosecond()))
 
-	// Parse CLI flags
-	err := cliflags.ParseOrHelp()
-	if err != nil {
-		log.Fatal(err)
-	}
-	flags := cliflags.GetValues()
+	// Load configuration
+	_config, err := config.LoadConfig("/agent")
 
 	// Setup logging engine
-	logger, err := logging.Initialize(flags.DateTime, flags.DebugMode, flags.LogColors)
+	logger, err := logging.Initialize(_config.DateTime, _config.DebugMode, _config.LogColors)
 	if err != nil {
 		log.Fatal(err)
 	}
 	logger.Debug("Logger set up successfully")
 
-	// Print the actual CLI flags at DEBUG level (useful for debugging purposes)
-	logger.Debug("Parsed CLI flags: ", flags)
+	// Print the actual configuration at DEBUG level (useful for debugging purposes)
+	logger.Debug("Running agent with configuration: ", _config)
 
-	err = runAgent(flags)
+	err = runAgent(_config)
 	if err != nil {
 		logger.Fatal(err)
 	}

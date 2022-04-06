@@ -2,6 +2,7 @@ package kademlia
 
 import (
 	"context"
+	"github.com/multiformats/go-multiaddr"
 	"sync"
 	"time"
 
@@ -9,7 +10,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/peer"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/multiformats/go-multiaddr"
 	"github.com/pkg/errors"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
 )
