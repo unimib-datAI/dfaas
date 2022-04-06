@@ -24,9 +24,10 @@ require (
 	github.com/libp2p/go-yamux v1.3.7 // indirect
 	github.com/miekg/dns v1.1.41 // indirect
 	github.com/mitchellh/copystructure v1.0.0 // indirect
+	github.com/mitchellh/mapstructure v1.4.3
 	github.com/multiformats/go-multiaddr v0.2.2
 	github.com/pkg/errors v0.9.1
-	github.com/spf13/pflag v1.0.5
+	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/spf13/viper v1.10.1
 	github.com/stretchr/testify v1.7.0
 	go.opencensus.io v0.23.0 // indirect
