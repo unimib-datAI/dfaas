@@ -102,6 +102,10 @@ func LoadConfig(path string) (config Configuration, err error) {
 
 	viper.Debug()
 
-	err = viper.Unmarshal(&config, viper.DecodeHook(mapstructure.TextUnmarshallerHookFunc()))
+	err = viper.Unmarshal(&config, viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
+		mapstructure.StringToTimeDurationHookFunc(),
+		mapstructure.StringToSliceHookFunc(","),
+		mapstructure.TextUnmarshallerHookFunc(),
+	)))
 	return
 }
