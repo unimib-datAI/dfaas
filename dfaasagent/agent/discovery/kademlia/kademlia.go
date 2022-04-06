@@ -3,6 +3,8 @@ package kademlia
 import (
 	"context"
 	"github.com/multiformats/go-multiaddr"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/config"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/utils/maddrhelp"
 	"sync"
 	"time"
 
@@ -28,7 +30,7 @@ var _routingDisc *discovery.RoutingDiscovery
 // Initialize initializes the Kademlia DHT peer discovery engine. If
 // bootstrapForce = true, then this function fails if any of the bootstrap peers
 // cannot be contacted for some reason.
-func Initialize(ctx context.Context, p2pHost host.Host, bootstrapNodes []multiaddr.Multiaddr, bootstrapForce bool, rendezvous string, idleTime time.Duration) error {
+func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig config.BootstrapConfiguration, rendezvous string, idleTime time.Duration) error {
 	logger := logging.Logger()
 
 	// Start a DHT, for use in peer discovery. We can't just make a new DHT
@@ -50,6 +52,8 @@ func Initialize(ctx context.Context, p2pHost host.Host, bootstrapNodes []multiad
 	// Let's connect to the bootstrap nodes. They will tell us about the other
 	// nodes in the network.
 
+	bootstrapNodes, err := BuildBoostrapNodes(bootstrapConfig)
+
 	var wg sync.WaitGroup
 	var chanErrConn = make(chan error, len(bootstrapNodes))
 	for _, peerAddr := range bootstrapNodes {
@@ -69,7 +73,7 @@ func Initialize(ctx context.Context, p2pHost host.Host, bootstrapNodes []multiad
 			if err != nil {
 				errWrap := errors.Wrap(err, "Connection failed to a bootstrap node (skipping)")
 
-				if bootstrapForce {
+				if bootstrapConfig.BootstrapForce {
 					chanErrConn <- errWrap
 				} else {
 					logger.Error("Kademlia: ", errWrap)
@@ -139,4 +143,27 @@ func RunDiscovery() error {
 		// Now wait a bit and relax...
 		time.Sleep(_idleTime)
 	}
+}
+
+func BuildBoostrapNodes(configuration config.BootstrapConfiguration) ([]multiaddr.Multiaddr, error) {
+	var maddrs []multiaddr.Multiaddr
+	var err error
+
+	if configuration.BootstrapNodes {
+		if configuration.PublicBoostrapNodes {
+			// Use libp2p public bootstrap peers list
+			maddrs = dht.DefaultBootstrapPeers
+		} else if len(configuration.BootstrapNodesList) > 0 {
+			maddrs, err = maddrhelp.StringListToMultiaddrList(configuration.BootstrapNodesList)
+			if err != nil {
+				return nil, errors.Wrap(err, "Error while parsing bootstrap peers list from string")
+			}
+		} else if configuration.BootstrapNodesFile != "" {
+			maddrs, err = maddrhelp.ParseMAddrFile(configuration.BootstrapNodesFile)
+			if err != nil {
+				return nil, errors.Wrap(err, "Error while parsing bootstrap peers list from file")
+			}
+		}
+	}
+	return maddrs, nil
 }

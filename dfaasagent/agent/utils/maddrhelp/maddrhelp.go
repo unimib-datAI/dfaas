@@ -2,6 +2,7 @@ package maddrhelp
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/multiformats/go-multiaddr"
@@ -28,5 +29,26 @@ func BuildHostFullMAddrs(p2pHost host.Host) ([]multiaddr.Multiaddr, error) {
 
 	// Now we can build a full multiaddress to reach the host by encapsulating
 	// the two parts, one into the other
+	return maddrs, nil
+}
+
+func StringListToMultiaddrList(list []string) ([]multiaddr.Multiaddr, error) {
+	var maddrs []multiaddr.Multiaddr
+
+	for _, piece := range list {
+		piece = strings.TrimSpace(piece)
+
+		if piece == "" {
+			continue
+		}
+
+		maddr, err := multiaddr.NewMultiaddr(piece)
+		if err != nil {
+			return nil, err
+		}
+
+		maddrs = append(maddrs, maddr)
+	}
+
 	return maddrs, nil
 }

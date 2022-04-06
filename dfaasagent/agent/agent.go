@@ -3,6 +3,7 @@ package agent
 import (
 	"context"
 	cryptorand "crypto/rand"
+	"github.com/multiformats/go-multiaddr"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/config"
 	"io/ioutil"
 	"log"
@@ -103,7 +104,12 @@ func runAgent(config config.Configuration) error {
 	}
 
 	// Construct a new libp2p Host
-	_p2pHost, err = libp2p.New(ctx, libp2p.ListenAddrs(config.Listen...), libp2p.Identity(prvKey))
+	var _addresses []multiaddr.Multiaddr
+	_addresses, err = maddrhelp.StringListToMultiaddrList(config.Listen)
+	if err != nil {
+		return errors.Wrap(err, "Error while converting string list to multiaddr list")
+	}
+	_p2pHost, err = libp2p.New(ctx, libp2p.ListenAddrs(_addresses...), libp2p.Identity(prvKey))
 	if err != nil {
 		return errors.Wrap(err, "Error while creating the libp2p Host")
 	}
@@ -134,8 +140,7 @@ func runAgent(config config.Configuration) error {
 	err = kademlia.Initialize(
 		ctx,
 		_p2pHost,
-		config.BootstrapNodes,
-		config.BootstrapForce,
+		config.BoostrapConfig,
 		config.Rendezvous,
 		config.KadIdleTime,
 	)
