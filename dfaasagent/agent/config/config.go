@@ -7,7 +7,6 @@ import (
 	"github.com/pkg/errors"
 	"github.com/spf13/viper"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/utils/maddrhelp"
-	"reflect"
 	"strings"
 	"time"
 )
@@ -23,6 +22,35 @@ type BootstrapNodes []multiaddr.Multiaddr
 // - libp2p public DHT bootstrap peers list:  "public"
 // - no bootstrap nodes list specified:       "none"
 type Listen []multiaddr.Multiaddr
+
+func (s *Listen) UnmarshalText(text []byte) error {
+	*s, _ = maddrhelp.ParseMAddrComma(string(text))
+	return nil
+}
+
+func (s *BootstrapNodes) UnmarshalText(text []byte) error {
+	nodes := string(text)
+	var err error
+	if nodes == "public" {
+		// Use libp2p public bootstrap peers list
+		*s = dht.DefaultBootstrapPeers
+	} else if strings.HasPrefix(nodes, "list:") {
+		list := strings.TrimPrefix(nodes, "list:")
+		*s, err = maddrhelp.ParseMAddrComma(list)
+		if err != nil {
+			return errors.Wrap(err, "Error while parsing bootstrap peers list from string")
+		}
+	} else if strings.HasPrefix(nodes, "file:") {
+		filepath := strings.TrimPrefix(nodes, "file:")
+		*s, err = maddrhelp.ParseMAddrComma(filepath)
+		if err != nil {
+			return errors.Wrap(err, "Error while parsing bootstrap peers list from file")
+		}
+	} else if nodes != "none" {
+		return errors.New("Invalid bootstrap peers list. Please check if the prefix is correct")
+	}
+	return nil
+}
 
 // Configuration holds the post-processed configuration values
 type Configuration struct {
@@ -74,73 +102,6 @@ func LoadConfig(path string) (config Configuration, err error) {
 
 	viper.Debug()
 
-	err = viper.Unmarshal(&config, viper.DecodeHook(mapstructure.ComposeDecodeHookFunc(
-		mapstructure.StringToTimeDurationHookFunc(), // default hook
-		mapstructure.StringToSliceHookFunc(","),     // default hook
-		BootstrapNodesStringToMultiAddressListHookFunc(),
-		ListenStringToMultiAddressListHookFunc(),
-	)))
+	err = viper.Unmarshal(&config, viper.DecodeHook(mapstructure.TextUnmarshallerHookFunc()))
 	return
-}
-
-// BootstrapNodesStringToMultiAddressListHookFunc convert a comma separated list of string to list of multiaddr
-func BootstrapNodesStringToMultiAddressListHookFunc() mapstructure.DecodeHookFuncType {
-	return func(
-		f reflect.Type,
-		t reflect.Type,
-		data interface{},
-	) (interface{}, error) {
-		if f.Kind() != reflect.String {
-			return data, nil
-		}
-
-		if t != reflect.TypeOf(BootstrapNodes{}) {
-			return data, nil
-		}
-
-		var bootstrapNodes []multiaddr.Multiaddr
-		var err error
-		var nodes = data.(string)
-
-		if nodes == "public" {
-			// Use libp2p public bootstrap peers list
-			return dht.DefaultBootstrapPeers, nil
-		} else if strings.HasPrefix(nodes, "list:") {
-			list := strings.TrimPrefix(nodes, "list:")
-			bootstrapNodes, err = maddrhelp.ParseMAddrComma(list)
-			if err != nil {
-				return nil, errors.Wrap(err, "Error while parsing bootstrap peers list from string")
-			}
-			return bootstrapNodes, nil
-		} else if strings.HasPrefix(nodes, "file:") {
-			filepath := strings.TrimPrefix(nodes, "file:")
-			bootstrapNodes, err = maddrhelp.ParseMAddrFile(filepath)
-			if err != nil {
-				return nil, errors.Wrap(err, "Error while parsing bootstrap peers list from file")
-			}
-			return bootstrapNodes, nil
-		} else if nodes != "none" {
-			return nil, errors.New("Invalid bootstrap peers list. Please check if the prefix is correct")
-		}
-		return bootstrapNodes, nil
-	}
-}
-
-// ListenStringToMultiAddressListHookFunc convert a comma separated list of string to list of multiaddr
-func ListenStringToMultiAddressListHookFunc() mapstructure.DecodeHookFuncType {
-	return func(
-		f reflect.Type,
-		t reflect.Type,
-		data interface{},
-	) (interface{}, error) {
-		if f.Kind() != reflect.String {
-			return data, nil
-		}
-
-		if t != reflect.TypeOf(Listen{}) {
-			return data, nil
-		}
-
-		return maddrhelp.ParseMAddrComma(data.(string))
-	}
 }
