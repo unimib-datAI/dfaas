@@ -156,7 +156,7 @@ func BuildBoostrapNodes(configuration config.BootstrapConfiguration) ([]multiadd
 		} else if len(configuration.BootstrapNodesList) > 0 {
 			maddrs, err = maddrhelp.StringListToMultiaddrList(configuration.BootstrapNodesList)
 			if err != nil {
-				return nil, errors.Wrap(err, "Error while parsing bootstrap peers list from string")
+				return nil, errors.Wrap(err, "Error while converting bootstrap peers string list to multiaddrs list")
 			}
 		} else if configuration.BootstrapNodesFile != "" {
 			maddrs, err = maddrhelp.ParseMAddrFile(configuration.BootstrapNodesFile)
