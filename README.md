@@ -72,14 +72,13 @@ See the provided [docker-compose.yml](docker-compose.yml) file for technical det
 docker compose up -d
 ```
 
-### Deploy functions in a node
-This script waits for the OpenFaaS gateway to be up (max 20 retries, 10s delay) then deploys
-4 functions (ocr, sentimentanalysis, shasum, figlet) from the OpenFaas store.
-See [docker/files/faasd/deploy_functions.sh](docker/files/faasd/deploy_functions.sh) for further details.
+### Deploy functions
+This script deploy the same set of functions on each of the nodes by using [docker/files/faasd/deploy_functions.sh](docker/files/faasd/deploy_functions.sh).
+The [deploy_functions.sh](docker/files/faasd/deploy_functions.sh) script waits for the OpenFaaS gateway to be up (max 20 retries, 10s delay),
+then deploys 4 functions (ocr, sentimentanalysis, shasum, figlet) from the OpenFaas store.
+
 ```shell
-# Substitute the CONTAINER_NAME value with the desired container name
-export CONTAINER_NAME="node-1"
-docker exec -it ${CONTAINER_NAME} ./deploy_functions.sh
+./utils/deploy-functions-to-nodes.sh 3 # number of nodes in the docker-compose.yaml file.
 ```
 
 ### Invoke a function
@@ -91,13 +90,31 @@ You can invoke a function (i.e. on the first node) by simply contact the proxy o
 curl http://localhost:8081/function/figlet -d 'Hello DFaaS world!'
 ```
 
-### 
+### Execute workload to a node using [vegeta](https://github.com/tsenart/vegeta)
+We provide some example that use [vegeta](https://github.com/tsenart/vegeta) HTTP load testing tool to run workload on a node.
+
+This example uses the vegeta [json format](https://github.com/tsenart/vegeta#json-format) and requres [jq](https://stedolan.github.io/jq/).
+```shell
+# Create the vegeta results directory
+mkdir -p vegeta-results
+export VEGFOLDER="vegeta-results/$(date +%Y-%m-%d-%H%M%S)"
+mkdir -p $VEGFOLDER
+
+# Run a vegeta attack (duration: 5 minutes, rate: 50 req/s) to the figlet function on the first node saving results and producing report.
+jq -ncM '{method: "GET", url: "http://localhost:8081/function/figlet", body: "Hello DFaaS world!" | @base64, header: {"Content-Type": ["text/plain"]}}' | \
+  vegeta attack -duration=5m -rate=50 -format=json | \
+  tee $VEGFOLDER/results.bin | \
+  vegeta report -every=200ms
+
+# Encode results as JSON
+cat $VEGFOLDER/results.bin | vegeta encode > $VEGFOLDER/results.json
+```
 
 ### Troubleshooting
 
 ```shell
 # Substitute the CONTAINER_NAME value with the desired container name
-export CONTAINER_NAME="node-1"
+export CONTAINER_NAME="dfaas-node-1-1"
 docker exec -it ${CONTAINER_NAME} bash
 journalctl --follow --unit dfaasagent # ...or whatever you prefer to inspect (e.g., haproxy, faasd, faasd-provider)
 ```
