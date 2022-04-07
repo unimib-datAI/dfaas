@@ -78,7 +78,12 @@ The [deploy_functions.sh](docker/files/faasd/deploy_functions.sh) script waits f
 then deploys 4 functions (ocr, sentimentanalysis, shasum, figlet) from the OpenFaas store.
 
 ```shell
-./utils/deploy-functions-to-nodes.sh 3 # number of nodes in the docker-compose.yaml file.
+# 1st arg: number of nodes
+# 2nd arg: node name prefix (e.g. dfaas-node-)
+# 3rd arg: node name suffix (e.g. -1)
+
+# Result: dfaas-node-1-1 (the default name you have when using the provided docker-compose.yml file)
+./utils/deploy-functions-to-nodes.sh 3 "dfaas-node-" "-1"
 ```
 
 ### Invoke a function
