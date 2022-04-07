@@ -77,36 +77,42 @@ This script deploy the same set of functions on each of the nodes by using [dock
 The [deploy_functions.sh](docker/files/faasd/deploy_functions.sh) script waits for the OpenFaaS gateway to be up (max 20 retries, 10s delay),
 then deploys 4 functions (ocr, sentimentanalysis, shasum, figlet) from the OpenFaas store.
 
-```shell
-# 1st arg: number of nodes
-# 2nd arg: node name prefix (e.g. dfaas-node-)
-# 3rd arg: node name suffix (e.g. -1)
+The script has 3 arguments:
+- 1st arg: number of nodes (e.g., `3`)
+- 2nd arg: node name prefix (e.g., `dfaas-node-`)
+- 3rd arg: node name suffix (e.g., `-1`)
 
-# Result: dfaas-node-1-1 (the default name you get when using the provided docker-compose.yml file)
+The resulting node name (container) will be `dfaas-node-1-1`, that is,
+the default name you get when using the provided docker-compose.yml file.
+```shell
 ./utils/deploy-functions-to-nodes.sh 3 "dfaas-node-" "-1"
 ```
 
 ### Invoke a function
-Each node exposes port `808x` (e.g., node-1 exposed port is 8081) that maps to the proxy port `80`,
-assuming you run 3 nodes via Docker Compose with the provided [docker-compose.yml](docker-compose.yml) file.
+Each node exposes port `808x:80` (e.g., `node-1` exposed port is `8081:80`), where port `80` is the HAProxy port.
+This example assumes you run DFaaS nodes via Docker Compose with the provided [docker-compose.yml](docker-compose.yml) file.
 
-You can invoke a function (i.e. on the first node) by simply contact the proxy on `http://localhost:8081/function/{function_name}`.
+You can invoke a function (i.e., via the first node) by simply contact the proxy on `http://localhost:8081/function/{function_name}`.
 ```shell
 curl http://localhost:8081/function/figlet -d 'Hello DFaaS world!'
 ```
 
 ### Execute workload to a node using [vegeta](https://github.com/tsenart/vegeta)
-We provide some example that use [vegeta](https://github.com/tsenart/vegeta) HTTP load testing tool to run workload on a node.
+We provide an example that use [vegeta](https://github.com/tsenart/vegeta) HTTP load testing tool to run workload on a node
+and demonstrate the load distribution over the federation.
 
-You can install vegeta executing the following commands:
+You can install vegeta by executing the following commands:
 ```shell
 wget https://github.com/tsenart/vegeta/releases/download/v12.8.4/vegeta_12.8.4_linux_amd64.tar.gz
 tar -xf vegeta_12.8.4_linux_amd64.tar.gz && rm vegeta_12.8.4_linux_amd64.tar.gz
 sudo mv vegeta /usr/local/bin/
 ```
 
-This example uses the vegeta [json format](https://github.com/tsenart/vegeta#json-format) and requires [jq](https://stedolan.github.io/jq/).
-It runs a vegeta attack (duration: 5 minutes, rate: 50 req/s) to the `figlet` function on the first node saving results and producing report ever 200ms.
+This example uses the [vegeta json format](https://github.com/tsenart/vegeta#json-format) and requires [jq](https://stedolan.github.io/jq/).
+
+In a nutshell:
+- it runs a vegeta attack (duration: `5 minutes`, rate: `50 req/s`) to the `figlet` function on the first node
+- it saves the results and produces report ever 200ms
 
 ```shell
 # Create the vegeta results directory
@@ -114,7 +120,6 @@ mkdir -p vegeta-results
 export VEGFOLDER="vegeta-results/$(date +%Y-%m-%d-%H%M%S)"
 mkdir -p $VEGFOLDER
 
-# Run a vegeta attack (duration: 5 minutes, rate: 50 req/s) to the figlet function on the first node saving results and producing report.
 jq -ncM '{method: "GET", url: "http://localhost:8081/function/figlet", body: "Hello DFaaS world!" | @base64, header: {"Content-Type": ["text/plain"]}}' | \
   vegeta attack -duration=5m -rate=50 -format=json | \
   tee $VEGFOLDER/results.bin | \
@@ -122,6 +127,9 @@ jq -ncM '{method: "GET", url: "http://localhost:8081/function/figlet", body: "He
 ```
 
 ### Create plots from vegeta results
+You can produce some plots from vegeta results by exploiting the `vegeta plot` command or
+our [utils/plot.py](utils/plot.py) script.
+To use our script, you need to install the required Python packages listed in [utils/plot-requirements.txt](utils/plot-requirements.txt).
 
 ```shell
 # Encode results as JSON
@@ -130,7 +138,6 @@ cat $VEGFOLDER/results.bin | vegeta encode > $VEGFOLDER/results.json
 # Create plot with vegeta
 cat cat $VEGFOLDER/results.bin | vegeta plot > $VEGFOLDER/plot.html
 
-# Create plot with our plot utility script (install required Python packages listed in utils/plot-requirements.txt)
 # 1st arg: path int results.json
 # 2nd arg: path output plot
 # 3rd arg: rate req/s used for the attack
