@@ -18,7 +18,7 @@ status_code_map = {
 }
 
 '''
-    Read json file containg vegeta export.
+    Read json file containing vegeta export.
     
     This function takes only one param: the path of json file.
     This function returns a dataframe containing status codes and timestamps.
