@@ -14,6 +14,6 @@ done
 
 for ((i=1;i<=NODES;i++)); do
   CONTAINER_NAME="$NODE_PREFIX$i$NODE_SUFFIX"
-  echo "Restarting $CONTAINER_NAME node..."
+  echo "Restarting $CONTAINER_NAME..."
   docker exec -it ${CONTAINER_NAME} "systemctl restart dfaasagent"
 done

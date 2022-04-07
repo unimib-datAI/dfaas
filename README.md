@@ -82,7 +82,7 @@ then deploys 4 functions (ocr, sentimentanalysis, shasum, figlet) from the OpenF
 # 2nd arg: node name prefix (e.g. dfaas-node-)
 # 3rd arg: node name suffix (e.g. -1)
 
-# Result: dfaas-node-1-1 (the default name you have when using the provided docker-compose.yml file)
+# Result: dfaas-node-1-1 (the default name you get when using the provided docker-compose.yml file)
 ./utils/deploy-functions-to-nodes.sh 3 "dfaas-node-" "-1"
 ```
 
