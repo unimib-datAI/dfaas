@@ -35,7 +35,7 @@ type Configuration struct {
 	HAProxyConfigUpdateCommand string `mapstructure:"AGENT_HAPROXY_CONFIG_UPDATE_COMMAND"`
 	HAProxyHost                string `mapstructure:"AGENT_HAPROXY_HOST"`
 	HAProxyPort                uint   `mapstructure:"AGENT_HAPROXY_PORT"`
-	HAProxySockPath            string `mapstructure:"AGENT_HA_SOCK_PATH"`
+	HAProxySockPath            string `mapstructure:"AGENT_HAPROXY_SOCK_PATH"`
 
 	OpenFaaSHost string `mapstructure:"AGENT_OPENFAAS_HOST"`
 	OpenFaaSPort uint   `mapstructure:"AGENT_OPENFAAS_PORT"`
@@ -59,8 +59,6 @@ func LoadConfig(path string) (config Configuration, err error) {
 	if err != nil {
 		return
 	}
-
-	viper.Debug()
 
 	err = viper.Unmarshal(&config)
 	return

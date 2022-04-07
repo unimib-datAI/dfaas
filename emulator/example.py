@@ -4,8 +4,19 @@ This is an example of a simple 3-nodes DFaaS environment.
 from mininet.net import Containernet
 from mininet.node import Controller
 from mininet.cli import CLI
-from mininet.link import TCLink
 from mininet.log import info, setLogLevel
+from dotenv import dotenv_values
+import copy
+
+
+def prepare_env(env, ip):
+    _env = copy.deepcopy(env)
+    _env['AGENT_LISTEN'] = '/ip4/{}/tcp/6000'.format(ip)
+    _env['AGENT_HAPROXY_HOST'] = ip
+    return _env
+
+
+agent_env = dotenv_values('../dfaasagent.env')
 
 setLogLevel('info')
 
@@ -13,9 +24,12 @@ net = Containernet(controller=Controller)
 net.addController('c0')
 
 info('*** Adding container\n')
-n1 = net.addDocker('n1', ip='10.0.0.1', dcmd='/sbin/init --log-level=err', dimage="dfaas-node:latest", runtime='sysbox-runc', environment={"AGENT_IPV4": "10.0.0.1"})
-n2 = net.addDocker('n2', ip='10.0.0.2', dcmd='/sbin/init --log-level=err', dimage="dfaas-node:latest", runtime='sysbox-runc', environment={"AGENT_IPV4": "10.0.0.2"})
-n3 = net.addDocker('n3', ip='10.0.0.3', dcmd='/sbin/init --log-level=err', dimage="dfaas-node:latest", runtime='sysbox-runc', environment={"AGENT_IPV4": "10.0.0.3"})
+n1 = net.addDocker('n1', ip='10.0.0.1', dcmd='./entrypoint.sh', dimage="dfaas-node:latest", runtime='sysbox-runc',
+                   environment=prepare_env(agent_env, '10.0.0.1'))
+n2 = net.addDocker('n2', ip='10.0.0.2', dcmd='./entrypoint.sh', dimage="dfaas-node:latest", runtime='sysbox-runc',
+                   environment=prepare_env(agent_env, '10.0.0.2'))
+n3 = net.addDocker('n3', ip='10.0.0.3', dcmd='./entrypoint.sh', dimage="dfaas-node:latest", runtime='sysbox-runc',
+                   environment=prepare_env(agent_env, '10.0.0.3'))
 
 info('*** Setup network\n')
 s1 = net.addSwitch('s1')
