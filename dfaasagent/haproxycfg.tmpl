@@ -111,7 +111,7 @@ frontend fe_main
     {{end}}
 
     {{/* [NEW] ########### ACLs FOR CHECKING IF A NODE IS KNOWN ######### */ -}}
-    {{/* Multiple conditions in the same line are joined togheter with an AND 
+    {{/* Multiple conditions in the same line are joined together with an AND
         instead named ACLs named multiple times are joined with OR.
             - acl is_node_{{$nodeID}} check that the http request came from {nodeID} node. 
     */ -}}
@@ -237,7 +237,7 @@ backend be_others_func_{{$funcName}}
     {{end}}
 {{end}}
 
-{{/* [NEW] #################### BACKEND FOR DENY EXCEEDING LINITIN REQUESTS #################### */ -}}
+{{/* [NEW] #################### BACKEND FOR DENY EXCEEDING LIMIT IN REQUESTS #################### */ -}}
 {{/* Note: It could be divided in alla specific be for nodes and functions and returns a specific error message */ -}}
 {{/* 503 (Service Unavailable) status code can be used.
     At the moment 429 has been used for test purpose. */}}

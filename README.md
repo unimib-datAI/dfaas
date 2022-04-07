@@ -98,7 +98,16 @@ curl http://localhost:8081/function/figlet -d 'Hello DFaaS world!'
 ### Execute workload to a node using [vegeta](https://github.com/tsenart/vegeta)
 We provide some example that use [vegeta](https://github.com/tsenart/vegeta) HTTP load testing tool to run workload on a node.
 
-This example uses the vegeta [json format](https://github.com/tsenart/vegeta#json-format) and requres [jq](https://stedolan.github.io/jq/).
+You can install vegeta executing the following commands:
+```shell
+wget https://github.com/tsenart/vegeta/releases/download/v12.8.4/vegeta_12.8.4_linux_amd64.tar.gz
+tar -xf vegeta_12.8.4_linux_amd64.tar.gz && rm vegeta_12.8.4_linux_amd64.tar.gz
+sudo mv vegeta /usr/local/bin/
+```
+
+This example uses the vegeta [json format](https://github.com/tsenart/vegeta#json-format) and requires [jq](https://stedolan.github.io/jq/).
+It runs a vegeta attack (duration: 5 minutes, rate: 50 req/s) to the `figlet` function on the first node saving results and producing report ever 200ms.
+
 ```shell
 # Create the vegeta results directory
 mkdir -p vegeta-results
@@ -110,10 +119,28 @@ jq -ncM '{method: "GET", url: "http://localhost:8081/function/figlet", body: "He
   vegeta attack -duration=5m -rate=50 -format=json | \
   tee $VEGFOLDER/results.bin | \
   vegeta report -every=200ms
+```
 
+### Create plots from vegeta results
+
+```shell
 # Encode results as JSON
 cat $VEGFOLDER/results.bin | vegeta encode > $VEGFOLDER/results.json
+
+# Create plot with vegeta
+cat cat $VEGFOLDER/results.bin | vegeta plot > $VEGFOLDER/plot.html
+
+# Create plot with our plot utility script (install required Python packages listed in utils/plot-requirements.txt)
+# 1st arg: path int results.json
+# 2nd arg: path output plot
+# 3rd arg: rate req/s used for the attack
+./utils/plot.py $VEGFOLDER/results.json $VEGFOLDER/plot.png 50
 ```
+
+### Forwarding traffic as a malicious node
+You can impersonate a malicious node that is not part of the federation by adding the header `Dfaas-Node-Id`
+with a value that is not a valid peer id of the network (e.g., `Dfaas-Node-Id: malicious-id`).
+All of its requests will be rejected.
 
 ### Troubleshooting
 
