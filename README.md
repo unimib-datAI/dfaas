@@ -67,32 +67,39 @@ docker build -t dfaas-node:latest -f docker/dfaas-node.dockerfile docker
 ```
 
 ### Run a 3 nodes network via Docker Compose
+See the provided [docker-compose.yml](docker-compose.yml) file for technical details.
 ```shell
 docker compose up -d
 ```
 
-### Deploy a function in a node
+### Deploy functions in a node
+This script waits for the OpenFaaS gateway to be up (max 20 retries, 10s delay) then deploys
+4 functions (ocr, sentimentanalysis, shasum, figlet) from the OpenFaas store.
+See [docker/files/faasd/deploy_functions.sh](docker/files/faasd/deploy_functions.sh) for further details.
 ```shell
-# Enter into the container
-# Substitute MY_CONTAINER_NAME with the actual container name
-docker exec -it MY_CONTAINER_NAME bash
-# This script waits for the OpenFaaS gateway to be up (max 20 retries, 10s delay) then deploys 4 functions from the OpenFaas store.
-# See docker/files/faasd/deploy_functions.sh for further details.
-./deploy_functions.sh
-exit
+# Substitute the CONTAINER_NAME value with the desired container name
+export CONTAINER_NAME="node-1"
+docker exec -it ${CONTAINER_NAME} ./deploy_functions.sh
 ```
 
 ### Invoke a function
+Each node exposes port `808x` (e.g., node-1 exposed port is 8081) that maps to the proxy port `80`,
+assuming you run 3 nodes via Docker Compose with the provided [docker-compose.yml](docker-compose.yml) file.
+
+You can invoke a function (i.e. on the first node) by simply contact the proxy on `http://localhost:8081/function/{function_name}`.
 ```shell
 curl http://localhost:8081/function/figlet -d 'Hello DFaaS world!'
 ```
 
+### 
+
 ### Troubleshooting
 
 ```shell
-# N.B.: Substitute MY_CONTAINER_NAME with the actual container name
-docker exec -it MY_CONTAINER_NAME bash
-journalctl --follow --unit dfaasagent
+# Substitute the CONTAINER_NAME value with the desired container name
+export CONTAINER_NAME="node-1"
+docker exec -it ${CONTAINER_NAME} bash
+journalctl --follow --unit dfaasagent # ...or whatever you prefer to inspect (e.g., haproxy, faasd, faasd-provider)
 ```
 
 ## Emulator
@@ -100,9 +107,8 @@ For a complex setup running several emulated edge nodes with different topologie
 We provide instructions and examples to execute DFaaS nodes via [Containernet emulator](https://containernet.github.io/).
 
 ## Simulator
-
 We also provide a simulator to test and compare different load balancing techniques.
 The simulation code is available into the [simulation directory](simulation).
-Data gathered by the DFaaS system used for simulation are available [here](data).
+Data gathered by the DFaaS system used for simulation are available [here](simulation/data).
 
 For more information read associated [README](simulation/README.md) file.

@@ -53,18 +53,17 @@ COPY files/faasd/prometheus.yml /var/lib/faasd/prometheus.yml
 ### Platform (OpenFaaS - faasd)
 
 WORKDIR /
-COPY files/faasd/deploy_functions.sh ./deploy_functions.sh
+COPY files/deploy_functions.sh ./deploy_functions.sh
 RUN chmod +x deploy_functions.sh
 COPY files/entrypoint.sh ./entrypoint.sh
 RUN chmod +x entrypoint.sh
 
 ### Agent
 WORKDIR /agent
-COPY files/dfaasagent/haproxycfg.tmpl ./haproxycfg.tmpl
 COPY files/dfaasagent/dfaasagent.service /etc/systemd/system/dfaasagent.service
 RUN systemctl enable dfaasagent.service
-
-COPY --from=dfaas-agent-builder:latest /go/src/dfaasagent/dfaasagent .
+COPY --from=dfaas-agent-builder:latest /go/src/dfaasagent/haproxycfg.tmpl ./haproxycfg.tmpl
+COPY --from=dfaas-agent-builder:latest /go/src/dfaasagent/dfaasagent ./dfaasagent
 ### End Agent
 
 WORKDIR /

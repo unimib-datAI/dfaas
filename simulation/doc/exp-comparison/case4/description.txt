@@ -1,3 +1,0 @@
-Mix of previous experiments. 
-Contains file of previous 3 cases and png outputs.
-First generated with instance generator.

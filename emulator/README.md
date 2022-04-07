@@ -23,6 +23,10 @@ sudo ansible-playbook -i "localhost," -c local containernet/ansible/install.yml
 sudo usermod -aG docker $USER
 ```
 
-## Examples
+### Install other Python packages
+```shell
+sudo pip3 install -r requirements.txt
+```
 
-> TODO
+## Examples
+See [example.py](example.py)

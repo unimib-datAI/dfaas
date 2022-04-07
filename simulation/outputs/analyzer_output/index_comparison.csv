@@ -1,4 +1,0 @@
-	Mean success rate	Success rate variance	Success rate median	Success rate 90% percentile	Mean success rate (stress period)	Success rate variance (stress period)	Success rate median stress period	Success rate 90% percentile stress period	Tot. rejected requests	Reject num variance	Reject num median	Reject num 90% percentile
-base_strategy	99.46276639500307	1.2105325524146817	100.0	100.0	99.24787295300432	1.5331184034312835	100.0	100.0	1260.0	15428.57142857143	0.0	240.0
-random_strategy	100.0	0.0	100.0	100.0	100.0	0.0	100.0	100.0	0.0	0.0	0.0	0.0
-empirical_strategy	100.0	0.0	100.0	100.0	100.0	0.0	100.0	100.0	0.0	0.0	0.0	0.0

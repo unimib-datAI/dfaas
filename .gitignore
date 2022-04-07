@@ -18,18 +18,7 @@
 *.bin
 
 # Custom ignores
-/simulation/archive
 __pycache__
-/01-vbox-nodes/
-/02-vbox-dfaasctrl/
-/06-ansible-playbooks/
-/python-vegeta-plot/
-/simulation/analyzer_output/
-/simulation/config/
-/simulation/simulation_controller_output/
-/simulation/simulation_output/
-/simulation/instance_gen_output/
-/vbox-scripts/
 venv
 .idea
 .DS_Store

@@ -78,7 +78,7 @@ This script export a CSV file containing mean, variance, median, sum and 90% per
 
 This component is used by the **simulator**, through the **data loader** to obtain data stored in the database. This module (under the folder _database_manager_) is composed by a super-class (**DbManager**) that manager connection to SQLlite database, and a sub-class (**ExpDbManager**) that manage data access and loading. **Data loader** component, uses the **ExpDbManager** interface to load, select and insert data. 
 
-The database contains data gathered by the experiment, reported in [**data**](../data/) folder, under the project root.
+The database contains data gathered by the experiment, reported in [**data**](data/) folder.
 
 The restructured ER diagram of the database is reported below.
 

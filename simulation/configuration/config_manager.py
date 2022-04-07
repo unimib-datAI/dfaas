@@ -17,12 +17,7 @@ class ConfigManager(object):
     OUTPUT_INSTANCE_PATH = output_dir.joinpath("instance_gen_output")
     OUTPUT_INSTANCE_JSON_FILE_PATH = OUTPUT_INSTANCE_PATH.joinpath("instance.json") # Path for output instance json file
     OUTPUT_INSTANCE_GRAPH_FILE_PATH = OUTPUT_INSTANCE_PATH.joinpath("graph.png")
-    DATA_DIR = root_path.joinpath("data")  # Directory that contains experiment files
-
-    # Note: declaration of another data dir with a group of complex experiments
-    # simulation/doc/exp-comparison/exp_pool
-    # Containing 20 files
-    #DATA_DIR = simulation_dir.joinpath("doc", "exp-comparison", "exp_pool")
+    DATA_DIR = simulation_dir.joinpath("data")  # Directory that contains experiment files
 
     NODES_TYPE = ["node_1", "node_2", "node_3"] # Nodes type used in experiments
     NODES_TYPE_PROBABILITY_DISTRIBUTION = [0.5, 0.3, 0.2]
