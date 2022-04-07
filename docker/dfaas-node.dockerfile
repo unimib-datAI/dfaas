@@ -55,6 +55,8 @@ COPY files/faasd/prometheus.yml /var/lib/faasd/prometheus.yml
 WORKDIR /
 COPY files/faasd/deploy_functions.sh ./deploy_functions.sh
 RUN chmod +x deploy_functions.sh
+COPY files/entrypoint.sh ./entrypoint.sh
+RUN chmod +x entrypoint.sh
 
 ### Agent
 WORKDIR /agent
@@ -66,6 +68,4 @@ COPY --from=dfaas-agent-builder:latest /go/src/dfaasagent/dfaasagent .
 ### End Agent
 
 WORKDIR /
-
-# Set systemd as entrypoint.
-ENTRYPOINT [ "/sbin/init", "--log-level=err" ]
+ENTRYPOINT [ "./entrypoint.sh" ]

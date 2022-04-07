@@ -3,7 +3,8 @@ Description=DFaaSAgent
 After=haproxy.service
 
 [Service]
-ExecStart=/usr/bin/bash -c /agent/dfaasagent
+EnvironmentFile=/agent/dfaasagent.env
+ExecStart=/agent/dfaasagent
 Restart=on-failure
 RestartSec=10s
 

@@ -13,8 +13,6 @@ services:
       AGENT_LISTEN: /ip4/172.16.238.10/tcp/6000
       AGENT_HAPROXY_HOST: 172.16.238.10
     runtime: sysbox-runc
-    volumes:
-      - ./dfaasagent.env:/agent/dfaasagent.env
     networks:
       p2p-overlay:
         ipv4_address: 172.16.238.10
@@ -31,8 +29,6 @@ services:
       AGENT_LISTEN: /ip4/172.16.238.11/tcp/6000
       AGENT_HAPROXY_HOST: 172.16.238.11
     runtime: sysbox-runc
-    volumes:
-      - ./dfaasagent.env:/agent/dfaasagent.env
     networks:
       p2p-overlay:
         ipv4_address: 172.16.238.11
@@ -49,8 +45,6 @@ services:
       AGENT_LISTEN: /ip4/172.16.238.12/tcp/6000
       AGENT_HAPROXY_HOST: 172.16.238.12
     runtime: sysbox-runc
-    volumes:
-      - ./dfaasagent.env:/agent/dfaasagent.env
     networks:
       p2p-overlay:
         ipv4_address: 172.16.238.12
