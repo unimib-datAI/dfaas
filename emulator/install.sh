@@ -10,6 +10,6 @@ git clone --branch v3.1 https://github.com/containernet/containernet.git
 cp hack/node.py containernet/mininet/node.py
 cp hack/install.yml containernet/ansible/install.yml
 
-sudo ansible-playbook -i "localhost," -c local containernet/ansible/install.yml
+sudo ansible-playbook -i "localhost," -c local containernet/ansible/install.yml -e 'ansible_python_interpreter=/usr/bin/python3'
 
 sudo pip3 install -r requirements.txt
