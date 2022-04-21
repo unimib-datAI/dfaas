@@ -43,13 +43,25 @@ This way, we can run several emulated edge nodes by simply executing multiple Do
 
 ### Requirements
 
-#### Docker CE 20.10.14
+- Docker CE 20.10.14
+- Docker Compose v2
+- Sysbox CE 0.5.0
+
+#### Setup environment using the convenience script
+
+```shell
+./setup-environment v20.10.14 v2.2.3 0.5.0 k5.4
+```
+
+#### Manual
+
+_Docker CE v20.10.14_
 You can follow the [official user guide](https://docs.docker.com/engine/install/).
 
-#### Docker Compose v2
+_Docker Compose v2_
 You can follow the [official user guide](https://docs.docker.com/compose/cli-command/).
 
-#### Sysbox CE 0.5.0
+_Sysbox CE 0.5.0_
 
 You can follow the [official user guide](https://github.com/nestybox/sysbox/blob/master/docs/user-guide/install-package.md).
 

@@ -8,7 +8,8 @@ SYSBOX_VERSION=$3
 SHIFTFS_BRANCH=$4
 
 sudo apt-get update
-sudo apt-get install \
+sudo apt-get install -yy \
+    jq \
     ca-certificates \
     curl \
     wget \
@@ -33,8 +34,7 @@ chmod +x "$DOCKER_CONFIG"/cli-plugins/docker-compose
 docker compose version
 
 curl -SL https://downloads.nestybox.com/sysbox/releases/v"$SYSBOX_VERSION"/sysbox-ce_"$SYSBOX_VERSION"-0.linux_amd64.deb -o sysbox-ce.deb
-sudo apt-get install jq
-sudo apt-get install ./sysbox-ce.deb
+sudo apt-get install -yy ./sysbox-ce.deb
 docker info | grep -i runtime
 
 git clone -b "$SHIFTFS_BRANCH" https://github.com/toby63/shiftfs-dkms.git shiftfs-"$SHIFTFS_BRANCH"
