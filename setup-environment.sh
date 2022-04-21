@@ -38,7 +38,7 @@ sudo systemctl status sysbox -n20
 docker info | grep -i runtime
 
 git clone -b "$SHIFTFS_BRANCH" https://github.com/toby63/shiftfs-dkms.git shiftfs-"$SHIFTFS_BRANCH"
-cd "$SHIFTFS_BRANCH"-k54
+cd shiftfs-"$SHIFTFS_BRANCH"
 ./update1
 sudo make -f Makefile.dkms
 modinfo shiftfs
