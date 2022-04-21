@@ -3,8 +3,9 @@
 set -e
 
 DOCKER_VERSION=$1
-SYSBOX_VERSION=$2
-SHIFTFS_BRANCH=$3
+DOCKER_COMPOSE_VERSION=$2
+SYSBOX_VERSION=$3
+SHIFTFS_BRANCH=$4
 
 sudo apt-get update
 sudo apt-get install \
@@ -19,21 +20,18 @@ sudo apt-get install \
 curl -fsSL https://get.docker.com -o get-docker.sh
 sudo sh get-docker.sh "$DOCKER_VERSION"
 
-sudo groupadd docker
 sudo usermod -aG docker "$USER"
-
-docker version
 
 DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
 mkdir -p "$DOCKER_CONFIG"/cli-plugins
-curl -SL https://github.com/docker/compose/releases/download/v2.2.3/docker-compose-linux-x86_64 -o "$DOCKER_CONFIG"/cli-plugins/docker-compose
+curl -SL https://github.com/docker/compose/releases/download/"$DOCKER_COMPOSE_VERSION"/docker-compose-linux-x86_64 -o "$DOCKER_CONFIG"/cli-plugins/docker-compose
 chmod +x "$DOCKER_CONFIG"/cli-plugins/docker-compose
 
 docker compose version
 
-wget https://downloads.nestybox.com/sysbox/releases/v"$SYSBOX_VERSION"/sysbox-ce_"$SYSBOX_VERSION"-0.linux_amd64.deb
+curl -SL https://downloads.nestybox.com/sysbox/releases/v"$SYSBOX_VERSION"/sysbox-ce_"$SYSBOX_VERSION"-0.linux_amd64.deb -o sysbox-ce.deb
 sudo apt-get install jq
-sudo apt-get install ./sysbox-ce_"$SYSBOX_VERSION"-0.linux_amd64.deb
+sudo apt-get install ./sysbox-ce.deb
 sudo systemctl status sysbox -n20
 docker info | grep -i runtime
 
