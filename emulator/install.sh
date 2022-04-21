@@ -4,6 +4,7 @@ set -e
 
 sudo apt-get install -yy ansible git
 
+# This fork contains unmerged PRs to upstream that provide a successful installation
 # git clone --branch v3.1 https://github.com/containernet/containernet.git
 git clone https://github.com/ElectricalBoy/containernet.git
 
