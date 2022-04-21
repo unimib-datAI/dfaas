@@ -1,5 +1,5 @@
 # Emulator
-We emulate edge scenarios with multiple nodes by relying on [Containernet](https://containernet.github.io/).
+We emulate edge scenarios with multiple nodes by using [Containernet](https://containernet.github.io/).
 
 ## Setup
 
@@ -12,18 +12,27 @@ We emulate edge scenarios with multiple nodes by relying on [Containernet](https
 
 For Docker CE, Docker Compose and Sysbox CE you can look at the [README in the project root.](../README.md).
 
-### Install Containernet v3.1
+### Installation methods
+
+#### Install using the convenience script
+```shell
+./install.sh
+```
+
+
+#### Manual
+
+_Install Containernet v3.1_
+
 ```shell
 sudo apt-get install ansible git
 git clone --branch v3.1 https://github.com/containernet/containernet.git
 #  We opened a pull request (#243) to make this edit available directly from upstream. See the PR for further details.
 cp hack/node.py containernet/mininet/node.py
 sudo ansible-playbook -i "localhost," -c local containernet/ansible/install.yml
-# Not needed if Docker was previously installed and setup properly
-sudo usermod -aG docker $USER
 ```
 
-### Install other Python packages
+_Install Python packages_
 ```shell
 sudo pip3 install -r requirements.txt
 ```
