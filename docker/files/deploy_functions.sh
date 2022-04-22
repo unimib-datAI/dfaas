@@ -16,8 +16,7 @@ fi
 
 faas-cli login --password admin
 
-faas-cli store deploy ocr --label dfaas.maxrate=5
-faas-cli store deploy sentimentanalysis --label dfaas.maxrate=10
+faas-cli store deploy ocr --label dfaas.maxrate=10
 faas-cli store deploy shasum --label dfaas.maxrate=20
 faas-cli store deploy figlet --label dfaas.maxrate=30
 

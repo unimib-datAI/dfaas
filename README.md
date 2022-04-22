@@ -96,7 +96,7 @@ docker compose up -d
 ### Deploy functions
 This script deploy the same set of functions on each of the nodes by using [docker/files/deploy_functions.sh](docker/files/deploy_functions.sh).
 The [deploy_functions.sh](docker/files/deploy_functions.sh) script waits for the OpenFaaS gateway to be up (max 20 retries, 10s delay),
-then deploys 4 functions (ocr, sentimentanalysis, shasum, figlet) from the OpenFaas store.
+then deploys 3 functions (ocr, shasum, figlet) from the OpenFaas store.
 
 The script has 3 arguments:
 - 1st arg: number of nodes (e.g., `3`)
