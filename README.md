@@ -54,7 +54,7 @@ The script has 4 arguments:
 - 1st arg: Docker CE version
 - 2nd arg: Docker Compose version
 - 3rd arg: Sysbox CE version
-- 4th arg: shiftgs branch
+- 4th arg: shiftfs branch
 
 ```shell
 ./setup-environment v20.10.14 v2.2.3 0.5.0 k5.4
