@@ -43,24 +43,23 @@ This way, we can run several emulated edge nodes by simply executing multiple Do
 
 ### Requirements
 
-- Docker CE 20.10.14
+- Docker CE 20.10.16
 - Sysbox CE 0.5.0
 
 #### Setup environment using the convenience script
 
 The script has 3 arguments:
 
-- 1st arg: Docker CE version
-- 2nd arg: Sysbox CE version
-- 3rd arg: shiftfs branch
+- 1st arg: Sysbox CE version
+- 2nd arg: shiftfs branch
 
 ```shell
-./setup-environment v20.10.14 0.5.0 k5.4
+./setup-environment 0.5.0 k5.4
 ```
 
 #### Manual
 
-_Docker CE v20.10.14_
+_Docker CE v20.10.16_
 
 You can follow the [official user guide](https://docs.docker.com/engine/install/).
 

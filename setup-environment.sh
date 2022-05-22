@@ -2,9 +2,8 @@
 
 set -e
 
-DOCKER_VERSION=$1
-SYSBOX_VERSION=$2
-SHIFTFS_BRANCH=$3
+SYSBOX_VERSION=$1
+SHIFTFS_BRANCH=$2
 
 sudo apt-get update
 sudo apt-get install -yy \
@@ -17,8 +16,8 @@ sudo apt-get install -yy \
     dkms \
     lsb-release
 
-curl -fsSL https://get.docker.com -o get-docker.sh
-sudo sh get-docker.sh "$DOCKER_VERSION"
+curl -fsSL https://download.docker.com/linux/ubuntu/gpg | sudo gpg --dearmor -o /usr/share/keyrings/docker-archive-keyring.gpg
+
 
 sudo usermod -aG docker "$USER"
 
