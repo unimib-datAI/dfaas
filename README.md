@@ -57,7 +57,7 @@ The script has 4 arguments:
 - 4th arg: shiftfs branch
 
 ```shell
-./setup-environment v20.10.14 v2.2.3 0.5.2 k5.4
+./setup-environment v20.10.14 0.5.2 k5.4
 ```
 
 #### Manual
