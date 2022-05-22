@@ -70,7 +70,7 @@ _Docker Compose v2_
 
 You can follow the [official user guide](https://docs.docker.com/compose/cli-command/).
 
-_Sysbox CE 0.5.2_
+_Sysbox CE 0.5.0_
 
 You can follow the [official user guide](https://github.com/nestybox/sysbox/blob/master/docs/user-guide/install-package.md).
 
