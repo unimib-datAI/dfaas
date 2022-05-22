@@ -3,9 +3,8 @@
 set -e
 
 DOCKER_VERSION=$1
-DOCKER_COMPOSE_VERSION=$2
-SYSBOX_VERSION=$3
-SHIFTFS_BRANCH=$4
+SYSBOX_VERSION=$2
+SHIFTFS_BRANCH=$3
 
 sudo apt-get update
 sudo apt-get install -yy \
@@ -25,13 +24,6 @@ sudo usermod -aG docker "$USER"
 
 systemctl enable docker
 systemctl start docker
-
-DOCKER_CONFIG=${DOCKER_CONFIG:-$HOME/.docker}
-mkdir -p "$DOCKER_CONFIG"/cli-plugins
-curl -SL https://github.com/docker/compose/releases/download/"$DOCKER_COMPOSE_VERSION"/docker-compose-linux-x86_64 -o "$DOCKER_CONFIG"/cli-plugins/docker-compose
-chmod +x "$DOCKER_CONFIG"/cli-plugins/docker-compose
-
-docker compose version
 
 curl -SL https://downloads.nestybox.com/sysbox/releases/v"$SYSBOX_VERSION"/sysbox-ce_"$SYSBOX_VERSION"-0.linux_amd64.deb -o sysbox-ce.deb
 sudo apt-get install -yy ./sysbox-ce.deb
