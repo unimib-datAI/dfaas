@@ -42,4 +42,3 @@ cd shiftfs-"$SHIFTFS_BRANCH"
 ./update1
 sudo make -f Makefile.dkms
 modinfo shiftfs
-

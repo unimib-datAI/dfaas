@@ -31,7 +31,7 @@ The edge node can receive functions' execution _requests_, in the form of HTTP r
 This prototype relies on [HAProxy](https://www.haproxy.org/) to implement the proxy component,
 and on [faasd v0.15.0](https://github.com/openfaas/faasd) (a lightweight version of OpenFaaS) to implement the FaaS platform.
 
-Also, we exploit [Sysbox 0.5.0](https://github.com/nestybox/sysbox), an open-source and free container runtime
+Also, we exploit [Sysbox](https://github.com/nestybox/sysbox), an open-source and free container runtime
 (a specialized "runc") that enhances containers in two key ways:
 
 - improves container isolation
@@ -45,7 +45,7 @@ This way, we can run several emulated edge nodes by simply executing multiple Do
 
 - Docker CE 20.10.14
 - Docker Compose v2
-- Sysbox CE 0.5.0
+- Sysbox CE 0.5.2
 
 #### Setup environment using the convenience script
 
@@ -57,7 +57,7 @@ The script has 4 arguments:
 - 4th arg: shiftfs branch
 
 ```shell
-./setup-environment v20.10.14 v2.2.3 0.5.0 k5.4
+./setup-environment v20.10.14 v2.2.3 0.5.2 k5.4
 ```
 
 #### Manual
@@ -70,7 +70,7 @@ _Docker Compose v2_
 
 You can follow the [official user guide](https://docs.docker.com/compose/cli-command/).
 
-_Sysbox CE 0.5.0_
+_Sysbox CE 0.5.2_
 
 You can follow the [official user guide](https://github.com/nestybox/sysbox/blob/master/docs/user-guide/install-package.md).
 
