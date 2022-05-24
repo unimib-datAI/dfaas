@@ -22,7 +22,7 @@ RUN apt-get update && apt-get install -y \
     iproute2 && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-RUN git clone --branch 0.14.4 https://github.com/openfaas/faasd /faasd
+RUN git clone --branch 0.16.0 https://github.com/openfaas/faasd /faasd
 
 WORKDIR /faasd
 
