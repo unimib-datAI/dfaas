@@ -2,7 +2,7 @@
 
 # Copyright OpenFaaS Author(s) 2022
 
-set -e -x -o pipefail
+set -x
 
 export OWNER="openfaas"
 export REPO="faasd"
