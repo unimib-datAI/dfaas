@@ -43,6 +43,8 @@ This way, we can run several emulated edge nodes by simply executing multiple Do
 
 ### Requirements
 
+- Ubuntu 20.04 LTS
+- containerd 1.6.4
 - Docker CE 20.10.16
 - Sysbox CE 0.5.2
 
@@ -52,6 +54,8 @@ The script has 3 arguments:
 
 - 1st arg: Sysbox CE version
 - 2nd arg: shiftfs branch
+
+> This scripts assumes you are using Ubuntu 20.04 LTS with kernel version 5.4.
 
 ```shell
 ./setup-environment 0.5.2 k5.4
