@@ -14,7 +14,9 @@ if [[ $TRIES -eq $MAX_TRIES ]]; then
     exit 1;
 fi
 
-faas-cli login --password admin
+PASSWORD=$(kubectl get secret -n openfaas basic-auth -o jsonpath="{.data.basic-auth-password}" | base64 --decode; echo)
+
+echo -n $PASSWORD | faas-cli login --username admin --password-stdin
 
 faas-cli store deploy ocr --label dfaas.maxrate=10
 faas-cli store deploy shasum --label dfaas.maxrate=20
