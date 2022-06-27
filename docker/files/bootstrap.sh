@@ -12,6 +12,10 @@ helm repo update \
     --set functionNamespace=openfaas-fn \
     --set generateBasicAuth=true
 
+PASSWORD=$(kubectl get secret -n openfaas basic-auth -o jsonpath="{.data.basic-auth-password}" | base64 --decode; echo)
+
+kubectl rollout status -n openfaas deployment/gateway
+
 declare HEALTHZ_ENDPOINT="http://localhost:8080/healthz"
 declare MAX_TRIES=20
 declare TRIES=1
@@ -27,8 +31,6 @@ done
 if [[ $TRIES -eq $MAX_TRIES ]]; then
     exit 1;
 fi
-
-PASSWORD=$(kubectl get secret -n openfaas basic-auth -o jsonpath="{.data.basic-auth-password}" | base64 --decode; echo)
 
 echo -n $PASSWORD | faas-cli login --username admin --password-stdin
 
