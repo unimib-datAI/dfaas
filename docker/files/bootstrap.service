@@ -1,0 +1,11 @@
+[Unit]
+Description=Boostrap node
+After=docker.service
+
+[Service]
+ExecStart=/bootstrap.sh
+RemainAfterExit=true
+Type=oneshot
+
+[Install]
+WantedBy=multi-user.target

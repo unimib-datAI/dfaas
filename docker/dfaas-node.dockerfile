@@ -50,8 +50,14 @@ RUN systemctl enable node-exporter.service
 WORKDIR /
 COPY files/deploy_functions.sh ./deploy_functions.sh
 RUN chmod +x deploy_functions.sh
+
 COPY files/entrypoint.sh ./entrypoint.sh
 RUN chmod +x entrypoint.sh
+
+COPY files/bootstrap.sh ./bootstrap.sh
+RUN chmod +x bootstrap.sh
+COPY files/bootstrap.service /etc/systemd/system/bootstrap.service
+RUN systemctl enable bootstrap.service
 
 ### Agent
 WORKDIR /agent
