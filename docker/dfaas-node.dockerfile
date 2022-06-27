@@ -10,6 +10,7 @@ RUN systemctl enable haproxy.service
 ### End Proxy (HAProxy)
 
 ### Platform (OpenFaaS)
+RUN curl -SLsf https://get.arkade.dev/ | sh
 RUN curl -fsSLo /usr/share/keyrings/kubernetes-archive-keyring.gpg https://packages.cloud.google.com/apt/doc/apt-key.gpg
 RUN echo "deb [signed-by=/usr/share/keyrings/kubernetes-archive-keyring.gpg] https://apt.kubernetes.io/ kubernetes-xenial main" | sudo tee /etc/apt/sources.list.d/kubernetes.list
 RUN apt-get update && apt-get install -y \
@@ -27,6 +28,9 @@ RUN apt-get update && apt-get install -y \
 
 # Add K3s
 RUN wget -q -O - https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG=v5.4.3 bash
+
+# Add faas-cli
+RUN arkade get faas-cli
 
 # Add cAdvisor to monitor containers
 RUN wget https://github.com/google/cadvisor/releases/download/v0.44.0/cadvisor
