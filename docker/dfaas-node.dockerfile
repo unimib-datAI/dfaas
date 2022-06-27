@@ -1,4 +1,4 @@
-FROM nestybox/ubuntu-impish-systemd:latest
+FROM ghcr.io/nestybox/ubuntu-impish-systemd-docker:latest
 
 ### Proxy (HAProxy)
 
@@ -9,7 +9,7 @@ RUN systemctl enable haproxy.service
 
 ### End Proxy (HAProxy)
 
-### Platform (OpenFaaS - faasd)
+### Platform (OpenFaaS)
 RUN apt-get update && apt-get install -y \
     nano \
     libc6 \
@@ -22,18 +22,10 @@ RUN apt-get update && apt-get install -y \
     iproute2 && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-RUN git clone --branch 0.16.0 https://github.com/openfaas/faasd /faasd
+# Add Minikube
 
-WORKDIR /faasd
-
-COPY files/faasd/hack/install.sh ./hack/install.sh
-RUN chmod +x ./hack/install.sh
-RUN ./hack/install.sh
-
-RUN echo "admin" > /var/lib/faasd/secrets/basic-auth-password
-
-RUN systemctl enable faasd.service
-RUN systemctl enable faasd-provider.service
+RUN curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb
+RUN dpkg -i minikube_latest_amd64.deb
 
 # Add cAdvisor to monitor containers
 RUN wget https://github.com/google/cadvisor/releases/download/v0.44.0/cadvisor
@@ -47,10 +39,7 @@ RUN tar xvfz node_exporter-1.3.1.linux-amd64.tar.gz && rm node_exporter-1.3.1.li
 COPY files/faasd/node-exporter.service /etc/systemd/system/node-exporter.service
 RUN systemctl enable node-exporter.service
 
-# Override Prometheus configuration
-COPY files/faasd/prometheus.yml /var/lib/faasd/prometheus.yml
-
-### Platform (OpenFaaS - faasd)
+### End Platform (OpenFaaS)
 
 WORKDIR /
 COPY files/deploy_functions.sh ./deploy_functions.sh
