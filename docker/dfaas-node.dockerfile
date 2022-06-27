@@ -31,6 +31,7 @@ RUN wget -q -O - https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | 
 
 # Add faas-cli
 RUN arkade get faas-cli
+RUN mv /root/.arkade/bin/faas-cli /usr/local/bin/
 
 # Add cAdvisor to monitor containers
 RUN wget https://github.com/google/cadvisor/releases/download/v0.44.0/cadvisor
