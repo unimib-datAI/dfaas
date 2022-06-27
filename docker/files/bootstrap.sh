@@ -12,14 +12,11 @@ helm repo update \
     --set functionNamespace=openfaas-fn \
     --set generateBasicAuth=true
 
-kubectl port-forward -n openfaas svc/gateway 8080:8080 &
-kubectl port-forward -n openfaas svc/prometheus 9090:9090 &
-
-PASSWORD=$(kubectl get secret -n openfaas basic-auth -o jsonpath="{.data.basic-auth-password}" | base64 --decode; echo)
-
 declare HEALTHZ_ENDPOINT="http://localhost:8080/healthz"
 declare MAX_TRIES=20
 declare TRIES=1
+
+kubectl port-forward -n openfaas svc/gateway 8080:8080 &
 
 until [[ "$(curl -s -w '%{http_code}' -o /dev/null ${HEALTHZ_ENDPOINT})" -eq 200 || $TRIES -eq $MAX_TRIES ]]
 do
@@ -31,4 +28,12 @@ if [[ $TRIES -eq $MAX_TRIES ]]; then
     exit 1;
 fi
 
+PASSWORD=$(kubectl get secret -n openfaas basic-auth -o jsonpath="{.data.basic-auth-password}" | base64 --decode; echo)
+
 echo -n $PASSWORD | faas-cli login --username admin --password-stdin
+
+faas-cli store deploy ocr --label dfaas.maxrate=10
+faas-cli store deploy shasum --label dfaas.maxrate=20
+faas-cli store deploy figlet --label dfaas.maxrate=30
+
+exit 0;

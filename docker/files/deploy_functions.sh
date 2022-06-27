@@ -4,6 +4,8 @@ declare HEALTHZ_ENDPOINT="http://localhost:8080/healthz"
 declare MAX_TRIES=20
 declare TRIES=1
 
+kubectl port-forward -n openfaas svc/gateway 8080:8080 &
+
 until [[ "$(curl -s -w '%{http_code}' -o /dev/null ${HEALTHZ_ENDPOINT})" -eq 200 || $TRIES -eq $MAX_TRIES ]]
 do
   sleep 10;
