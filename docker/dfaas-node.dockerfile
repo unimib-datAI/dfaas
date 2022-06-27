@@ -22,10 +22,8 @@ RUN apt-get update && apt-get install -y \
     iproute2 && \
     apt-get clean && rm -rf /var/lib/apt/lists/*
 
-# Add Minikube
-
-RUN curl -LO https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb
-RUN dpkg -i minikube_latest_amd64.deb
+# Add K3s
+RUN wget -q -O - https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG=v5.4.3 bash \
 
 # Add cAdvisor to monitor containers
 RUN wget https://github.com/google/cadvisor/releases/download/v0.44.0/cadvisor
