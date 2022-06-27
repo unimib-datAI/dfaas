@@ -3,7 +3,7 @@ Description=Boostrap node
 After=docker.service
 
 [Service]
-ExecStart=/usr/bin/bash -c /bootstrap.sh
+ExecStart=/bin/sh -c bootstrap.sh
 RemainAfterExit=true
 Type=oneshot
 

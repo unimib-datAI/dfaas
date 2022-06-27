@@ -29,9 +29,11 @@ RUN apt-get update && apt-get install -y \
 # Add K3s
 RUN wget -q -O - https://raw.githubusercontent.com/k3d-io/k3d/main/install.sh | TAG=v5.4.3 bash
 
-# Add faas-cli
+# Add faas-cli and helm
 RUN arkade get faas-cli
 RUN mv /root/.arkade/bin/faas-cli /usr/local/bin/
+RUN arkade get helm
+RUN mv /root/.arkade/bin/helm /usr/local/bin/
 
 # Add cAdvisor to monitor containers
 RUN wget https://github.com/google/cadvisor/releases/download/v0.44.0/cadvisor
