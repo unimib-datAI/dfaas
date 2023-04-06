@@ -1,4 +1,4 @@
-FROM nestybox/ubuntu-impish-systemd:latest
+FROM nestybox/ubuntu-jammy-systemd:latest@sha256:93b72540b784f16276396780418851c9d39f3392132fe8bf2988733002d9dd24
 
 ### Proxy (HAProxy)
 
