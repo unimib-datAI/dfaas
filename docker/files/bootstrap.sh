@@ -38,6 +38,6 @@ faas-cli store deploy ocr --label dfaas.maxrate=10
 faas-cli store deploy shasum --label dfaas.maxrate=20
 faas-cli store deploy figlet --label dfaas.maxrate=30
 
-# FIXME: kill the port-forward
+pkill -f "port-forward" -9
 
 exit 0;
