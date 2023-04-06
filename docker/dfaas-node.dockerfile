@@ -1,4 +1,4 @@
-FROM ghcr.io/nestybox/ubuntu-impish-systemd-docker:latest
+FROM nestybox/ubuntu-jammy-systemd:latest@sha256:93b72540b784f16276396780418851c9d39f3392132fe8bf2988733002d9dd24
 
 ### Proxy (HAProxy)
 
@@ -58,6 +58,7 @@ RUN chmod +x entrypoint.sh
 
 COPY files/bootstrap.sh ./bootstrap.sh
 RUN chmod +x bootstrap.sh
+
 COPY files/bootstrap.service /etc/systemd/system/bootstrap.service
 RUN systemctl enable bootstrap.service
 
