@@ -7,7 +7,7 @@ set -x
 export OWNER="openfaas"
 export REPO="faasd"
 
-version="0.16.0"
+version="0.18.6"
 
 #echo "Finding latest version from GitHub"
 #version=$(curl -sI https://github.com/$OWNER/$REPO/releases/latest | grep -i "location:" | awk -F"/" '{ printf "%s", $NF }' | tr -d '\r')
