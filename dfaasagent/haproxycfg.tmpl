@@ -116,7 +116,7 @@ frontend fe_main
             - acl is_node_{{$nodeID}} check that the http request came from {nodeID} node. 
     */ -}}
     {{if not $.Nodes}}
-    acl is_hdr_nodeID_known false
+    acl is_hdr_nodeID_known always_false
     {{end}}
     {{range $nodeID, $_ := $.Nodes}}
     acl is_hdr_nodeID_known req.hdr(DFaaS-Node-ID) -m str {{$nodeID}} {{/* Conditions with same name, called multiple times are joined with OR */}}
