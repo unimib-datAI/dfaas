@@ -1,0 +1,2 @@
+shasum,curl,cavecal/eat-memory
+0,0,0

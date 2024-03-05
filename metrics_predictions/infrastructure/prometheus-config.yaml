@@ -1,0 +1,93 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: prometheus-config
+  namespace: openfaas
+data:
+  prometheus.yml: |
+    global:
+      scrape_interval: 15s
+      scrape_timeout: 10s
+      evaluation_interval: 15s
+      external_labels:
+        monitor: faas-monitor
+    alerting:
+      alertmanagers:
+      - follow_redirects: true
+        enable_http2: true
+        scheme: http
+        timeout: 10s
+        api_version: v2
+        static_configs:
+        - targets:
+          - alertmanager:9093
+    rule_files:
+    - /etc/prometheus/alert.rules.yml
+    scrape_configs:
+    - job_name: prometheus
+      honor_timestamps: true
+      scrape_interval: 10s
+      scrape_timeout: 10s
+      metrics_path: /metrics
+      scheme: http
+      follow_redirects: true
+      enable_http2: true
+      static_configs:
+      - targets:
+        - prometheus:9090
+    - job_name: cadvisor
+      scrape_interval: 5s
+      static_configs:
+        - targets:
+          - cadvisor:8080
+    - job_name: node
+      static_configs:
+        - targets: ['node-exporter:9100']
+    - job_name: scaphandre
+      static_configs:
+        - targets: ['scaphandre:8080']
+    - job_name: openfaas-pods
+      honor_timestamps: true
+      scrape_interval: 5s
+      scrape_timeout: 5s
+      metrics_path: /metrics
+      scheme: http
+      follow_redirects: true
+      enable_http2: true
+      relabel_configs:
+      - separator: ;
+        regex: __meta_kubernetes_pod_label_(.+)
+        replacement: $1
+        action: labelmap
+      - source_labels: [__meta_kubernetes_namespace]
+        separator: ;
+        regex: (.*)
+        target_label: kubernetes_namespace
+        replacement: $1
+        action: replace
+      - source_labels: [__meta_kubernetes_pod_name]
+        separator: ;
+        regex: (.*)
+        target_label: kubernetes_pod_name
+        replacement: $1
+        action: replace
+      - source_labels: [__meta_kubernetes_pod_annotation_prometheus_io_scrape]
+        separator: ;
+        regex: "true"
+        replacement: $1
+        action: keep
+      - source_labels: [__address__, __meta_kubernetes_pod_annotation_prometheus_io_port]
+        separator: ;
+        regex: ([^:]+)(?::\d+)?;(\d+)
+        target_label: __address__
+        replacement: $1:$2
+        action: replace
+      kubernetes_sd_configs:
+      - role: pod
+        kubeconfig_file: ""
+        follow_redirects: true
+        enable_http2: true
+        namespaces:
+          own_namespace: false
+          names:
+          - openfaas
