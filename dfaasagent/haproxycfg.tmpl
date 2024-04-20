@@ -60,13 +60,14 @@ frontend fe_main
 
     {{/* Path ACLs */ -}}
     acl is_path_root path /
+    acl is_path_healthz path /healthz
     acl is_path_haproxy path_beg /haproxy
     acl is_path_function path_beg /function/
 
     {{/* Deny requests which are not directed to a function or / (root) or the
     stats page (note: the root path is needed for health checks by
-    other nodes) */ -}}
-    http-request deny unless is_path_root or is_path_haproxy or is_path_function
+    other nodes) or to /healthz */ -}}
+    http-request deny unless is_path_root or is_path_healthz or is_path_haproxy or is_path_function
 
     {{/* Capture some request headers in log */ -}}
     http-request capture req.hdr(Host) len 50
@@ -116,7 +117,7 @@ frontend fe_main
             - acl is_node_{{$nodeID}} check that the http request came from {nodeID} node. 
     */ -}}
     {{if not $.Nodes}}
-    acl is_hdr_nodeID_known false
+    acl is_hdr_nodeID_known always_false
     {{end}}
     {{range $nodeID, $_ := $.Nodes}}
     acl is_hdr_nodeID_known req.hdr(DFaaS-Node-ID) -m str {{$nodeID}} {{/* Conditions with same name, called multiple times are joined with OR */}}
@@ -153,6 +154,7 @@ frontend fe_main
     {{/* ########## BACKEND SELECTION ########## */ -}}
 
     use_backend be_ok if is_path_root
+    use_backend be_healthz if is_path_healthz
     {{range $funcName, $func := .Functions -}}
 
     {{/* [NEW] Select backend for request that exeeds limitsIn */ -}}
@@ -172,6 +174,13 @@ frontend fe_main
 
 backend be_ok
     http-request return status 200 content-type "text/plain" string "This is a DFaaS node. Call a function with /function/<funcname>\n"
+
+{{/* #################### BACKEND FOR HEALTHCHECK #################### */ -}}
+
+backend be_healthz
+    {{/* Perform HTTP health checks */ -}}
+    option httpchk GET /healthz
+    server healthz {{.HttpServerHost}}:{{.HttpServerPort}} check
 
 {{/* #################### BACKEND FOR SELF OPENFAAS INSTANCE #################### */ -}}
 

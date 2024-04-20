@@ -29,7 +29,7 @@ The edge node can receive functions' execution _requests_, in the form of HTTP r
 
 ## Prototype
 This prototype relies on [HAProxy](https://www.haproxy.org/) to implement the proxy component,
-and on [faasd 0.16.0](https://github.com/openfaas/faasd) (a lightweight version of OpenFaaS) to implement the FaaS platform.
+and on [faasd 0.18.6](https://github.com/openfaas/faasd) (a lightweight version of OpenFaaS) to implement the FaaS platform.
 
 Also, we exploit [Sysbox](https://github.com/nestybox/sysbox), an open-source and free container runtime
 (a specialized "runc") that enhances containers in two key ways:
@@ -43,31 +43,50 @@ This way, we can run several emulated edge nodes by simply executing multiple Do
 
 ### Requirements
 
-- Ubuntu 20.04 LTS
-- containerd 1.6.4
-- Docker CE 20.10.16
-- Sysbox CE 0.5.2
+- Ubuntu 22.04 LTS
+- containerd 1.6.27
+- Docker CE 25.0.1
+- Sysbox CE 0.6.3
 
-#### Setup environment using the convenience script
+#### Setup environment using the Ansible playbook
 
-The script has 3 arguments:
+Install [Ansible](https://www.ansible.com/), an agentless automation tool that you install on a single host, referred to as the control node.  
+Then, using the [setup_playbook.yaml](setup_playbook.yaml) file, your Ansible control node can setup the environment to execute DFaaS on the managed node(s) specified in an inventory file.
 
-- 1st arg: Sysbox CE version
-- 2nd arg: shiftfs branch
+Here is an example of an inventory.yaml file to setup the environment on a host via SSH connection:
 
-> This scripts assumes you are using Ubuntu 20.04 LTS with kernel version 5.4.
+```yaml
+ungrouped:
+  hosts:
+    <hostname>:
+      ansible_port: <port_number>
+      ansible_connection: ssh
+      ansible_user: <user>
+      ansible_password: <password>
+```
+
+Run the `ansible-playbook` command on the control node to execute the tasks specified in the playbook with the following options:
+
+`-i` : path to an inventory file  
+`--extra-vars` : to specify the Sysbox version and shiftfs branch to be installed
+
+> The following command assumes you are using Ubuntu 22.04 LTS with kernel version 5.15 or 5.16.
 
 ```shell
-./setup-environment 0.5.2 k5.4
+ansible-playbook -i inventory.yaml setup_playbook.yaml --extra-vars "sysbox_ver=0.6.3 shiftfs_ver=k5.16"
 ```
 
 #### Manual
 
-_Docker CE v20.10.16_
+_Ansible_
+
+You can follow the [official user guide](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html).
+
+_Docker CE v25.0.1_
 
 You can follow the [official user guide](https://docs.docker.com/engine/install/).
 
-_Sysbox CE 0.5.2_
+_Sysbox CE 0.6.3_
 
 You can follow the [official user guide](https://github.com/nestybox/sysbox/blob/master/docs/user-guide/install-package.md).
 

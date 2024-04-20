@@ -1,0 +1,117 @@
+---
+- name: Setup Environment
+  hosts: all
+  become: true
+  vars:
+    arch_mapping:
+      x86_64: amd64
+      aarch64: arm64
+  
+  tasks:
+    - name: Update apt packages
+      apt:
+        update_cache: true
+        
+    - name: Install required system packages
+      apt:
+        name: "{{ item }}"
+        state: latest
+        update_cache: true
+      loop:
+        - jq
+        - ca-certificates
+        - curl
+        - wget
+        - gnupg
+        - make
+        - dkms
+        - lsb-release
+        - apt-transport-https
+        - software-properties-common
+        - git
+
+    - name: Create directory for Docker's GPG key
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+    
+    - name: Add Docker's official GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        keyring: /etc/apt/keyrings/docker.gpg
+        state: present
+    
+    - name: Change GPG key permissions
+      file:
+        path: /etc/apt/keyrings/docker.gpg
+        state: file
+        mode: 'a+r'
+    
+    - name: Set up the stable repository
+      apt_repository:
+        repo: deb [arch={{ arch_mapping[ansible_architecture] | default(ansible_architecture) }} signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable
+        filename: docker
+        state: present
+        update_cache: true
+    
+    - name: Install Docker and related packages
+      apt:
+        name: "{{ item }}"
+        state: present
+        update_cache: true
+      loop:
+        - docker-ce=5:25.0.1-1~ubuntu.{{ ansible_lsb.release }}~{{ ansible_lsb.codename }}
+        - docker-ce-cli=5:25.0.1-1~ubuntu.{{ ansible_lsb.release }}~{{ ansible_lsb.codename }}
+        - containerd.io
+        - docker-buildx-plugin
+        - docker-compose-plugin
+    
+    - name: Add Docker group
+      group:
+        name: docker
+        state: present
+
+    - name: Add user to docker group
+      user:
+        name: "{{ ansible_user_id }}"
+        groups: "docker"
+        append: true
+    
+    - name: Enable and start Docker services
+      systemd:
+        name: "{{ item }}"
+        enabled: true
+        state: started
+      loop:
+        - docker.service
+        - containerd.service
+      
+    - name: Create sysbox directory
+      file:
+        path: ./sysbox
+        state: directory
+    
+    - name: Download sysbox package
+      get_url:
+        url:
+          https://downloads.nestybox.com/sysbox/releases/v{{ sysbox_ver }}/sysbox-ce_{{ sysbox_ver }}-0.linux_{{ arch_mapping[ansible_architecture] | default(ansible_architecture) }}.deb
+        dest: ./sysbox/sysbox-ce.deb
+    
+    - name: Install sysbox package
+      apt: deb=./sysbox/sysbox-ce.deb
+
+    - name: Git clone shiftfs repository
+      git:
+        repo: https://github.com/toby63/shiftfs-dkms.git
+        dest: ./shiftfs-{{ shiftfs_ver }}
+        single_branch: yes
+        version: '{{ shiftfs_ver }}'
+    
+    - name: Update kernel
+      shell: ./shiftfs-{{ shiftfs_ver }}/update1
+    
+    - name: Build Makefile
+      make:
+        chdir: ./shiftfs-{{ shiftfs_ver }}
+        file: Makefile.dkms

@@ -23,6 +23,7 @@ import (
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logic"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/utils/maddrhelp"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/httpserver"
 )
 
 //////////////////// PRIVATE VARIABLES ////////////////////
@@ -169,6 +170,11 @@ func runAgent(config config.Configuration) error {
 		return err
 	}
 
+	////////// HTTP SERVER INITIALIZATION //////////
+	
+	httpserver.Initialize(config)
+	
+
 	////////// GOROUTINES //////////
 
 	chanStop := make(chan os.Signal, 1)
@@ -185,6 +191,8 @@ func runAgent(config config.Configuration) error {
 	go func() { chanErr <- communication.RunReceiver() }()
 
 	go func() { chanErr <- logic.RunRecalc() }()
+
+	go func() { chanErr <- httpserver.RunHttpServer() }()
 
 	select {
 	case sig := <-chanStop:
