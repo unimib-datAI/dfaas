@@ -44,6 +44,16 @@ type Configuration struct {
 
 	PrometheusHost string `mapstructure:"AGENT_PROMETHEUS_HOST"`
 	PrometheusPort uint   `mapstructure:"AGENT_PROMETHEUS_PORT"`
+
+	HttpServerHost string `mapstructure:"AGENT_HTTPSERVER_HOST"`
+	HttpServerPort uint	  `mapstructure:"AGENT_HTTPSERVER_PORT"`
+
+	ForecasterHost string `mapstructure:"AGENT_FORECASTER_HOST"`
+	ForecasterPort uint   `mapstructure:"AGENT_FORECASTER_PORT"`
+
+	GroupListFilePath string `mapstructure:"AGENT_GROUP_LIST_FILE_PATH"`
+
+	NodeType int `mapstructure:"AGENT_NODE_TYPE"`
 }
 
 func LoadConfig(path string) (config Configuration, err error) {

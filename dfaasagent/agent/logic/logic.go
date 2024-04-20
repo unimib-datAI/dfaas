@@ -8,6 +8,7 @@ import (
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/offuncs"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/ofpromq"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/nodestbl"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/forecaster"
 )
 
 // This package handles the main operational logic of the DFaaSAgent application
@@ -23,6 +24,7 @@ var _hacfgupdater hacfgupd.Updater
 var _hasockClient haproxy.HAProxyClient
 var _ofpromqClient ofpromq.Client
 var _offuncsClient offuncs.Client
+var _forecasterClient forecaster.Client
 
 // Initialize initializes this package (sets some vars, etc...)
 func Initialize(p2pHost host.Host, config config.Configuration) error {
@@ -58,6 +60,11 @@ func Initialize(p2pHost host.Host, config config.Configuration) error {
 		Port:     _config.OpenFaaSPort,
 		Username: _config.OpenFaaSUser,
 		Password: _config.OpenFaaSPass,
+	}
+
+	_forecasterClient = forecaster.Client{
+		Hostname: _config.ForecasterHost,
+		Port:     _config.ForecasterPort,
 	}
 
 	return nil

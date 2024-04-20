@@ -3,6 +3,9 @@ package logic
 import (
 	"fmt"
 	"time"
+	"encoding/json"
+	"os"
+	"io/ioutil"
 
 	"github.com/bcicen/go-haproxy"
 	"github.com/libp2p/go-libp2p-core/peer"
@@ -13,6 +16,7 @@ import (
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/nodestbl"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/utils/p2phostutils"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/forecaster"
 )
 
 //////////////////// PRIVATE VARS FOR RECALC ////////////////////
@@ -220,6 +224,50 @@ func recalcStep1() error {
 		}
 		debugPromRAMusagePerFunction(_config.RecalcPeriod, _recalc.perFuncRamUsage)
 	}
+
+	///////// GET NODE USAGE PREDICTIONS FROM FORECASTER ///////////////
+	var functionRates = make(map[string]float64)
+	for funcName, item := range _recalc.invoc {
+		functionRates[funcName] = 0
+		for _, rate := range item {
+			functionRates[funcName] += rate
+		}
+	}
+
+	// Read functions groups from group_list.json
+	_groupListFilePath := _config.GroupListFilePath
+	jsonGroupsFile, err := os.Open(_groupListFilePath)
+	if err != nil {
+		return errors.Wrap(err, "Error while reading group list json file")
+	}
+	jsonGroups, err := ioutil.ReadAll(jsonGroupsFile)
+	if err != nil {
+		return errors.Wrap(err, "Error while converting group list json file into byte array")
+	}
+	defer jsonGroupsFile.Close()
+
+	// Convert functions rates in groups rates and prepare json request
+	var functionGroups forecaster.Groups
+	json.Unmarshal(jsonGroups, &functionGroups)
+
+	var request forecaster.PredictionRequest
+	request.Node_type = _config.NodeType
+
+	forecaster.SetRequestGroupsRates(functionRates, functionGroups, &request)
+	jsonBody, err := json.Marshal(request)
+	if err != nil {
+		return errors.Wrap(err, "Error while constructing json request to Forecaster")
+	}
+	jsonBodyStr := string(jsonBody)
+	logger.Debugf("Json request to Forecaster: %s", jsonBody)
+	
+	// send request to Forecaster
+	var jsonResp string
+	jsonResp, err = _forecasterClient.GetNodeUsagePredictions(jsonBodyStr)
+	if err != nil {
+		return errors.Wrap(err, "Error while executing request to Forecaster")
+	}
+	logger.Debugf("Forecaster Json response: %s", jsonResp)
 
 	//////////////////// OVERLOAD / UNDERLOAD MODE DECISION ////////////////////
 
@@ -436,6 +484,8 @@ func recalcStep2() error {
 			strMyself,
 			_config.OpenFaaSHost,
 			_config.OpenFaaSPort,
+			_config.HttpServerHost,
+			_config.HttpServerPort,
 			_config.RecalcPeriod,
 			entries,
 			_recalc.funcs,

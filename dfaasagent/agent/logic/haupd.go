@@ -40,6 +40,9 @@ type HACfg struct {
 	OpenFaaSHost string
 	OpenFaaSPort uint
 
+	HttpServerHost string
+	HttpServerPort uint
+
 	// String representation of RecalPeriod (e.g. "5s")
 	StrRecalc string
 	// Number of seconds of RecalPeriod
@@ -58,6 +61,8 @@ func createHACfgObject(
 	myNodeID string,
 	openFaaSHost string,
 	openFaaSPort uint,
+	httpServerHost string,
+	httpServerPort uint,
 	recalcPeriod time.Duration,
 	entries map[string]*nodestbl.Entry,
 	funcLimits map[string]uint,
@@ -66,6 +71,9 @@ func createHACfgObject(
 		MyNodeID:     myNodeID,
 		OpenFaaSHost: openFaaSHost,
 		OpenFaaSPort: openFaaSPort,
+
+		HttpServerHost: httpServerHost,
+		HttpServerPort: httpServerPort,
 
 		StrRecalc:  recalcPeriod.String(),
 		SecsRecalc: uint(recalcPeriod / time.Second),

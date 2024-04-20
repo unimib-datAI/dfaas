@@ -1,0 +1,11 @@
+[Unit]
+Description=DFaaS Forecaster
+After=multi-user.target
+
+[Service]
+Type=simple
+Restart=always
+ExecStart=/usr/bin/python3 /forecaster/main.py
+
+[Install]
+WantedBy=multi-user.target
