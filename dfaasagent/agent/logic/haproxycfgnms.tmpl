@@ -1,0 +1,150 @@
+# HAProxy configuration file updated on {{.Now}}
+
+{{/* #################### MAIN SECTION #################### */ -}}
+
+global
+    stats socket /run/haproxy/admin.sock mode 666 level admin
+    log stdout local0
+
+defaults
+    mode http
+
+    log global
+    option httplog
+
+    timeout connect 5000
+    timeout client 50000
+    timeout server 50000
+
+{{/* #################### FRONTEND #################### */ -}}
+
+frontend fe_main
+    bind *:80
+
+    {{/* Enable statistics web page */ -}}
+    stats enable
+    stats auth admin:admin
+    stats uri /haproxy?stats
+
+    {{/* ########### ACLs FOR CHECKING IF A NODE IS KNOWN ######### */ -}}
+    {{if not $.Nodes}}
+    acl is_hdr_nodeID_known always_false
+    {{end}}
+    {{range $nodeID, $_ := $.Nodes}}
+    acl is_hdr_nodeID_known req.hdr(DFaaS-Node-ID) -m str {{$nodeID}} {{/* Conditions with same name, called multiple times are joined with OR */}}
+    {{end}}
+
+    {{/* ACL check for DFaaS-Node-ID header with a variable */ -}}
+    http-request set-var(req.hdrcnt_nodeid) hdr_cnt(DFaaS-Node-ID)
+    acl has_nodeid_hdr var(req.hdrcnt_nodeid),add(0) gt 0 {{- /* The ",add(0)" is needed here, for some reason (maybe haproxy bug? like int/str conversion or something... if you remove it there will be problems!!!) */}}
+    http-request capture str(hdrID:),concat(,req.hdrcnt_nodeid,) len 10 {{- /* e.g. "hdrID:5" */}}
+
+    {{/* Path ACLs */ -}}
+    acl is_path_root path /
+    acl is_path_healthz path /healthz
+    acl is_path_haproxy path_beg /haproxy
+    acl is_path_system_funcs path /system/functions
+    acl is_path_function path_beg /function/
+
+    {{/* ACLs is_func_XXX */ -}}
+    {{range $funcName, $_ := .Functions -}}
+    acl is_func_{{$funcName}} path_beg /function/{{$funcName}}
+    {{end}}
+    
+    {{/* Capture some request headers in log */ -}}
+    http-request capture req.hdr(Host) len 50
+    http-request capture req.hdr(DFaaS-Node-ID) len 50
+
+    {{/* Deny requests which are not directed to a function or / (root) or the
+    stats page (note: the root path is needed for health checks by
+    other nodes) or to /healthz */ -}}
+    http-request deny unless is_path_root or is_path_healthz or is_path_haproxy or is_path_system_funcs or is_path_function
+
+    {{/* If a hdr DFaaS-Node-ID is present AND is not known deny request. 
+        * Returned message is 403 "Forbidden": The access to the resource is forbidden by this client.
+    */ -}}
+    http-request deny deny_status 403 if has_nodeid_hdr !is_hdr_nodeID_known
+    
+    {{/* ########## BACKEND SELECTION ########## */ -}}
+
+    use_backend be_ok if is_path_root
+    use_backend be_healthz if is_path_healthz
+    use_backend be_system_funcs if is_path_system_funcs
+    {{range $funcName, $_ := .Functions -}}
+    use_backend be_myself if is_func_{{$funcName}} has_nodeid_hdr
+    use_backend be_{{$funcName}} if is_func_{{$funcName}} !has_nodeid_hdr
+    {{end}}
+
+    default_backend be_ok
+
+{{/* #################### BACKEND FOR SIMPLE 200 RESPONSES #################### */ -}}
+
+backend be_ok
+    http-request return status 200 content-type "text/plain" string "This is a DFaaS node. Call a function with /function/<funcname>\n"
+
+{{/* #################### BACKEND FOR HEALTHCHECK #################### */ -}}
+
+backend be_healthz
+    {{/* Perform HTTP health checks */ -}}
+    option httpchk GET /healthz
+    {{/* Enable HTTP connection closing on the server side. This provides the lowest latency
+    on the client side (slow network) and the fastest session reuse on the server side
+    to save server resources */ -}}
+    option http-server-close
+    server healthz {{.HttpServerHost}}:{{.HttpServerPort}} check
+
+{{/* #################### BACKEND FOR MANAGING OPENFAAS FUNCTIONS #################### */ -}}
+
+backend be_system_funcs
+    {{/* Perform HTTP health checks */ -}}
+    option httpchk GET /
+    {{/* Enable HTTP connection closing on the server side. This provides the lowest latency
+    on the client side (slow network) and the fastest session reuse on the server side
+    to save server resources */ -}}
+    option http-server-close
+    server system_funcs {{.OpenFaaSHost}}:{{.OpenFaaSPort}} check
+
+{{/* #################### BACKEND FOR SELF OPENFAAS INSTANCE #################### */ -}}
+backend be_myself
+    {{/* Perform HTTP health checks */ -}}
+    option httpchk GET /healthz
+    {{/* Enable insertion of the X-Forwarded-For header to requests sent to servers */ -}}
+    option forwardfor
+    {{/* Enable HTTP connection closing on the server side. This provides the lowest latency
+    on the client side (slow network) and the fastest session reuse on the server side
+    to save server resources */ -}}
+    option http-server-close
+
+    {{/* Add DFaaS-Node-ID header (in any case) */ -}}
+    http-request add-header DFaaS-Node-ID {{$.MyNodeID}}
+
+    server myself {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} check
+
+{{/* #################### BACKEND FOR OPENFAAS FUNCTIONS #################### */ -}}
+
+{{range $funcName, $func := .Functions -}}
+
+backend be_{{$funcName}}
+    {{/* Enable load-balancing using custom weights */ -}}
+    balance roundrobin
+
+    {{/* Perform HTTP health checks */ -}}
+    option httpchk GET /healthz
+    {{/* Enable insertion of the X-Forwarded-For header to requests sent to servers */ -}}
+    option forwardfor
+    {{/* Enable HTTP connection closing on the server side. This provides the lowest latency
+    on the client side (slow network) and the fastest session reuse on the server side
+    to save server resources */ -}}
+    option http-server-close
+
+    {{/* Add DFaaS-Node-ID header (in any case) */ -}}
+    http-request add-header DFaaS-Node-ID {{$.MyNodeID}}
+
+    {{range $nodeID, $weight := $func.Weights -}}
+    {{if (eq $nodeID $.MyNodeID) -}}
+    server myself {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} weight {{$weight}} check
+    {{else -}}
+    server {{$nodeID}} {{(index $.Nodes $nodeID).HAProxyHost}}:{{(index $.Nodes $nodeID).HAProxyPort}} weight {{$weight}} check
+    {{end -}}
+    {{end}}
+{{end}}

@@ -1,0 +1,1 @@
+{"HIGH_USAGE": ["eat-memory", "nmap"], "LOW_USAGE": ["env", "figlet", "shasum"], "MEDIUM_USAGE": ["curl"]}

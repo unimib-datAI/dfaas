@@ -5,7 +5,6 @@ MAX_TRIES=25
 IFS=: read -r -a nodes <<< "$NODES"
 IFS=: read -r -a funcs_names <<< "$FUNCS_NAMES"
 IFS=: read -r -a funcs_images <<< "$FUNCS_IMAGES"
-IFS=: read -r -a funcs_maxrates <<< "$FUNCS_MAXRATES"
 
 for node in "${nodes[@]}"
 do
@@ -30,7 +29,7 @@ do
     for i in "${!funcs_names[@]}"
     do
       echo -e "Deploying function "${funcs_names[$i]}"...\n";
-      if [[ "$(curl -s -w '%{http_code}' -o /dev/null -H "Content-Type: application/json" -X POST -d "{\"service\":\""${funcs_names[$i]}"\",\"image\":\""${funcs_images[$i]}"\",\"labels\":{\"dfaas.maxrate\":\""${funcs_maxrates[$i]}"\"}}" "${FUNCS_ENDPOINT}")" -eq 200 ]]
+      if [[ "$(curl -s -w '%{http_code}' -o /dev/null -H "Content-Type: application/json" -X POST -d "{\"service\":\""${funcs_names[$i]}"\",\"image\":\""${funcs_images[$i]}"\"}" "${FUNCS_ENDPOINT}")" -eq 200 ]]
       then
         echo -e "Function "${funcs_names[$i]}" successfully deployed to node ${node}.\n";
       else
@@ -44,7 +43,7 @@ export VEGFOLDER="/vegeta-results/$(date +%Y-%m-%d-%H%M%S)"
 mkdir -p $VEGFOLDER
 
 jq -ncM '{method: "GET", url: "http://172.16.238.10/function/figlet", body: "Hello DFaaS world!" | @base64, header: {"Content-Type": ["text/plain"]}}' | \
-  vegeta attack -duration=1m -rate=50 -format=json | \
+  vegeta attack -duration=3m -rate=600 -format=json | \
   tee $VEGFOLDER/results.bin | \
   vegeta report -every=200ms
 

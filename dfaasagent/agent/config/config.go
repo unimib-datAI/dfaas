@@ -30,12 +30,13 @@ type Configuration struct {
 
 	RecalcPeriod time.Duration `mapstructure:"AGENT_RECALC_PERIOD"`
 
-	HAPRoxyTemplateFile        string `mapstructure:"AGENT_HAPROXY_TEMPLATE_FILE"`
-	HAProxyConfigFile          string `mapstructure:"AGENT_HAPROXY_CONFIG_FILE"`
-	HAProxyConfigUpdateCommand string `mapstructure:"AGENT_HAPROXY_CONFIG_UPDATE_COMMAND"`
-	HAProxyHost                string `mapstructure:"AGENT_HAPROXY_HOST"`
-	HAProxyPort                uint   `mapstructure:"AGENT_HAPROXY_PORT"`
-	HAProxySockPath            string `mapstructure:"AGENT_HAPROXY_SOCK_PATH"`
+	HAProxyTemplateFileNMS        string `mapstructure:"AGENT_HAPROXY_TEMPLATE_FILE_NMS"`
+	HAProxyTemplateFileRecalc     string `mapstructure:"AGENT_HAPROXY_TEMPLATE_FILE_RECALC"`
+	HAProxyConfigFile          	  string `mapstructure:"AGENT_HAPROXY_CONFIG_FILE"`
+	HAProxyConfigUpdateCommand 	  string `mapstructure:"AGENT_HAPROXY_CONFIG_UPDATE_COMMAND"`
+	HAProxyHost                	  string `mapstructure:"AGENT_HAPROXY_HOST"`
+	HAProxyPort                	  uint   `mapstructure:"AGENT_HAPROXY_PORT"`
+	HAProxySockPath            	  string `mapstructure:"AGENT_HAPROXY_SOCK_PATH"`
 
 	OpenFaaSHost string `mapstructure:"AGENT_OPENFAAS_HOST"`
 	OpenFaaSPort uint   `mapstructure:"AGENT_OPENFAAS_PORT"`
@@ -51,9 +52,15 @@ type Configuration struct {
 	ForecasterHost string `mapstructure:"AGENT_FORECASTER_HOST"`
 	ForecasterPort uint   `mapstructure:"AGENT_FORECASTER_PORT"`
 
-	GroupListFilePath string `mapstructure:"AGENT_GROUP_LIST_FILE_PATH"`
+	Strategy string `mapstructure:"AGENT_STRATEGY"`
+
+	GroupListFileName string `mapstructure:"AGENT_GROUP_LIST_FILE_NAME"`
 
 	NodeType int `mapstructure:"AGENT_NODE_TYPE"`
+
+	CPUThresholdNMS 	float64 `mapstructure:"AGENT_NMS_CPU_THRESHOLD"`
+	RAMThresholdNMS 	float64 `mapstructure:"AGENT_NMS_RAM_THRESHOLD"`
+	PowerThresholdNMS 	float64 `mapstructure:"AGENT_NMS_POWER_THRESHOLD"`
 }
 
 func LoadConfig(path string) (config Configuration, err error) {

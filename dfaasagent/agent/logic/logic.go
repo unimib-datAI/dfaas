@@ -1,14 +1,11 @@
 package logic
 
 import (
-	"github.com/bcicen/go-haproxy"
+	"sync"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p-core/host"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/config"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/hacfgupd"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/offuncs"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/ofpromq"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/nodestbl"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/forecaster"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
 )
 
 // This package handles the main operational logic of the DFaaSAgent application
@@ -18,54 +15,60 @@ import (
 var _p2pHost host.Host
 var _config config.Configuration
 
-var _nodestbl *nodestbl.Table
-var _hacfgupdater hacfgupd.Updater
+// Strategy factory which manages the creation of the strategy instance
+var _strategyFactory strategyFactory
 
-var _hasockClient haproxy.HAProxyClient
-var _ofpromqClient ofpromq.Client
-var _offuncsClient offuncs.Client
-var _forecasterClient forecaster.Client
+// Lock used to manage the singleton strategy instance
+var _lock *sync.Mutex
 
-// Initialize initializes this package (sets some vars, etc...)
-func Initialize(p2pHost host.Host, config config.Configuration) error {
+// Singleton instance representing the strategy adopted from the DFaaS agent
+var _strategyInstance Strategy
+
+// Initialize initializes this package
+func Initialize(p2pHost host.Host, config config.Configuration) {
 	_p2pHost = p2pHost
 	_config = config
+	_lock = &sync.Mutex{}
 
-	_nodestbl = &nodestbl.Table{
-		// Set validity to 120% of RecalcPeriod
-		EntryValidity: _config.RecalcPeriod + (_config.RecalcPeriod / 5),
+	switch _config.Strategy {
+	case constants.RecalcStrategy:
+		_strategyFactory = &recalcStrategyFactory{}
+		break
+	case constants.NodeMarginStrategy:
+		_strategyFactory = &nodeMarginStrategyFactory{}
+		break
 	}
-	_nodestbl.InitTable()
+}
 
-	_hacfgupdater = hacfgupd.Updater{
-		HAConfigFilePath: _config.HAProxyConfigFile,
-		CmdOnUpdated:     _config.HAProxyConfigUpdateCommand,
-	}
-	err := _hacfgupdater.LoadTemplate(_config.HAPRoxyTemplateFile)
-	if err != nil {
-		return err
+//////////////////// PUBLIC STRUCT TYPES ////////////////////
+
+// Strategy interface represents a generic strategy. 
+// Every new strategy for the agent must implement this interface.
+type Strategy interface {
+	// Method which executes the strategy
+	RunStrategy() error
+	// Method called when a message is received from a peer
+	OnReceived(msg *pubsub.Message) error
+}
+
+//////////////////// PUBLIC METHODS ////////////////////
+
+// GetStrategyInstance returns the singleton Strategy instance.
+// In a critical section checks if the strategy is already instantiated and returns it.
+// If instance is nil, creates a new Strategy instance using the createStrategy method
+// of the strategy factory
+func GetStrategyInstance() (Strategy, error) {
+	var err error
+
+	_lock.Lock()
+	defer _lock.Unlock()
+
+	if _strategyInstance == nil {
+		_strategyInstance, err = _strategyFactory.createStrategy()
+		if err != nil {
+			return nil, err
+		}
 	}
 
-	_hasockClient = haproxy.HAProxyClient{
-		Addr: _config.HAProxySockPath,
-	}
-
-	_ofpromqClient = ofpromq.Client{
-		Hostname: _config.PrometheusHost,
-		Port:     _config.PrometheusPort,
-	}
-
-	_offuncsClient = offuncs.Client{
-		Hostname: _config.OpenFaaSHost,
-		Port:     _config.OpenFaaSPort,
-		Username: _config.OpenFaaSUser,
-		Password: _config.OpenFaaSPass,
-	}
-
-	_forecasterClient = forecaster.Client{
-		Hostname: _config.ForecasterHost,
-		Port:     _config.ForecasterPort,
-	}
-
-	return nil
+	return _strategyInstance, nil
 }

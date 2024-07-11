@@ -267,7 +267,7 @@ func debugOverloads(data map[string]bool) {
 	}
 }
 
-func debugNodesTblContent(entries map[string]*nodestbl.Entry) {
+func debugNodesTblContent(entries map[string]*nodestbl.EntryRecalc) {
 	if !logging.GetDebugMode() {
 		return
 	}
@@ -309,6 +309,42 @@ func debugNodesTblContent(entries map[string]*nodestbl.Entry) {
 	}
 }
 
+func debugNodesTblContentNMS(entries map[string]*nodestbl.EntryNMS) {
+	if !logging.GetDebugMode() {
+		return
+	}
+
+	logger := logging.Logger()
+
+	nodeIDs := make([]string, 0, len(entries))
+	for k := range entries {
+		nodeIDs = append(nodeIDs, k)
+	}
+
+	sort.Strings(nodeIDs)
+
+	logger.Debug("Content of nodestbl:")
+	for _, nodeID := range nodeIDs {
+		entry := entries[nodeID]
+
+		logger.Debugf("  - NODE %s (HAProxy=%s:%d), type: %d, common neighbour: %t, margin: %.2f",
+			nodeID,
+			entry.HAProxyHost,
+			entry.HAProxyPort,
+			entry.NodeType,
+			entry.CommonNeighbour,
+			entry.Margin)
+
+		logger.Debugf("    - LOAD: highUsage=%.2f req/s, mediumhUsage=%.2f req/s, lowUsage=%.2f req/s",
+						entry.Load.RateHighUsage, entry.Load.RateMediumUsage, entry.Load.RateLowUsage)
+
+		logger.Debugf("    - FUNCTIONS:")
+		for funcName := range entry.Funcs {
+			logger.Debugf("       FUNC: %s", funcName)
+		}
+	}
+}
+
 func debugStickTable(stName string, stContent map[string]*hasock.STEntry) {
 	if !logging.GetDebugMode() {
 		return
@@ -330,7 +366,7 @@ func debugStickTable(stName string, stContent map[string]*hasock.STEntry) {
 	}
 }
 
-func debugMsgNodeInfo(msg MsgNodeInfo) {
+func debugMsgNodeInfoRecalc(msg MsgNodeInfoRecalc) {
 	if !logging.GetDebugMode() {
 		return
 	}
@@ -341,6 +377,97 @@ func debugMsgNodeInfo(msg MsgNodeInfo) {
 		logger.Debugf("Functions limits for node %s:", _nodeID)
 		for funcName := range _limits {
 			logger.Debugf("	Function %s LimitOut: %f", funcName, _limits[funcName])
+		}
+	}
+}
+
+func debugMsgNodeInfoNMS(msg MsgNodeInfoNMS) {
+	if !logging.GetDebugMode() {
+		return
+	}
+
+	logger := logging.Logger()
+
+	logger.Debugf("    - Node Type: %d", msg.NodeType)
+	logger.Debugf("    - Node's functions: ")
+	for i := 0; i < len(msg.Functions); i++ {
+        logger.Debugf("       - " + msg.Functions[i] + ", ") 
+    }
+}
+
+func debugFuncsLoad(load groupsLoad) {
+	if !logging.GetDebugMode() {
+		return
+	}
+
+	logger := logging.Logger()
+
+	logger.Debugf("Node's Load: High Usage=%.2f req/s, Low Usage=%.2f req/s, Medium Usage=%.2f req/s",
+			load.rateHighUsage,
+			load.rateLowUsage,
+			load.rateMediumUsage)
+}
+
+func debugNodeMetricPredictions(predictions map[string]float64) {
+	if !logging.GetDebugMode() {
+		return
+	}
+
+	logger := logging.Logger()
+
+	logger.Debugf("Node's usage predictions:")
+	logger.Debugf("Cpu usage: %.2f, Ram usage: %.2f, Power usage: %.2f", 
+					predictions[cpuUsageNodeMetric],
+					predictions[ramUsageNodeMetric],
+					predictions[powerUsageNodeMetric])
+}
+
+func debugOverloadNMS(overload bool) {
+	if !logging.GetDebugMode() {
+		return
+	}
+
+	logger := logging.Logger()
+
+	if overload {
+		logger.Debugf("Node's state: OVERLOAD")
+	} else {
+		logger.Debugf("Node's state: UNDERLOAD")
+	}
+}
+
+func debugNodeUsagePercentage(percentage float64) {
+	if !logging.GetDebugMode() {
+		return
+	}
+
+	logger := logging.Logger()
+
+	logger.Debugf("Node usage percentage: %.2f", percentage)
+}
+
+func debugNodeMargin(margin float64) {
+	if !logging.GetDebugMode() {
+		return
+	}
+
+	logger := logging.Logger()
+
+	logger.Debugf("Node's margin: %.2f", margin)
+}
+
+func debugWeightsNMS(weights map[string]map[string]uint) {
+	if !logging.GetDebugMode() {
+		return
+	}
+
+	logger := logging.Logger()
+
+	logger.Debugf("Calculated weights:")
+	for fun, nodesWeights := range weights {
+		logger.Debugf("- " + fun + ": ")
+		for node, weight := range nodesWeights {
+			logger.Debugf("    - Node " + node + ": " + "%d", weight)
 		}
 	}
 }

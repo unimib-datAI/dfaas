@@ -62,13 +62,12 @@ frontend fe_main
     acl is_path_root path /
     acl is_path_healthz path /healthz
     acl is_path_haproxy path_beg /haproxy
-    acl is_path_system_funcs path /system/functions
     acl is_path_function path_beg /function/
 
     {{/* Deny requests which are not directed to a function or / (root) or the
     stats page (note: the root path is needed for health checks by
     other nodes) or to /healthz */ -}}
-    http-request deny unless is_path_root or is_path_healthz or is_path_haproxy or is_path_system_funcs or is_path_function
+    http-request deny unless is_path_root or is_path_healthz or is_path_haproxy or is_path_function
 
     {{/* Capture some request headers in log */ -}}
     http-request capture req.hdr(Host) len 50
@@ -156,7 +155,6 @@ frontend fe_main
 
     use_backend be_ok if is_path_root
     use_backend be_healthz if is_path_healthz
-    use_backend be_system_funcs if is_path_system_funcs
     {{range $funcName, $func := .Functions -}}
 
     {{/* [NEW] Select backend for request that exeeds limitsIn */ -}}
@@ -182,22 +180,7 @@ backend be_ok
 backend be_healthz
     {{/* Perform HTTP health checks */ -}}
     option httpchk GET /healthz
-    {{/* Enable HTTP connection closing on the server side. This provides the lowest latency
-    on the client side (slow network) and the fastest session reuse on the server side
-    to save server resources */ -}}
-    option http-server-close
     server healthz {{.HttpServerHost}}:{{.HttpServerPort}} check
-
-{{/* #################### BACKEND FOR MANAGING OPENFAAS FUNCTIONS #################### */ -}}
-
-backend be_system_funcs
-    {{/* Perform HTTP health checks */ -}}
-    option httpchk GET /
-    {{/* Enable HTTP connection closing on the server side. This provides the lowest latency
-    on the client side (slow network) and the fastest session reuse on the server side
-    to save server resources */ -}}
-    option http-server-close
-    server system_funcs {{.OpenFaaSHost}}:{{.OpenFaaSPort}} check
 
 {{/* #################### BACKEND FOR SELF OPENFAAS INSTANCE #################### */ -}}
 
@@ -272,4 +255,3 @@ backend be_others_func_{{$funcName}}
     At the moment 429 has been used for test purpose. */}}
 backend be_limitInExceeds
     http-request deny deny_status 429
-

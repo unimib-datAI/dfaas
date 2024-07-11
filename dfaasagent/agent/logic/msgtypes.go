@@ -1,5 +1,9 @@
 package logic
 
+import (
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
+)
+
 //////////////////// MESSAGES' STRUCT TYPES ////////////////////
 
 // MsgText defines the format of the PubSub messages containing a bare text message
@@ -12,9 +16,9 @@ type MsgText struct {
 // StrMsgTextType value for MsgText.MsgType
 const StrMsgTextType = "text"
 
-// MsgNodeInfo defines the format of the PubSub messages regarding a node's
-// information
-type MsgNodeInfo struct {
+// MsgNodeInfoRecalc defines the format of the PubSub messages regarding a node's
+// information (for Recalc strategy)
+type MsgNodeInfoRecalc struct {
 	MsgType string
 
 	HAProxyHost string
@@ -26,5 +30,45 @@ type MsgNodeInfo struct {
 	FuncLimits map[string]map[string]float64
 }
 
-// StrMsgNodeInfoType value for MsgNodeInfo.MsgType
-const StrMsgNodeInfoType = "nodeinfo"
+// StrMsgNodeInfoTypeRecalc value for MsgNodeInfo.MsgType
+const StrMsgNodeInfoTypeRecalc = "nodeinfoRecalc"
+
+// MsgNodeInfoNMS defines the format of the PubSub messages regarding a node's
+// information (for Node Margin Strategy)
+type MsgNodeInfoNMS struct {
+	MsgType string
+
+	HAProxyHost string
+	HAProxyPort uint
+	NodeType 	int
+	Functions 	[]string
+}
+
+// StrMsgNodeInfoTypeNMS value for MsgNodeInfoNMS.MsgType
+const StrMsgNodeInfoTypeNMS = "nodeinfoNMS"
+
+// MsgNodeMarginInfoNMS defines the format of the PubSub messages regarding a node's
+// margin and eventually the expected load (for Node Margin Strategy)
+type MsgNodeMarginInfoNMS struct {
+	MsgType string
+
+	Margin 		float64
+	Load 		groupsLoad
+}
+
+// StrMsgNodeMarginInfoTypeNMS value for MsgNodeMarginInfoNMS.MsgType
+const StrMsgNodeMarginInfoTypeNMS = "nodemargininfoNMS"
+
+// processMsgText processes a text message received from pubsub
+func processMsgText(sender string, msg *MsgText) error {
+	logger := logging.Logger()
+	myself := _p2pHost.ID().String()
+
+	if sender == myself {
+		return nil // Ignore ourselves
+	}
+
+	logger.Debugf("Received text message from node %s: %s", sender, msg.Text)
+
+	return nil
+}
