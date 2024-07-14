@@ -61,8 +61,8 @@
         state: present
         update_cache: true
       loop:
-        - docker-ce=5:25.0.1-1~ubuntu.{{ ansible_lsb.release }}~{{ ansible_lsb.codename }}
-        - docker-ce-cli=5:25.0.1-1~ubuntu.{{ ansible_lsb.release }}~{{ ansible_lsb.codename }}
+        - docker-ce=5:27.0.3-1~ubuntu.{{ ansible_lsb.release }}~{{ ansible_lsb.codename }}
+        - docker-ce-cli=5:27.0.3-1~ubuntu.{{ ansible_lsb.release }}~{{ ansible_lsb.codename }}
         - containerd.io
         - docker-buildx-plugin
         - docker-compose-plugin
@@ -115,3 +115,22 @@
       make:
         chdir: ./shiftfs-{{ shiftfs_ver }}
         file: Makefile.dkms
+    - name: Git clone dfaas repository
+      git:
+        repo: https://github.com/UNIMIBInside/dfaas.git
+        dest: ./dfaas-repo
+        single_branch: yes
+        version: stecattaneo-dev
+    - name: Build Docker images
+      ansible.builtin.command:
+        chdir: ./dfaas-repo
+        cmd: "{{ item }}"
+      loop:
+        - "docker build -t dfaas-agent-builder:latest -f docker/dfaas-agent-builder.dockerfile dfaasagent"
+        - "docker build -t dfaas-node:latest -f docker/dfaas-node.dockerfile docker"
+        - "docker build -t dfaas-operator:latest -f docker/dfaas-operator.dockerfile docker"
+    - name: Deploy Docker Compose stack
+      ansible.builtin.command:
+        chdir: ./dfaas-repo
+        cmd: docker compose up -d
+        
