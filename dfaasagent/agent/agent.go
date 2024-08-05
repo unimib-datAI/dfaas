@@ -155,11 +155,19 @@ func runAgent(config config.Configuration) error {
 
 	////////// KADEMLIA DHT INITIALIZATION //////////
 
+	bootstrapConfig := kademlia.BootstrapConfiguration{
+		BootstrapNodes: config.BootstrapNodes,
+		PublicBootstrapNodes: config.PublicBootstrapNodes,
+		BootstrapNodesList: config.BootstrapNodesList,
+		BootstrapNodesFile: config.BootstrapNodesFile,
+		BootstrapForce: config.BootstrapForce,
+	}
+
 	// Kademlia and DHT initialization, with connection to bootstrap nodes
 	err = kademlia.Initialize(
 		ctx,
 		_p2pHost,
-		config.BoostrapConfig,
+		bootstrapConfig,
 		config.Rendezvous,
 		config.KadIdleTime,
 	)

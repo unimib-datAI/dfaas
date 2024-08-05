@@ -5,14 +5,6 @@ import (
 	"time"
 )
 
-type BootstrapConfiguration struct {
-	BootstrapNodes      bool     `mapstructure:"AGENT_BOOTSTRAP_NODES"`
-	PublicBoostrapNodes bool     `mapstructure:"AGENT_PUBLIC_BOOTSTRAP_NODES"`
-	BootstrapNodesList  []string `mapstructure:"AGENT_BOOTSTRAP_NODES_LIST"`
-	BootstrapNodesFile  string   `mapstructure:"AGENT_BOOTSTRAP_NODES_FILE"`
-	BootstrapForce      bool     `mapstructure:"AGENT_BOOTSTRAP_FORCE"`
-}
-
 // Configuration holds the post-processed configuration values
 type Configuration struct {
 	DebugMode bool `mapstructure:"AGENT_DEBUG"`
@@ -22,7 +14,12 @@ type Configuration struct {
 	Listen         []string `mapstructure:"AGENT_LISTEN"`
 	PrivateKeyFile string   `mapstructure:"AGENT_PRIVATE_KEY_FILE"`
 
-	BoostrapConfig BootstrapConfiguration
+	BootstrapNodes      bool     `mapstructure:"AGENT_BOOTSTRAP_NODES"`
+	PublicBootstrapNodes bool     `mapstructure:"AGENT_PUBLIC_BOOTSTRAP_NODES"`
+	BootstrapNodesList  []string `mapstructure:"AGENT_BOOTSTRAP_NODES_LIST"`
+	BootstrapNodesFile  string   `mapstructure:"AGENT_BOOTSTRAP_NODES_FILE"`
+	BootstrapForce      bool     `mapstructure:"AGENT_BOOTSTRAP_FORCE"`
+
 	Rendezvous     string        `mapstructure:"AGENT_RENDEZVOUS"`
 	MDNSInterval   time.Duration `mapstructure:"AGENT_MDNS_INTERVAL"`
 	KadIdleTime    time.Duration `mapstructure:"AGENT_KAD_IDLE_TIME"`

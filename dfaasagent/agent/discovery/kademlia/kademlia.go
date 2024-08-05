@@ -3,7 +3,6 @@ package kademlia
 import (
 	"context"
 	"github.com/multiformats/go-multiaddr"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/config"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/utils/maddrhelp"
 	"sync"
 	"time"
@@ -18,6 +17,14 @@ import (
 
 // This package handles the Kademlia peer discovery process
 
+type BootstrapConfiguration struct {
+	BootstrapNodes      bool    
+	PublicBootstrapNodes bool
+	BootstrapNodesList  []string
+	BootstrapNodesFile  string
+	BootstrapForce      bool
+}
+
 // kademliaDebugLogging decides wheather to enable or disable logging for this pakcage
 const kademliaDebugLogging = true
 
@@ -30,7 +37,7 @@ var _routingDisc *discovery.RoutingDiscovery
 // Initialize initializes the Kademlia DHT peer discovery engine. If
 // bootstrapForce = true, then this function fails if any of the bootstrap peers
 // cannot be contacted for some reason.
-func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig config.BootstrapConfiguration, rendezvous string, idleTime time.Duration) error {
+func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig BootstrapConfiguration, rendezvous string, idleTime time.Duration) error {
 	logger := logging.Logger()
 
 	// Start a DHT, for use in peer discovery. We can't just make a new DHT
@@ -145,12 +152,12 @@ func RunDiscovery() error {
 	}
 }
 
-func BuildBoostrapNodes(configuration config.BootstrapConfiguration) ([]multiaddr.Multiaddr, error) {
+func BuildBoostrapNodes(configuration BootstrapConfiguration) ([]multiaddr.Multiaddr, error) {
 	var maddrs []multiaddr.Multiaddr
 	var err error
 
 	if configuration.BootstrapNodes {
-		if configuration.PublicBoostrapNodes {
+		if configuration.PublicBootstrapNodes {
 			// Use libp2p public bootstrap peers list
 			maddrs = dht.DefaultBootstrapPeers
 		} else if len(configuration.BootstrapNodesList) > 0 {
