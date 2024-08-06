@@ -1,4 +1,4 @@
-package logic
+package loadbalancer
 
 import (
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"

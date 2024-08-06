@@ -1,4 +1,4 @@
-package logic
+package loadbalancer
 
 import (
 	"sort"
@@ -339,7 +339,7 @@ func debugNodesTblContentNMS(entries map[string]*nodestbl.EntryNMS) {
 						entry.Load.RateHighUsage, entry.Load.RateMediumUsage, entry.Load.RateLowUsage)
 
 		logger.Debugf("    - FUNCTIONS:")
-		for funcName := range entry.Funcs {
+		for _, funcName := range entry.Funcs {
 			logger.Debugf("       FUNC: %s", funcName)
 		}
 	}

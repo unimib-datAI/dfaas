@@ -18,11 +18,10 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/pkg/errors"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/communication"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/groupsreader"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/discovery/kademlia"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/discovery/mdns"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logic"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/loadbalancer"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/utils/maddrhelp"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/httpserver"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/nodestbl"
@@ -127,18 +126,14 @@ func runAgent(config config.Configuration) error {
 		logger.Info("  ", i+1, ". ", addr)
 	}
 
-	////////// GROUPSREADER INITIALIZATION //////////
+	////////// LOAD BALANCER INITIALIZATION //////////
 
-	groupsreader.Initialize(config)
-
-	////////// LOGIC INITIALIZATION //////////
-
-	logic.Initialize(_p2pHost, config)
+	loadbalancer.Initialize(_p2pHost, config)
 	
 	// Get the Strategy instance (which is a singleton) of type 
 	// dependent on the strategy specified in the configuration
-	var strategy logic.Strategy
-	strategy, err = logic.GetStrategyInstance()
+	var strategy loadbalancer.Strategy
+	strategy, err = loadbalancer.GetStrategyInstance()
 	if err != nil {
 		return errors.Wrap(err, "Error while getting strategy instance")
 	}

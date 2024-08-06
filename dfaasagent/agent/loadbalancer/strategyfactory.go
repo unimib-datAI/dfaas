@@ -1,4 +1,4 @@
-package logic
+package loadbalancer
 
 import (
 	"github.com/bcicen/go-haproxy"

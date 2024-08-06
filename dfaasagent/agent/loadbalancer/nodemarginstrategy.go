@@ -1,4 +1,4 @@
-package logic
+package loadbalancer
 
 import (
 	"time"
@@ -12,7 +12,6 @@ import (
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/hacfgupd"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/nodestbl"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/groupsreader"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/forecaster"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/ofpromq"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/offuncs"
@@ -35,7 +34,7 @@ type NodeMarginStrategy struct {
 	forecasterClient forecaster.Client
 	nodeInfo 		 nodeInfo
 	// Functions groups
-	funcsGroups 	 groupsreader.Groups
+	funcsGroups 	 Groups
 	// Map with a metric name as key
 	// and max threshold values used to determine if the node is in overload
 	maxValues 	     map[string]float64
@@ -83,7 +82,22 @@ func (strategy *NodeMarginStrategy) RunStrategy() error {
 	strategy.nodeInfo.nodeType = _config.NodeType
 	strategy.nodeInfo.overload = false
 
+	var cpuUsage = make(map[string]float64)
+	var ramUsage = make(map[string]float64)
+
 	for {
+		cpuUsage, err = strategy.ofpromqClient.QueryCPUusage(_config.RecalcPeriod)
+		if err != nil {
+			return errors.Wrap(err, "Error while executing Prometheus query")
+		}
+		debugPromCPUusage(_config.RecalcPeriod, cpuUsage)
+
+		ramUsage, err = strategy.ofpromqClient.QueryRAMusage(_config.RecalcPeriod)
+		if err != nil {
+			return errors.Wrap(err, "Error while executing Prometheus query")
+		}
+		debugPromRAMusage(_config.RecalcPeriod, ramUsage)
+
 		err = strategy.publishNodeInfo()
 		if err != nil {
 			return err
@@ -93,7 +107,7 @@ func (strategy *NodeMarginStrategy) RunStrategy() error {
 
 		strategy.nodeInfo.funcsRates, err = strategy.getFunctionsRates()
 
-		strategy.funcsGroups, err = groupsreader.GetFuncsGroups()
+		strategy.funcsGroups, err = GetFuncsGroups()
 		if err != nil {
 			return err
 		}
@@ -664,7 +678,7 @@ func (strategy *NodeMarginStrategy) processMsgNodeInfoNMS(sender string, msg *Ms
 		logger.Debugf("Received node info message from node %s", sender)
 		logger.Debugf("Node %s type: %d", sender, msg.NodeType)
 		logger.Debugf("Node %s HAProxyHost: %s", sender, msg.HAProxyHost)
-		logger.Debugf("Node %s HAProxyPort: %s", sender, msg.HAProxyPort)
+		logger.Debugf("Node %s HAProxyPort: %d", sender, msg.HAProxyPort)
 		
 		var funcs string
 		for i := 0; i < len(msg.Functions); i++ {

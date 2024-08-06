@@ -1,4 +1,4 @@
-package groupsreader
+package loadbalancer
 
 import (
 	"encoding/json"
@@ -6,21 +6,11 @@ import (
 	"io/ioutil"
 
 	"github.com/pkg/errors"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/config"
 )
 
-// This package is used to read function groups from the group_list.json file,
+// In this file are implemented functionalities to read function groups from the group_list.json file,
 // where, for each group (high usage, medium usage, low usage), there is a list
 // of functions belonging to that group
-
-//////////////////// MAIN PRIVATE VARS AND INIT FUNCTION ////////////////////
-
-var _config config.Configuration
-
-// Initialize initializes this package
-func Initialize(config config.Configuration) {
-	_config = config
-}
 
 //////////////////// PUBLIC STRUCT TYPES ////////////////////
 

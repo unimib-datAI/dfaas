@@ -70,9 +70,9 @@ RUN systemctl enable forecaster.service
 WORKDIR /agent
 COPY files/dfaasagent/dfaasagent.service /etc/systemd/system/dfaasagent.service
 RUN systemctl enable dfaasagent.service
-COPY --from=dfaas-agent-builder:latest /go/src/dfaasagent/agent/logic/haproxycfgrecalc.tmpl ./haproxycfgrecalc.tmpl
-COPY --from=dfaas-agent-builder:latest /go/src/dfaasagent/agent/logic/haproxycfgnms.tmpl ./haproxycfgnms.tmpl
-COPY --from=dfaas-agent-builder:latest /go/src/dfaasagent/agent/groupsreader/group_list.json .
+COPY --from=dfaas-agent-builder:latest /go/src/dfaasagent/agent/loadbalancer/haproxycfgrecalc.tmpl ./haproxycfgrecalc.tmpl
+COPY --from=dfaas-agent-builder:latest /go/src/dfaasagent/agent/loadbalancer/haproxycfgnms.tmpl ./haproxycfgnms.tmpl
+COPY --from=dfaas-agent-builder:latest /go/src/dfaasagent/agent/loadbalancer/group_list.json ./group_list.json
 COPY --from=dfaas-agent-builder:latest /go/src/dfaasagent/dfaasagent ./dfaasagent
 ### End Agent
 
