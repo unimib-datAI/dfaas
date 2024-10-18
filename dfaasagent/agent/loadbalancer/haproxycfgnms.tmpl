@@ -16,6 +16,13 @@ defaults
     timeout client 50000
     timeout server 50000
 
+{{/* #################### STICK-TABLES #################### */ -}}
+
+{{range $funcName, $func := .Functions -}}
+backend st_users_func_{{$funcName}}
+    stick-table type integer size 10 expire {{$.StrRecalc}} store http_req_cnt,http_req_rate(1s)
+{{end}}
+
 {{/* #################### FRONTEND #################### */ -}}
 
 frontend fe_main
@@ -75,7 +82,11 @@ frontend fe_main
     use_backend be_{{$funcName}} if is_func_{{$funcName}} !has_nodeid_hdr
     {{end}}
 
-    default_backend be_ok
+    {{/* ########## TRACKING WITH STICK TABLES ########## */ -}}
+
+    {{range $funcName, $_ := .Functions -}}
+    http-request track-sc1 dst_port table st_users_func_{{$funcName}} if is_func_{{$funcName}} !has_nodeid_hdr {{- /* Using Sticky-Counter #1 */}}
+    {{end}}
 
 {{/* #################### BACKEND FOR SIMPLE 200 RESPONSES #################### */ -}}
 
@@ -118,7 +129,10 @@ backend be_myself
     {{/* Add DFaaS-Node-ID header (in any case) */ -}}
     http-request add-header DFaaS-Node-ID {{$.MyNodeID}}
 
-    server myself {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} check
+    {{/* Add X-Server header to response to know which server served the request */ -}}
+    http-response set-header X-Server %s
+
+    server {{$.HAProxyHost}} {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} check
 
 {{/* #################### BACKEND FOR OPENFAAS FUNCTIONS #################### */ -}}
 
@@ -140,11 +154,14 @@ backend be_{{$funcName}}
     {{/* Add DFaaS-Node-ID header (in any case) */ -}}
     http-request add-header DFaaS-Node-ID {{$.MyNodeID}}
 
+    {{/* Add X-Server header to response to know which server served the request */ -}}
+    http-response set-header X-Server %s
+
     {{range $nodeID, $weight := $func.Weights -}}
     {{if (eq $nodeID $.MyNodeID) -}}
-    server myself {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} weight {{$weight}} check
+    server {{$.HAProxyHost}} {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} weight {{$weight}} check
     {{else -}}
-    server {{$nodeID}} {{(index $.Nodes $nodeID).HAProxyHost}}:{{(index $.Nodes $nodeID).HAProxyPort}} weight {{$weight}} check
+    server {{(index $.Nodes $nodeID).HAProxyHost}} {{(index $.Nodes $nodeID).HAProxyHost}}:{{(index $.Nodes $nodeID).HAProxyPort}} weight {{$weight}} check
     {{end -}}
     {{end}}
 {{end}}

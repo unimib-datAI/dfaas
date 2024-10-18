@@ -53,7 +53,7 @@ type MsgNodeMarginInfoNMS struct {
 	MsgType string
 
 	Margin 		float64
-	Load 		groupsLoad
+	Load 		GroupsLoad
 }
 
 // StrMsgNodeMarginInfoTypeNMS value for MsgNodeMarginInfoNMS.MsgType

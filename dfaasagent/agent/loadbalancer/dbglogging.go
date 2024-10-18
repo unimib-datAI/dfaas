@@ -395,7 +395,7 @@ func debugMsgNodeInfoNMS(msg MsgNodeInfoNMS) {
     }
 }
 
-func debugFuncsLoad(load groupsLoad) {
+func debugFuncsLoad(load GroupsLoad) {
 	if !logging.GetDebugMode() {
 		return
 	}
@@ -403,9 +403,9 @@ func debugFuncsLoad(load groupsLoad) {
 	logger := logging.Logger()
 
 	logger.Debugf("Node's Load: High Usage=%.2f req/s, Low Usage=%.2f req/s, Medium Usage=%.2f req/s",
-			load.rateHighUsage,
-			load.rateLowUsage,
-			load.rateMediumUsage)
+			load.RateHighUsage,
+			load.RateLowUsage,
+			load.RateMediumUsage)
 }
 
 func debugNodeMetricPredictions(predictions map[string]float64) {

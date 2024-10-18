@@ -15,6 +15,7 @@ type HACfg struct {
 	Now time.Time
 
 	MyNodeID     string
+	HAProxyHost  string
 	OpenFaaSHost string
 	OpenFaaSPort uint
 }
@@ -83,6 +84,9 @@ type HACfgNMS struct {
 
 	HttpServerHost string
 	HttpServerPort uint
+
+	// String representation of RecalPeriod (e.g. "5s")
+	StrRecalc string
 
 	// The key is the node ID
 	Nodes map[string]*HACfgNodeNMS

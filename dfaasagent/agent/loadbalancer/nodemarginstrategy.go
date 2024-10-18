@@ -1,11 +1,12 @@
 package loadbalancer
 
 import (
+	"fmt"
 	"time"
-	"strings"
 	"math"
 	"encoding/json"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/bcicen/go-haproxy"
 	"github.com/pkg/errors"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/communication"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
@@ -15,6 +16,7 @@ import (
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/forecaster"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/ofpromq"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/offuncs"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/hasock"
 )
 
 // In this file is implemented the Node Margin strategy
@@ -31,6 +33,7 @@ type NodeMarginStrategy struct {
 	nodestbl 		 *nodestbl.TableNMS
 	ofpromqClient 	 ofpromq.Client
 	offuncsClient 	 offuncs.Client
+	hasockClient  	 haproxy.HAProxyClient
 	forecasterClient forecaster.Client
 	nodeInfo 		 nodeInfo
 	// Functions groups
@@ -47,17 +50,17 @@ type NodeMarginStrategy struct {
 }
 
 // groupsLoad represents the invocation rates for each group of functions on a node
-type groupsLoad struct {
-	rateHighUsage 	float64
-	rateLowUsage 	float64
-	rateMediumUsage float64
+type GroupsLoad struct {
+	RateHighUsage 	float64
+	RateLowUsage 	float64
+	RateMediumUsage float64
 }
 
 // Private struct containing info about us
 type nodeInfo struct {
 	nodeType 			int 				// Node type (heavy=0, mid=1, light=2)
 	funcs 				[]string			// Our OpenFaaS functions
-	funcsGroupsLoad 	groupsLoad			// Load rates for each group of functions
+	funcsGroupsLoad 	GroupsLoad			// Load rates for each group of functions
 	commonNeighboursNum int					// Number of neighbours with at least a function in common
 	funcsRates 			map[string]float64  // Map with function name as key, and invocation rate as value
 	margin 				float64				// Node's margin
@@ -248,51 +251,50 @@ func (strategy *NodeMarginStrategy) updateCommonNeighbours() {
 	})
 }
 
-// Obtain functions invocation rates of the last RecalcPeriod from Prometheus
+// Obtain functions invocation rates of the last RecalcPeriod from HAProxy
 func (strategy *NodeMarginStrategy) getFunctionsRates() (map[string]float64, error) {
-	var invocRates map[string]map[string]float64 // Invocation rates (in req/s) (from Prometheus)
-
-	invocRates, err := strategy.ofpromqClient.QueryInvoc(_config.RecalcPeriod)
-	if err != nil {
-		return nil, errors.Wrap(err, "Error while executing Prometheus query")
-	}
-	debugPromInvoc(_config.RecalcPeriod, invocRates)
-
 	var functionRates = make(map[string]float64)
-	for funcName, item := range invocRates {
-		clearFuncName := strings.ReplaceAll(funcName, ".openfaas-fn", "")
-		functionRates[clearFuncName] = 0
-		for _, rate := range item {
-			functionRates[clearFuncName] += rate
+
+	for _, funcName := range strategy.nodeInfo.funcs {
+		stName := fmt.Sprintf("st_users_func_%s", funcName)
+		stContent, err := hasock.ReadStickTable(&strategy.hasockClient, stName)
+
+		if err != nil {
+			return nil, err
+		} else {
+			for _, stEntry := range stContent {
+				functionRates[funcName] = float64(stEntry.HTTPReqRate)
+			}
 		}
 	}
+
 	return functionRates, nil
 }
 
 // Calculate invocation rate for each group of functions
-// NOTE: at the moment invocation rates on node are gathered from Prometheus. In future
+// NOTE: at the moment invocation rates on node are gathered from HAProxy. In future
 // they should be gathered from the Forecaster, which predicts the future load received from the node
-func (strategy *NodeMarginStrategy) getFuncsGroupsLoad() (groupsLoad, error) {
+func (strategy *NodeMarginStrategy) getFuncsGroupsLoad() (GroupsLoad, error) {
 		var err error
 		
 		strategy.nodeInfo.funcsRates, err = strategy.getFunctionsRates()
 		if err != nil {
-			return groupsLoad{}, err
+			return GroupsLoad{}, err
 		}
 	
-		var nodeGroupsLoad groupsLoad
+		var nodeGroupsLoad GroupsLoad
 
-		nodeGroupsLoad.rateHighUsage = 0.0
-		nodeGroupsLoad.rateLowUsage = 0.0
-		nodeGroupsLoad.rateMediumUsage = 0.0
+		nodeGroupsLoad.RateHighUsage = 0.0
+		nodeGroupsLoad.RateLowUsage = 0.0
+		nodeGroupsLoad.RateMediumUsage = 0.0
 		
 		for funcName, rate := range strategy.nodeInfo.funcsRates {
 			if contains(strategy.funcsGroups.HighUsage, funcName) {
-				nodeGroupsLoad.rateHighUsage += rate
+				nodeGroupsLoad.RateHighUsage += rate
 			} else if contains(strategy.funcsGroups.MediumUsage, funcName) {
-				nodeGroupsLoad.rateMediumUsage += rate
+				nodeGroupsLoad.RateMediumUsage += rate
 			} else if contains(strategy.funcsGroups.LowUsage, funcName) {
-				nodeGroupsLoad.rateLowUsage += rate
+				nodeGroupsLoad.RateLowUsage += rate
 			}
 		}
 
@@ -302,14 +304,14 @@ func (strategy *NodeMarginStrategy) getFuncsGroupsLoad() (groupsLoad, error) {
 }
 
 // Get node metric predictions from Forecaster
-func (strategy *NodeMarginStrategy) getNodeMetricPredictions(nodeType int, load groupsLoad) (map[string]float64, error) {
+func (strategy *NodeMarginStrategy) getNodeMetricPredictions(nodeType int, load GroupsLoad) (map[string]float64, error) {
 	var err error
 	
 	var req forecaster.NodeMetricPredReq
 	req.Node_type = nodeType
-	req.Rate_group_HIGH_USAGE = load.rateHighUsage
-	req.Rate_group_LOW_USAGE = load.rateLowUsage
-	req.Rate_group_MEDIUM_USAGE = load.rateMediumUsage
+	req.Rate_group_HIGH_USAGE = load.RateHighUsage
+	req.Rate_group_LOW_USAGE = load.RateLowUsage
+	req.Rate_group_MEDIUM_USAGE = load.RateMediumUsage
 
 	var resp forecaster.NodeMetricPredRes
 	resp, err = strategy.forecasterClient.GetNodeUsagePredictions(req)
@@ -393,7 +395,7 @@ func (strategy *NodeMarginStrategy) sendMarginToNeighbours() error {
 		if strategy.nodeInfo.margin > 0.0 {
 			marginMsg.Load = strategy.nodeInfo.funcsGroupsLoad
 		} else {
-			marginMsg.Load = groupsLoad{}
+			marginMsg.Load = GroupsLoad{}
 		}
 
 		err = communication.MarshAndPublish(marginMsg)
@@ -424,7 +426,7 @@ func (strategy *NodeMarginStrategy) calculateWeights() (map[string]map[string]ui
 	var overload bool
 	var myNodeID string
 	var mainteined = make(map[string]float64)
-	var mainteinedGroupsLoad groupsLoad
+	var mainteinedGroupsLoad GroupsLoad
 	var fwdRequests = make(map[string]map[string]float64)
 	var weights = make(map[string]map[string]uint)
 	var iterator = make(map[string]int)
@@ -438,9 +440,9 @@ func (strategy *NodeMarginStrategy) calculateWeights() (map[string]map[string]ui
 	}
 
 	// Copy funcsGroupsLoad in mainteinedGroupsLoad
-	mainteinedGroupsLoad.rateHighUsage = strategy.nodeInfo.funcsGroupsLoad.rateHighUsage
-	mainteinedGroupsLoad.rateMediumUsage = strategy.nodeInfo.funcsGroupsLoad.rateMediumUsage
-	mainteinedGroupsLoad.rateLowUsage = strategy.nodeInfo.funcsGroupsLoad.rateLowUsage
+	mainteinedGroupsLoad.RateHighUsage = strategy.nodeInfo.funcsGroupsLoad.RateHighUsage
+	mainteinedGroupsLoad.RateMediumUsage = strategy.nodeInfo.funcsGroupsLoad.RateMediumUsage
+	mainteinedGroupsLoad.RateLowUsage = strategy.nodeInfo.funcsGroupsLoad.RateLowUsage
 
 	err := strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryNMS) error {
 		// Init fwdRequests
@@ -485,10 +487,10 @@ func (strategy *NodeMarginStrategy) calculateWeights() (map[string]map[string]ui
 
 			if mainteined[funcTo] > 0.0 {
 				// Get nodeTo usage percentage with its original load
-				var load groupsLoad
-				load.rateHighUsage = entries[nodeTo].Load.RateHighUsage
-				load.rateMediumUsage = entries[nodeTo].Load.RateMediumUsage
-				load.rateLowUsage = entries[nodeTo].Load.RateLowUsage
+				var load GroupsLoad
+				load.RateHighUsage = entries[nodeTo].Load.RateHighUsage
+				load.RateMediumUsage = entries[nodeTo].Load.RateMediumUsage
+				load.RateLowUsage = entries[nodeTo].Load.RateLowUsage
 
 				logger.Debugf("Before requests forwarding (node %s):", nodeTo)
 				nodeToPredictions, err := strategy.getNodeMetricPredictions(entries[nodeTo].NodeType, load)
@@ -500,25 +502,25 @@ func (strategy *NodeMarginStrategy) calculateWeights() (map[string]map[string]ui
 				reqToTransfer := (mainteined[funcTo] * 0.01)
 
 				// Update the rate group load in request to Forecaster corresponding to the group of funcTo
-				var newLoad groupsLoad
-				newLoad.rateHighUsage = entries[nodeTo].Load.RateHighUsage
-				newLoad.rateMediumUsage = entries[nodeTo].Load.RateMediumUsage
-				newLoad.rateLowUsage = entries[nodeTo].Load.RateLowUsage
+				var newLoad GroupsLoad
+				newLoad.RateHighUsage = entries[nodeTo].Load.RateHighUsage
+				newLoad.RateMediumUsage = entries[nodeTo].Load.RateMediumUsage
+				newLoad.RateLowUsage = entries[nodeTo].Load.RateLowUsage
 				if contains(strategy.funcsGroups.HighUsage, funcTo) {
-					newLoad.rateHighUsage += reqToTransfer
+					newLoad.RateHighUsage += reqToTransfer
 				} else if contains(strategy.funcsGroups.MediumUsage, funcTo) {
-					newLoad.rateMediumUsage += reqToTransfer
+					newLoad.RateMediumUsage += reqToTransfer
 				} else if contains(strategy.funcsGroups.LowUsage, funcTo) {
-					newLoad.rateLowUsage += reqToTransfer
+					newLoad.RateLowUsage += reqToTransfer
 				}
 
 				for fun, rate := range fwdRequests[nodeTo] {
 					if contains(strategy.funcsGroups.HighUsage, fun) {
-						newLoad.rateHighUsage += rate
+						newLoad.RateHighUsage += rate
 					} else if contains(strategy.funcsGroups.MediumUsage, fun) {
-						newLoad.rateMediumUsage += rate
+						newLoad.RateMediumUsage += rate
 					} else if contains(strategy.funcsGroups.LowUsage, fun) {
-						newLoad.rateLowUsage += rate
+						newLoad.RateLowUsage += rate
 					}
 				}
 				logger.Debugf("After requests forwarding (node %s):", nodeTo)
@@ -535,11 +537,11 @@ func (strategy *NodeMarginStrategy) calculateWeights() (map[string]map[string]ui
 					fwdRequests[nodeTo][funcTo] += reqToTransfer
 					
 					if contains(strategy.funcsGroups.HighUsage, funcTo) {
-						mainteinedGroupsLoad.rateHighUsage -= reqToTransfer
+						mainteinedGroupsLoad.RateHighUsage -= reqToTransfer
 					} else if contains(strategy.funcsGroups.MediumUsage, funcTo) {
-						mainteinedGroupsLoad.rateMediumUsage -= reqToTransfer
+						mainteinedGroupsLoad.RateMediumUsage -= reqToTransfer
 					} else if contains(strategy.funcsGroups.LowUsage, funcTo) {
-						mainteinedGroupsLoad.rateLowUsage -= reqToTransfer
+						mainteinedGroupsLoad.RateLowUsage -= reqToTransfer
 					}
 					
 					logger.Debugf("This node's state after requests forwarding: ")
@@ -652,6 +654,7 @@ func (strategy *NodeMarginStrategy) setProxyWeights() error {
 			_config.OpenFaaSPort,
 			_config.HttpServerHost,
 			_config.HttpServerPort,
+			_config.RecalcPeriod,
 			entries,
 			strategy.weights,
 		)
@@ -724,10 +727,8 @@ func (strategy *NodeMarginStrategy) processMsgNodeMarginInfoNMS(sender string, m
 			if logging.GetDebugMode() {
 				logger.Debugf("Received margin info message from node %s", sender)
 				logger.Debugf("Margin: %f", msg.Margin)
-				if msg.Load != (groupsLoad{}) {
-					logger.Debugf("Load: High Usage=%f, Low Usage=%f, Medium Usage=%f",
-					msg.Load.rateHighUsage, msg.Load.rateLowUsage, msg.Load.rateMediumUsage)
-				}
+				logger.Debugf("Load: High Usage=%f, Low Usage=%f, Medium Usage=%f",
+				msg.Load.RateHighUsage, msg.Load.RateLowUsage, msg.Load.RateMediumUsage)
 			}
 			logger.Debugf("Setting received values for node %s into table", sender)
 
@@ -736,9 +737,9 @@ func (strategy *NodeMarginStrategy) processMsgNodeMarginInfoNMS(sender string, m
 				if exists {
 					entries[sender].TAlive = time.Now()
 					entries[sender].Margin = msg.Margin
-					entries[sender].Load.RateHighUsage = msg.Load.rateHighUsage
-					entries[sender].Load.RateMediumUsage = msg.Load.rateLowUsage
-					entries[sender].Load.RateMediumUsage = msg.Load.rateLowUsage
+					entries[sender].Load.RateHighUsage = msg.Load.RateHighUsage
+					entries[sender].Load.RateMediumUsage = msg.Load.RateLowUsage
+					entries[sender].Load.RateMediumUsage = msg.Load.RateLowUsage
 				}
 		} else {
 			logger.Debugf("Ignore margin info message from node %s (not a common neighbour)", sender)
@@ -771,18 +772,22 @@ func (strategy *NodeMarginStrategy) createHACfgObject(
 	openFaaSPort uint,
 	httpServerHost string,
 	httpServerPort uint,
+	recalcPeriod time.Duration,
 	entries map[string]*nodestbl.EntryNMS,
 	funcsWeights map[string]map[string]uint,
 ) *HACfgNMS {
 	hacfg := &HACfgNMS{
 		HACfg: HACfg{ 
 			MyNodeID: 	  myNodeID,
+			HAProxyHost:  _config.HAProxyHost,
 			OpenFaaSHost: openFaaSHost,
 			OpenFaaSPort: openFaaSPort,
 		},
 
 		HttpServerHost: httpServerHost,
 		HttpServerPort: httpServerPort,
+
+		StrRecalc:  recalcPeriod.String(),
 
 		Nodes:     map[string]*HACfgNodeNMS{},
 		Functions: map[string]*HACfgFuncNMS{},

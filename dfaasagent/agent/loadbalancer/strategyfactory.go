@@ -71,7 +71,7 @@ type nodeMarginStrategyFactory struct {}
 func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, error) {
 	strategy := &NodeMarginStrategy{}
 
-	strategy.nodestbl = nodestbl.NewTableNMS(_config.RecalcPeriod + (_config.RecalcPeriod / 5))
+	strategy.nodestbl = nodestbl.NewTableNMS(_config.RecalcPeriod * 2)
 
 	strategy.hacfgupdater = hacfgupd.Updater{
 		HAConfigFilePath: _config.HAProxyConfigFile,
@@ -93,6 +93,10 @@ func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, er
 		Port:     _config.OpenFaaSPort,
 		Username: _config.OpenFaaSUser,
 		Password: _config.OpenFaaSPass,
+	}
+
+	strategy.hasockClient = haproxy.HAProxyClient{
+		Addr: _config.HAProxySockPath,
 	}
 
 	strategy.forecasterClient = forecaster.Client{
