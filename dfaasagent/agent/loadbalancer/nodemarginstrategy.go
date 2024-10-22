@@ -127,7 +127,7 @@ func (strategy *NodeMarginStrategy) RunStrategy() error {
 
 		strategy.nodeInfo.overload = strategy.isNodeOverloaded(strategy.nodeInfo.metricsPredictions)
 
-		strategy.nodeInfo.margin = strategy.calculateMargin()
+		strategy.nodeInfo.margin = strategy.calculateMargin(strategy.maxValues)
 
 		err = strategy.sendMarginToNeighbours()
 		if err != nil {
@@ -202,6 +202,7 @@ func (strategy *NodeMarginStrategy) publishNodeInfo() error {
 		HAProxyHost: 	_config.HAProxyHost,
 		HAProxyPort:	_config.HAProxyPort,
 		NodeType:		strategy.nodeInfo.nodeType,
+		MaxValues:		strategy.maxValues,
 		Functions:		strategy.nodeInfo.funcs,
 	}
 	debugMsgNodeInfoNMS(msg)
@@ -345,12 +346,12 @@ func (strategy *NodeMarginStrategy) isNodeOverloaded(metricsPredictions map[stri
 }
 
 // Calculate the node usage percentage (based on metrics prediction on node)
-func (strategy *NodeMarginStrategy) calculateNodeUsagePercentage(metricsPredictions map[string]float64) float64 {
+func (strategy *NodeMarginStrategy) calculateNodeUsagePercentage(metricsPredictions map[string]float64, thresholds map[string]float64) float64 {
 	var metricsPercentage = make(map[string]float64)
 	var nodeUsagePercentage = 0.0
 
 	for metric, _ := range metricsPredictions {
-		metricsPercentage[metric] = (metricsPredictions[metric] * 100) / strategy.maxValues[metric]
+		metricsPercentage[metric] = (metricsPredictions[metric] * 100) / thresholds[metric]
 	}
 
 	for _, value := range metricsPercentage {
@@ -364,14 +365,14 @@ func (strategy *NodeMarginStrategy) calculateNodeUsagePercentage(metricsPredicti
 }
 
 // Calculate node's margin (based on information obtained with calculateNodeUsagePercentage function)
-func (strategy *NodeMarginStrategy) calculateMargin() float64 {
+func (strategy *NodeMarginStrategy) calculateMargin(thresholds map[string]float64) float64 {
 	var nodeUsagePercentage float64
 	var margin = 0.0
 
 	if strategy.nodeInfo.overload {
 		return margin
 	} else {
-		nodeUsagePercentage = strategy.calculateNodeUsagePercentage(strategy.nodeInfo.metricsPredictions)
+		nodeUsagePercentage = strategy.calculateNodeUsagePercentage(strategy.nodeInfo.metricsPredictions, thresholds)
 		if strategy.nodeInfo.commonNeighboursNum > 0 {
 			margin = (100 - nodeUsagePercentage) / float64(strategy.nodeInfo.commonNeighboursNum)
 		}
@@ -497,7 +498,7 @@ func (strategy *NodeMarginStrategy) calculateWeights() (map[string]map[string]ui
 				if err != nil {
 					return err
 				}
-				nodeToPercentage := strategy.calculateNodeUsagePercentage(nodeToPredictions)
+				nodeToPercentage := strategy.calculateNodeUsagePercentage(nodeToPredictions, entries[nodeTo].MaxValues)
 				
 				reqToTransfer := (mainteined[funcTo] * 0.01)
 
@@ -528,7 +529,7 @@ func (strategy *NodeMarginStrategy) calculateWeights() (map[string]map[string]ui
 				if err != nil {
 					return err
 				}
-				newNodeToPercentage := strategy.calculateNodeUsagePercentage(newNodeToPredictions)
+				newNodeToPercentage := strategy.calculateNodeUsagePercentage(newNodeToPredictions, entries[nodeTo].MaxValues)
 
 				margin := entries[nodeTo].Margin
 
@@ -682,6 +683,8 @@ func (strategy *NodeMarginStrategy) processMsgNodeInfoNMS(sender string, msg *Ms
 		logger.Debugf("Node %s type: %d", sender, msg.NodeType)
 		logger.Debugf("Node %s HAProxyHost: %s", sender, msg.HAProxyHost)
 		logger.Debugf("Node %s HAProxyPort: %d", sender, msg.HAProxyPort)
+		logger.Debugf("Max Values: CPU=%f, RAM=%f, Power=%f",
+				msg.MaxValues[cpuUsageNodeMetric], msg.MaxValues[ramUsageNodeMetric], msg.MaxValues[powerUsageNodeMetric])
 		
 		var funcs string
 		for i := 0; i < len(msg.Functions); i++ {
@@ -704,6 +707,7 @@ func (strategy *NodeMarginStrategy) processMsgNodeInfoNMS(sender string, msg *Ms
 		entries[sender].HAProxyHost = msg.HAProxyHost
 		entries[sender].HAProxyPort = msg.HAProxyPort
 		entries[sender].NodeType = msg.NodeType
+		entries[sender].MaxValues = msg.MaxValues
 		entries[sender].Funcs = msg.Functions
 
 		return nil

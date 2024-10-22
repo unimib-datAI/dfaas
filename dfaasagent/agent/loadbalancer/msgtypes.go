@@ -41,6 +41,7 @@ type MsgNodeInfoNMS struct {
 	HAProxyHost string
 	HAProxyPort uint
 	NodeType 	int
+	MaxValues   map[string]float64
 	Functions 	[]string
 }
 

@@ -31,6 +31,8 @@ type EntryNMS struct {
 	CommonNeighbour bool
 	// Type of the node (light, mid or heavy)
 	NodeType int
+	// Node's max resources values
+	MaxValues map[string]float64
 	// Node's functions
 	Funcs []string
 	// Node's load
