@@ -79,6 +79,8 @@ ansible-playbook -i inventory.yaml setup_playbook.yaml --extra-vars "sysbox_ver=
 
 This Ansible playbook installs the required software and executes the [docker-compose.yml](docker-compose.yml), deploying three DFaaS nodes containers, and a fourth container called [operator](operator), which deploys functions on DFaaS nodes and starts specified load tests.
 
+If you have four different VMs it's recommended to deploy the entire system exploiting the playbook and configuration files in [test_environment](test_environment).
+
 #### Manual
 
 _Ansible_
