@@ -1,0 +1,32 @@
+manager:
+  hosts:
+    <hostname>:
+      ansible_port: <port_number>
+      ansible_connection: ssh
+      ansible_user: <user>
+      ansible_password: <password>
+      ansible_ssh_extra_args: '-o StrictHostKeyChecking=no'
+      ansible_python_interpreter: '/usr/bin/python3'
+worker:
+  hosts:
+    <hostname>:
+      ansible_port: <port_number>
+      ansible_connection: ssh
+      ansible_user: <user>
+      ansible_password: <password>
+      ansible_ssh_extra_args: '-o StrictHostKeyChecking=no'
+      ansible_python_interpreter: '/usr/bin/python3'
+    <hostname>:
+      ansible_port: <port_number>
+      ansible_connection: ssh
+      ansible_user: <user>
+      ansible_password: <password>
+      ansible_ssh_extra_args: '-o StrictHostKeyChecking=no'
+      ansible_python_interpreter: '/usr/bin/python3'
+    <hostname>:
+      ansible_port: <port_number>
+      ansible_connection: ssh
+      ansible_user: <user>
+      ansible_password: <password>
+      ansible_ssh_extra_args: '-o StrictHostKeyChecking=no'
+      ansible_python_interpreter: '/usr/bin/python3'

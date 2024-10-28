@@ -1,0 +1,369 @@
+---
+- name: Setup Environment
+  hosts: all
+  become: true
+  vars:
+    arch_mapping:
+      x86_64: amd64
+      aarch64: arm64
+  
+  tasks:
+    - name: Update apt packages
+      apt:
+        update_cache: true
+      tags:
+      - installation
+        
+    - name: Install required system packages
+      apt:
+        name: "{{ item }}"
+        state: latest
+        update_cache: true
+      loop:
+        - jq
+        - ca-certificates
+        - curl
+        - wget
+        - gnupg
+        - make
+        - dkms
+        - lsb-release
+        - apt-transport-https
+        - software-properties-common
+        - git
+        - python3-pip
+      tags:
+        - installation
+
+    - name: Install Docker python package
+      ansible.builtin.pip:
+        name: docker
+      tags:
+        - installation
+
+    - name: Create directory for Docker's GPG key
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+      tags:
+        - installation
+    
+    - name: Add Docker's official GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        keyring: /etc/apt/keyrings/docker.gpg
+        state: present
+      tags:
+        - installation
+    
+    - name: Change GPG key permissions
+      file:
+        path: /etc/apt/keyrings/docker.gpg
+        state: file
+        mode: 'a+r'
+      tags:
+        - installation
+    
+    - name: Set up the stable repository
+      apt_repository:
+        repo: deb [arch={{ arch_mapping[ansible_architecture] | default(ansible_architecture) }} signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable
+        filename: docker
+        state: present
+        update_cache: true
+      tags:
+        - installation
+    
+    - name: Install Docker and related packages
+      apt:
+        name: "{{ item }}"
+        state: present
+        update_cache: true
+        allow_downgrade: true
+      loop:
+        - docker-ce=5:27.1.1-1~ubuntu.{{ ansible_lsb.release }}~{{ ansible_lsb.codename }}
+        - docker-ce-cli=5:27.1.1-1~ubuntu.{{ ansible_lsb.release }}~{{ ansible_lsb.codename }}
+        - containerd.io
+        - docker-buildx-plugin
+        - docker-compose-plugin
+      tags:
+        - installation
+    
+    - name: Add Docker group
+      group:
+        name: docker
+        state: present
+      tags:
+        - installation
+
+    - name: Add user to docker group
+      user:
+        name: "{{ ansible_user_id }}"
+        groups: "docker"
+        append: true
+      tags:
+        - installation
+    
+    - name: Enable and start Docker services
+      systemd:
+        name: "{{ item }}"
+        enabled: true
+        state: started
+      loop:
+        - docker.service
+        - containerd.service
+      tags:
+      - installation
+      
+    - name: Create sysbox directory
+      file:
+        path: ./sysbox
+        state: directory
+      when: (ansible_hostname == 'node-light') or (ansible_hostname == 'node-mid') or (ansible_hostname == 'node-heavy')
+      tags:
+      - installation
+    
+    - name: Download sysbox package
+      get_url:
+        url:
+          https://downloads.nestybox.com/sysbox/releases/v{{ sysbox_ver }}/sysbox-ce_{{ sysbox_ver }}-0.linux_{{ arch_mapping[ansible_architecture] | default(ansible_architecture) }}.deb
+        dest: ./sysbox/sysbox-ce.deb
+      when: (ansible_hostname == 'node-light') or (ansible_hostname == 'node-mid') or (ansible_hostname == 'node-heavy')
+      tags:
+      - installation
+    
+    - name: Install sysbox package
+      apt: deb=./sysbox/sysbox-ce.deb
+      when: (ansible_hostname == 'node-light') or (ansible_hostname == 'node-mid') or (ansible_hostname == 'node-heavy')
+      tags:
+      - installation
+
+    - name: Git clone shiftfs repository
+      git:
+        repo: https://github.com/toby63/shiftfs-dkms.git
+        dest: ./shiftfs-{{ shiftfs_ver }}
+        single_branch: yes
+        version: '{{ shiftfs_ver }}'
+      when: (ansible_hostname == 'node-light') or (ansible_hostname == 'node-mid') or (ansible_hostname == 'node-heavy')
+      tags:
+      - installation
+    
+    - name: Update kernel
+      shell: ./shiftfs-{{ shiftfs_ver }}/update1
+      when: (ansible_hostname == 'node-light') or (ansible_hostname == 'node-mid') or (ansible_hostname == 'node-heavy')
+      tags:
+      - installation
+    
+    - name: Build Makefile
+      make:
+        chdir: ./shiftfs-{{ shiftfs_ver }}
+        file: Makefile.dkms
+      when: (ansible_hostname == 'node-light') or (ansible_hostname == 'node-mid') or (ansible_hostname == 'node-heavy')
+      tags:
+      - installation
+
+    - name: Copy dfaasagent directory
+      ansible.builtin.copy:
+        src: ../dfaasagent
+        dest: ~/dfaas/
+      when: (ansible_hostname == 'node-light') or (ansible_hostname == 'node-mid') or (ansible_hostname == 'node-heavy')
+      tags:
+      - deploy
+
+    - name: Copy docker directory
+      ansible.builtin.copy:
+        src: ../docker
+        dest: ~/dfaas/
+      when: (ansible_hostname == 'node-light') or (ansible_hostname == 'node-mid') or (ansible_hostname == 'node-heavy')
+      tags:
+      - deploy
+
+    - name: Copy ENV file on light node
+      ansible.builtin.copy:
+        src: ./dfaasagent-light.env
+        dest: ~/dfaas/dfaasagent.env
+      when: ansible_hostname == 'node-light'
+      tags:
+      - deploy
+
+    - name: Copy ENV file on mid node
+      ansible.builtin.copy:
+        src: ./dfaasagent-mid.env
+        dest: ~/dfaas/dfaasagent.env
+      when: ansible_hostname == 'node-mid'
+      tags:
+      - deploy
+
+    - name: Copy ENV file on heavy node
+      ansible.builtin.copy:
+        src: ./dfaasagent-heavy.env
+        dest: ~/dfaas/dfaasagent.env
+      when: ansible_hostname == 'node-heavy'
+      tags:
+      - deploy
+
+    - name: Copy Operator directory on operator node
+      ansible.builtin.copy:
+        src: ../operator
+        dest: ~/
+      when: ansible_hostname == 'operator'
+      tags:
+      - deploy
+      - deploy-operator
+
+    - name: Build Docker images
+      ansible.builtin.command:
+        chdir: ~/dfaas
+        cmd: "{{ item }}"
+      loop:
+        - "docker build -t dfaas-agent-builder:latest -f docker/dfaas-agent-builder.dockerfile dfaasagent"
+        - "docker build -t dfaas-node:latest -f docker/dfaas-node.dockerfile docker"
+      when: (ansible_hostname == 'node-light') or (ansible_hostname == 'node-mid') or (ansible_hostname == 'node-heavy')
+      tags:
+      - deploy
+
+    - name: Build operator Docker image
+      ansible.builtin.command:
+        chdir: ~/operator
+        cmd: docker build -t dfaas-operator:latest -f docker/dfaas-operator.dockerfile docker
+      when: ansible_hostname == 'operator'
+      tags:
+      - deploy
+      - deploy-operator
+
+    - name: Init a new swarm
+      community.docker.docker_swarm:
+        state: present
+      when: inventory_hostname in groups["manager"]
+      tags:
+      - deploy
+
+    - name: Retrieve swarm worker token
+      shell: docker swarm join-token -q worker
+      register: swarm_worker_token
+      when: inventory_hostname in groups["manager"]
+      tags:
+      - deploy
+
+    - name: Add nodes
+      community.docker.docker_swarm:
+        state: join
+        join_token: "{{ hostvars[groups['manager'][0]]['swarm_worker_token']['stdout'] }}"
+        remote_addrs: "{{ groups['manager'][0] }}:2377"
+      when: inventory_hostname in groups["worker"]
+      tags:
+      - deploy
+
+    - name: Add operator to swarm cluster
+      community.docker.docker_swarm:
+        state: join
+        join_token: "{{ hostvars[groups['manager'][0]]['swarm_worker_token']['stdout'] }}"
+        remote_addrs: "{{ groups['manager'][0] }}:2377"
+      when: ansible_hostname == 'operator'
+      tags:
+      - deploy
+
+    - name: Create overlay network
+      ansible.builtin.command: "docker network create -d overlay --attachable --subnet=172.16.238.0/24 p2p-overlay"
+      when: inventory_hostname in groups["manager"]
+      tags:
+      - start
+
+    - name: Deploy DFaaS container on light node
+      ansible.builtin.command:
+        chdir: ~/dfaas
+        cmd: "docker container run -itd --env-file dfaasagent.env --runtime sysbox-runc --network=p2p-overlay --name node-light --ip=172.16.238.10 -p 80:80 -p 6000:6000 dfaas-node"
+      when: ansible_hostname == 'node-light'
+      tags:
+      - start
+    
+    - name: Deploy DFaaS container on mid node
+      ansible.builtin.command:
+        chdir: ~/dfaas
+        cmd: "docker container run -itd --env-file dfaasagent.env --runtime sysbox-runc --network=p2p-overlay --name node-mid --ip=172.16.238.11 -p 80:80 -p 6000:6000 dfaas-node"
+      when: ansible_hostname == 'node-mid'
+      tags:
+      - start
+
+    - name: Deploy DFaaS container on heavy node
+      ansible.builtin.command:
+        chdir: ~/dfaas
+        cmd: "docker container run -itd --env-file dfaasagent.env --runtime sysbox-runc --network=p2p-overlay --name node-heavy --ip=172.16.238.12 -p 80:80 -p 6000:6000 dfaas-node"
+      when: ansible_hostname == 'node-heavy'
+      tags:
+      - start
+
+    - name: Deploy operator container
+      ansible.builtin.command:
+        chdir: ~/operator
+        cmd: docker container run -itd -v ~/:/tests --env-file dfaasoperator.env --network=p2p-overlay --name operator --ip=172.16.238.13 dfaas-operator
+      when: ansible_hostname == 'operator'
+      tags:
+      - start-operator
+
+    - name: Remove node light container
+      ansible.builtin.command: docker rm --force node-light
+      when: ansible_hostname == 'node-light'
+      tags:
+      - stop
+    
+    - name: Remove node mid container
+      ansible.builtin.command: docker rm --force node-mid
+      when: ansible_hostname == 'node-mid'
+      tags:
+      - stop
+    
+    - name: Remove node heavy container
+      ansible.builtin.command: docker rm --force node-heavy
+      when: ansible_hostname == 'node-heavy'
+      tags:
+      - stop
+
+    - name: Remove overlay network
+      ansible.builtin.command: docker network rm p2p-overlay
+      when: ansible_hostname == 'node-light'
+      tags:
+      - stop
+
+    - name: Leave Swarm
+      ansible.builtin.command: docker swarm leave --force
+      tags:
+      - leave-swarm
+    
+    - name: Remove DFaaS nodes images
+      ansible.builtin.command:
+        cmd: "{{ item }}"
+      loop:
+        - "docker image rm dfaas-node"
+        - "docker image rm dfaas-agent-builder"
+      when: (ansible_hostname == 'node-light') or (ansible_hostname == 'node-mid') or (ansible_hostname == 'node-heavy')
+      tags:
+      - remove
+
+    - name: Remove DFaaS directory
+      ansible.builtin.command:
+        chdir: ~/
+        cmd: rm -r dfaas
+      when: (ansible_hostname == 'node-light') or (ansible_hostname == 'node-mid') or (ansible_hostname == 'node-heavy')
+      tags:
+      - remove
+
+    - name: Remove operator container
+      ansible.builtin.command: docker rm --force operator
+      when: ansible_hostname == 'operator'
+      tags:
+      - remove-operator
+
+    - name: Remove DFaaS operator image
+      ansible.builtin.command: docker image rm dfaas-operator
+      when: ansible_hostname == 'operator'
+      tags:
+      - remove-operator
+
+    - name: Remove Operator directory
+      ansible.builtin.command:
+        chdir: ~/
+        cmd: rm -r operator
+      when: ansible_hostname == 'operator'
+      tags:
+      - remove-operator
