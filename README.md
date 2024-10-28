@@ -68,7 +68,7 @@ ungrouped:
 Run the `ansible-playbook` command on the control node to execute the tasks specified in the playbook with the following options:
 
 `-i` : path to an inventory file  
-`--extra-vars` : to specify the Sysbox version and shiftfs branch to be installed
+`--extra-vars` : to specify the Sysbox version and shiftfs branch to be installed  
 `--tags` : to specify steps of the playbook to be executed
 
 > The following command assumes you are using Ubuntu 22.04 LTS with kernel version 5.15 or 5.16.
