@@ -29,3 +29,65 @@ Tags have the following meaning:
 - `leave-swarm`: each VM leaves the Docker Swarm cluster
 - `remove`: delete from VMs DFaaS directory and Docker images
 - `remove-operator`: delete from Operator node VM the operator directory and Docker image
+
+# Executed tests
+The results contained in [tests_results](tests_results) directory are referred to the executed experiments described below.
+
+#### Node Margin Strategy thresholds
+Node Light:
+- CPU: 104%
+- RAM: 4.1 GB
+- Power: 0.7 W  
+
+Node Mid:
+- CPU: 190%
+- RAM: 5.5 GB
+- Power: 2.1 W  
+
+Node Heavy:
+- CPU: 235%
+- RAM: 6.0 GB
+- Power: 3.5 W  
+
+## First test
+- `Duration`: 5 minutes
+- `Load`: 250 req/s to _figlet_ function on Node Light
+
+#### Static Strategy maxrates
+_figlet_:
+- Node Light: 200 req/s
+- Node Mid: 450 req/s
+- Node Heavy: 700 req/s
+
+## Second test
+- `Duration`: 10 minutes
+### Phase 1 (minutes 0-5)
+- `Load`: 100 req/s to _figlet_ function on Node Mid; 50 req/s to _shasum_ function on Node Mid
+### Phase 2 (minutes 5-10)
+- `Load`: 300 req/s to _figlet_ function on Node Mid; 50 req/s to _shasum_ function on Node Mid
+
+#### Static Strategy maxrates
+_figlet_:
+- Node Light: 100 req/s
+- Node Mid: 225 req/s
+- Node Heavy: 350 req/s  
+
+_shasum_:
+- Node Light: 100 req/s
+- Node Mid: 225 req/s
+- Node Heavy: 350 req/s
+
+## Third test
+- `Duration`: 15 minutes
+### Phase 1 (minutes 0-5)
+- `Load`: 350 req/s to _figlet_ function on Node Light
+### Phase 2 (minutes 5-10)
+- `Load`: 350 req/s to _figlet_ function on Node Light; 100 req/s to _figlet_ function on Node Mid; 100 req/s to _figlet_ function on Node Heavy
+### Phase 3 (minutes 10-15)
+- `Load`: 350 req/s to _figlet_ function on Node Light; 600 req/s to _figlet_ function on Node Mid; 100 req/s to _figlet_ function on Node Heavy
+
+#### Static Strategy maxrates
+_figlet_:
+- Node Light: 200 req/s
+- Node Mid: 450 req/s
+- Node Heavy: 700 req/s

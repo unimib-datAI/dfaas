@@ -1,0 +1,4 @@
+Success rate: 93.82%
+Success rate Node light: 93.90%
+Success rate Node mid: 92.03%
+Success rate Node heavy: 99.62%

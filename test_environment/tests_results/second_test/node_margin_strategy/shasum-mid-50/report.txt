@@ -1,0 +1,25 @@
+Requests      [total, rate, throughput]         30000, 50.00, 49.80
+Duration      [total, attack, wait]             10m0s, 10m0s, 64.36ms
+Latencies     [min, mean, 50, 90, 95, 99, max]  468.141µs, 37.445ms, 26.197ms, 76.074ms, 99.143ms, 152.666ms, 387.386ms
+Bytes In      [total, mean]                     3944160, 131.47
+Bytes Out     [total, mean]                     537840, 17.93
+Success       [ratio]                           99.60%
+Status Codes  [code:count]                      0:120  200:29880  
+Error Set:
+Get "http://172.16.238.11/function/shasum": dial tcp 0.0.0.0:0->172.16.238.11:80: connect: connection refused
+Get "http://172.16.238.11/function/shasum": read tcp 172.16.238.13:39547->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/shasum": read tcp 172.16.238.13:43001->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/shasum": read tcp 172.16.238.13:50241->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/shasum": read tcp 172.16.238.13:43195->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/shasum": read tcp 172.16.238.13:53643->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/shasum": read tcp 172.16.238.13:43947->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/shasum": read tcp 172.16.238.13:51805->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/shasum": read tcp 172.16.238.13:53985->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/shasum": read tcp 172.16.238.13:36207->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/shasum": read tcp 172.16.238.13:56287->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/shasum": read tcp 172.16.238.13:36563->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/shasum": read tcp 172.16.238.13:53413->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/shasum": read tcp 172.16.238.13:60171->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/shasum": read tcp 172.16.238.13:42625->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/shasum": read tcp 172.16.238.13:37229->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/shasum": read tcp 172.16.238.13:53183->172.16.238.11:80: read: connection reset by peer

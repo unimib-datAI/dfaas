@@ -1,0 +1,100 @@
+Requests      [total, rate, throughput]         60000, 200.00, 198.91
+Duration      [total, attack, wait]             5m0s, 5m0s, 50.763ms
+Latencies     [min, mean, 50, 90, 95, 99, max]  419.401µs, 58.979ms, 46.306ms, 107.881ms, 133.789ms, 192.007ms, 319.021ms
+Bytes In      [total, mean]                     30438330, 507.31
+Bytes Out     [total, mean]                     1074294, 17.90
+Success       [ratio]                           99.47%
+Status Codes  [code:count]                      0:317  200:59683  
+Error Set:
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:37369->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:54125->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:55737->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:53935->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:35503->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:35765->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:58275->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:55609->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:59505->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:58751->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:43105->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:58331->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:38345->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:55513->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": dial tcp 0.0.0.0:0->172.16.238.11:80: connect: connection refused
+Get "http://172.16.238.11/function/figlet": dial tcp 0.0.0.0:0->172.16.238.11:80: connect: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:46777->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:43593->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:36715->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:49537->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:36441->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:53221->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:57981->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:34279->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:33279->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:46037->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:53495->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:48613->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:52073->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:46063->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:37487->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:59381->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:38803->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:42975->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:36483->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:59877->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:36953->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:47419->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:41071->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:33793->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:35517->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:53227->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:40209->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:49339->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:42459->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:56559->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:35865->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:38521->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:42271->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:35811->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:47749->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:59563->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:37071->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:57577->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:60923->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:46129->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:52847->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:57471->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:45511->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:56763->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:50563->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:36801->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:48811->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:51445->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:39753->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:55115->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:54193->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:45369->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:42971->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:47531->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:42217->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:49663->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:45891->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:43733->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:33837->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:41535->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": write tcp 172.16.238.13:37311->172.16.238.11:80: write: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:58803->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:45205->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:47967->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:50437->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:59013->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:59041->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:47867->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:41789->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:56349->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:51359->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:33985->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:36399->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:53773->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:55725->172.16.238.11:80: read: connection reset by peer
+Get "http://172.16.238.11/function/figlet": read tcp 172.16.238.13:33389->172.16.238.11:80: read: connection reset by peer
