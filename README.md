@@ -48,7 +48,7 @@ This way, we can run several emulated edge nodes by simply executing multiple Do
 - Docker CE 25.0.1
 - Sysbox CE 0.6.3
 
-#### Setup environment using the Ansible playbook
+#### Setup environment and deploy using the Ansible playbook
 
 Install [Ansible](https://www.ansible.com/), an agentless automation tool that you install on a single host, referred to as the control node.  
 Then, using the [setup_playbook.yaml](setup_playbook.yaml) file, your Ansible control node can setup the environment to execute DFaaS on the managed node(s) specified in an inventory file.
@@ -69,12 +69,15 @@ Run the `ansible-playbook` command on the control node to execute the tasks spec
 
 `-i` : path to an inventory file  
 `--extra-vars` : to specify the Sysbox version and shiftfs branch to be installed
+`--tags` : to specify steps of the playbook to be executed
 
 > The following command assumes you are using Ubuntu 22.04 LTS with kernel version 5.15 or 5.16.
 
 ```shell
-ansible-playbook -i inventory.yaml setup_playbook.yaml --extra-vars "sysbox_ver=0.6.3 shiftfs_ver=k5.16"
+ansible-playbook -i inventory.yaml setup_playbook.yaml --extra-vars "sysbox_ver=0.6.3 shiftfs_ver=k5.16" --tags "installation, deploy"
 ```
+
+This Ansible playbook installs the required software and executes the [docker-compose.yml](docker-compose.yml), deploying three DFaaS nodes containers, and a fourth container called [operator](operator), which deploys functions on DFaaS nodes and starts specified load tests.
 
 #### Manual
 
@@ -95,20 +98,6 @@ You can follow the [official user guide](https://github.com/nestybox/sysbox/blob
 > We instead recommend installing [shiftfs](https://github.com/nestybox/sysbox/blob/master/docs/user-guide/install-package.md#installing-shiftfs)
 > according to your kernel version as suggested by the Sysbox CE user guide.
 
-### Build Docker images
-
-```shell
-# Paths assume you are executing from the project root directory
-docker build -t dfaas-agent-builder:latest -f docker/dfaas-agent-builder.dockerfile dfaasagent
-docker build -t dfaas-node:latest -f docker/dfaas-node.dockerfile docker
-```
-
-### Run a 3 nodes network via Docker Compose
-See the provided [docker-compose.yml](docker-compose.yml) file for technical details.
-```shell
-docker compose up -d
-```
-
 ### Deploy functions
 This script deploy the same set of functions on each of the nodes by using [docker/files/deploy_functions.sh](docker/files/deploy_functions.sh).
 The [deploy_functions.sh](docker/files/deploy_functions.sh) script waits for the OpenFaaS gateway to be up (max 20 retries, 10s delay),
@@ -124,6 +113,8 @@ the default name you get when using the provided docker-compose.yml file.
 ```shell
 ./utils/deploy-functions-to-nodes.sh 3 "dfaas-node-" "-1"
 ```
+
+Alternatively you can exploit the deployment functionalities of the [operator](operator).
 
 ### Invoke a function
 Each node exposes port `808x:80` (e.g., `node-1` exposed port is `8081:80`), where port `80` is the HAProxy port.
@@ -163,10 +154,11 @@ jq -ncM '{method: "GET", url: "http://localhost:8081/function/figlet", body: "He
   vegeta report -every=200ms
 ```
 
+You can also start multiple parallel Vegeta attacks exploiting [operator](operator) functionalities.
+
 ### Create plots from vegeta results
-You can produce some plots from vegeta results by exploiting the `vegeta plot` command or
-our [utils/plot.py](utils/plot.py) script.
-To use our script, you need to install the required Python packages listed in [utils/plot-requirements.txt](utils/plot-requirements.txt).
+You can produce some plots from vegeta results by exploiting the `vegeta plot` command or our [plot-results.py](operator/docker/files/plot-results.py) script, which is automatically executed after tests execution with the [operator](operator).
+To use our script, you need to install the required Python packages listed in [plot-requirements.txt](operator/docker/files/plot-requirements.txt).
 
 ```shell
 # Encode results as JSON
@@ -175,10 +167,11 @@ cat $VEGFOLDER/results.bin | vegeta encode > $VEGFOLDER/results.json
 # Create plot with vegeta
 cat cat $VEGFOLDER/results.bin | vegeta plot > $VEGFOLDER/plot.html
 
-# 1st arg: path int results.json
-# 2nd arg: path output plot
-# 3rd arg: rate req/s used for the attack
-./utils/plot.py $VEGFOLDER/results.json $VEGFOLDER/plot.png 50
+# 1st arg: path  results.json
+# 2nd arg: path output folder
+# 3rd arg: rate req/s used for the attack (if merged is True specify rate=0)
+# 4th arg: boolean merged (is the input file merged from multiple attacks?)
+./operator/docker/files/plot-results.py $VEGFOLDER/results.json $VEGFOLDER/plots 50 False
 ```
 
 ### Forwarding traffic as a malicious node

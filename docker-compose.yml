@@ -51,12 +51,12 @@ services:
   operator:
     image: dfaas-operator:latest
     build:
-      context: ./docker
-      dockerfile: docker/dfaas-operator.dockerfile
+      context: ./operator/docker
+      dockerfile: ./operator/docker/dfaas-operator.dockerfile
     env_file:
-      - dfaasoperator.env
+      - ./operator/dfaasoperator.env
     volumes:
-      - $HOME/vegeta-results:/vegeta-results
+      - $HOME:/tests
     networks:
       p2p-overlay:
 
