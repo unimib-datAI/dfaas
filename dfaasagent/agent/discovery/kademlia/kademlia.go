@@ -103,6 +103,11 @@ func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig Bootstra
 	routingDisc := discovery.NewRoutingDiscovery(kadDHT)
 	discovery.Advertise(ctx, routingDisc, rendezvous)
 
+	if idleTime == 0 {
+		logger.Warn("Given Kademlia idle time must be a positive duration, using 1 minute by default")
+		idleTime = 1 * time.Minute
+	}
+
 	// If everything successful, set the package's static vars
 	_ctx = ctx
 	_p2pHost = p2pHost

@@ -5,6 +5,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p-core/host"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/config"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
 )
 
@@ -26,17 +27,21 @@ var _strategyInstance Strategy
 
 // Initialize initializes this package
 func Initialize(p2pHost host.Host, config config.Configuration) {
+	// Obtain the global logger object.
+        logger := logging.Logger()
+
 	_p2pHost = p2pHost
 	_config = config
 	_lock = &sync.Mutex{}
 
 	switch _config.Strategy {
+	default:
+		logger.Warn("No loadbalancer strategy found, using RecalcStrategy by default")
+		fallthrough
 	case constants.RecalcStrategy:
 		_strategyFactory = &recalcStrategyFactory{}
-		break
 	case constants.NodeMarginStrategy:
 		_strategyFactory = &nodeMarginStrategyFactory{}
-		break
 	}
 }
 
