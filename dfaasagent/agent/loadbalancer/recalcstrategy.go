@@ -58,8 +58,16 @@ type recalc struct {
 // RunStrategy handles the periodic execution of the recalculation function. It
 // should run in a goroutine
 func (strategy *RecalcStrategy) RunStrategy() error {
+	// Obtain the global logger object
+	logger := logging.Logger()
+
 	var millisNow, millisSleep int64
 	var err error
+
+	if _config.RecalcPeriod == 0 {
+		logger.Warn("Given RecalcPeriod must be a positive time duration, using 1 minute by default")
+		_config.RecalcPeriod = 1 * time.Minute
+	}
 
 	millisInterval := int64(_config.RecalcPeriod / time.Millisecond)
 	millisIntervalHalf := millisInterval / 2
