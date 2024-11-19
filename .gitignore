@@ -11,11 +11,15 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
-# Dependency directories (remove the comment below to include it)
-# vendor/
+# VIM temporary files.
+*.swp
 
-*.icloud
-*.bin
+# Ignore dfaasagent binary.
+dfaasagent/dfaasagent
+
+# Ignore temporary files.
+dfaasagent/haproxy.cfg
+dfaasagent/prvkey.dat
 
 # Custom ignores
 __pycache__
@@ -23,3 +27,9 @@ venv
 .idea
 .DS_Store
 vegeta-results
+emulator/containernet
+emulator/openflow
+framework/outputs/**
+!framework/outputs/**/.gitkeep
+simulation/outputs/**
+!simulation/outputs/**/.gitkeep
