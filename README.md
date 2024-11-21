@@ -167,7 +167,7 @@ To use our script, you need to install the required Python packages listed in [p
 cat $VEGFOLDER/results.bin | vegeta encode > $VEGFOLDER/results.json
 
 # Create plot with vegeta
-cat cat $VEGFOLDER/results.bin | vegeta plot > $VEGFOLDER/plot.html
+cat $VEGFOLDER/results.bin | vegeta plot > $VEGFOLDER/plot.html
 
 # 1st arg: path  results.json
 # 2nd arg: path output folder
