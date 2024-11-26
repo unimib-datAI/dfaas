@@ -7,11 +7,7 @@ import os
 import matplotlib.pyplot as plt
 
 # Dictionary with nodes' names and corresponding IP addresses
-nodes_dict = {
-    'Node light': '172.16.238.10',
-    'Node mid': '172.16.238.11',
-    'Node heavy': '172.16.238.12',
-}
+nodes_dict = {}
 
 # Necessary for plots of parallel attacks (merged results), specifies the maximum rate on a single node
 max_load_on_node = 600
@@ -297,4 +293,16 @@ def main(argv):
 
 
 if __name__ == '__main__':
+    raw_nodes = os.getenv("NODES")
+    if raw_nodes is None:
+        print("Missing 'NODES' env variable, exiting...")
+        exit(1)
+    nodes = raw_nodes.split(":")
+    if len(nodes) != 3:
+        print("Only 3 nodes are supported, exiting...")
+        exit(1)
+    nodes_dict["Node light"] = nodes[0]
+    nodes_dict["Node mid"] = nodes[1]
+    nodes_dict["Node heavy"] = nodes[2]
+
     main(sys.argv[1:])
