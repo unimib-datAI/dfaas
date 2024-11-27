@@ -1,11 +1,12 @@
 # DFaaS: Decentralized Function-as-a-Service for Federated Edge 
+
 This repository holds DFaaS, a novel decentralized FaaS-based architecture designed to automatically and autonomously balance the traffic load across edge nodes belonging to federated Edge Computing ecosystems.
 
 DFaaS implementation relies on an overlay peer-to-peer network and a distributed control algorithm that takes decisions on load redistribution. Although preliminary, our results confirm the feasibility of the approach, showing that the system can transparently redistribute the load across edge nodes when they become overloaded.
 
 Our prototype is based on OpenFaaS and implements the control logic within Go P2P agents.
 
-This research work is conducted by the INteraction and SemantIcs for Innovation with Data & Services (INSID&S) Laboratory of the University of Milano - Bicocca.
+This research is conducted by the DatAI (formerly Insid&s) and [REDS](https://redslab.altervista.org/) laboratories of the University of Milan-Bicocca.
 
 If you wish to reuse this source code, please consider citing our article describing the first prototype:
 
