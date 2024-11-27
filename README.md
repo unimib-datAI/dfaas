@@ -29,7 +29,7 @@ The edge node can receive functions' execution _requests_, in the form of HTTP r
 
 ## Prototype
 This prototype relies on [HAProxy](https://www.haproxy.org/) to implement the proxy component,
-and on [faasd 0.16.0](https://github.com/openfaas/faasd) (a lightweight version of OpenFaaS) to implement the FaaS platform.
+and on [faasd 0.18.6](https://github.com/openfaas/faasd) (a lightweight version of OpenFaaS) to implement the FaaS platform.
 
 Also, we exploit [Sysbox](https://github.com/nestybox/sysbox), an open-source and free container runtime
 (a specialized "runc") that enhances containers in two key ways:
@@ -43,31 +43,55 @@ This way, we can run several emulated edge nodes by simply executing multiple Do
 
 ### Requirements
 
-- Ubuntu 20.04 LTS
-- containerd 1.6.4
-- Docker CE 20.10.16
-- Sysbox CE 0.5.2
+- Ubuntu 22.04 LTS
+- containerd 1.6.27
+- Docker CE 25.0.1
+- Sysbox CE 0.6.3
 
-#### Setup environment using the convenience script
+#### Setup environment and deploy using the Ansible playbook
 
-The script has 3 arguments:
+Install [Ansible](https://www.ansible.com/), an agentless automation tool that you install on a single host, referred to as the control node.  
+Then, using the [setup_playbook.yaml](setup_playbook.yaml) file, your Ansible control node can setup the environment to execute DFaaS on the managed node(s) specified in an inventory file.
 
-- 1st arg: Sysbox CE version
-- 2nd arg: shiftfs branch
+Here is an example of an inventory.yaml file to setup the environment on a host via SSH connection:
 
-> This scripts assumes you are using Ubuntu 20.04 LTS with kernel version 5.4.
+```yaml
+ungrouped:
+  hosts:
+    <hostname>:
+      ansible_port: <port_number>
+      ansible_connection: ssh
+      ansible_user: <user>
+      ansible_password: <password>
+```
+
+Run the `ansible-playbook` command on the control node to execute the tasks specified in the playbook with the following options:
+
+`-i` : path to an inventory file  
+`--extra-vars` : to specify the Sysbox version and shiftfs branch to be installed  
+`--tags` : to specify steps of the playbook to be executed
+
+> The following command assumes you are using Ubuntu 22.04 LTS with kernel version 5.15 or 5.16.
 
 ```shell
-./setup-environment 0.5.2 k5.4
+ansible-playbook -i inventory.yaml setup_playbook.yaml --extra-vars "sysbox_ver=0.6.3 shiftfs_ver=k5.16" --tags "installation, deploy"
 ```
+
+This Ansible playbook installs the required software and executes the [docker-compose.yml](docker-compose.yml), deploying three DFaaS nodes containers, and a fourth container called [operator](operator), which deploys functions on DFaaS nodes and starts specified load tests.
+
+If you have four different VMs it's recommended to deploy the entire system exploiting the playbook and configuration files in [test_environment](test_environment).
 
 #### Manual
 
-_Docker CE v20.10.16_
+_Ansible_
+
+You can follow the [official user guide](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html).
+
+_Docker CE v25.0.1_
 
 You can follow the [official user guide](https://docs.docker.com/engine/install/).
 
-_Sysbox CE 0.5.2_
+_Sysbox CE 0.6.3_
 
 You can follow the [official user guide](https://github.com/nestybox/sysbox/blob/master/docs/user-guide/install-package.md).
 
@@ -75,20 +99,6 @@ You can follow the [official user guide](https://github.com/nestybox/sysbox/blob
 > 
 > We instead recommend installing [shiftfs](https://github.com/nestybox/sysbox/blob/master/docs/user-guide/install-package.md#installing-shiftfs)
 > according to your kernel version as suggested by the Sysbox CE user guide.
-
-### Build Docker images
-
-```shell
-# Paths assume you are executing from the project root directory
-docker build -t dfaas-agent-builder:latest -f docker/dfaas-agent-builder.dockerfile dfaasagent
-docker build -t dfaas-node:latest -f docker/dfaas-node.dockerfile docker
-```
-
-### Run a 3 nodes network via Docker Compose
-See the provided [docker-compose.yml](docker-compose.yml) file for technical details.
-```shell
-docker compose up -d
-```
 
 ### Deploy functions
 This script deploy the same set of functions on each of the nodes by using [docker/files/deploy_functions.sh](docker/files/deploy_functions.sh).
@@ -105,6 +115,8 @@ the default name you get when using the provided docker-compose.yml file.
 ```shell
 ./utils/deploy-functions-to-nodes.sh 3 "dfaas-node-" "-1"
 ```
+
+Alternatively you can exploit the deployment functionalities of the [operator](operator).
 
 ### Invoke a function
 Each node exposes port `808x:80` (e.g., `node-1` exposed port is `8081:80`), where port `80` is the HAProxy port.
@@ -144,22 +156,24 @@ jq -ncM '{method: "GET", url: "http://localhost:8081/function/figlet", body: "He
   vegeta report -every=200ms
 ```
 
+You can also start multiple parallel Vegeta attacks exploiting [operator](operator) functionalities.
+
 ### Create plots from vegeta results
-You can produce some plots from vegeta results by exploiting the `vegeta plot` command or
-our [utils/plot.py](utils/plot.py) script.
-To use our script, you need to install the required Python packages listed in [utils/plot-requirements.txt](utils/plot-requirements.txt).
+You can produce some plots from vegeta results by exploiting the `vegeta plot` command or our [plot-results.py](operator/docker/files/plot-results.py) script, which is automatically executed after tests execution with the [operator](operator).
+To use our script, you need to install the required Python packages listed in [plot-requirements.txt](operator/docker/files/plot-requirements.txt).
 
 ```shell
 # Encode results as JSON
 cat $VEGFOLDER/results.bin | vegeta encode > $VEGFOLDER/results.json
 
 # Create plot with vegeta
-cat cat $VEGFOLDER/results.bin | vegeta plot > $VEGFOLDER/plot.html
+cat $VEGFOLDER/results.bin | vegeta plot > $VEGFOLDER/plot.html
 
-# 1st arg: path int results.json
-# 2nd arg: path output plot
-# 3rd arg: rate req/s used for the attack
-./utils/plot.py $VEGFOLDER/results.json $VEGFOLDER/plot.png 50
+# 1st arg: path  results.json
+# 2nd arg: path output folder
+# 3rd arg: rate req/s used for the attack (if merged is True specify rate=0)
+# 4th arg: boolean merged (is the input file merged from multiple attacks?)
+./operator/docker/files/plot-results.py $VEGFOLDER/results.json $VEGFOLDER/plots 50 False
 ```
 
 ### Forwarding traffic as a malicious node

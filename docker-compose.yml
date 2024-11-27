@@ -48,6 +48,17 @@ services:
     networks:
       p2p-overlay:
         ipv4_address: 172.16.238.12
+  operator:
+    image: dfaas-operator:latest
+    build:
+      context: ./operator/docker
+      dockerfile: ./operator/docker/dfaas-operator.dockerfile
+    env_file:
+      - ./operator/dfaasoperator.env
+    volumes:
+      - $HOME:/tests
+    networks:
+      p2p-overlay:
 
 networks:
   p2p-overlay:

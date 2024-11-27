@@ -1,0 +1,203 @@
+---
+- name: Setup Environment
+  hosts: all
+  become: true
+  vars:
+    arch_mapping:
+      x86_64: amd64
+      aarch64: arm64
+  
+  tasks:
+    - name: Update apt packages
+      apt:
+        update_cache: true
+      tags:
+      - installation
+        
+    - name: Install required system packages
+      apt:
+        name: "{{ item }}"
+        state: latest
+        update_cache: true
+      loop:
+        - jq
+        - ca-certificates
+        - curl
+        - wget
+        - gnupg
+        - make
+        - dkms
+        - lsb-release
+        - apt-transport-https
+        - software-properties-common
+        - git
+      tags:
+      - installation
+
+    - name: Create directory for Docker's GPG key
+      file:
+        path: /etc/apt/keyrings
+        state: directory
+        mode: '0755'
+      tags:
+      - installation
+    
+    - name: Add Docker's official GPG key
+      apt_key:
+        url: https://download.docker.com/linux/ubuntu/gpg
+        keyring: /etc/apt/keyrings/docker.gpg
+        state: present
+      tags:
+      - installation
+    
+    - name: Change GPG key permissions
+      file:
+        path: /etc/apt/keyrings/docker.gpg
+        state: file
+        mode: 'a+r'
+      tags:
+      - installation
+    
+    - name: Set up the stable repository
+      apt_repository:
+        repo: deb [arch={{ arch_mapping[ansible_architecture] | default(ansible_architecture) }} signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable
+        filename: docker
+        state: present
+        update_cache: true
+      tags:
+      - installation
+    
+    - name: Install Docker and related packages
+      apt:
+        name: "{{ item }}"
+        state: present
+        update_cache: true
+      loop:
+        - docker-ce=5:27.1.1-1~ubuntu.{{ ansible_lsb.release }}~{{ ansible_lsb.codename }}
+        - docker-ce-cli=5:27.1.1-1~ubuntu.{{ ansible_lsb.release }}~{{ ansible_lsb.codename }}
+        - containerd.io
+        - docker-buildx-plugin
+        - docker-compose-plugin
+      tags:
+      - installation
+    
+    - name: Add Docker group
+      group:
+        name: docker
+        state: present
+      tags:
+      - installation
+
+    - name: Add user to docker group
+      user:
+        name: "{{ ansible_user_id }}"
+        groups: "docker"
+        append: true
+      tags:
+      - installation
+    
+    - name: Enable and start Docker services
+      systemd:
+        name: "{{ item }}"
+        enabled: true
+        state: started
+      loop:
+        - docker.service
+        - containerd.service
+      tags:
+      - installation
+      
+    - name: Create sysbox directory
+      file:
+        path: ./sysbox
+        state: directory
+      tags:
+      - installation
+    
+    - name: Download sysbox package
+      get_url:
+        url:
+          https://downloads.nestybox.com/sysbox/releases/v{{ sysbox_ver }}/sysbox-ce_{{ sysbox_ver }}-0.linux_{{ arch_mapping[ansible_architecture] | default(ansible_architecture) }}.deb
+        dest: ./sysbox/sysbox-ce.deb
+      tags:
+      - installation
+    
+    - name: Install sysbox package
+      apt: deb=./sysbox/sysbox-ce.deb
+      tags:
+      - installation
+
+    - name: Git clone shiftfs repository
+      git:
+        repo: https://github.com/toby63/shiftfs-dkms.git
+        dest: ./shiftfs-{{ shiftfs_ver }}
+        single_branch: yes
+        version: '{{ shiftfs_ver }}'
+      tags:
+      - installation
+    
+    - name: Update kernel
+      shell: ./shiftfs-{{ shiftfs_ver }}/update1
+      tags:
+      - installation
+    
+    - name: Build Makefile
+      make:
+        chdir: ./shiftfs-{{ shiftfs_ver }}
+        file: Makefile.dkms
+      tags:
+      - installation
+
+    - name: Copy dfaasagent directory
+      ansible.builtin.copy:
+        src: ./dfaasagent
+        dest: ~/dfaas/
+      tags:
+      - deploy
+    
+    - name: Copy docker directory
+      ansible.builtin.copy:
+        src: ./docker
+        dest: ~/dfaas/
+      tags:
+      - deploy
+
+    - name: Copy docker compose file
+      ansible.builtin.copy:
+        src: ./docker-compose.yml
+        dest: ~/dfaas/
+      tags:
+      - deploy
+
+    - name: Copy ENV file
+      ansible.builtin.copy:
+        src: ./dfaasagent.env
+        dest: ~/dfaas/dfaasagent.env
+      tags:
+      - deploy
+
+    - name: Copy Operator directory
+      ansible.builtin.copy:
+        src: ./operator
+        dest: ~/dfaas/
+      tags:
+      - deploy
+
+    - name: Build Docker images
+      ansible.builtin.command:
+        chdir: ~/dfaas
+        cmd: "{{ item }}"
+      loop:
+        - "docker build -t dfaas-agent-builder:latest -f docker/dfaas-agent-builder.dockerfile dfaasagent"
+        - "docker build -t dfaas-node:latest -f docker/dfaas-node.dockerfile docker"
+        - "docker build -t dfaas-operator:latest -f operator/docker/dfaas-operator.dockerfile operator/docker"
+      tags:
+      - deploy
+
+    - name: Deploy Docker Compose stack
+      ansible.builtin.command:
+        chdir: ~/dfaas
+        cmd: docker compose up -d
+      tags:
+        - deploy
+        

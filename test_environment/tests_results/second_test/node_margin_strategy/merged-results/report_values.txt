@@ -1,0 +1,2 @@
+Success rate: 99.54%
+Success rate Node mid: 99.54%

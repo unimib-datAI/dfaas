@@ -21,8 +21,10 @@ import (
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/discovery/kademlia"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/discovery/mdns"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logic"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/loadbalancer"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/utils/maddrhelp"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/httpserver"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/nodestbl"
 )
 
 //////////////////// PRIVATE VARIABLES ////////////////////
@@ -124,11 +126,23 @@ func runAgent(config config.Configuration) error {
 		logger.Info("  ", i+1, ". ", addr)
 	}
 
+	////////// LOAD BALANCER INITIALIZATION //////////
+
+	loadbalancer.Initialize(_p2pHost, config)
+	
+	// Get the Strategy instance (which is a singleton) of type 
+	// dependent on the strategy specified in the configuration
+	var strategy loadbalancer.Strategy
+	strategy, err = loadbalancer.GetStrategyInstance()
+	if err != nil {
+		return errors.Wrap(err, "Error while getting strategy instance")
+	}
+
 	////////// PUBSUB INITIALIZATION //////////
 
 	// The PubSub initialization must be done before the Kademlia one. Otherwise
 	// the agent won't be able to publish or subscribe.
-	err = communication.Initialize(ctx, _p2pHost, config.PubSubTopic, logic.OnReceived)
+	err = communication.Initialize(ctx, _p2pHost, config.PubSubTopic, strategy.OnReceived)
 	if err != nil {
 		return err
 	}
@@ -136,11 +150,19 @@ func runAgent(config config.Configuration) error {
 
 	////////// KADEMLIA DHT INITIALIZATION //////////
 
+	bootstrapConfig := kademlia.BootstrapConfiguration{
+		BootstrapNodes: config.BootstrapNodes,
+		PublicBootstrapNodes: config.PublicBootstrapNodes,
+		BootstrapNodesList: config.BootstrapNodesList,
+		BootstrapNodesFile: config.BootstrapNodesFile,
+		BootstrapForce: config.BootstrapForce,
+	}
+
 	// Kademlia and DHT initialization, with connection to bootstrap nodes
 	err = kademlia.Initialize(
 		ctx,
 		_p2pHost,
-		config.BoostrapConfig,
+		bootstrapConfig,
 		config.Rendezvous,
 		config.KadIdleTime,
 	)
@@ -162,12 +184,14 @@ func runAgent(config config.Configuration) error {
 		logger.Debug("mDNS discovery service is enabled and initialized")
 	}
 
-	////////// LOGIC INITIALIZATION //////////
+	////////// NODESTBL INITIALIZATION //////////
 
-	err = logic.Initialize(_p2pHost, config)
-	if err != nil {
-		return err
-	}
+	nodestbl.Initialize(config)
+
+	////////// HTTPSERVER INITIALIZATION //////////
+	
+	httpserver.Initialize(config)
+	
 
 	////////// GOROUTINES //////////
 
@@ -184,7 +208,9 @@ func runAgent(config config.Configuration) error {
 
 	go func() { chanErr <- communication.RunReceiver() }()
 
-	go func() { chanErr <- logic.RunRecalc() }()
+	go func() { chanErr <- strategy.RunStrategy() }()
+
+	go func() { chanErr <- httpserver.RunHttpServer() }()
 
 	select {
 	case sig := <-chanStop:
