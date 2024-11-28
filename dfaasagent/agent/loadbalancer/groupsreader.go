@@ -8,28 +8,42 @@ import (
 	"github.com/pkg/errors"
 )
 
-// In this file are implemented functionalities to read function groups from the group_list.json file,
-// where, for each group (high usage, medium usage, low usage), there is a list
-// of functions belonging to that group
+// The Node Margin Strategy expects to have as input models the number of
+// requests that are predicted to occur for each group of functions. This
+// allows the models not to be trained for each specific function.
+//
+// The problem is how to assign each function to a group. For now, this is not
+// a problem for the DFaaS agent, we expect that there is an externally
+// provided file that contains the list of functions for each class.
+//
+// This file defines a struct type and a function to read the file as get the
+// function groups.
 
 //////////////////// PUBLIC STRUCT TYPES ////////////////////
 
-// Struct to read functions groups from group_list.json
+// Represents the possible function groups with a list of functions for each
+// group.
 type Groups struct {
-	// Array of high usage functions
+	// High usage functions.
 	HighUsage 	[]string `json:"HIGH_USAGE"`
-	// Array of medium usage functions
+
+	// Medium usage functions.
 	MediumUsage []string `json:"MEDIUM_USAGE"`
-	// Array of low usage functions
+
+	// Low usage functions.
 	LowUsage 	[]string `json:"LOW_USAGE"`
 }
 
 //////////////////// PUBLIC METHODS ////////////////////
 
-// GetFuncsGroups reads from the group_list.json file specified in the configuration
-// the functions groups, returning them in a variable of type Groups.
+// GetFuncsGroups returns the function groups.
+//
+// The groups are read from a JSON file specified as GroupListFileName in the
+// configuration.
 func GetFuncsGroups() (Groups, error) {
 	groupListFile := _config.GroupListFileName
+
+	// TODO: use os.ReadFile instead of os.Open, ioutil.ReadAll and io.Close.
 	jsonGroupsFile, err := os.Open(groupListFile)
 	if err != nil {
 		return Groups{}, errors.Wrap(err, "Error while reading group list json file")
