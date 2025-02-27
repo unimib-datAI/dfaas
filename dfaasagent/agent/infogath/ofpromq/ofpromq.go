@@ -1,3 +1,10 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2021-2025 The DFaaS Authors. All rights reserved.
+// This file is licensed under the AGPL v3.0 or later license. See LICENSE and
+// AUTHORS file for more information.
+
+// This package is for communicating with a Prometheus instance of an OpenFaaS
+// cluster. The name of the package stands for: OpenFaas PROMetheus Querent.
 package ofpromq
 
 import (
@@ -12,9 +19,6 @@ import (
 
 	"github.com/pkg/errors"
 )
-
-// This package is for communicating with a Prometheus instance of an OpenFaaS
-// cluster. The name of the package stands for: OpenFaas PROMetheus Querent.
 
 // Client for gathering information from Prometheus
 type Client struct {

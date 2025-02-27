@@ -1,3 +1,9 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2021-2025 The DFaaS Authors. All rights reserved.
+// This file is licensed under the AGPL v3.0 or later license. See LICENSE and
+// AUTHORS file for more information.
+
+// This package contains some helper for multiaddresses
 package maddrhelp
 
 import (
@@ -7,8 +13,6 @@ import (
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/multiformats/go-multiaddr"
 )
-
-// This package contains some helper for multiaddresses
 
 // BuildHostFullMAddrs given a libp2p Host, returns a list containing full
 // multiaddresses that can be used by another agent to reach this host. For

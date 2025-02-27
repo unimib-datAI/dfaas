@@ -1,3 +1,9 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2021-2025 The DFaaS Authors. All rights reserved.
+// This file is licensed under the AGPL v3.0 or later license. See LICENSE and
+// AUTHORS file for more information.
+
+// This packages handles logging in dfaasagent
 package logging
 
 import (
@@ -8,8 +14,6 @@ import (
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
 )
-
-// This packages handles logging in dfaasagent
 
 var _zapConfig zap.Config
 var _zapLogger *zap.SugaredLogger
