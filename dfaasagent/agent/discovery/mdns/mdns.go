@@ -1,3 +1,9 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2021-2025 The DFaaS Authors. All rights reserved.
+// This file is licensed under the AGPL v3.0 or later license. See LICENSE and
+// AUTHORS file for more information.
+
+// This package handles the mDNS peer discovery process
 package mdns
 
 import (
@@ -10,8 +16,6 @@ import (
 	"github.com/pkg/errors"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
 )
-
-// This package handles the mDNS peer discovery process
 
 // mDNSDiscNotifee is a data structure that will be used as a "notifier" for the
 // mDNS discovery service. It must implement the discovery.Notifee interface

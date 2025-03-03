@@ -201,3 +201,13 @@ The simulation code is available into the [simulation directory](simulation).
 Data gathered by the DFaaS system used for simulation are available [here](simulation/data).
 
 For more information read associated [README](simulation/README.md) file.
+
+## License
+
+Copyright © 2021-2025 The DFaaS Authors.
+
+The source code in this repository is licensed under the GNU Affero General Public License (AGPL), version 2.0 or later. See the [LICENSE](LICENSE) file for more information.
+
+This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+
+The complete list of The DFaaS Authors can be fond in the [AUTHORS](AUTHORS) file or in the [contributors page](https://github.com/unimib-datAI/dfaas/graphs/contributors) on the DFaaS GitHub repository.
