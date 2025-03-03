@@ -1,0 +1,34 @@
+# Citation file to help uses cite DFaaS.
+# See the GitHub's doc: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-citation-files
+# Or see the specifications: https://citation-file-format.github.io/
+# This CITATION.cff file was generated with cffinit.
+# Visit https://bit.ly/cffinit to generate yours today!
+cff-version: 1.2.0
+title: >-
+  DFaaS: Decentralized Function-as-a-Service for Federated
+  Edge Computing
+message: >-
+  If you use this software, please cite it using the
+  metadata from this file.
+type: software
+authors:
+  - given-names: Michele
+    family-names: Ciavotta
+    orcid: 'https://orcid.org/0000-0002-2480-966X'
+    affiliation: University of Milano-Bicocca
+  - given-names: Davide
+    family-names: Motterlini
+    affiliation: University of Milano-Bicocca
+  - given-names: Marco
+    family-names: Savi
+    orcid: 'https://orcid.org/0000-0002-8193-0597'
+    affiliation: University of Milano-Bicocca
+  - given-names: Alessandro
+    family-names: Tundo
+    affiliation: University of Milano-Bicocca
+    orcid: 'https://orcid.org/0000-0001-8840-8948'
+identifiers:
+  - type: doi
+    value: 10.1109/CloudNet53349.2021.9657141
+repository-code: 'https://github.com/unimib-datAI/dfaas'
+license: AGPL-3.0-or-later
