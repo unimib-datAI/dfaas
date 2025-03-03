@@ -32,3 +32,27 @@ identifiers:
     value: 10.1109/CloudNet53349.2021.9657141
 repository-code: 'https://github.com/unimib-datAI/dfaas'
 license: AGPL-3.0-or-later
+preferred-citation:
+  type: conference-paper
+  authors:
+  - given-names: Michele
+    family-names: Ciavotta
+    orcid: 'https://orcid.org/0000-0002-2480-966X'
+    affiliation: University of Milano-Bicocca
+  - given-names: Davide
+    family-names: Motterlini
+    affiliation: University of Milano-Bicocca
+  - given-names: Marco
+    family-names: Savi
+    orcid: 'https://orcid.org/0000-0002-8193-0597'
+    affiliation: University of Milano-Bicocca
+  - given-names: Alessandro
+    family-names: Tundo
+    affiliation: University of Milano-Bicocca
+    orcid: 'https://orcid.org/0000-0001-8840-8948'
+  doi: "10.1109/CloudNet53349.2021.9657141"
+  booktitle: "2021 IEEE 10th International Conference on Cloud Networking (CloudNet)"
+  start: 1
+  end: 4
+  title: "DFaaS: Decentralized Function-as-a-Service for Federated Edge Computing"
+  year: 2021
