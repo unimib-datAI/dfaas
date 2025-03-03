@@ -8,11 +8,20 @@ Our prototype is based on OpenFaaS and implements the control logic within Go P2
 
 This research is conducted by the DatAI (formerly Insid&s) and [REDS](https://redslab.altervista.org/) laboratories of the University of Milan-Bicocca.
 
-If you wish to reuse this source code, please consider citing our article describing the first prototype:
+If you wish to reuse this source code, please consider citing our article
+describing the first prototype:
 
-> Michele Ciavotta, Davide Motterlini, Marco Savi, Alessandro Tundo <br>
-> [**DFaaS: Decentralized Function-as-a-Service for Federated Edge Computing**](https://doi.org/10.1109/CloudNet53349.2021.9657141), <br>	
-> 2021 IEEE 10th International Conference on Cloud Networking (CloudNet), DOI: 10.1109/CloudNet53349.2021.9657141.
+```
+@inproceedings{Ciavotta_DFaaS_2021,
+    author = {Ciavotta, Michele and Motterlini, Davide and Savi, Marco and Tundo, Alessandro},
+    doi    = {10.1109/CloudNet53349.2021.9657141},
+    pages  = {1--4},
+    series = {2021 IEEE 10th International Conference on Cloud Networking (CloudNet)},
+    title  = {{DFaaS: Decentralized Function-as-a-Service for Federated Edge Computing}},
+    url    = {https://ieeexplore.ieee.org/document/9657141},
+    year   = {2021}
+}
+```
 
 ## Scenario
 
