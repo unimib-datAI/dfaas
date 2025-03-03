@@ -1,3 +1,8 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2021-2025 The DFaaS Authors. All rights reserved.
+# This file is licensed under the AGPL v3.0 or later license. See LICENSE and
+# AUTHORS file for more information.
+
 from database_manager.exp_db_manager import ExpDbManager
 from data_loader.data_loader import DataLoader
 from data_loader.request.config_request import ConfigRequest
