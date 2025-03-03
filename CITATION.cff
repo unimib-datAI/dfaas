@@ -51,8 +51,9 @@ preferred-citation:
     affiliation: University of Milano-Bicocca
     orcid: 'https://orcid.org/0000-0001-8840-8948'
   doi: "10.1109/CloudNet53349.2021.9657141"
-  booktitle: "2021 IEEE 10th International Conference on Cloud Networking (CloudNet)"
+  conference: "2021 IEEE 10th International Conference on Cloud Networking (CloudNet)"
   start: 1
   end: 4
   title: "DFaaS: Decentralized Function-as-a-Service for Federated Edge Computing"
   year: 2021
+  url: "https://ieeexplore.ieee.org/document/9657141"
