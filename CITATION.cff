@@ -1,8 +1,5 @@
 # Citation file to help uses cite DFaaS.
-# See the GitHub's doc: https://docs.github.com/en/repositories/managing-your-repositorys-settings-and-features/customizing-your-repository/about-citation-files
-# Or see the specifications: https://citation-file-format.github.io/
-# This CITATION.cff file was generated with cffinit.
-# Visit https://bit.ly/cffinit to generate yours today!
+# See the GitHub's doc or the specifications: https://citation-file-format.github.io/
 cff-version: 1.2.0
 title: >-
   DFaaS: Decentralized Function-as-a-Service for Federated
