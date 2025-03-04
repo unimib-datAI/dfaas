@@ -3,7 +3,7 @@ Description=node-exporter
 After=faasd.service
 
 [Service]
-ExecStart=/faasd/node_exporter-1.3.1.linux-amd64/node_exporter
+ExecStart=/faasd/node_exporter
 Restart=on-failure
 RestartSec=10s
 
