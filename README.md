@@ -78,8 +78,8 @@ The deployment of the DFaaS prototype has been tested with the following
 components:
 
 - Ubuntu 24.04.2 LTS
-- containerd 1.6.27
-- Docker CE 25.0.1
+- containerd 1.7.25
+- Docker CE 28.0.1
 - Sysbox CE 0.6.3
 
 #### Setup environment and deploy using the Ansible playbook
@@ -218,7 +218,7 @@ In this case, the only requirement is Ubuntu.
     ```
 
 6. Build and configure the DFaaS agent with an example configuration, using the
-   Node Margin Strategy:
+   Node Margin Strategy.
 
     ```bash
     $ cd ./dfaasagent
