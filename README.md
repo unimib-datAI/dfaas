@@ -70,27 +70,31 @@ container that executes our agent, the HAProxy and faasd all together. This way,
 we can run several emulated edge nodes by simply executing multiple Docker
 containers.
 
-## How to deploy a single node
+## How to run DFaaS
 
-### Requirements
+This section outlines the steps to install and deploy the DFaaS prototype on a
+single node. You have two options:
 
-The deployment of the DFaaS prototype has been tested with the following
-components:
+1. Automated deployment with Ansible: Use the provided Ansible playbook to
+   automatically build and deploy a node. This can be done either on the machine
+   running Ansible or on a remote machine.
 
-- Ubuntu 24.04.2 LTS
-- containerd 1.7.25
-- Docker CE 28.0.1
-- Sysbox CE 0.6.3
+2. Manual deployment: duild and deploy the node manually by executing each
+   required command step-by-step.
 
-#### Setup environment and deploy using the Ansible playbook
+Regardless of which of the options you choose, the deployment of the DFaaS
+prototype has been tested with Ubuntu 24.04 LTS.
 
-**Warning: we are updating the Ansible playbook and documentation for this
-section!**
+### Automated deployment with Ansible
 
-Install [Ansible](https://www.ansible.com/), an agentless automation tool that you install on a single host, referred to as the control node.  
-Then, using the [setup_playbook.yaml](setup_playbook.yaml) file, your Ansible control node can setup the environment to execute DFaaS on the managed node(s) specified in an inventory file.
+Follow the [Ansible's official
+documentation](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html)
+on how to install it on the control node. Then, using the
+[setup_playbook.yaml](setup_playbook.yaml) file, your Ansible control node can
+deploy a DFaaS node on the managed nodes specified in a given inventory file.
 
-Here is an example of an inventory.yaml file to setup the environment on a host via SSH connection:
+Here is an example of an `inventory.yaml` file to deploy the DFaaS node on a
+host via SSH connection:
 
 ```yaml
 ungrouped:
@@ -102,40 +106,25 @@ ungrouped:
       ansible_password: <password>
 ```
 
+**WIP**
+
 Run the `ansible-playbook` command on the control node to execute the tasks specified in the playbook with the following options:
 
 `-i` : path to an inventory file  
 `--extra-vars` : to specify the Sysbox version and shiftfs branch to be installed  
 `--tags` : to specify steps of the playbook to be executed
 
-> The following command assumes you are using Ubuntu 22.04 LTS with kernel version 5.15 or 5.16.
-
 ```shell
-ansible-playbook -i inventory.yaml setup_playbook.yaml --extra-vars "sysbox_ver=0.6.3 shiftfs_ver=k5.16" --tags "installation, deploy"
+ansible-playbook -i inventory.yaml setup_playbook.yaml --tags "installation, deploy"
 ```
+
+**WIP**
 
 This Ansible playbook installs the required software and executes the [docker-compose.yml](docker-compose.yml), deploying three DFaaS nodes containers, and a fourth container called [operator](operator), which deploys functions on DFaaS nodes and starts specified load tests.
 
 If you have four different VMs it's recommended to deploy the entire system exploiting the playbook and configuration files in [test_environment](test_environment).
 
-#### Manual
-
-_Ansible_
-
-You can follow the [official user guide](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html).
-
-_Docker CE v25.0.1_
-
-You can follow the [official user guide](https://docs.docker.com/engine/install/).
-
-_Sysbox CE 0.6.3_
-
-You can follow the [official user guide](https://github.com/nestybox/sysbox/blob/master/docs/user-guide/install-package.md).
-
-> We do not recommend to set up `sysbox-runc` as your default container, you can skip that part of the guide.
-> 
-> We instead recommend installing [shiftfs](https://github.com/nestybox/sysbox/blob/master/docs/user-guide/install-package.md#installing-shiftfs)
-> according to your kernel version as suggested by the Sysbox CE user guide.
+### Manual deployment
 
 #### Manual deploy without Ansible and Docker
 
@@ -341,13 +330,18 @@ journalctl --follow --unit dfaasagent # ...or whatever you prefer to inspect (e.
 ```
 
 ## Emulator
-For a complex setup running several emulated edge nodes with different topologies see [emulator directory](emulator).
-We provide instructions and examples to execute DFaaS nodes via [Containernet emulator](https://containernet.github.io/).
+
+For a complex setup running several emulated edge nodes with different
+topologies see [emulator directory](emulator). We provide instructions and
+examples to execute DFaaS nodes via [Containernet
+emulator](https://containernet.github.io/).
 
 ## Simulator
-We also provide a simulator to test and compare different load balancing techniques.
-The simulation code is available into the [simulation directory](simulation).
-Data gathered by the DFaaS system used for simulation are available [here](simulation/data).
+
+We also provide a simulator to test and compare different load balancing
+techniques. The simulation code is available into the [simulation
+directory](simulation). Data gathered by the DFaaS system used for simulation
+are available [here](simulation/data).
 
 For more information read associated [README](simulation/README.md) file.
 
@@ -355,8 +349,15 @@ For more information read associated [README](simulation/README.md) file.
 
 Copyright © 2021-2025 The DFaaS Authors.
 
-The source code in this repository is licensed under the GNU Affero General Public License (AGPL), version 2.0 or later. See the [LICENSE](LICENSE) file for more information.
+The source code in this repository is licensed under the GNU Affero General
+Public License (AGPL), version 2.0 or later. See the [LICENSE](LICENSE) file for
+more information.
 
-This program is distributed in the hope that it will be useful, but WITHOUT ANY WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
+This program is distributed in the hope that it will be useful, but WITHOUT ANY
+WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A
+PARTICULAR PURPOSE. See the GNU Affero General Public License for more details.
 
-The complete list of The DFaaS Authors can be fond in the [AUTHORS](AUTHORS) file or in the [contributors page](https://github.com/unimib-datAI/dfaas/graphs/contributors) on the DFaaS GitHub repository.
+The complete list of The DFaaS Authors can be fond in the [AUTHORS](AUTHORS)
+file or in the [contributors
+page](https://github.com/unimib-datAI/dfaas/graphs/contributors) on the DFaaS
+GitHub repository.
