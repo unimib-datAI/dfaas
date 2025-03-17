@@ -2,7 +2,7 @@ FROM nestybox/ubuntu-jammy-systemd:latest@sha256:93b72540b784f16276396780418851c
 
 ### Proxy (HAProxy)
 
-RUN apt-get update && apt-get install -y haproxy python3.11 python3-pip \
+RUN apt-get update && apt-get install -y haproxy python3.11 python3-pip python3-venv \
     && apt-get clean && rm -rf /var/lib/apt/lists/*
 
 RUN systemctl enable haproxy.service
@@ -44,6 +44,7 @@ RUN systemctl enable cadvisor.service
 # Add Prometheus node exporter to monitor node
 RUN wget https://github.com/prometheus/node_exporter/releases/download/v1.3.1/node_exporter-1.3.1.linux-amd64.tar.gz
 RUN tar xvfz node_exporter-1.3.1.linux-amd64.tar.gz && rm node_exporter-1.3.1.linux-amd64.tar.gz
+RUN mv node_exporter-1.3.1.linux-amd64/node_exporter node_exporter
 COPY files/faasd/node-exporter.service /etc/systemd/system/node-exporter.service
 RUN systemctl enable node-exporter.service
 
@@ -61,7 +62,8 @@ RUN chmod +x entrypoint.sh
 ### DFaaS Forecaster
 WORKDIR /forecaster
 COPY forecaster/ .
-RUN pip install "fastapi[all]" scikit-learn lightgbm joblib pandas numpy
+RUN python3 -m venv pyenv
+RUN /forecaster/pyenv/bin/python3 -m pip install "fastapi[all]" scikit-learn lightgbm joblib pandas numpy
 COPY files/forecaster/forecaster.service /etc/systemd/system/forecaster.service
 RUN systemctl enable forecaster.service
 ### End DFaaS Forecaster
@@ -70,10 +72,10 @@ RUN systemctl enable forecaster.service
 WORKDIR /agent
 COPY files/dfaasagent/dfaasagent.service /etc/systemd/system/dfaasagent.service
 RUN systemctl enable dfaasagent.service
-COPY --from=dfaas-agent-builder:latest /go/src/dfaasagent/agent/loadbalancer/haproxycfgrecalc.tmpl ./haproxycfgrecalc.tmpl
-COPY --from=dfaas-agent-builder:latest /go/src/dfaasagent/agent/loadbalancer/haproxycfgnms.tmpl ./haproxycfgnms.tmpl
+COPY --from=dfaas-agent:latest /opt/dfaasagent/agent/loadbalancer/haproxycfgrecalc.tmpl ./haproxycfgrecalc.tmpl
+COPY --from=dfaas-agent:latest /opt/dfaasagent/agent/loadbalancer/haproxycfgnms.tmpl ./haproxycfgnms.tmpl
 COPY files/dfaasagent/group_list.json ./group_list.json
-COPY --from=dfaas-agent-builder:latest /go/src/dfaasagent/dfaasagent ./dfaasagent
+COPY --from=dfaas-agent:latest /opt/dfaasagent/dfaasagent ./dfaasagent
 ### End Agent
 
 WORKDIR /
