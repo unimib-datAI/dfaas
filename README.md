@@ -86,25 +86,41 @@ Regardless of which of the options you choose, the deployment of the DFaaS
 prototype has been tested with [Ubuntu 24.04.2
 LTS](https://releases.ubuntu.com/noble/).
 
+We suggest to spin up a virtual machine from scratch with Ubuntu, with a user
+with a password and sudo enabled.
+
 ### Automated deployment with Ansible
 
-Follow the [Ansible's official
+Install Ansible on the control node following the [official
 documentation](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html)
-on how to install it on the control node. Then, using the
-[setup_playbook.yaml](setup_playbook.yaml) file, your Ansible control node can
-deploy a DFaaS node on the managed nodes specified in a given inventory file.
+(use the Ansible PPA). Then use the provided playbook
+([setup_playbook.yaml](setup_playbook.yaml)) to deploy a DFaaS node on a
+specific managed node specified in an inventory file. Note that you can specify
+multiple managed nodes.
 
-Here is an example of an `inventory.yaml` file to deploy the DFaaS node on a
-host via SSH connection:
+An example of `inventory.yaml` file is
 
 ```yaml
-ungrouped:
+all:
   hosts:
-    <hostname>:
-      ansible_port: <port_number>
-      ansible_connection: ssh
+    <node-name>:
+      ansible_host: <ip_address>
       ansible_user: <user>
       ansible_password: <password>
+      ansible_become: true
+```
+
+We assume that the managed node has a user with root privileges and can connect
+via SSH with a password. This is for testing purposes only!
+
+To test the inventory, you can try the [example
+playbook](https://docs.ansible.com/ansible/latest/getting_started/get_started_playbook.html)
+on the official Ansible documentation.
+
+Once you have the inventory file, run ansible-playbook:
+
+```shell
+$ ansible-playbook -i inventory.yaml setup_playbook.yaml
 ```
 
 **WIP**
@@ -126,8 +142,6 @@ This Ansible playbook installs the required software and executes the [docker-co
 If you have four different VMs it's recommended to deploy the entire system exploiting the playbook and configuration files in [test_environment](test_environment).
 
 ### Manual deployment
-
-#### Manual deploy without Ansible and Docker
 
 This deployment setup is ideal for deploying a single node on the host machine
 without using Ansible or Docker. This means that you need to build, deploy, and
