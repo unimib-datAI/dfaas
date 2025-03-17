@@ -134,94 +134,94 @@ without using Ansible or Docker. This means that you need to build, deploy, and
 run each component of the DFaaS prototype, which is useful for testing purposes.
 In this case, the only requirement is Ubuntu.
 
+The `#` symbol in the following points denotes a shell session running as the
+root user.
+
 1. Update the host packages:
 
     ```shell
-    $ sudo apt update && sudo apt upgrade
+    # apt update && apt upgrade
     ```
 
 2. Install required packages:
 
     ```shell
-    $ sudo apt install golang-go haproxy python3-pip python3-venv
+    # apt install golang-go haproxy python3-pip python3-venv
     ```
 
-3. Clone this repository in the `dfaas` directory on the home:
+3. Clone this repository in the `/opt/dfaas-src` directory:
 
     ```shell
-    $ cd ~
-    $ git clone https://github.com/unimib-datAI/dfaas.git
+    # mkdir --parents /opt/
+    # git clone https://github.com/unimib-datAI/dfaas.git /opt/dfaas-src
     ```
 
 3. Download, install, configure and run OpenFaaS:
 
     ```shell
-    $ sudo mkdir /opt/faasd
-    $ sudo git clone --depth 1 --branch 0.19.6 https://github.com/openfaas/faasd.git /opt/faasd/
-    $ cd /opt/faasd
-    $ sudo ./hack/install.sh
-    $ sudo bash -c "echo 'admin' > /var/lib/faasd/secrets/basic-auth-password"
-    $ sudo systemctl restart faasd.service faasd-provider.service
+    # mkdir /opt/faasd
+    # git clone --depth 1 --branch 0.19.6 https://github.com/openfaas/faasd.git /opt/faasd/
+    # cd /opt/faasd
+    # ./hack/install.sh
+    # echo 'admin' > /var/lib/faasd/secrets/basic-auth-password
+    # systemctl restart faasd.service faasd-provider.service
     ```
 
 4. Download, install and run cAdvisor (used to monitor the containers):
 
     ```shell
-    $ cd /opt/faasd
-    $ sudo wget https://github.com/google/cadvisor/releases/download/v0.49.2/cadvisor-v0.49.2-linux-amd64 -O cadvisor
-    $ sudo chmod u+x cadvisor
-    $ cd ~/dfaas
-    $ sudo cp docker/files/faasd/cadvisor.service /etc/systemd/system/cadvisor.service
-    $ sudo systemctl daemon-reload
-    $ sudo systemctl enable cadvisor
-    $ sudo systemctl start cadvisor
+    # mkdir /opt/cadvisor
+    # wget https://github.com/google/cadvisor/releases/download/v0.49.2/cadvisor-v0.49.2-linux-amd64 -O /opt/cadvisor/cadvisor
+    # chmod u+x /opt/cadvisor/cadvisor
+    # cp /opt/dfaas-src/docker/files/faasd/cadvisor.service /etc/systemd/system/cadvisor.service
+    # systemctl daemon-reload
+    # systemctl enable cadvisor
+    # systemctl start cadvisor
     ```
 
 4. Download, install and configure Prometheus node exporter (used to monitor the
    node).
 
     ```shell
-    $ cd /opt/faasd
-    $ sudo wget https://github.com/prometheus/node_exporter/releases/download/v1.9.0/node_exporter-1.9.0.linux-amd64.tar.gz -O node_exported.tar.gz
-    $ sudo tar xvfz node_exported.tar.gz && sudo rm node_exported.tar.gz
-    $ sudo mv node_exporter-1.9.0.linux-amd64/node_exporter node_exporter
-    $ cd ~/dfaas
-    $ sudo cp docker/files/faasd/node-exporter.service /etc/systemd/system/node-exporter.service
-    $ sudo cp docker/files/faasd/prometheus.yml /var/lib/faasd/prometheus.yml
-    $ sudo systemctl daemon-reload
-    $ sudo systemctl enable node-exporter
+    # mkdir /opt/node-exporter
+    # wget https://github.com/prometheus/node_exporter/releases/download/v1.9.0/node_exporter-1.9.0.linux-amd64.tar.gz -O /opt/node-exporter/node_exported.tar.gz
+    # cd /opt/node-exporter
+    # tar xvfz node_exported.tar.gz
+    # mv node_exporter-1.9.0.linux-amd64/node_exporter node_exporter
+    # cp /opt/dfaas-src/docker/files/faasd/node-exporter.service /etc/systemd/system/node-exporter.service
+    # cp /opt/dfaas-src/docker/files/faasd/prometheus.yml /var/lib/faasd/prometheus.yml
+    # systemctl daemon-reload
+    # systemctl enable node-exporter
     ```
 
 5. Install and run the DFaaS Forecaster:
 
     ```shell
-    $ cp ~/dfaas
-    $ sudo mkdir /forecaster
-    $ cd /forecaster
-    $ sudo python3 -m venv pyenv
-    $ /forecaster/pyenv/bin/python3 -m pip install "fastapi[all]" scikit-learn lightgbm joblib pandas numpy
-    $ cd ~/dfaas
-    $ sudo cp docker/files/forecaster/forecaster.service /etc/systemd/system/
-    $ sudo systemctl daemon-reload
-    $ sudo systemctl enable forecaster.service
-    $ sudo systemctl start forecaster.service
+    # mkdir /opt/forecaster
+    # cd /opt/forecaster
+    # sudo python3 -m venv pyenv
+    # /opt/forecaster/pyenv/bin/python3 -m pip install "fastapi[all]" scikit-learn lightgbm joblib pandas numpy
+    # cp /opt/dfaas-src/docker/files/forecaster/forecaster.service /etc/systemd/system/
+    # systemctl daemon-reload
+    # systemctl enable forecaster.service
+    # systemctl start forecaster.service
     ```
 
 6. Build and configure the DFaaS agent with an example configuration, using the
    Node Margin Strategy.
 
     ```shell
-    $ cd ./dfaasagent
-    $ go build
-    $ sudo mkdir /agent
-    $ sudo cp docker/files/dfaasagent/dfaasagent.service /etc/systemd/system/dfaasagent.service
-    $ sudo systemctl daemon-reload
-    $ sudo systemctl enable dfaasagent.service
-    $ sudo cp dfaasagent/agent/loadbalancer/haproxycfgrecalc.tmpl /agent/
-    $ sudo cp dfaasagent/agent/loadbalancer/haproxycfgnms.tmpl /agent/
-    $ sudo cp docker/files/dfaasagent/group_list.json /agent/
-    $ sudo cp dfaasagent/dfaasagent /agent
-    $ sudo cp dfaasagent.env /agent
+    # cd /opt/dfaas-src/dfaasagent
+    # go build
+    # mkdir /opt/dfaasagent
+    # cp /opt/dfaas-src/docker/files/dfaasagent/dfaasagent.service /etc/systemd/system/dfaasagent.service
+    # cp /opt/dfaas-src/dfaasagent/agent/loadbalancer/haproxycfgrecalc.tmpl /opt/dfaasagent/
+    # cp /opt/dfaas-src/dfaasagent/agent/loadbalancer/haproxycfgnms.tmpl /opt/dfaasagent/
+    # cp /opt/dfaas-src/docker/files/dfaasagent/group_list.json /opt/dfaasagent/
+    # cp /opt/dfaas-src/dfaasagent/dfaasagent /opt/dfaasagent/
+    # cp /opt/dfaas-src/dfaasagent.env /opt/dfaasagent/
+    # systemctl daemon-reload
+    # systemctl enable dfaasagent.service
     ```
 
 7. Deploy some example functions (ocr, shasum and figlet) to the local OpenFaaS
@@ -229,14 +229,14 @@ In this case, the only requirement is Ubuntu.
 
     ```shell
     $ chmod u+x docker/files/deploy_functions.sh
-    $ ./docker/files/deploy_functions.sh
+    $ /opt/dfaas-src/docker/files/deploy_functions.sh
     $ curl http://localhost:8080/function/figlet -d 'Hello DFaaS world!'
     ```
 
 8. Run the DFaaS agent and do an example call to the proxy (not OpenFaaS!):
 
     ```shell
-    $ sudo systemctl start dfaasagent.service
+    # systemctl start dfaasagent.service
     $ curl http://localhost:80/function/figlet -d 'Hello DFaaS world!'
     ```
 

@@ -1,10 +1,10 @@
 [Unit]
-Description=DFaaSAgent
+Description=DFaaS Agent
 After=haproxy.service
 
 [Service]
-EnvironmentFile=/agent/dfaasagent.env
-ExecStart=/agent/dfaasagent
+EnvironmentFile=/opt/dfaasagent/dfaasagent.env
+ExecStart=/opt/dfaasagent/dfaasagent
 Restart=on-failure
 RestartSec=10s
 

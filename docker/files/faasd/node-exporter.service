@@ -3,7 +3,7 @@ Description=Prometheus node-exporter
 After=faasd.service
 
 [Service]
-ExecStart=/opt/faasd/node_exporter
+ExecStart=/opt/node_exporter/node_exporter
 Restart=on-failure
 RestartSec=10s
 
