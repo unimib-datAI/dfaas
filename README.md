@@ -119,7 +119,7 @@ on the official Ansible documentation.
 
 Once you have the inventory file, run ansible-playbook:
 
-```shell
+```console
 $ ansible-playbook -i inventory.yaml setup_playbook.yaml
 ```
 
@@ -153,37 +153,38 @@ root user.
 
 1. Update the host packages:
 
-    ```shell
+    ```console
     # apt update && apt upgrade
     ```
 
 2. Install required packages:
 
-    ```shell
+    ```console
     # apt install golang-go haproxy python3-pip python3-venv
     ```
 
 3. Clone this repository in the `/opt/dfaas-src` directory:
 
-    ```shell
+    ```console
     # mkdir --parents /opt/
     # git clone https://github.com/unimib-datAI/dfaas.git /opt/dfaas-src
     ```
 
 3. Download, install, configure and run OpenFaaS:
 
-    ```shell
+    ```console
     # mkdir /opt/faasd
     # git clone --depth 1 --branch 0.19.6 https://github.com/openfaas/faasd.git /opt/faasd/
     # cd /opt/faasd
     # ./hack/install.sh
     # echo 'admin' > /var/lib/faasd/secrets/basic-auth-password
+    # cp /opt/dfaas-src/docker/files/faasd/prometheus.yml /var/lib/faasd/prometheus.yml
     # systemctl restart faasd.service faasd-provider.service
     ```
 
 4. Download, install and run cAdvisor (used to monitor the containers):
 
-    ```shell
+    ```console
     # mkdir /opt/cadvisor
     # wget https://github.com/google/cadvisor/releases/download/v0.49.2/cadvisor-v0.49.2-linux-amd64 -O /opt/cadvisor/cadvisor
     # chmod u+x /opt/cadvisor/cadvisor
@@ -196,21 +197,20 @@ root user.
 4. Download, install and configure Prometheus node exporter (used to monitor the
    node).
 
-    ```shell
+    ```console
     # mkdir /opt/node-exporter
     # wget https://github.com/prometheus/node_exporter/releases/download/v1.9.0/node_exporter-1.9.0.linux-amd64.tar.gz -O /opt/node-exporter/node_exported.tar.gz
     # cd /opt/node-exporter
     # tar xvfz node_exported.tar.gz
     # mv node_exporter-1.9.0.linux-amd64/node_exporter node_exporter
     # cp /opt/dfaas-src/docker/files/faasd/node-exporter.service /etc/systemd/system/node-exporter.service
-    # cp /opt/dfaas-src/docker/files/faasd/prometheus.yml /var/lib/faasd/prometheus.yml
     # systemctl daemon-reload
     # systemctl enable node-exporter
     ```
 
 5. Install and run the DFaaS Forecaster:
 
-    ```shell
+    ```console
     # mkdir /opt/forecaster
     # cd /opt/forecaster
     # sudo python3 -m venv pyenv
@@ -225,7 +225,7 @@ root user.
 6. Build and configure the DFaaS agent with an example configuration, using the
    Node Margin Strategy.
 
-    ```shell
+    ```console
     # cd /opt/dfaas-src/dfaasagent
     # go build
     # mkdir /opt/dfaasagent
@@ -242,7 +242,7 @@ root user.
 7. Deploy some example functions (ocr, shasum and figlet) to the local OpenFaaS
    instance:
 
-    ```shell
+    ```console
     $ chmod u+x docker/files/deploy_functions.sh
     $ /opt/dfaas-src/docker/files/deploy_functions.sh
     $ curl http://localhost:8080/function/figlet -d 'Hello DFaaS world!'
@@ -250,7 +250,7 @@ root user.
 
 8. Run the DFaaS agent and do an example call to the proxy (not OpenFaaS!):
 
-    ```shell
+    ```console
     # systemctl start dfaasagent.service
     $ curl http://localhost:80/function/figlet -d 'Hello DFaaS world!'
     ```
