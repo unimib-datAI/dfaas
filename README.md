@@ -117,29 +117,32 @@ To test the inventory, you can try the [example
 playbook](https://docs.ansible.com/ansible/latest/getting_started/get_started_playbook.html)
 on the official Ansible documentation.
 
-Once you have the inventory file, run ansible-playbook:
+**Important:** on the control node you need to have the DFaaS Git repository and
+to build the DFaaS Agent. This can be done with the following:
+
+```console
+$ git clone https://github.com/unimib-datAI/dfaas.git
+$ sudo apt install golang-go
+$ go build -C dfaas/dfaasagent
+```
+
+Then you can run the playbook with ansible-playbook (make sure to be on the
+DFaaS directory!):
 
 ```console
 $ ansible-playbook -i inventory.yaml setup_playbook.yaml
 ```
 
-**WIP**
+This deploys a basic, fully functional DFaaS node using the Node Margin
+Strategy. You can modify the `dfaasagent.env` file to configure the agent and
+replay the playbook to deploy it.
 
-Run the `ansible-playbook` command on the control node to execute the tasks specified in the playbook with the following options:
+You can make automatic calls to the node with the **operator**. More information
+about it in the [dedicated directory](operator).
 
-`-i` : path to an inventory file  
-`--extra-vars` : to specify the Sysbox version and shiftfs branch to be installed  
-`--tags` : to specify steps of the playbook to be executed
-
-```shell
-ansible-playbook -i inventory.yaml setup_playbook.yaml --tags "installation, deploy"
-```
-
-**WIP**
-
-This Ansible playbook installs the required software and executes the [docker-compose.yml](docker-compose.yml), deploying three DFaaS nodes containers, and a fourth container called [operator](operator), which deploys functions on DFaaS nodes and starts specified load tests.
-
-If you have four different VMs it's recommended to deploy the entire system exploiting the playbook and configuration files in [test_environment](test_environment).
+If you have four different VMs it's recommended to deploy the entire system
+exploiting the playbook and configuration files in
+[test_environment](test_environment). This is still a work in progress.
 
 ### Manual deployment
 
@@ -163,7 +166,7 @@ root user.
     # apt install golang-go haproxy python3-pip python3-venv
     ```
 
-3. Clone this repository in the `/opt/dfaas-src` directory:
+3. Clone (or copy) this repository in the `/opt/dfaas-src` directory:
 
     ```console
     # mkdir --parents /opt/
