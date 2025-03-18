@@ -21,6 +21,10 @@ dfaasagent/dfaasagent
 dfaasagent/haproxy.cfg
 dfaasagent/prvkey.dat
 
+# Ignore custom Ansible inventory files.
+**/inventory.yaml
+
+
 # Custom ignores
 __pycache__
 venv

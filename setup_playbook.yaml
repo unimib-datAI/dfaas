@@ -1,203 +1,265 @@
 ---
-- name: Setup Environment
+- name: Install dependencies
   hosts: all
-  become: true
-  vars:
-    arch_mapping:
-      x86_64: amd64
-      aarch64: arm64
-  
+
   tasks:
-    - name: Update apt packages
-      apt:
+    - name: Update APT cache
+      ansible.builtin.apt:
         update_cache: true
-      tags:
-      - installation
-        
-    - name: Install required system packages
-      apt:
-        name: "{{ item }}"
-        state: latest
-        update_cache: true
-      loop:
-        - jq
-        - ca-certificates
-        - curl
-        - wget
-        - gnupg
-        - make
-        - dkms
-        - lsb-release
-        - apt-transport-https
-        - software-properties-common
-        - git
-      tags:
-      - installation
 
-    - name: Create directory for Docker's GPG key
-      file:
-        path: /etc/apt/keyrings
+    - name: Upgrade current packages
+      ansible.builtin.apt:
+        upgrade: "dist"
+
+    - name: Install required packages
+      ansible.builtin.apt:
+        name:
+          - git
+          - haproxy
+          - python3-pip
+          - python3-venv
+
+- name: Copy the DFaaS repository
+  hosts: all
+
+  tasks:
+    - name: Ensure /opt/dfaas-src directory exists
+      ansible.builtin.file:
+        path: /opt/dfaas-src
         state: directory
-        mode: '0755'
-      tags:
-      - installation
-    
-    - name: Add Docker's official GPG key
-      apt_key:
-        url: https://download.docker.com/linux/ubuntu/gpg
-        keyring: /etc/apt/keyrings/docker.gpg
-        state: present
-      tags:
-      - installation
-    
-    - name: Change GPG key permissions
-      file:
-        path: /etc/apt/keyrings/docker.gpg
-        state: file
-        mode: 'a+r'
-      tags:
-      - installation
-    
-    - name: Set up the stable repository
-      apt_repository:
-        repo: deb [arch={{ arch_mapping[ansible_architecture] | default(ansible_architecture) }} signed-by=/etc/apt/keyrings/docker.gpg] https://download.docker.com/linux/ubuntu {{ ansible_lsb.codename }} stable
-        filename: docker
-        state: present
-        update_cache: true
-      tags:
-      - installation
-    
-    - name: Install Docker and related packages
-      apt:
-        name: "{{ item }}"
-        state: present
-        update_cache: true
-      loop:
-        - docker-ce=5:27.1.1-1~ubuntu.{{ ansible_lsb.release }}~{{ ansible_lsb.codename }}
-        - docker-ce-cli=5:27.1.1-1~ubuntu.{{ ansible_lsb.release }}~{{ ansible_lsb.codename }}
-        - containerd.io
-        - docker-buildx-plugin
-        - docker-compose-plugin
-      tags:
-      - installation
-    
-    - name: Add Docker group
-      group:
-        name: docker
-        state: present
-      tags:
-      - installation
+        mode: "0755"
 
-    - name: Add user to docker group
-      user:
-        name: "{{ ansible_user_id }}"
-        groups: "docker"
-        append: true
-      tags:
-      - installation
-    
-    - name: Enable and start Docker services
-      systemd:
-        name: "{{ item }}"
+
+    - name: Copy the repository (only dfaasagent and docker directories)
+      ansible.builtin.copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        mode: "0755"
+      loop:
+        - src: ./dfaasagent
+          dest: /opt/dfaas-src/
+        - src: ./docker
+          dest: /opt/dfaas-src/
+
+- name: Deploy OpenFaaS (faasd)
+  hosts: all
+
+  tasks:
+    - name: Ensure /opt/faasd directory exists
+      ansible.builtin.file:
+        path: /opt/faasd
+        state: directory
+        mode: "0755"
+
+    - name: Clone the Git repository
+      ansible.builtin.git:
+        repo: "https://github.com/openfaas/faasd.git"
+        dest: /opt/faasd
+        version: 0.19.6
+        depth: 1
+
+    - name: Run installation script
+      ansible.builtin.command:
+        cmd: hack/install.sh
+        chdir: /opt/faasd
+        # Do not run the installation script if it is already done before,
+        # otherwhise the script will always fails.
+        creates: /usr/lib/systemd/system/faasd.service
+
+    - name: Set OpenFaaS admin password
+      ansible.builtin.copy:
+        content: "admin"
+        dest: /var/lib/faasd/secrets/basic-auth-password
+        mode: "0655"
+
+    - name: Override Prometheus configuration
+      ansible.builtin.copy:
+        src: ./docker/files/faasd/prometheus.yml
+        dest: /var/lib/faasd/prometheus.yml
+        mode: "0655"
+
+    - name: Start faasd service
+      ansible.builtin.systemd_service:
+        state: restarted
+        name: faasd
+
+    - name: Start faasd-provider service
+      ansible.builtin.systemd_service:
+        state: restarted
+        name: faasd-provider
+
+- name: Deploy cAdvisor
+  hosts: all
+
+  tasks:
+    - name: Ensure /opt/cadvisor directory exists
+      ansible.builtin.file:
+        path: /opt/cadvisor
+        state: directory
+        mode: "0755"
+
+    - name: Download cAdvisor
+      ansible.builtin.get_url:
+        url: https://github.com/google/cadvisor/releases/download/v0.49.2/cadvisor-v0.49.2-linux-amd64
+        dest: /opt/cadvisor/cadvisor
+        mode: u+x
+
+    - name: Copy cAdvisor systemd unit file
+      ansible.builtin.copy:
+        src: ./docker/files/faasd/cadvisor.service
+        dest: /etc/systemd/system/cadvisor.service
+        mode: "0655"
+
+    - name: Start cAdvisor service
+      ansible.builtin.systemd_service:
+        name: cadvisor
+        daemon_reload: true
         enabled: true
         state: started
-      loop:
-        - docker.service
-        - containerd.service
-      tags:
-      - installation
-      
-    - name: Create sysbox directory
-      file:
-        path: ./sysbox
+
+- name: Deploy Prometheus node exporter
+  hosts: all
+
+  tasks:
+    - name: Ensure /opt/node-exporter directory exists
+      ansible.builtin.file:
+        path: /opt/node-exporter
         state: directory
-      tags:
-      - installation
-    
-    - name: Download sysbox package
-      get_url:
-        url:
-          https://downloads.nestybox.com/sysbox/releases/v{{ sysbox_ver }}/sysbox-ce_{{ sysbox_ver }}-0.linux_{{ arch_mapping[ansible_architecture] | default(ansible_architecture) }}.deb
-        dest: ./sysbox/sysbox-ce.deb
-      tags:
-      - installation
-    
-    - name: Install sysbox package
-      apt: deb=./sysbox/sysbox-ce.deb
-      tags:
-      - installation
+        mode: "0755"
 
-    - name: Git clone shiftfs repository
-      git:
-        repo: https://github.com/toby63/shiftfs-dkms.git
-        dest: ./shiftfs-{{ shiftfs_ver }}
-        single_branch: yes
-        version: '{{ shiftfs_ver }}'
-      tags:
-      - installation
-    
-    - name: Update kernel
-      shell: ./shiftfs-{{ shiftfs_ver }}/update1
-      tags:
-      - installation
-    
-    - name: Build Makefile
-      make:
-        chdir: ./shiftfs-{{ shiftfs_ver }}
-        file: Makefile.dkms
-      tags:
-      - installation
+    - name: Download Prometheus node exporter archive
+      ansible.builtin.get_url:
+        url: https://github.com/prometheus/node_exporter/releases/download/v1.9.0/node_exporter-1.9.0.linux-amd64.tar.gz
+        dest: /opt/node-exporter/node_exporter.tar.gz
+        mode: "0655"
 
-    - name: Copy dfaasagent directory
+    - name: Extract Prometheus node exporter
+      ansible.builtin.unarchive:
+        src: /opt/node-exporter/node_exporter.tar.gz
+        dest: /opt/node-exporter/
+        remote_src: true
+
+    - name: Rename Prometheus node exporter binary
+      ansible.builtin.file:
+        path: /opt/node-exporter/node_exporter
+        mode: u+x
+        src: /opt/node-exporter/node_exporter-1.9.0.linux-amd64/node_exporter
+        state: link
+
+    - name: Copy Prometheus node exporter systemd unit file
       ansible.builtin.copy:
-        src: ./dfaasagent
-        dest: ~/dfaas/
-      tags:
-      - deploy
-    
-    - name: Copy docker directory
-      ansible.builtin.copy:
-        src: ./docker
-        dest: ~/dfaas/
-      tags:
-      - deploy
+        src: ./docker/files/faasd/node-exporter.service
+        dest: /etc/systemd/system/node-exporter.service
+        mode: "0655"
 
-    - name: Copy docker compose file
-      ansible.builtin.copy:
-        src: ./docker-compose.yml
-        dest: ~/dfaas/
-      tags:
-      - deploy
+    - name: Enable Prometheus node exporter service
+      ansible.builtin.systemd_service:
+        name: node-exporter
+        daemon_reload: true
+        enabled: true
 
-    - name: Copy ENV file
-      ansible.builtin.copy:
-        src: ./dfaasagent.env
-        dest: ~/dfaas/dfaasagent.env
-      tags:
-      - deploy
+- name: Deploy DFaaS Forecaster module
+  hosts: all
 
-    - name: Copy Operator directory
-      ansible.builtin.copy:
-        src: ./operator
-        dest: ~/dfaas/
-      tags:
-      - deploy
+  tasks:
+    - name: Ensure /opt/forecaster directory exists
+      ansible.builtin.file:
+        path: /opt/forecaster
+        state: directory
+        mode: "0755"
 
-    - name: Build Docker images
-      ansible.builtin.command:
-        chdir: ~/dfaas
-        cmd: "{{ item }}"
+    - name: Setup the Python virtualenv and depedencies
+      ansible.builtin.pip:
+        virtualenv: /opt/forecaster/pyenv
+        virtualenv_command: /usr/bin/python3 -m venv
+        name:
+          - "fastapi[all]"
+          - scikit-learn
+          - lightgbm
+          - joblib
+          - pandas
+          - numpy
+
+    - name: Copy the DFaaS Forecaster source code
+      ansible.builtin.copy:
+        src: ./docker/forecaster/
+        dest: /opt/forecaster
+        mode: "0755"
+
+    - name: Copy the DFaaS Forecaster systemd unit file
+      ansible.builtin.copy:
+        src: ./docker/files/forecaster/forecaster.service
+        dest: /etc/systemd/system/forecaster.service
+        mode: "0655"
+
+    - name: Start DFaaS Forecaster service
+      ansible.builtin.systemd_service:
+        name: forecaster
+        daemon_reload: true
+        enabled: true
+        state: started
+
+- name: Deploy the DFaaS agent (Node Margin Strategy)
+  hosts: all
+
+  tasks:
+    - name: Ensure /opt/dfaasagent directory exists
+      ansible.builtin.file:
+        path: /opt/dfaasagent
+        state: directory
+        mode: "0755"
+
+    - name: Copy DFaaS Agent executable and other files
+      ansible.builtin.copy:
+        src: "{{ item.src }}"
+        dest: "{{ item.dest }}"
+        mode: "0755"
       loop:
-        - "docker build -t dfaas-agent-builder:latest -f docker/dfaas-agent-builder.dockerfile dfaasagent"
-        - "docker build -t dfaas-node:latest -f docker/dfaas-node.dockerfile docker"
-        - "docker build -t dfaas-operator:latest -f operator/docker/dfaas-operator.dockerfile operator/docker"
-      tags:
-      - deploy
+        - src: ./docker/files/dfaasagent/dfaasagent.service # Systemd unit file
+          dest: /etc/systemd/system/dfaasagent.service
+        - src: ./dfaasagent/agent/loadbalancer/haproxycfgrecalc.tmpl # Go templates for strategies
+          dest: /opt/dfaasagent/haproxycfgrecalc.tmpl
+        - src: ./dfaasagent/agent/loadbalancer/haproxycfgnms.tmpl
+          dest: /opt/dfaasagent/haproxycfgnms.tmpl
+        - src: ./docker/files/dfaasagent/group_list.json # Function group list
+          dest: /opt/dfaasagent/group_list.json
+        - src: ./dfaasagent/dfaasagent # Executable
+          dest: /opt/dfaasagent/dfaasagent
+        - src: ./dfaasagent.env # DFaaS configuration
+          dest: /opt/dfaasagent/dfaasagent.env
 
-    - name: Deploy Docker Compose stack
-      ansible.builtin.command:
-        chdir: ~/dfaas
-        cmd: docker compose up -d
-      tags:
-        - deploy
-        
+    - name: Enable DFaaS Agent service
+      ansible.builtin.systemd_service:
+        name: dfaasagent
+        daemon_reload: true
+        enabled: true
+
+- name: Deploy ocr, shasum and figlet functions
+  hosts: all
+
+  tasks:
+    - name: Run the deploy function script
+      ansible.builtin.script: ./docker/files/deploy_functions.sh
+
+    - name: Call OpenFaaS directly
+      ansible.builtin.uri:
+        url: http://localhost:8080/function/figlet
+        body: "Hello world!"
+
+- name: Start the DFaaS Agent
+  hosts: all
+
+  tasks:
+    - name: Start the DFaaS Agent service
+      ansible.builtin.systemd_service:
+        name: dfaasagent
+        state: started
+
+    - name: Wait for the reconfiguration of HAProxy by the DFaaS Agent
+      ansible.builtin.wait_for:
+        timeout: 5
+
+    - name: Call the proxy
+      ansible.builtin.uri:
+        url: http://localhost:80/function/figlet
+        body: "Hello world!"

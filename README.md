@@ -86,48 +86,65 @@ Regardless of which of the options you choose, the deployment of the DFaaS
 prototype has been tested with [Ubuntu 24.04.2
 LTS](https://releases.ubuntu.com/noble/).
 
+We suggest to spin up a virtual machine from scratch with Ubuntu, with a user
+with a password and sudo enabled.
+
 ### Automated deployment with Ansible
 
-Follow the [Ansible's official
+Install Ansible on the control node following the [official
 documentation](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html)
-on how to install it on the control node. Then, using the
-[setup_playbook.yaml](setup_playbook.yaml) file, your Ansible control node can
-deploy a DFaaS node on the managed nodes specified in a given inventory file.
+(use the Ansible PPA). Then use the provided playbook
+([setup_playbook.yaml](setup_playbook.yaml)) to deploy a DFaaS node on a
+specific managed node specified in an inventory file. Note that you can specify
+multiple managed nodes.
 
-Here is an example of an `inventory.yaml` file to deploy the DFaaS node on a
-host via SSH connection:
+An example of `inventory.yaml` file is
 
 ```yaml
-ungrouped:
+all:
   hosts:
-    <hostname>:
-      ansible_port: <port_number>
-      ansible_connection: ssh
+    <node-name>:
+      ansible_host: <ip_address>
       ansible_user: <user>
       ansible_password: <password>
+      ansible_become: true
 ```
 
-**WIP**
+We assume that the managed node has a user with root privileges and can connect
+via SSH with a password. This is for testing purposes only!
 
-Run the `ansible-playbook` command on the control node to execute the tasks specified in the playbook with the following options:
+To test the inventory, you can try the [example
+playbook](https://docs.ansible.com/ansible/latest/getting_started/get_started_playbook.html)
+on the official Ansible documentation.
 
-`-i` : path to an inventory file  
-`--extra-vars` : to specify the Sysbox version and shiftfs branch to be installed  
-`--tags` : to specify steps of the playbook to be executed
+**Important:** on the control node you need to have the DFaaS Git repository and
+to build the DFaaS Agent. This can be done with the following:
 
-```shell
-ansible-playbook -i inventory.yaml setup_playbook.yaml --tags "installation, deploy"
+```console
+$ git clone https://github.com/unimib-datAI/dfaas.git
+$ sudo apt install golang-go
+$ go build -C dfaas/dfaasagent
 ```
 
-**WIP**
+Then you can run the playbook with ansible-playbook (make sure to be on the
+DFaaS directory!):
 
-This Ansible playbook installs the required software and executes the [docker-compose.yml](docker-compose.yml), deploying three DFaaS nodes containers, and a fourth container called [operator](operator), which deploys functions on DFaaS nodes and starts specified load tests.
+```console
+$ ansible-playbook -i inventory.yaml setup_playbook.yaml
+```
 
-If you have four different VMs it's recommended to deploy the entire system exploiting the playbook and configuration files in [test_environment](test_environment).
+This deploys a basic, fully functional DFaaS node using the Node Margin
+Strategy. You can modify the `dfaasagent.env` file to configure the agent and
+replay the playbook to deploy it.
+
+You can make automatic calls to the node with the **operator**. More information
+about it in the [dedicated directory](operator).
+
+If you have four different VMs it's recommended to deploy the entire system
+exploiting the playbook and configuration files in
+[test_environment](test_environment). This is still a work in progress.
 
 ### Manual deployment
-
-#### Manual deploy without Ansible and Docker
 
 This deployment setup is ideal for deploying a single node on the host machine
 without using Ansible or Docker. This means that you need to build, deploy, and
@@ -139,37 +156,38 @@ root user.
 
 1. Update the host packages:
 
-    ```shell
+    ```console
     # apt update && apt upgrade
     ```
 
 2. Install required packages:
 
-    ```shell
+    ```console
     # apt install golang-go haproxy python3-pip python3-venv
     ```
 
-3. Clone this repository in the `/opt/dfaas-src` directory:
+3. Clone (or copy) this repository in the `/opt/dfaas-src` directory:
 
-    ```shell
+    ```console
     # mkdir --parents /opt/
     # git clone https://github.com/unimib-datAI/dfaas.git /opt/dfaas-src
     ```
 
 3. Download, install, configure and run OpenFaaS:
 
-    ```shell
+    ```console
     # mkdir /opt/faasd
     # git clone --depth 1 --branch 0.19.6 https://github.com/openfaas/faasd.git /opt/faasd/
     # cd /opt/faasd
     # ./hack/install.sh
     # echo 'admin' > /var/lib/faasd/secrets/basic-auth-password
+    # cp /opt/dfaas-src/docker/files/faasd/prometheus.yml /var/lib/faasd/prometheus.yml
     # systemctl restart faasd.service faasd-provider.service
     ```
 
 4. Download, install and run cAdvisor (used to monitor the containers):
 
-    ```shell
+    ```console
     # mkdir /opt/cadvisor
     # wget https://github.com/google/cadvisor/releases/download/v0.49.2/cadvisor-v0.49.2-linux-amd64 -O /opt/cadvisor/cadvisor
     # chmod u+x /opt/cadvisor/cadvisor
@@ -182,21 +200,20 @@ root user.
 4. Download, install and configure Prometheus node exporter (used to monitor the
    node).
 
-    ```shell
+    ```console
     # mkdir /opt/node-exporter
     # wget https://github.com/prometheus/node_exporter/releases/download/v1.9.0/node_exporter-1.9.0.linux-amd64.tar.gz -O /opt/node-exporter/node_exported.tar.gz
     # cd /opt/node-exporter
     # tar xvfz node_exported.tar.gz
     # mv node_exporter-1.9.0.linux-amd64/node_exporter node_exporter
     # cp /opt/dfaas-src/docker/files/faasd/node-exporter.service /etc/systemd/system/node-exporter.service
-    # cp /opt/dfaas-src/docker/files/faasd/prometheus.yml /var/lib/faasd/prometheus.yml
     # systemctl daemon-reload
     # systemctl enable node-exporter
     ```
 
 5. Install and run the DFaaS Forecaster:
 
-    ```shell
+    ```console
     # mkdir /opt/forecaster
     # cd /opt/forecaster
     # sudo python3 -m venv pyenv
@@ -211,7 +228,7 @@ root user.
 6. Build and configure the DFaaS agent with an example configuration, using the
    Node Margin Strategy.
 
-    ```shell
+    ```console
     # cd /opt/dfaas-src/dfaasagent
     # go build
     # mkdir /opt/dfaasagent
@@ -228,7 +245,7 @@ root user.
 7. Deploy some example functions (ocr, shasum and figlet) to the local OpenFaaS
    instance:
 
-    ```shell
+    ```console
     $ chmod u+x docker/files/deploy_functions.sh
     $ /opt/dfaas-src/docker/files/deploy_functions.sh
     $ curl http://localhost:8080/function/figlet -d 'Hello DFaaS world!'
@@ -236,7 +253,7 @@ root user.
 
 8. Run the DFaaS agent and do an example call to the proxy (not OpenFaaS!):
 
-    ```shell
+    ```console
     # systemctl start dfaasagent.service
     $ curl http://localhost:80/function/figlet -d 'Hello DFaaS world!'
     ```
