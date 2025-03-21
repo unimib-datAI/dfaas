@@ -218,7 +218,7 @@ root user.
     # cd /opt/forecaster
     # sudo python3 -m venv pyenv
     # /opt/forecaster/pyenv/bin/python3 -m pip install "fastapi[all]" scikit-learn lightgbm joblib pandas numpy
-    # cp --recursive /opt/dfaas-src/docker/forecaster /opt/forecaster/
+    # cp --recursive /opt/dfaas-src/docker/forecaster/* /opt/forecaster/
     # cp /opt/dfaas-src/docker/files/forecaster/forecaster.service /etc/systemd/system/
     # systemctl daemon-reload
     # systemctl enable forecaster.service
