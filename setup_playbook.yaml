@@ -121,29 +121,29 @@
   hosts: all
 
   tasks:
-    - name: Ensure /opt/node-exporter directory exists
+    - name: Ensure /opt/node_exporter directory exists
       ansible.builtin.file:
-        path: /opt/node-exporter
+        path: /opt/node_exporter
         state: directory
         mode: "0755"
 
     - name: Download Prometheus node exporter archive
       ansible.builtin.get_url:
         url: https://github.com/prometheus/node_exporter/releases/download/v1.9.0/node_exporter-1.9.0.linux-amd64.tar.gz
-        dest: /opt/node-exporter/node_exporter.tar.gz
+        dest: /opt/node_exporter/node_exporter.tar.gz
         mode: "0655"
 
     - name: Extract Prometheus node exporter
       ansible.builtin.unarchive:
-        src: /opt/node-exporter/node_exporter.tar.gz
-        dest: /opt/node-exporter/
+        src: /opt/node_exporter/node_exporter.tar.gz
+        dest: /opt/node_exporter/
         remote_src: true
 
     - name: Rename Prometheus node exporter binary
       ansible.builtin.file:
-        path: /opt/node-exporter/node_exporter
+        path: /opt/node_exporter/node_exporter
         mode: u+x
-        src: /opt/node-exporter/node_exporter-1.9.0.linux-amd64/node_exporter
+        src: /opt/node_exporter/node_exporter-1.9.0.linux-amd64/node_exporter
         state: link
 
     - name: Copy Prometheus node exporter systemd unit file
