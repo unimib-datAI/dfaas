@@ -201,9 +201,9 @@ root user.
    node).
 
     ```console
-    # mkdir /opt/node-exporter
-    # wget https://github.com/prometheus/node_exporter/releases/download/v1.9.0/node_exporter-1.9.0.linux-amd64.tar.gz -O /opt/node-exporter/node_exported.tar.gz
-    # cd /opt/node-exporter
+    # mkdir /opt/node_exporter
+    # wget https://github.com/prometheus/node_exporter/releases/download/v1.9.0/node_exporter-1.9.0.linux-amd64.tar.gz -O /opt/node_exporter/node_exported.tar.gz
+    # cd /opt/node_exporter
     # tar xvfz node_exported.tar.gz
     # mv node_exporter-1.9.0.linux-amd64/node_exporter node_exporter
     # cp /opt/dfaas-src/docker/files/faasd/node-exporter.service /etc/systemd/system/node-exporter.service
