@@ -347,6 +347,13 @@ def execute_query(url, query_params, range_query=False):
         break
     return result
 
+def safe_execute_query(url, query, default_value=0):
+    try:
+        return execute_query(url, query)
+    except Exception as e:
+        print(f"Failed to execute query {query}: {e}")
+        return default_value
+
 def get_value_from_response(data):
     return float(data["result"][0]["value"][1])
 
