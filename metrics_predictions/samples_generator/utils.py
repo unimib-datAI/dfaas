@@ -213,7 +213,7 @@ def retrieve_node_resources_usage(time_span, start_time, end_time):
         }, True)
 
         # POWER USAGE NODE
-        power_usage = execute_query(PROMETHEUS_QUERY_RANGE_URL, {
+        power_usage = safe_execute_query(PROMETHEUS_QUERY_RANGE_URL, {
             'query': ('avg_over_time(scaph_host_power_microwatts[%s])' % (time_span)),
             'start': start_time,
             'end': end_time,
@@ -237,7 +237,7 @@ def retrieve_node_resources_usage(time_span, start_time, end_time):
         })
 
         # POWER USAGE NODE IN MICROWATTS
-        power_usage = execute_query(PROMETHEUS_QUERY_URL, {
+        power_usage = safe_execute_query(PROMETHEUS_QUERY_URL, {
             'query': ('scaph_host_power_microwatts')
         })
         return cpu_usage, ram_usage, ram_usage_p, power_usage
@@ -273,7 +273,7 @@ def retrieve_functions_resource_usage(function_names, functions_pids, time_span,
             pid_str = ''.join(pid_list)
             query = f'sum(avg_over_time(scaph_process_power_consumption_microwatts{{pid=~"{pid_str}"}}[{time_span}]))'
             print(query)
-            power_usage_per_functions.append(execute_query(PROMETHEUS_QUERY_RANGE_URL, {
+            power_usage_per_functions.append(safe_execute_query(PROMETHEUS_QUERY_RANGE_URL, {
                 'query': (query),
                 'start': start_time,
                 'end': end_time,
@@ -317,7 +317,7 @@ def retrieve_function_resource_usage_for_profile(function_name, function_pids, t
         pid_str = ''.join(pid_list)
         query = f'sum(avg_over_time(scaph_process_power_consumption_microwatts{{pid=~"{pid_str}"}}[{time_span}]))'
         print(query)
-        power_usage = execute_query(PROMETHEUS_QUERY_RANGE_URL, {
+        power_usage = safe_execute_query(PROMETHEUS_QUERY_RANGE_URL, {
             'query': (query),
             'start': start_time,
             'end': end_time,
