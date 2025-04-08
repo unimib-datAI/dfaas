@@ -189,7 +189,7 @@ def rest_for_profiler(base_cpu_usage_idle, base_ram_usage_idle, base_power_usage
 def retrieve_node_resources_usage(time_span, start_time, end_time):
     if(start_time and end_time):
         # CPU USAGE NODE 0% - 800% (8 CORE) https://www.robustperception.io/understanding-machine-cpu-usage/
-        cpu_usage = safe_execute_query(PROMETHEUS_QUERY_RANGE_URL, {
+        cpu_usage = execute_query(PROMETHEUS_QUERY_RANGE_URL, {
             'query': ('100 * sum(1 - rate(node_cpu_seconds_total{mode="idle"}[%s]))' % (time_span)),
             'start': start_time,
             'end': end_time,
@@ -197,7 +197,7 @@ def retrieve_node_resources_usage(time_span, start_time, end_time):
         }, True)
 
         # RAM USAGE NODE IN BYTES
-        ram_usage = safe_execute_query(PROMETHEUS_QUERY_RANGE_URL, {
+        ram_usage = execute_query(PROMETHEUS_QUERY_RANGE_URL, {
             'query': ('avg(avg_over_time(node_memory_MemTotal_bytes[%s]) - avg_over_time(node_memory_MemAvailable_bytes[%s]))' % (time_span, time_span)),
             'start': start_time,
             'end': end_time,
@@ -205,7 +205,7 @@ def retrieve_node_resources_usage(time_span, start_time, end_time):
         }, True)
 
         # RAM USAGE NODE IN BYTES
-        ram_usage_p = safe_execute_query(PROMETHEUS_QUERY_RANGE_URL, {
+        ram_usage_p = execute_query(PROMETHEUS_QUERY_RANGE_URL, {
             'query': ('100 * avg(1 - ((avg_over_time(node_memory_MemFree_bytes[%s]) + avg_over_time(node_memory_Cached_bytes[%s]) + avg_over_time(node_memory_Buffers_bytes[%s])) / avg_over_time(node_memory_MemTotal_bytes[%s])))' % (time_span, time_span, time_span, time_span)),
             'start': start_time,
             'end': end_time,
@@ -222,17 +222,17 @@ def retrieve_node_resources_usage(time_span, start_time, end_time):
         return cpu_usage, ram_usage, ram_usage_p, power_usage
     else:
         # CPU USAGE NODE 0% - 800% (8 CORE) https://www.robustperception.io/understanding-machine-cpu-usage/
-        cpu_usage = safe_execute_query(PROMETHEUS_QUERY_URL, {
+        cpu_usage = execute_query(PROMETHEUS_QUERY_URL, {
             'query': ('100 * sum(1 - rate(node_cpu_seconds_total{mode="idle"}[%s]))' % (time_span))
         })
 
         # RAM USAGE NODE IN BYTES
-        ram_usage = safe_execute_query(PROMETHEUS_QUERY_URL, {
+        ram_usage = execute_query(PROMETHEUS_QUERY_URL, {
             'query': ('avg(avg_over_time(node_memory_MemTotal_bytes[%s]) - avg_over_time(node_memory_MemAvailable_bytes[%s]))' % (time_span, time_span))
         })
 
         # RAM USAGE NODE 0% - 100% https://gist.github.com/payam-int/edf977c6af603fee0ce1b05da7792fe7
-        ram_usage_p = safe_execute_query(PROMETHEUS_QUERY_URL, {
+        ram_usage_p = execute_query(PROMETHEUS_QUERY_URL, {
             'query': ('100 * avg(1 - ((avg_over_time(node_memory_MemFree_bytes[%s]) + avg_over_time(node_memory_Cached_bytes[%s]) + avg_over_time(node_memory_Buffers_bytes[%s])) / avg_over_time(node_memory_MemTotal_bytes[%s])))' % (time_span, time_span, time_span, time_span))
         })
 
@@ -249,7 +249,7 @@ def retrieve_functions_resource_usage(function_names, functions_pids, time_span,
         # RAM USAGE FUNCTIONS IN BYTES
         ram_usage_per_functions = []
         for function_name in function_names:
-            ram_usage_per_functions.append(safe_execute_query(PROMETHEUS_QUERY_RANGE_URL, {
+            ram_usage_per_functions.append(execute_query(PROMETHEUS_QUERY_RANGE_URL, {
                 'query': ('avg_over_time(container_memory_usage_bytes{id=~"^/kubepods.*", container_label_io_kubernetes_container_name="%s"}[%s])' % (function_name, time_span)),
                 'start': start_time,
                 'end': end_time,
@@ -259,7 +259,7 @@ def retrieve_functions_resource_usage(function_names, functions_pids, time_span,
         # CPU USAGE PER FUNCTION 0% - 800%
         cpu_usage_per_functions = []
         for function_name in function_names:
-            cpu_usage_per_functions.append(safe_execute_query(PROMETHEUS_QUERY_RANGE_URL, {
+            cpu_usage_per_functions.append(execute_query(PROMETHEUS_QUERY_RANGE_URL, {
                 'query': ('100 * sum(rate(container_cpu_usage_seconds_total{id=~"^/kubepods.*",container_label_io_kubernetes_container_name="%s"}[%s]))' % (function_name, time_span)),
                 'start': start_time,
                 'end': end_time,
@@ -297,7 +297,7 @@ def retrieve_functions_resource_usage(function_names, functions_pids, time_span,
 def retrieve_function_resource_usage_for_profile(function_name, function_pids, time_span, start_time, end_time):
     if start_time and end_time:
         # RAM USAGE FUNCTION IN BYTES
-        ram_usage = safe_execute_query(PROMETHEUS_QUERY_RANGE_URL, {
+        ram_usage = execute_query(PROMETHEUS_QUERY_RANGE_URL, {
             'query': ('avg_over_time(container_memory_usage_bytes{id=~"^/kubepods.*", container_label_io_kubernetes_container_name="%s"}[%s])' % (function_name, time_span)),
             'start': start_time,
             'end': end_time,
@@ -305,7 +305,7 @@ def retrieve_function_resource_usage_for_profile(function_name, function_pids, t
         }, True)
 
         # CPU USAGE FOR FUNCTION (0% - 800%)
-        cpu_usage = safe_execute_query(PROMETHEUS_QUERY_RANGE_URL, {
+        cpu_usage = execute_query(PROMETHEUS_QUERY_RANGE_URL, {
             'query': ('100 * sum(rate(container_cpu_usage_seconds_total{id=~"^/kubepods.*",container_label_io_kubernetes_container_name="%s"}[%s]))' % (function_name, time_span)),
             'start': start_time,
             'end': end_time,
@@ -342,8 +342,10 @@ def execute_query(url, query_params, range_query=False):
             continue
         if(range_query):
             result = get_avg_value_from_response(response.json()["data"], 0)
+            print(result)
         else:
             result = get_value_from_response(response.json()["data"])
+            print(result)
         break
     return result
 
