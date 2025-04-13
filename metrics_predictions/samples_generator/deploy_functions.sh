@@ -1,9 +1,9 @@
 #!/bin/bash
 
-declare HEALTHZ_ENDPOINT="http://192.168.49.2:31112/healthz"
+declare HEALTHZ_ENDPOINT="http://10.99.217.210:31112/healthz"
 declare MAX_TRIES=20
 declare TRIES=1
-declare OPENFAAS_SERVICE_IP="http://192.168.49.2:31112"
+declare OPENFAAS_SERVICE_IP="http://10.99.217.210:31112"
 maxrate=$1; shift
 functions=("$@")
 
