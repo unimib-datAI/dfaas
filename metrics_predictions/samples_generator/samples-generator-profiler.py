@@ -20,9 +20,12 @@ ALL_FUNCTIONS = ['curl', 'nmap', 'env', 'shasum', 'cavecal/eat-memory', 'figlet'
 FUNCTION_NAMES = ['curl', 'nmap', 'env', 'shasum', 'cavecal/eat-memory', 'figlet']
 
 def main():
+    scaphandre = True
     print('Argument List:', str(sys.argv))
     max_rate = int(sys.argv[1])
     duration = sys.argv[2]
+    if "--no-scaphandre" in sys.argv:
+        scaphandre = False
     num_physical_cpus = multiprocessing.cpu_count()
     print(f"Numero di CPU fisiche: {num_physical_cpus}")
     max_cpu_percentage = num_physical_cpus * 100
@@ -72,9 +75,9 @@ def main():
 
         # Retrieve metrics in idle state.
         if(batch_iterator == 0):
-            base_cpu_usage_node_idle, base_ram_usage_node_idle, base_ram_usage_node_p_idle, base_power_usage_node_idle = retrieve_node_resources_usage(duration, None, None)
+            base_cpu_usage_node_idle, base_ram_usage_node_idle, base_ram_usage_node_p_idle, base_power_usage_node_idle = retrieve_node_resources_usage(duration, None, None, scaphandre)
         else:
-            base_cpu_usage_node_idle, base_ram_usage_node_idle, base_ram_usage_node_p_idle, base_power_usage_node_idle, rest_seconds = rest(base_cpu_usage_node_idle, base_ram_usage_node_idle, base_power_usage_node_idle, duration)
+            base_cpu_usage_node_idle, base_ram_usage_node_idle, base_ram_usage_node_p_idle, base_power_usage_node_idle, rest_seconds = rest(base_cpu_usage_node_idle, base_ram_usage_node_idle, base_power_usage_node_idle, duration, scaphandre)
 
         batch_iterator += 1
 
@@ -110,7 +113,7 @@ def main():
                 j = 0
                 for j in range(0, MAX_ITERATION_PER_CONFIG):
                     # Resting
-                    cpu_usage_node_idle, ram_usage_node_idle, ram_usage_node_p_idle, power_usage_node_idle, rest_seconds = rest_for_profiler(base_cpu_usage_node_idle, base_ram_usage_node_idle, base_power_usage_node_idle, duration)
+                    cpu_usage_node_idle, ram_usage_node_idle, ram_usage_node_p_idle, power_usage_node_idle, rest_seconds = rest_for_profiler(base_cpu_usage_node_idle, base_ram_usage_node_idle, base_power_usage_node_idle, duration, scaphandre)
                     start_time = datetime.now().timestamp()
 
                     # Execute vegeta attack
@@ -124,10 +127,10 @@ def main():
                     
                     # Retrieve metrics
                     if(end_time - start_time > int(duration[:-1])):
-                        cpu_usage_per_functions, ram_usage_per_functions, power_usage_per_functions = retrieve_function_resource_usage_for_profile(function, functions_pids, duration, start_time, end_time)
+                        cpu_usage_per_functions, ram_usage_per_functions, power_usage_per_functions = retrieve_function_resource_usage_for_profile(function, functions_pids, duration, start_time, end_time, scaphandre)
                         print("METRICS USING START TIME END TIME")
                     else:
-                        cpu_usage_per_functions, ram_usage_per_functions, power_usage_per_functions = retrieve_function_resource_usage_for_profile(function, functions_pids, duration, None, None)
+                        cpu_usage_per_functions, ram_usage_per_functions, power_usage_per_functions = retrieve_function_resource_usage_for_profile(function, functions_pids, duration, None, None, scaphandre)
                         print("METRICS USING DURATION")
                     
                     result = {} 
