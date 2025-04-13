@@ -20,9 +20,12 @@ MAX_RATE = 200
 OPENFAAS_SERVICE_IP = "http://192.168.49.2:31112"   
 
 def main():
+    scaphandre = True
     print('Argument List:', str(sys.argv))
     max_rate = int(sys.argv[1])
     duration = sys.argv[2]
+    if "--no-scaphandre" in sys.argv:
+        scaphandre = False
     num_physical_cpus = multiprocessing.cpu_count()
     print(f"Numero di CPU fisiche: {num_physical_cpus}")
     max_cpu_percentage = num_physical_cpus * 100
@@ -110,9 +113,9 @@ def main():
         
         # Retrieve metrics in idle state.
         if(batch_iterator == 0):
-            base_cpu_usage_node_idle, base_ram_usage_node_idle, base_ram_usage_node_p_idle, base_power_usage_node_idle = retrieve_node_resources_usage(duration, None, None)
+            base_cpu_usage_node_idle, base_ram_usage_node_idle, base_ram_usage_node_p_idle, base_power_usage_node_idle = retrieve_node_resources_usage(duration, None, None, scaphandre)
         else:
-            base_cpu_usage_node_idle, base_ram_usage_node_idle, base_ram_usage_node_p_idle, base_power_usage_node_idle, rest_seconds = rest(base_cpu_usage_node_idle, base_ram_usage_node_idle, base_power_usage_node_idle, duration)
+            base_cpu_usage_node_idle, base_ram_usage_node_idle, base_ram_usage_node_p_idle, base_power_usage_node_idle, rest_seconds = rest(base_cpu_usage_node_idle, base_ram_usage_node_idle, base_power_usage_node_idle, duration, scaphandre)
             
         print('\nCPU, RAM and POWER usage in idle state')
         print({ 'cpu_node': base_cpu_usage_node_idle, 'ram_usage': base_ram_usage_node_idle, 'ram_usage_percentage': base_ram_usage_node_p_idle, 'power_usage': base_power_usage_node_idle})
@@ -182,7 +185,7 @@ def main():
                 j = 0
                 for j in range(0, MAX_ITERATION_PER_CONFIG):
                     # Resting
-                    cpu_usage_node_idle, ram_usage_node_idle, ram_usage_node_p_idle, power_usage_node_idle, rest_seconds = rest(base_cpu_usage_node_idle, base_ram_usage_node_idle, base_power_usage_node_idle, duration)
+                    cpu_usage_node_idle, ram_usage_node_idle, ram_usage_node_p_idle, power_usage_node_idle, rest_seconds = rest(base_cpu_usage_node_idle, base_ram_usage_node_idle, base_power_usage_node_idle, duration, scaphandre)
                     start_time = datetime.now().timestamp()
                     # Execute vegeta attacks in parallel
                     processes = [subprocess.Popen(attack, shell=True) for attack in attack_configs]
@@ -195,12 +198,12 @@ def main():
                     
                     # Retrieve metrics
                     if(end_time - start_time > int(duration[:-1])):
-                        cpu_usage_node, ram_usage_node, ram_usage_p_node, power_usage_node= retrieve_node_resources_usage(duration, start_time, end_time)
-                        cpu_usage_per_functions, ram_usage_per_functions, power_usage_per_functions = retrieve_functions_resource_usage(function_tuple_config, functions_pids, duration, start_time, end_time)
+                        cpu_usage_node, ram_usage_node, ram_usage_p_node, power_usage_node= retrieve_node_resources_usage(duration, start_time, end_time, scaphandre)
+                        cpu_usage_per_functions, ram_usage_per_functions, power_usage_per_functions = retrieve_functions_resource_usage(function_tuple_config, functions_pids, duration, start_time, end_time, scaphandre)
                         print("METRICS USING START TIME END TIME")
                     else:
-                        cpu_usage_node, ram_usage_node, ram_usage_p_node, power_usage_node = retrieve_node_resources_usage(duration, None, None)
-                        cpu_usage_per_functions, ram_usage_per_functions, power_usage_per_functions = retrieve_functions_resource_usage(function_tuple_config, functions_pids, duration, None, None)
+                        cpu_usage_node, ram_usage_node, ram_usage_p_node, power_usage_node = retrieve_node_resources_usage(duration, None, None, scaphandre)
+                        cpu_usage_per_functions, ram_usage_per_functions, power_usage_per_functions = retrieve_functions_resource_usage(function_tuple_config, functions_pids, duration, None, None, scaphandre)
                         print("METRICS USING DURATION")
 
                     
