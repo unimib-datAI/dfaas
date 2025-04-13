@@ -87,7 +87,7 @@ def generate_rates_list_profiler(max_rate):
 def vegeta_attack(function_name, rate, duration='30s', format='json'):
     if(rate != 0):
         body = FUNCTION_BODIES[function_name]
-        target = f'\'{{method: "GET", url: "http://192.168.49.2:31112/function/{function_name}", body: "{body}" | @base64, header: {{"Content-Type": ["text/plain"]}}}}\''
+        target = f'\'{{method: "GET", url: "http://10.99.217.210:31112/function/{function_name}", body: "{body}" | @base64, header: {{"Content-Type": ["text/plain"]}}}}\''
         attack = f'vegeta attack -duration={duration} -rate={rate} -format={format} -timeout=30s | vegeta report --type=json > reports/report-{function_name}-{rate}.json'
         return 'jq -ncM ' + target + ' | ' + attack
     return ''
