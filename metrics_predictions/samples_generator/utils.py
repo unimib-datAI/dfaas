@@ -37,9 +37,9 @@ def get_prometheus_service_port():
     return prometheus_port
 
 # Get the Prometheus NodePort
-PROMETHEUS_PORT = get_prometheus_service_port()
+PROMETHEUS_PORT = 30411
 ### CONSTANTS ###
-PROMETHEUS_SERVICE_IP = "192.168.49.2"
+PROMETHEUS_SERVICE_IP = "10.99.217.210"
 
 PROMETHEUS_QUERY_URL = f"http://{PROMETHEUS_SERVICE_IP}:{PROMETHEUS_PORT}/api/v1/query"
 PROMETHEUS_QUERY_RANGE_URL = f"http://{PROMETHEUS_SERVICE_IP}:{PROMETHEUS_PORT}/api/v1/query_range"

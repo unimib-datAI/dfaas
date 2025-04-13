@@ -17,7 +17,7 @@ from utils import *
 FUNCTION_NAMES = ['figlet', 'shasum', 'nmap', 'env', 'curl', 'cavecal/eat-memory']
 MAX_ITERATION_PER_CONFIG = 3
 MAX_RATE = 200
-OPENFAAS_SERVICE_IP = "http://192.168.49.2:31112"   
+OPENFAAS_SERVICE_IP = "http://10.99.217.210:31112"   
 
 def main():
     scaphandre = True
