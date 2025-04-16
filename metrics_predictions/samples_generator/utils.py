@@ -15,7 +15,7 @@ def get_prometheus_service_port():
     service_name = "prometheus"
 
     # Run the kubectl command to get the information about the service
-    command = f"kubectl get svc -n openfaas {service_name} -o json"
+    command = f"kubectl --context=midnode-minikube-context get svc -n openfaas {service_name} -o json"
     result = subprocess.run(command, shell=True, capture_output=True, text=True)
 
     if result.returncode != 0:
