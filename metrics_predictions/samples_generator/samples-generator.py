@@ -27,7 +27,7 @@ def main():
     if "--no-scaphandre" in sys.argv:
         scaphandre = False
     #num_physical_cpus = multiprocessing.cpu_count() # Could use kubectl get node -o jsonpath="{.items[0].status.capacity.cpu}" instead
-    num_physical_cpus_cmd = ['kubectl', 'get', 'node', '-o', 'jsonpath={.items[0].status.capacity.cpu}']
+    num_physical_cpus_cmd = ['kubectl','--context=midnode-minikube-context', 'get', 'node', '-o', 'jsonpath={.items[0].status.capacity.cpu}']
     num_physical_cpus = int(subprocess.check_output(num_physical_cpus_cmd, text=True).strip())
     print(f"Numero di CPU fisiche: {num_physical_cpus}")
     max_cpu_percentage = num_physical_cpus * 100
@@ -78,7 +78,7 @@ def main():
         time.sleep(30)
 
         # Use kubectl to get the OpenFaaS basic-auth secret and decode the password from Base64
-        password_cmd = 'kubectl get secret -n openfaas basic-auth -o jsonpath="{.data.basic-auth-password}" | base64 --decode'
+        password_cmd = 'kubectl --context=midnode-minikube-context get secret -n openfaas basic-auth -o jsonpath="{.data.basic-auth-password}" | base64 --decode'
         password = subprocess.check_output(password_cmd, shell=True, text=True).strip()
 
         # Construct the faas-cli login command using the obtained password and OpenFaaS service IP

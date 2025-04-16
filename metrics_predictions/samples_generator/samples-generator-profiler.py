@@ -43,7 +43,7 @@ def main():
         time.sleep(30)
 
         # Use kubectl to get the OpenFaaS basic-auth secret and decode the password from Base64
-        password_cmd = 'kubectl get secret -n openfaas basic-auth -o jsonpath="{.data.basic-auth-password}" | base64 --decode'
+        password_cmd = 'kubectl --context=midnode-minikube-context get secret -n openfaas basic-auth -o jsonpath="{.data.basic-auth-password}" | base64 --decode' # CONTEXT NEEDS TO BE BASED ON THE RECEIVING NODE, CHANGE ACCORDINGLY
         password = subprocess.check_output(password_cmd, shell=True, text=True).strip()
 
         # Construct the faas-cli login command using the obtained password and OpenFaaS service IP

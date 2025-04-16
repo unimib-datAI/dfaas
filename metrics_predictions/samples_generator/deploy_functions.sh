@@ -18,7 +18,7 @@ if [[ $TRIES -eq $MAX_TRIES ]]; then
 fi
 
 # Execute kubectl command to get the OpenFaaS basic-auth-password from the secret
-password_command="kubectl get secret -n openfaas basic-auth -o jsonpath={.data.basic-auth-password} | base64 --decode"
+password_command="kubectl --context=midnode-minikube-context get secret -n openfaas basic-auth -o jsonpath={.data.basic-auth-password} | base64 --decode" # NB CONTEXT NEEDS TO BE ADAPTED BASED ON THE RECEIVER NODE (CHECK THE GENERATOR CONFIG FILE)
 password=$(eval $password_command)
 
 # Use the obtained password to log in using faas-cli
