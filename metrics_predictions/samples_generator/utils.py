@@ -429,21 +429,52 @@ def generate_skipped_config_csv_header(function_names):
         csv_header.append(f'rate_function_{function_name}')
     return csv_header 
 
-# Execute the find-pid.py script into minikube to obtain the PIDs of the functions
 def get_functions_pids(functions_names):
-    #print(len(functions_replicas.keys()), *[str(k) for k in functions_replicas.keys()], *[str(v) for v in functions_replicas.values()])
-    temp = subprocess.Popen(['docker', 'exec', '-ti', 'minikube', 'python3', 'etc/find-pid.py', *functions_names], stdout = subprocess.PIPE)
-    data = str(temp.communicate())
-    data = data.split('\\n')
-    if (data[1].__contains__('List of PIDs for the requested functions')):
-        output = data[1].split('\\r')
+    # Execute the bash script and capture its output
+    temp = execute_bash_script(functions_names)
+    
+    # Split the output by newlines
+    data = temp.split('\n')
+
+    # Check if the output contains the expected PID information
+    if len(data) > 1 and 'List of PIDs for the requested functions' in data[1]:
+        output = data[1].split('\r')
+        # Extract PIDs from the string and convert it into a Python dictionary
         functions_pids = ast.literal_eval(output[0][43:])
     else:
         print("Log of finding PIDs function:", data)
         raise Exception('Something went wrong in finding PIDs for the functions')
+    
+    # Create a dictionary to store the count of replicas for each function
     functions_replicas = {}
     for name in functions_names:
-        functions_replicas[name] = len(functions_pids[name])
+        # Ensure the function name exists in the PID dictionary and count the replicas
+        functions_replicas[name] = len(functions_pids.get(name, []))
+    
+    # Print the results for debugging purposes
     print("Replicas of functions:", functions_replicas)
-    print("List of PIDs for the requested functions: ", functions_pids)
+    print("List of PIDs for the requested functions:", functions_pids)
+    
     return functions_pids, functions_replicas
+
+
+def execute_bash_script(functions_names):
+    # Prepare the bash script command with functions names as arguments
+    script_command = ['./remote_docker_cmd.sh', *functions_names]
+
+    # Run the bash script using subprocess
+    process = subprocess.Popen(script_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    
+    # Capture the output and error
+    stdout, stderr = process.communicate()
+
+    # Convert the output to a string
+    output = stdout.decode('utf-8')
+    error = stderr.decode('utf-8')
+
+    # Check if there is an error
+    if process.returncode != 0:
+        print(f"Error: {error}")
+        raise Exception("Something went wrong while executing the script.")
+
+    return output
