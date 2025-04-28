@@ -26,7 +26,8 @@ def main():
     duration = sys.argv[2]
     if "--no-scaphandre" in sys.argv:
         scaphandre = False
-    num_physical_cpus = multiprocessing.cpu_count()
+    num_physical_cpus_cmd = ['kubectl','--context=midnode-minikube-context', 'get', 'node', '-o', 'jsonpath={.items[0].status.capacity.cpu}']
+    num_physical_cpus = int(subprocess.check_output(num_physical_cpus_cmd, text=True).strip())
     print(f"Numero di CPU fisiche: {num_physical_cpus}")
     max_cpu_percentage = num_physical_cpus * 100
     cpu_overload_percentage = (max_cpu_percentage * 80) / 100
