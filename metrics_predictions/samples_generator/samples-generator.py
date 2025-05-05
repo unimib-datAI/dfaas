@@ -144,16 +144,28 @@ def main():
         
         actual_dominant_config = None
         overload_counter = 0
-        config_combinations_total = list(itertools.product(*function_with_rate_combinations))
+        config_combinations_total = itertools.product(*function_with_rate_combinations)
+        config_combinations_suport = itertools.product(*function_with_rate_combinations)
+        previous_config = -1
 
-        config_combinations = []
-        if (len(functions) != 0 and batch_iterator == 0):
+        for config in config_combinations_suport:
+            if config == loaded_config:
+                break
+            previous_config = config
+
+        if previous_config != -1:
+            for config in config_combinations_total:
+                if config == previous_config:
+                    break
+
+        """  if (len(functions) != 0 and batch_iterator == 0):
             for x in range(config_combinations_total.index(loaded_config), len(config_combinations_total)):
                 config_combinations.append(config_combinations_total[x])
         else:
-            config_combinations = config_combinations_total
+            config_combinations = config_combinations_total """
+    
         batch_iterator = batch_iterator + 1  
-        for config in config_combinations:
+        for config in config_combinations_total:
             current_functions = []
             attack_configs = []
             print('\n----------------------------------------')
