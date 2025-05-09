@@ -56,6 +56,12 @@ FUNCTION_BODIES = {
     'eat-memory': ''
 }
 
+#MAKE_WEBHOOK_URL = INSERT_WEBHOOK_URL_HERE
+
+NODEDETAIL = {
+    'node_name': 'midnode',
+}
+
 # It generates an array of tuple with every combination of function names.
 # Each tuple generated will have a number of functions that goes from min_number_of_functions (included) to max_number_of_functions (excluded).
 def generate_functions_combinations(function_list, min_number_of_functions, max_number_of_functions):
@@ -139,6 +145,7 @@ def retrieve_function_replicas():
 
 # This function let the system rest for Sampler Generator
 def rest(base_cpu_usage_idle, base_ram_usage_idle, base_power_usage_node_idle, duration, scaphandre):
+    #notification = False
     time.sleep(10)
     sleep_time_count = 10
 
@@ -147,6 +154,9 @@ def rest(base_cpu_usage_idle, base_ram_usage_idle, base_power_usage_node_idle, d
         time.sleep(5)
         sleep_time_count += 5
         cpu_usage, ram_usage, ram_usage_p, power_usage = retrieve_node_resources_usage(duration, None, None, scaphandre)
+        #if (sleep_time_count >120 and notification == False):
+        #    requests.post(make_webhook_url, json = NODEDETAIL)
+        #    notification = True
     wait = True
     while(wait):
         wait = False
