@@ -59,7 +59,7 @@ FUNCTION_BODIES = {
 #MAKE_WEBHOOK_URL = INSERT_WEBHOOK_URL_HERE FOR NOTIFICATION SYSTEM
 
 NODEDETAIL = {
-    'node_name': 'midnode',
+    'node': 'midnode',
 }
 
 # It generates an array of tuple with every combination of function names.
