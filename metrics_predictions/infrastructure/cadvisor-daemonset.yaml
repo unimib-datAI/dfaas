@@ -30,7 +30,10 @@ spec:
       serviceAccountName: cadvisor
       containers:
       - name: cadvisor
-        image: gcr.io/cadvisor/cadvisor:v0.45.0
+        image: gcr.io/cadvisor/cadvisor:v0.52.1
+        args:
+          - --docker_only
+          - --enable_metrics=app,cpu,memory,process
         volumeMounts:
         - name: rootfs
           mountPath: /rootfs
