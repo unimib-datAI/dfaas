@@ -56,7 +56,7 @@ FUNCTION_BODIES = {
     'eat-memory': ''
 }
 
-#MAKE_WEBHOOK_URL = INSERT_WEBHOOK_URL_HERE
+#MAKE_WEBHOOK_URL = INSERT_WEBHOOK_URL_HERE FOR NOTIFICATION SYSTEM
 
 NODEDETAIL = {
     'node_name': 'midnode',
@@ -145,7 +145,7 @@ def retrieve_function_replicas():
 
 # This function let the system rest for Sampler Generator
 def rest(base_cpu_usage_idle, base_ram_usage_idle, base_power_usage_node_idle, duration, scaphandre):
-    #notification = False
+    #notification = False    #NOTIFICATION SYSTEM
     time.sleep(10)
     sleep_time_count = 10
 
@@ -154,8 +154,8 @@ def rest(base_cpu_usage_idle, base_ram_usage_idle, base_power_usage_node_idle, d
         time.sleep(5)
         sleep_time_count += 5
         cpu_usage, ram_usage, ram_usage_p, power_usage = retrieve_node_resources_usage(duration, None, None, scaphandre)
-        #if (sleep_time_count >120 and notification == False):
-        #    requests.post(make_webhook_url, json = NODEDETAIL)
+        #if (sleep_time_count >120 and notification == False):      #NOTIFICATION SYSTEM
+        #    requests.post(MAKE_WEBHOOK_URL, json = NODEDETAIL)
         #    notification = True
     wait = True
     while(wait):
