@@ -145,7 +145,7 @@ def retrieve_function_replicas():
 
 # This function let the system rest for Sampler Generator
 def rest(base_cpu_usage_idle, base_ram_usage_idle, base_power_usage_node_idle, duration, scaphandre):
-    #notification = False    #NOTIFICATION SYSTEM
+    notification = True    #NOTIFICATION SYSTEM - set to False if needed
     time.sleep(10)
     sleep_time_count = 10
 
@@ -154,9 +154,10 @@ def rest(base_cpu_usage_idle, base_ram_usage_idle, base_power_usage_node_idle, d
         time.sleep(5)
         sleep_time_count += 5
         cpu_usage, ram_usage, ram_usage_p, power_usage = retrieve_node_resources_usage(duration, None, None, scaphandre)
-        #if (sleep_time_count >120 and notification == False):      #NOTIFICATION SYSTEM
-        #    requests.post(MAKE_WEBHOOK_URL, json = NODEDETAIL)
-        #    notification = True
+        if (sleep_time_count >360 and notification == False):      #NOTIFICATION SYSTEM
+            requests.post(MAKE_WEBHOOK_URL, json = NODEDETAIL)
+            #notification = True
+            sys.exit(1)  # Exit the script with a non-zero status to indicate an abnormal termination
     wait = True
     while(wait):
         wait = False
