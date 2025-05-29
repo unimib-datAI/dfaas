@@ -35,6 +35,8 @@ echo Overwriting the configuration.txt file with new starting configuration...
   IFS=','; echo "${RATES[*]}"
 } > configuration.txt
 
+sleep 5
+
 # Resting the remote minikube cluster
 
 # SSH connection info
@@ -53,3 +55,5 @@ else
     echo "Error: Remote script execution failed."
     exit 1
 fi
+
+sleep 5

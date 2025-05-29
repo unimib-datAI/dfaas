@@ -17,6 +17,8 @@ else
   echo Minikube is not running
 fi
 
+sleep 5
+
 # build the minikube instance
 
 echo Building Minikube instance...
@@ -29,6 +31,8 @@ else
   echo Unable to start Minikube
   exit 1
 fi
+
+sleep 5
 
 # Installing openfaas on minikube
 
@@ -60,6 +64,8 @@ else
   exit 1
 fi
 
+sleep 5
+
 # Start building the cluster using the infrastructure dir
 
  echo Building node infrastructure...
@@ -85,6 +91,8 @@ else
   echo Unable to restart Prometheus pod
   exit 1
 fi
+
+sleep 5
 
 # Copy the the find-pid script into the minikube container
 
