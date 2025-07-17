@@ -21,6 +21,9 @@ RATES=()
 i=0
 while [ $i -lt $FIELDS_TO_PROCESS ]; do
   NAME="${FIELDS[$i]}"
+  if [ "$NAME" == "eat-memory" ]; then
+    NAME="cavacal/$NAME"
+  fi
   RATE="${FIELDS[$((i + 1))]}"
   NAMES+=("$NAME")
   RATES+=("$RATE")
@@ -34,8 +37,6 @@ echo Overwriting the configuration.txt file with new starting configuration...
   IFS=','; echo "${NAMES[*]}"
   IFS=','; echo "${RATES[*]}"
 } > configuration.txt
-
-sleep 5
 
 # Resting the remote minikube cluster
 
@@ -55,5 +56,3 @@ else
     echo "Error: Remote script execution failed."
     exit 1
 fi
-
-sleep 5

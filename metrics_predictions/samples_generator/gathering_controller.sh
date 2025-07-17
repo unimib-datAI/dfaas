@@ -8,6 +8,7 @@ while true; do
 
     # Optional: Add a delay between iterations
     sleep 5
+    
     echo "Starting Python script..."
     python3 samples-generator.py 200 30s --no-scaphandre
     python_exit_code=$?

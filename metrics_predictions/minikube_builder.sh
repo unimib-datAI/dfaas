@@ -34,6 +34,27 @@ fi
 
 sleep 5
 
+# Loading pre pulled docker images
+
+# Folder containing the .tar files from pull-and-save-images.sh
+IMAGE_DIR=~/openfaas-image-cache
+
+# Check the directory exists
+if [ ! -d "$IMAGE_DIR" ]; then
+  echo " Error: $IMAGE_DIR does not exist. Run the pull script first."
+  exit 1
+fi
+
+echo "[*] Loading saved images into Minikube from $IMAGE_DIR..."
+
+for TAR in "$IMAGE_DIR"/*.tar; do
+  echo "-> Loading $TAR into Minikube"
+  minikube image load "$TAR"
+done
+
+echo "All .tar images successfully loaded into Minikube"
+
+
 # Installing openfaas on minikube
 
 echo Installing openfaas on the Minikube instance...
