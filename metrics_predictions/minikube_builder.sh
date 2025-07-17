@@ -17,13 +17,11 @@ else
   echo Minikube is not running
 fi
 
-sleep 5
-
 # build the minikube instance
 
 echo Building Minikube instance...
 
-minikube start --memory=max --cpus=max  --apiserver-ips=10.99.174.226
+minikube start --memory=max --cpus=max  --apiserver-ips=10.99.217.210
 
 if [ $? -eq 0 ]; then
   echo Minikube is up and running
@@ -31,8 +29,6 @@ else
   echo Unable to start Minikube
   exit 1
 fi
-
-sleep 5
 
 # Loading pre pulled docker images
 
@@ -53,7 +49,6 @@ for TAR in "$IMAGE_DIR"/*.tar; do
 done
 
 echo "All .tar images successfully loaded into Minikube"
-
 
 # Installing openfaas on minikube
 
@@ -85,8 +80,6 @@ else
   exit 1
 fi
 
-sleep 5
-
 # Start building the cluster using the infrastructure dir
 
  echo Building node infrastructure...
@@ -112,8 +105,6 @@ else
   echo Unable to restart Prometheus pod
   exit 1
 fi
-
-sleep 5
 
 # Copy the the find-pid script into the minikube container
 
