@@ -236,8 +236,11 @@ func Main() {
 	rand.Seed(int64(time.Now().Nanosecond()))
 
 	// Load configuration
-    // FIXME: Do not write an hardcoded directory
+    // FIXME: Do not use an hardcoded directory.
 	_config, err := config.LoadConfig("/opt/dfaasagent")
+    if err != nil {
+        log.Fatal(err)
+    }
 
 	// Setup logging engine
 	logger, err := logging.Initialize(_config.DateTime, _config.DebugMode, _config.LogColors)
@@ -248,7 +251,6 @@ func Main() {
 
 	// Print the actual configuration at DEBUG level (useful for debugging purposes)
 	logger.Debug("Running agent with configuration: ", _config)
-
 	err = runAgent(_config)
 	if err != nil {
 		logger.Fatal(err)

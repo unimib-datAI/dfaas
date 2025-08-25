@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
 	"strconv"
 
 	"github.com/pkg/errors"
@@ -124,18 +125,43 @@ type Client struct {
 
 ////////////////////////////////// PRIVATE FUNCTIONS ////////////////////////////////
 
-// doFuncsRequest gets info about functions from "/system/functions". 
+// doFuncsRequest gets info about functions from "/system/functions".
 // The hostnameAndPort parameter can be like
 // "myhostname:8080" or "myhostname" (implicit port 80) "192.168.15.101:8080"
 // (specifying the IP address)
 func (client *Client) doFuncsRequest() ([]byte, error) {
-	strURL := fmt.Sprintf(
-		"http://%s:%s@%s:%d/system/functions",
-		client.Username,
-		client.Password,
-		client.Hostname,
-		client.Port,
-	)
+
+	//retrieve isKube from configmap
+	val := os.Getenv("IS_KUBE")
+	isKube, err := strconv.ParseBool(val)
+	if err != nil {
+		fmt.Printf("Invalid IS_KUBE value: %s\n", val)
+		isKube = false
+	}
+
+	var strURL string
+
+	if isKube {
+		//retrieve secret from openfaas
+		user := os.Getenv("BASIC_AUTH_USER")
+		pass := os.Getenv("BASIC_AUTH_PASS")
+
+		strURL = fmt.Sprintf(
+			"http://%s:%s@%s:%d/system/functions",
+			user,
+			pass,
+			client.Hostname,
+			client.Port,
+		)
+	} else {
+		strURL = fmt.Sprintf(
+			"http://%s:%s@%s:%d/system/functions",
+			client.Username,
+			client.Password,
+			client.Hostname,
+			client.Port,
+		)
+	}
 
 	resp, err := http.Get(strURL)
 	if err != nil {
@@ -178,7 +204,6 @@ func (client *Client) GetFuncsWithMaxRates() (map[string]uint, error) {
 
 	return result, nil
 }
-
 
 // GetFuncsNames returns the function names list as a string array.
 func (client *Client) GetFuncsNames() ([]string, error) {

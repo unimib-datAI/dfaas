@@ -8,9 +8,15 @@
 package hacfgupd
 
 import (
+	"bytes"
+	"encoding/base64"
+	"fmt"
+	"io/ioutil"
+	"net/http"
 	"os"
 	"os/exec"
 	"path"
+	"strconv"
 	"text/template"
 
 	"github.com/Masterminds/sprig"
@@ -19,7 +25,7 @@ import (
 
 // updateStdoutDebugLogging decides wheather to enable or disable stdout logging
 // for the CmdOnUpdated command
-const updateStdoutDebugLogging = false
+const updateStdoutDebugLogging = true
 
 // Updater is the main type for updating an HAProxy configuration file using a
 // template
@@ -45,25 +51,68 @@ func (updater *Updater) LoadTemplate(templateFilePath string) error {
 
 // UpdateHAConfig updates the HAProxy config file
 func (updater *Updater) UpdateHAConfig(content interface{}) error {
-	f, err := os.Create(updater.HAConfigFilePath)
-	if err != nil {
-		return errors.Wrap(err, "Error while opening the HAProxy configuration file for writing")
-	}
-	defer f.Close()
 
-	err = updater.template.Execute(f, content)
+	//Retreive isKube from configmap
+	val := os.Getenv("IS_KUBE")
+	isKube, err := strconv.ParseBool(val)
 	if err != nil {
-		return errors.Wrap(err, "Error while applying the HAProxy configuration template to the data")
+		fmt.Printf("Invalid IS_KUBE value: %s\n", val)
+		isKube = false
 	}
 
-	cmd := exec.Command("bash", "-c", updater.CmdOnUpdated)
-	if updateStdoutDebugLogging {
-		cmd.Stdout = os.Stdout
-	}
-	cmd.Stderr = os.Stderr
-	err = cmd.Run()
-	if err != nil {
-		return errors.Wrap(err, "Error while executing the HAProxy configuration update command (command: \""+updater.CmdOnUpdated+"\")")
+	if isKube {
+		f, err := os.Create(updater.HAConfigFilePath)
+		if err != nil {
+			return errors.Wrap(err, "Error while opening the HAProxy configuration file for writing")
+		}
+		defer f.Close()
+
+		err = updater.template.Execute(f, content)
+		if err != nil {
+			return errors.Wrap(err, "Error while applying the HAProxy configuration template to the data")
+		}
+
+		configData, err := os.ReadFile(updater.HAConfigFilePath)
+		if err != nil {
+			return errors.Wrap(err, "Error reading the generated HAProxy configuration file")
+		}
+
+		req, err := http.NewRequest("POST", "http://haproxy-service:5555/v3/services/haproxy/configuration/raw?skip_version=true", bytes.NewBuffer(configData))
+		if err != nil {
+			return errors.Wrap(err, "Failed to create HTTP request to Data Plane API")
+		}
+		req.Header.Set("Content-Type", "text/plain")
+
+		username := "admin"
+		password := "mypassword"
+		auth := username + ":" + password
+		req.Header.Set("Authorization", "Basic "+base64.StdEncoding.EncodeToString([]byte(auth)))
+
+		client := &http.Client{}
+		resp, err := client.Do(req)
+		if err != nil {
+			return errors.Wrap(err, "Failed to send HTTP request to Data Plane API")
+		}
+		defer resp.Body.Close()
+
+		// Read and print response
+		respBody, err := ioutil.ReadAll(resp.Body)
+		if err != nil {
+			return errors.Wrap(err, "Error while executing the HAProxy configuration update command")
+		}
+
+		fmt.Println("Response status:", resp.Status)
+		fmt.Println("Response body:", string(respBody))
+	} else {
+		cmd := exec.Command("bash", "-c", updater.CmdOnUpdated)
+		if updateStdoutDebugLogging {
+			cmd.Stdout = os.Stdout
+		}
+		cmd.Stderr = os.Stderr
+		err = cmd.Run()
+		if err != nil {
+			return errors.Wrap(err, "Error while executing the HAProxy configuration update command (command: \""+updater.CmdOnUpdated+"\")")
+		}
 	}
 
 	return nil

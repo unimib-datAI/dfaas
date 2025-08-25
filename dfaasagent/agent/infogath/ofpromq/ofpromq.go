@@ -11,8 +11,10 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
+	"log"
 	"math"
 	"net/http"
+	"os"
 	"strconv"
 	"strings"
 	"time"
@@ -30,34 +32,40 @@ type Client struct {
 // hostnameAndPort parameter can be like "myhostname:9090" or "myhostname"
 // (implicit port 80) "192.168.15.101:9090" (specifying the IP address)
 func (client *Client) Query(query string) (string, error) {
-	//logger := logging.Logger()
+	log.Println("[Query] Building Prometheus query...")
 	strURL := fmt.Sprintf("http://%s:%d/api/v1/query", client.Hostname, client.Port)
 
 	httpClient := &http.Client{}
 
 	req, err := http.NewRequest("GET", strURL, nil)
 	if err != nil {
-		return "", errors.Wrap(err, "Error while building an HTTP request for the Prometheus API endpoint")
+		log.Printf("[Query] Failed to build HTTP request: %v\n", err)
+		return "", errors.Wrap(err, "building HTTP request")
 	}
 
 	q := req.URL.Query()
 	q.Add("query", query)
 	req.URL.RawQuery = q.Encode()
-	//logger.Debug("Prometheus URL: " + strURL)
+
+	log.Printf("[Query] Full URL: %s\n", req.URL.String())
+
 	resp, err := httpClient.Do(req)
-
-	//logger.Debug("Prometherus Request: " + req.URL.String())
-	//logger.Debug("Prometheus Response status: " + resp.Status)
-	//logger.Debug(err)
-
 	if err != nil {
-		return "", errors.Wrap(err, "Error while performing an HTTP request to the Prometheus API endpoint")
+		log.Printf("[Query] HTTP request failed: %v\n", err)
+		return "", errors.Wrap(err, "performing HTTP request")
 	}
 	defer resp.Body.Close()
+
+	log.Printf("[Query] Response status: %s\n", resp.Status)
+
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return "", errors.Wrap(err, "Error while reading the content of an HTTP response from the Prometheus API endpoint")
+		log.Printf("[Query] Failed to read response body: %v\n", err)
+		return "", errors.Wrap(err, "reading response body")
 	}
+
+	// Optionally log short body preview (only for debugging; avoid in prod)
+	log.Printf("[Query] Body preview: %.200s...\n", string(body))
 
 	return string(body), nil
 }
@@ -296,9 +304,26 @@ func (client *Client) QueryServiceCount() (map[string]int, error) {
 // QueryCPUusage returns, for each active istance of node_exporter, the amount of CPU used
 // in that node. The returned map contains as keys the instance name and the CPU usage (percentage) as value.
 func (client *Client) QueryCPUusage(timeSpan time.Duration) (map[string]float64, error) {
+
+	//Retreive isKube from configmap
+	val := os.Getenv("IS_KUBE")
+	isKube, err := strconv.ParseBool(val)
+	if err != nil {
+		fmt.Printf("Invalid IS_KUBE value: %s\n", val)
+		isKube = false
+	}
+
 	//strTimeSpan := timeSpan.String()
 	strTimeSpan := fmt.Sprintf("%.0fm", timeSpan.Minutes())
-	query := fmt.Sprintf("1 - (avg by (instance) (rate(node_cpu_seconds_total{job=\"node\",mode=\"idle\"}[%s])))", strTimeSpan)
+
+	query := ""
+
+	if isKube {
+		query = fmt.Sprintf("1 - (avg by (instance) (rate(node_cpu_seconds_total{job=\"node-exporter\",mode=\"idle\"}[%s])))", strTimeSpan)
+	} else {
+		query = fmt.Sprintf("1 - (avg by (instance) (rate(node_cpu_seconds_total{job=\"node\",mode=\"idle\"}[%s])))", strTimeSpan)
+	}
+
 	return client.queryCPUusage(query)
 }
 
@@ -328,10 +353,26 @@ func (client *Client) QueryRAMusage(timeSpan time.Duration) (map[string]float64,
 // The returned map contains as keys the function name and the CPU usage (percentage) as value.
 // Note: this function use metrics of cAdvisor (CPU usage of single container) and node_exporter (total amount of available CPU).
 func (client *Client) QueryCPUusagePerFunction(timeSpan time.Duration, funcName []string) (map[string]float64, error) {
+
+	//Retreive isKube from configmap
+	val := os.Getenv("IS_KUBE")
+	isKube, err := strconv.ParseBool(val)
+	if err != nil {
+		fmt.Printf("Invalid IS_KUBE value: %s\n", val)
+		isKube = false
+	}
+
 	//strTimeSpan := timeSpan.String()
 	strTimeSpan := fmt.Sprintf("%.0fm", timeSpan.Minutes())
 	funcFilter := strings.Join(funcName, "|")
-	query := fmt.Sprintf("sum by (id) (irate(container_cpu_usage_seconds_total{id=~\".*(%s).*\"}[%s])) / on() group_left() sum by (instance) (irate(node_cpu_seconds_total{job=\"node\"}[%s]))", funcFilter, strTimeSpan, strTimeSpan)
+
+	query := ""
+
+	if isKube {
+		query = fmt.Sprintf("sum by (id) (irate(container_cpu_usage_seconds_total{id=~\".*(%s).*\"}[%s])) / on() group_left() sum by (instance) (irate(node_cpu_seconds_total{job=\"node-exporter\"}[%s]))", funcFilter, strTimeSpan, strTimeSpan)
+	} else {
+		query = fmt.Sprintf("sum by (id) (irate(container_cpu_usage_seconds_total{id=~\".*(%s).*\"}[%s])) / on() group_left() sum by (instance) (irate(node_cpu_seconds_total{job=\"node\"}[%s]))", funcFilter, strTimeSpan, strTimeSpan)
+	}
 
 	return client.queryCPUusagePerFunction(query)
 }
