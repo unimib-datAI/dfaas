@@ -24,7 +24,6 @@ dfaasagent/prvkey.dat
 # Ignore custom Ansible inventory files.
 **/inventory.yaml
 
-
 # Custom ignores
 __pycache__
 venv
@@ -37,3 +36,6 @@ framework/outputs/**
 !framework/outputs/**/.gitkeep
 simulation/outputs/**
 !simulation/outputs/**/.gitkeep
+
+# Container images.
+*.tar
