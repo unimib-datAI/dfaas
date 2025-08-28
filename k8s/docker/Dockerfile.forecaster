@@ -12,11 +12,11 @@ RUN apt-get update && \
 
 WORKDIR /usr/src/forecaster
 
-COPY docker/forecaster/requirements.txt ./
+COPY forecaster/requirements.txt ./
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY docker/forecaster ./
+COPY forecaster ./
 
 EXPOSE 8000
 
