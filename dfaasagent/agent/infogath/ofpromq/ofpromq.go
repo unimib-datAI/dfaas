@@ -11,7 +11,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
-	"log"
 	"math"
 	"net/http"
 	"os"
@@ -20,6 +19,8 @@ import (
 	"time"
 
 	"github.com/pkg/errors"
+
+    "gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
 )
 
 // Client for gathering information from Prometheus
@@ -32,14 +33,15 @@ type Client struct {
 // hostnameAndPort parameter can be like "myhostname:9090" or "myhostname"
 // (implicit port 80) "192.168.15.101:9090" (specifying the IP address)
 func (client *Client) Query(query string) (string, error) {
-	log.Println("[Query] Building Prometheus query...")
+    logger := logging.Logger()
+
 	strURL := fmt.Sprintf("http://%s:%d/api/v1/query", client.Hostname, client.Port)
 
 	httpClient := &http.Client{}
 
 	req, err := http.NewRequest("GET", strURL, nil)
 	if err != nil {
-		log.Printf("[Query] Failed to build HTTP request: %v\n", err)
+        logger.Error("Failed to build HTTP request for Prometheus query: ", err)
 		return "", errors.Wrap(err, "building HTTP request")
 	}
 
@@ -47,25 +49,25 @@ func (client *Client) Query(query string) (string, error) {
 	q.Add("query", query)
 	req.URL.RawQuery = q.Encode()
 
-	log.Printf("[Query] Full URL: %s\n", req.URL.String())
+    logger.Debug("Full URL for Prometheus query: ", req.URL.String())
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-		log.Printf("[Query] HTTP request failed: %v\n", err)
+        logger.Error("Prometheus HTTP request failed: ", err)
 		return "", errors.Wrap(err, "performing HTTP request")
 	}
 	defer resp.Body.Close()
 
-	log.Printf("[Query] Response status: %s\n", resp.Status)
+    logger.Debug("Prometheus query response status: ", resp.Status)
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		log.Printf("[Query] Failed to read response body: %v\n", err)
+        logger.Error("Failed to read HTTP response body: ", err)
 		return "", errors.Wrap(err, "reading response body")
 	}
 
-	// Optionally log short body preview (only for debugging; avoid in prod)
-	log.Printf("[Query] Body preview: %.200s...\n", string(body))
+    // Avoid in production!
+    logger.Debug(fmt.Sprintf("Body preview: %.200s...\n", string(body)))
 
 	return string(body), nil
 }
@@ -304,14 +306,17 @@ func (client *Client) QueryServiceCount() (map[string]int, error) {
 // QueryCPUusage returns, for each active istance of node_exporter, the amount of CPU used
 // in that node. The returned map contains as keys the instance name and the CPU usage (percentage) as value.
 func (client *Client) QueryCPUusage(timeSpan time.Duration) (map[string]float64, error) {
+    logger := logging.Logger()
 
-	//Retreive isKube from configmap
-	val := os.Getenv("IS_KUBE")
-	isKube, err := strconv.ParseBool(val)
-	if err != nil {
-		fmt.Printf("Invalid IS_KUBE value: %s\n", val)
-		isKube = false
-	}
+    // Check IS_KUBE env var, set to true if running on Kubernetes.
+    isKube := false
+	if val := os.Getenv("IS_KUBE"); val != "" {
+        var err error
+        isKube, err = strconv.ParseBool(val)
+        if err != nil {
+            logger.Error(fmt.Sprintf("Invalid IS_KUBE value: %s", val))
+        }
+    }
 
 	//strTimeSpan := timeSpan.String()
 	strTimeSpan := fmt.Sprintf("%.0fm", timeSpan.Minutes())
@@ -353,14 +358,16 @@ func (client *Client) QueryRAMusage(timeSpan time.Duration) (map[string]float64,
 // The returned map contains as keys the function name and the CPU usage (percentage) as value.
 // Note: this function use metrics of cAdvisor (CPU usage of single container) and node_exporter (total amount of available CPU).
 func (client *Client) QueryCPUusagePerFunction(timeSpan time.Duration, funcName []string) (map[string]float64, error) {
+    logger := logging.Logger()
 
-	//Retreive isKube from configmap
-	val := os.Getenv("IS_KUBE")
-	isKube, err := strconv.ParseBool(val)
-	if err != nil {
-		fmt.Printf("Invalid IS_KUBE value: %s\n", val)
-		isKube = false
-	}
+    isKube := false
+	if val := os.Getenv("IS_KUBE"); val != "" {
+        var err error
+        isKube, err = strconv.ParseBool(val)
+        if err != nil {
+            logger.Error(fmt.Sprintf("Invalid IS_KUBE value: %s", val))
+        }
+    }
 
 	//strTimeSpan := timeSpan.String()
 	strTimeSpan := fmt.Sprintf("%.0fm", timeSpan.Minutes())

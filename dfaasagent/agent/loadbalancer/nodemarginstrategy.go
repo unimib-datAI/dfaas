@@ -78,6 +78,8 @@ type nodeInfo struct {
 // RunStrategy handles the periodic execution of the recalculation function. It
 // should run in a goroutine
 func (strategy *NodeMarginStrategy) RunStrategy() error {
+    logger := logging.Logger()
+
 	var millisNow, millisSleep int64
 	var err error
 
@@ -96,13 +98,19 @@ func (strategy *NodeMarginStrategy) RunStrategy() error {
 	for {
 		cpuUsage, err = strategy.ofpromqClient.QueryCPUusage(_config.RecalcPeriod)
 		if err != nil {
-			return errors.Wrap(err, "Error while executing Prometheus query")
+            logger.Error("Failed to execute Prometheus QueryCPUusage query, skipping RunStrategy iteration ", err)
+            logger.Warn("Waiting 5 second before retrying RunStrategy after Prometheus error")
+            time.Sleep(5 * time.Second)
+            continue
 		}
 		debugPromCPUusage(_config.RecalcPeriod, cpuUsage)
 
 		ramUsage, err = strategy.ofpromqClient.QueryRAMusage(_config.RecalcPeriod)
 		if err != nil {
-			return errors.Wrap(err, "Error while executing Prometheus query")
+            logger.Error("Failed to execute Prometheus QueryRAMusage query, skipping RunStrategy iteration ", err)
+            logger.Warn("Waiting 5 second before retrying RunStrategy after Prometheus error")
+            time.Sleep(5 * time.Second)
+            continue
 		}
 		debugPromRAMusage(_config.RecalcPeriod, ramUsage)
 
