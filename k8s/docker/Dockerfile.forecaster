@@ -1,0 +1,27 @@
+# This Dockerfile build the forecaster component.
+#
+# The forecaster is a web server written in Python that uses the FastAPI
+# framework and is run with uvicorn.
+FROM docker.io/library/python:3.9-slim
+
+# Install missing libgomp for LightGBM.
+# See: https://github.com/microsoft/LightGBM/issues/2223#issuecomment-499788066
+RUN apt-get update && \
+    apt-get install -y --no-install-recommends libgomp1 && \
+    rm -rf /var/lib/apt/lists/* # Clean APT cache!
+
+WORKDIR /usr/src/forecaster
+
+COPY docker/forecaster/requirements.txt ./
+
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY docker/forecaster ./
+
+EXPOSE 8000
+
+# Run web server as main command.
+ENTRYPOINT ["/usr/local/bin/uvicorn", "main:app"]
+
+# Default args to append to uvicorn. Note that the port 8000 is exposed.
+CMD ["--port", "8000", "--host", "0.0.0.0"]
