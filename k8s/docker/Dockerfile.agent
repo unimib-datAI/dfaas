@@ -30,7 +30,7 @@ COPY --from=builder /usr/src/dfaasagent/dfaasagent .
 COPY k8s/configs/dfaasagent.env .
 COPY k8s/configs/haproxycfgnms.tmpl .
 COPY k8s/configs/haproxycfgrecalc.tmpl .
-COPY docker/files/dfaasagent/group_list.json .
+COPY k8s/configs/group_list.json .
 COPY k8s/haproxy/haproxy.cfg .
 
 # The DFaaS agent exposes a HTTP web server with /healtz endpoint.
