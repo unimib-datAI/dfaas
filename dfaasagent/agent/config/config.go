@@ -65,13 +65,13 @@ type Configuration struct {
 	PowerThresholdNMS 	float64 `mapstructure:"AGENT_NMS_POWER_THRESHOLD"`
 }
 
-func LoadConfig(path string) (config Configuration, err error) {
-	viper.AddConfigPath(path)
-	viper.SetConfigName("dfaasagent")
+func LoadConfig(configPath string) (config Configuration, err error) {
+    viper.SetConfigFile(configPath)
 	viper.SetConfigType("env")
 	viper.SetEnvPrefix("AGENT")
 	viper.AllowEmptyEnv(true)
 
+    // Override values in config file with env vars.
 	viper.AutomaticEnv()
 
 	err = viper.ReadInConfig()
