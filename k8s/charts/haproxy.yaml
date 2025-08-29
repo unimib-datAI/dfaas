@@ -1,0 +1,8 @@
+service:
+  type: NodePort
+  ports:
+    http: 80
+    admin: 5555
+  nodePorts:
+    http: 30080
+    stat: 30081
