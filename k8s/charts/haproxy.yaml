@@ -1,5 +1,6 @@
 config: |
   global
+    stats socket /var/run/haproxy.sock mode 660 level admin
     log stdout format raw local0
     maxconn 1024
 
@@ -21,7 +22,8 @@ service:
   type: NodePort
   ports:
     http: 80
-    admin: 5555
+    dataplane: 5555
   nodePorts:
     http: 30080
-    stat: 30081
+    dataplane: 5555 # For testing.
+
