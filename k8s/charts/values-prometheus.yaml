@@ -1,0 +1,9 @@
+
+# Do not install these unused services (prometheus-node-exporter will be
+# installed instead).
+prometheus-pushgateway:
+  enabled: false
+kube-state-metrics:
+  enabled: false
+alertmanager:
+  enabled: false

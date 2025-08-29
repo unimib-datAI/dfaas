@@ -1,0 +1,7 @@
+alertmanager:
+  create: false
+
+prometheus:
+  create: false
+
+functionNamespace: default
