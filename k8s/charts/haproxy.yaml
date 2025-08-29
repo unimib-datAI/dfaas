@@ -1,3 +1,22 @@
+config: |
+  global
+    log stdout format raw local0
+    maxconn 1024
+
+  defaults
+    mode http
+    option httplog
+    log global
+    timeout client 60s
+    timeout connect 60s
+    timeout server 60s
+
+  frontend fe_main
+    bind :80
+    default_backend be_ok
+
+  backend be_ok
+    http-request return status 200 content-type "text/plain" string "This is a DFaaS node. Call a function with /function/<funcname>\n"
 service:
   type: NodePort
   ports:
