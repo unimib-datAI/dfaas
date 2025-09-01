@@ -5,11 +5,8 @@
 # Stage 1: Build the Go app.
 FROM docker.io/library/golang:1.24 AS builder
 
-# Set Go specific env vars. Drop GO111MODULE when Go 
-# GO111MODULE=on is necessary for Go 1.14. Drop when using Go 1.16+.
-# CGO_ENABLED=0 is necessary to use Alpine image!
-ENV GO111MODULE=on \
-    CGO_ENABLED=0
+# Set Go specific env vars. CGO_ENABLED=0 is necessary to use Alpine image!
+ENV CGO_ENABLED=0
 
 WORKDIR /usr/src/dfaasagent
 
@@ -28,10 +25,7 @@ WORKDIR /usr/src/dfaasagent/
 # Copy the binary from the builder stage
 COPY --from=builder /usr/src/dfaasagent/dfaasagent .
 COPY k8s/configs/dfaasagent.env .
-COPY k8s/configs/haproxycfgnms.tmpl .
-COPY k8s/configs/haproxycfgrecalc.tmpl .
 COPY k8s/configs/group_list.json .
-COPY k8s/haproxy/haproxy.cfg .
 
 # The DFaaS agent exposes a HTTP web server with /healtz endpoint.
 EXPOSE 8008

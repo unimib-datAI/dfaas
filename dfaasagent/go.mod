@@ -5,7 +5,7 @@
 
 module gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent
 
-go 1.14
+go 1.16
 
 require (
 	github.com/Masterminds/goutils v1.1.0 // indirect

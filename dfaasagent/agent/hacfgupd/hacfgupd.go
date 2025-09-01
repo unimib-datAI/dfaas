@@ -15,7 +15,6 @@ import (
 	"io/ioutil"
 	"net/http"
 	"os"
-	"path"
 	"text/template"
 
 	"github.com/Masterminds/sprig"
@@ -36,13 +35,18 @@ type Updater struct {
 	HAConfigFilePath string
 }
 
-// LoadTemplate Loads the template from file
-func (updater *Updater) LoadTemplate(templateFilePath string) error {
-	tmpl := template.New(path.Base(templateFilePath)) // Create new empty template
-	tmpl = tmpl.Funcs(sprig.TxtFuncMap())             // Add sprig functions
-	tmpl, err := tmpl.ParseFiles(templateFilePath)    // Parse the template file
+// LoadTemplate loads the template from the given string.
+func (updater *Updater) LoadTemplate(templateContent string) error {
+	// Create a new empty template without name.
+	tmpl := template.New("")
+
+	// Add sprig functions to the template.
+	tmpl = tmpl.Funcs(sprig.TxtFuncMap())
+
+	// Parse template content.
+	tmpl, err := tmpl.Parse(templateContent)
 	if err != nil {
-		return errors.Wrap(err, "Error while loading HAProxy configuration template from file")
+		return errors.Wrap(err, "Error while loading HAProxy configuration template from content")
 	}
 
 	updater.template = tmpl
