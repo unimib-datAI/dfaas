@@ -9,6 +9,8 @@ import (
 	_ "embed"
 
 	"github.com/bcicen/go-haproxy"
+
+    "gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/hacfgupd"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/forecaster"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/offuncs"
@@ -111,8 +113,8 @@ func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, er
 	}
 
 	strategy.forecasterClient = forecaster.Client{
-		Hostname: _config.ForecasterHost,
-		Port:     _config.ForecasterPort,
+		Hostname: constants.ForecasterHost,
+		Port:     constants.ForeasterPort,
 	}
 
 	strategy.nodeInfo = nodeInfo{}

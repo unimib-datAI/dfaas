@@ -15,6 +15,7 @@ import (
 
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/config"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/forecaster"
+    "gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
 )
 
 //////////////////// MAIN PRIVATE VARS AND INIT FUNCTION ////////////////////
@@ -27,8 +28,8 @@ func Initialize(config config.Configuration) {
 	_config = config
 
 	_forecasterClient = forecaster.Client{
-		Hostname: _config.ForecasterHost,
-		Port:     _config.ForecasterPort,
+        Hostname: constants.ForecasterHost,
+        Port:     constants.ForeasterPort,
 	}
 }
 

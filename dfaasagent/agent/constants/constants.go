@@ -19,4 +19,8 @@ const (
 	HAProxyDataPlaneAPIOrigin = "http://haproxy.default.svc.cluster.local:5555"
 	HAProxyDataPlaneUsername  = "admin"
 	HAProxyDataPlanePassword  = "admin"
+
+    // Connection information for accessing the DFaaS Forecaster service.
+    ForecasterHost = "dfaas-forecaster"
+    ForeasterPort = 80
 )
