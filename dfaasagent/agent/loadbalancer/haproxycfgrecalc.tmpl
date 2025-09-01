@@ -1,20 +1,32 @@
-# HAProxy configuration file updated on {{.Now}}
+# HAProxy configuration file updated by DFaaS agent on {{.Now}}
 
-{{/* #################### MAIN SECTION #################### */ -}}
-
+# See k8s/charts/values-haproxy.yaml for more information about global,
+# userlist, defaults and program sections.
 global
-    stats socket /run/haproxy/admin.sock mode 666 level admin
-    log stdout local0
+  master-worker
+  stats socket /var/run/haproxy.sock mode 660 level admin expose-fd listeners
+  insecure-fork-wanted
+  expose-deprecated-directives
+  log stdout format raw local0
+  maxconn 1024
+
+userlist dataplaneapi
+  user admin insecure-password admin
 
 defaults
-    mode http
+  mode http
+  option httplog
+  log global
+  timeout client 60s
+  timeout connect 60s
+  timeout server 60s
 
-    log global
-    option httplog
+program api
+  command /bin/sh /usr/local/etc/haproxy/includes/dataplane-start.sh
+  no option start-on-reload
 
-    timeout connect 5000
-    timeout client 50000
-    timeout server 50000
+# The configuration is generated and changed by the DFaaS agent from this point
+# on.
 
 {{/* #################### STICK-TABLES #################### */ -}}
 

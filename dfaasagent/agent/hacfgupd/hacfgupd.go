@@ -22,14 +22,8 @@ import (
 	"github.com/pkg/errors"
 	"go.uber.org/zap"
 
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
-)
-
-// Connection information for accessing the Data Plane API.
-const (
-	Origin   = "http://haproxy.default.svc.cluster.local:5555"
-	Username = "admin"
-	Password = "admin"
 )
 
 // Updater is the main type for updating an HAProxy configuration file using a
@@ -77,13 +71,13 @@ func (updater *Updater) UpdateHAConfig(content interface{}) error {
 	}
 
 	// Create POST request.
-	url := fmt.Sprintf("%s/v3/services/haproxy/configuration/raw?skip_version=true", Origin)
+	url := fmt.Sprintf("%s/v3/services/haproxy/configuration/raw?skip_version=true", constants.HAProxyDataPlaneAPIOrigin)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(configData))
 	if err != nil {
 		return errors.Wrap(err, "Failed to create HTTP request to Data Plane API")
 	}
 	req.Header.Set("Content-Type", "text/plain")
-	req.SetBasicAuth(Username, Password)
+	req.SetBasicAuth(constants.HAProxyDataPlaneUsername, constants.HAProxyDataPlanePassword)
 
 	// Send POST request.
 	client := &http.Client{}
