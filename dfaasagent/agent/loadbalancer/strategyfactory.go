@@ -37,7 +37,6 @@ func (strategyFactory *recalcStrategyFactory) createStrategy() (Strategy, error)
 
 	strategy.hacfgupdater = hacfgupd.Updater{
 		HAConfigFilePath: _config.HAProxyConfigFile,
-		CmdOnUpdated:     _config.HAProxyConfigUpdateCommand,
 	}
 
 	err := strategy.hacfgupdater.LoadTemplate(_config.HAProxyTemplateFileRecalc)
@@ -80,7 +79,6 @@ func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, er
 
 	strategy.hacfgupdater = hacfgupd.Updater{
 		HAConfigFilePath: _config.HAProxyConfigFile,
-		CmdOnUpdated:     _config.HAProxyConfigUpdateCommand,
 	}
 
 	err := strategy.hacfgupdater.LoadTemplate(_config.HAProxyTemplateFileNMS)

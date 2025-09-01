@@ -35,7 +35,6 @@ type Configuration struct {
 	HAProxyTemplateFileNMS        string `mapstructure:"AGENT_HAPROXY_TEMPLATE_FILE_NMS"`
 	HAProxyTemplateFileRecalc     string `mapstructure:"AGENT_HAPROXY_TEMPLATE_FILE_RECALC"`
 	HAProxyConfigFile          	  string `mapstructure:"AGENT_HAPROXY_CONFIG_FILE"`
-	HAProxyConfigUpdateCommand 	  string `mapstructure:"AGENT_HAPROXY_CONFIG_UPDATE_COMMAND"`
 	HAProxyHost                	  string `mapstructure:"AGENT_HAPROXY_HOST"`
 	HAProxyPort                	  uint   `mapstructure:"AGENT_HAPROXY_PORT"`
 	HAProxySockPath            	  string `mapstructure:"AGENT_HAPROXY_SOCK_PATH"`
