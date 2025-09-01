@@ -23,5 +23,5 @@ EXPOSE 8000
 # Run web server as main command.
 ENTRYPOINT ["/usr/local/bin/uvicorn", "main:app"]
 
-# Default args to append to uvicorn. Note that the port 8000 is exposed.
-CMD ["--port", "8000", "--host", "0.0.0.0"]
+# Default args to append to uvicorn. Note that the port 8080 is exposed.
+CMD ["--port", "8080", "--host", "0.0.0.0"]
