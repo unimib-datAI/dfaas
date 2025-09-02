@@ -20,7 +20,12 @@ const (
 	HAProxyDataPlaneUsername  = "admin"
 	HAProxyDataPlanePassword  = "admin"
 
-    // Connection information for accessing the DFaaS Forecaster service.
-    ForecasterHost = "dfaas-forecaster"
-    ForeasterPort = 80
+	// Connection information for accessing the DFaaS Forecaster service.
+	ForecasterHost = "dfaas-forecaster"
+	ForeasterPort  = 80
+
+	// Connection information used to run an HTTP Web Server for health checking
+	// at /healthz endpoint.
+	HttpServerHost = "0.0.0.0"
+	HttpServerPort = 8080
 )

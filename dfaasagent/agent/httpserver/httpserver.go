@@ -8,14 +8,14 @@
 package httpserver
 
 import (
+	"fmt"
 	"io"
 	"net/http"
 	"strconv"
-	"fmt"
 
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/config"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/forecaster"
-    "gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
 )
 
 //////////////////// MAIN PRIVATE VARS AND INIT FUNCTION ////////////////////
@@ -28,8 +28,8 @@ func Initialize(config config.Configuration) {
 	_config = config
 
 	_forecasterClient = forecaster.Client{
-        Hostname: constants.ForecasterHost,
-        Port:     constants.ForeasterPort,
+		Hostname: constants.ForecasterHost,
+		Port:     constants.ForeasterPort,
 	}
 }
 
@@ -39,16 +39,16 @@ func Initialize(config config.Configuration) {
 func RunHttpServer() error {
 	http.HandleFunc("/healthz", healthzHandler)
 
-	ip := _config.HttpServerHost
-	port := strconv.FormatUint(uint64(_config.HttpServerPort), 10)
-	err := http.ListenAndServe(ip + ":" + port, nil)
+	ip := constants.HttpServerHost
+	port := strconv.FormatUint(uint64(constants.HttpServerPort), 10)
+	err := http.ListenAndServe(ip+":"+port, nil)
 
 	return err
 }
 
 //////////////////// PRIVATE REQUEST HANDLERS FUNCTIONS ////////////////////
 
-// Function to handle requests to "/healthz" endpoint. 
+// Function to handle requests to "/healthz" endpoint.
 // This endpoint is useful to check if the DFaaS agent is healthy, and also if other main components (Forecaster and OpenFaaS cluster) are healthy.
 func healthzHandler(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, "DFaaS Node running.\n")
