@@ -1,0 +1,23 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dfaas-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dfaas-agent
+  template:
+    metadata:
+      labels:
+        app: dfaas-agent
+    spec:
+      containers:
+        - name: dfaas-agent
+          image: localhost/agent:dev
+          # imagePullPolicy must be set to "Never" since we build the DFaaS
+          # Agent only locally.
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+              name: healthz
