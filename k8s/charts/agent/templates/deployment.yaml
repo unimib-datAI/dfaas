@@ -21,3 +21,14 @@ spec:
           ports:
             - containerPort: 8080
               name: healthz
+          env: 
+            # Get OpenFaaS password, since it is generated on each installation.
+            - name: AGENT_OPENFAAS_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: basic-auth
+                  key: basic-auth-password
+          envFrom:
+            # Get the DFaaS Agent config.
+            - configMapRef:
+                name: dfaas-agent-config
