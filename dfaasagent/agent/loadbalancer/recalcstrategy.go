@@ -31,7 +31,6 @@ import (
 type RecalcStrategy struct {
 	hacfgupdater  hacfgupd.Updater
 	nodestbl 	  *nodestbl.TableRecalc
-	ofpromqClient ofpromq.Client
 	offuncsClient offuncs.Client
 	hasockClient  haproxy.HAProxyClient
 	recalc		  recalc
@@ -225,31 +224,31 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 	*/
 	//////////////////// GATHER INFO FROM PROMETHEUS ////////////////////
 
-	strategy.recalc.afet, err = strategy.ofpromqClient.QueryAFET(_config.RecalcPeriod)
+	strategy.recalc.afet, err = ofpromq.QueryAFET(_config.RecalcPeriod)
 	if err != nil {
 		return errors.Wrap(err, "Error while execting Prometheus query")
 	}
 	debugPromAFET(_config.RecalcPeriod, strategy.recalc.afet)
 
-	strategy.recalc.invoc, err = strategy.ofpromqClient.QueryInvoc(_config.RecalcPeriod)
+	strategy.recalc.invoc, err = ofpromq.QueryInvoc(_config.RecalcPeriod)
 	if err != nil {
 		return errors.Wrap(err, "Error while executing Prometheus query")
 	}
 	debugPromInvoc(_config.RecalcPeriod, strategy.recalc.invoc)
 
-	strategy.recalc.serviceCount, err = strategy.ofpromqClient.QueryServiceCount()
+	strategy.recalc.serviceCount, err = ofpromq.QueryServiceCount()
 	if err != nil {
 		return errors.Wrap(err, "Error while executing Prometheus query")
 	}
 	debugPromServiceCount(strategy.recalc.serviceCount)
 
-	strategy.recalc.cpuUsage, err = strategy.ofpromqClient.QueryCPUusage(_config.RecalcPeriod)
+	strategy.recalc.cpuUsage, err = ofpromq.QueryCPUusage(_config.RecalcPeriod)
 	if err != nil {
 		return errors.Wrap(err, "Error while executing Prometheus query")
 	}
 	debugPromCPUusage(_config.RecalcPeriod, strategy.recalc.cpuUsage)
 
-	strategy.recalc.ramUsage, err = strategy.ofpromqClient.QueryRAMusage(_config.RecalcPeriod)
+	strategy.recalc.ramUsage, err = ofpromq.QueryRAMusage(_config.RecalcPeriod)
 	if err != nil {
 		return errors.Wrap(err, "Error while executing Prometheus query")
 	}
@@ -264,13 +263,13 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 			i++
 		}
 
-		strategy.recalc.perFuncCpuUsage, err = strategy.ofpromqClient.QueryCPUusagePerFunction(_config.RecalcPeriod, funcNames)
+		strategy.recalc.perFuncCpuUsage, err = ofpromq.QueryCPUusagePerFunction(_config.RecalcPeriod, funcNames)
 		if err != nil {
 			return errors.Wrap(err, "Error while executing Prometheus query")
 		}
 		debugPromCPUusagePerFunction(_config.RecalcPeriod, strategy.recalc.perFuncCpuUsage)
 
-		strategy.recalc.perFuncRamUsage, err = strategy.ofpromqClient.QueryRAMusagePerFunction(_config.RecalcPeriod, funcNames)
+		strategy.recalc.perFuncRamUsage, err = ofpromq.QueryRAMusagePerFunction(_config.RecalcPeriod, funcNames)
 		if err != nil {
 			return errors.Wrap(err, "Error while executing Prometheus query")
 		}
@@ -492,8 +491,6 @@ func (strategy *RecalcStrategy) recalcStep2() error {
 			strMyself,
 			_config.OpenFaaSHost,
 			_config.OpenFaaSPort,
-			_config.HttpServerHost,
-			_config.HttpServerPort,
 			_config.RecalcPeriod,
 			entries,
 			strategy.recalc.funcs,
@@ -620,8 +617,6 @@ func (strategy *RecalcStrategy) createHACfgObject(
 	myNodeID string,
 	openFaaSHost string,
 	openFaaSPort uint,
-	httpServerHost string,
-	httpServerPort uint,
 	recalcPeriod time.Duration,
 	entries map[string]*nodestbl.EntryRecalc,
 	funcLimits map[string]uint,
@@ -633,9 +628,6 @@ func (strategy *RecalcStrategy) createHACfgObject(
 			OpenFaaSHost: openFaaSHost,
 			OpenFaaSPort: openFaaSPort,
 		},
-
-		HttpServerHost: httpServerHost,
-		HttpServerPort: httpServerPort,
 
 		StrRecalc:  recalcPeriod.String(),
 		SecsRecalc: uint(recalcPeriod / time.Second),

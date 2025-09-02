@@ -43,15 +43,6 @@ type Configuration struct {
 	OpenFaaSUser string `mapstructure:"AGENT_OPENFAAS_USER"`
 	OpenFaaSPass string `mapstructure:"AGENT_OPENFAAS_PASS"`
 
-	PrometheusHost string `mapstructure:"AGENT_PROMETHEUS_HOST"`
-	PrometheusPort uint   `mapstructure:"AGENT_PROMETHEUS_PORT"`
-
-	HttpServerHost string `mapstructure:"AGENT_HTTPSERVER_HOST"`
-	HttpServerPort uint   `mapstructure:"AGENT_HTTPSERVER_PORT"`
-
-	ForecasterHost string `mapstructure:"AGENT_FORECASTER_HOST"`
-	ForecasterPort uint   `mapstructure:"AGENT_FORECASTER_PORT"`
-
 	Strategy string `mapstructure:"AGENT_STRATEGY"`
 
 	GroupListFileName string `mapstructure:"AGENT_GROUP_LIST_FILE_NAME"`

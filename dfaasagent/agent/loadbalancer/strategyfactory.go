@@ -14,7 +14,6 @@ import (
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/hacfgupd"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/forecaster"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/offuncs"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/ofpromq"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/nodestbl"
 )
 
@@ -55,11 +54,6 @@ func (strategyFactory *recalcStrategyFactory) createStrategy() (Strategy, error)
 		Addr: _config.HAProxySockPath,
 	}
 
-	strategy.ofpromqClient = ofpromq.Client{
-		Hostname: _config.PrometheusHost,
-		Port:     _config.PrometheusPort,
-	}
-
 	strategy.offuncsClient = offuncs.Client{
 		Hostname: _config.OpenFaaSHost,
 		Port:     _config.OpenFaaSPort,
@@ -94,11 +88,6 @@ func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, er
 	err := strategy.hacfgupdater.LoadTemplate(haproxycfgnmsTemplate)
 	if err != nil {
 		return nil, err
-	}
-
-	strategy.ofpromqClient = ofpromq.Client{
-		Hostname: _config.PrometheusHost,
-		Port:     _config.PrometheusPort,
 	}
 
 	strategy.offuncsClient = offuncs.Client{

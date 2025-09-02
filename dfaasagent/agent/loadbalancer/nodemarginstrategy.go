@@ -36,7 +36,6 @@ const powerUsageNodeMetric = "power_usage_node"
 type NodeMarginStrategy struct {
 	hacfgupdater 	 hacfgupd.Updater
 	nodestbl 		 *nodestbl.TableNMS
-	ofpromqClient 	 ofpromq.Client
 	offuncsClient 	 offuncs.Client
 	hasockClient  	 haproxy.HAProxyClient
 	forecasterClient forecaster.Client
@@ -96,7 +95,7 @@ func (strategy *NodeMarginStrategy) RunStrategy() error {
 	var ramUsage = make(map[string]float64)
 
 	for {
-		cpuUsage, err = strategy.ofpromqClient.QueryCPUusage(_config.RecalcPeriod)
+		cpuUsage, err = ofpromq.QueryCPUusage(_config.RecalcPeriod)
 		if err != nil {
             logger.Error("Failed to execute Prometheus QueryCPUusage query, skipping RunStrategy iteration ", err)
             logger.Warn("Waiting 5 second before retrying RunStrategy after Prometheus error")
@@ -105,7 +104,7 @@ func (strategy *NodeMarginStrategy) RunStrategy() error {
 		}
 		debugPromCPUusage(_config.RecalcPeriod, cpuUsage)
 
-		ramUsage, err = strategy.ofpromqClient.QueryRAMusage(_config.RecalcPeriod)
+		ramUsage, err = ofpromq.QueryRAMusage(_config.RecalcPeriod)
 		if err != nil {
             logger.Error("Failed to execute Prometheus QueryRAMusage query, skipping RunStrategy iteration ", err)
             logger.Warn("Waiting 5 second before retrying RunStrategy after Prometheus error")
@@ -666,8 +665,6 @@ func (strategy *NodeMarginStrategy) setProxyWeights() error {
 			myID,
 			_config.OpenFaaSHost,
 			_config.OpenFaaSPort,
-			_config.HttpServerHost,
-			_config.HttpServerPort,
 			_config.RecalcPeriod,
 			entries,
 			strategy.weights,
@@ -787,8 +784,6 @@ func (strategy *NodeMarginStrategy) createHACfgObject(
 	myNodeID string,
 	openFaaSHost string,
 	openFaaSPort uint,
-	httpServerHost string,
-	httpServerPort uint,
 	recalcPeriod time.Duration,
 	entries map[string]*nodestbl.EntryNMS,
 	funcsWeights map[string]map[string]uint,
@@ -800,9 +795,6 @@ func (strategy *NodeMarginStrategy) createHACfgObject(
 			OpenFaaSHost: openFaaSHost,
 			OpenFaaSPort: openFaaSPort,
 		},
-
-		HttpServerHost: httpServerHost,
-		HttpServerPort: httpServerPort,
 
 		StrRecalc:  recalcPeriod.String(),
 

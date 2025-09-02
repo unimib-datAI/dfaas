@@ -87,9 +87,6 @@ type HACfgFuncNMS struct {
 type HACfgNMS struct {
 	HACfg
 
-	HttpServerHost string
-	HttpServerPort uint
-
 	// String representation of RecalPeriod (e.g. "5s")
 	StrRecalc string
 
