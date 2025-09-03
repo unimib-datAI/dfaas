@@ -182,17 +182,21 @@ frontend fe_main
 
     {{end}}
 
-{{/* #################### BACKEND FOR SIMPLE 200 RESPONSES #################### */ -}}
-
+# Backend for simple 200 OK responses.
 backend be_ok
     http-request return status 200 content-type "text/plain" string "This is a DFaaS node. Call a function with /function/<funcname>\n"
 
-{{/* #################### BACKEND FOR HEALTHCHECK #################### */ -}}
-
+# Backend for health check.
 backend be_healthz
-    {{/* Perform HTTP health checks */ -}}
+    # Perform HTTP health checks.
     option httpchk GET /healthz
-    server healthz {{.HttpServerHost}}:{{.HttpServerPort}} check
+
+    # Enable HTTP connection closing on the server side. This provides the
+    # lowest latency on the client side (slow network) and the fastest session
+    # reuse on the server side to save server resources.
+    option http-server-close
+
+    server healthz dfaas-agent:80 check
 
 {{/* #################### BACKEND FOR MANAGING OPENFAAS FUNCTIONS #################### */ -}}
 

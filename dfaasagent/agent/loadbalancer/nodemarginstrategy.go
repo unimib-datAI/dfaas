@@ -33,6 +33,8 @@ const ramUsageNodeMetric = "ram_usage_node"
 const powerUsageNodeMetric = "power_usage_node"
 
 // Struct representing a NodeMarginStrategy instance, which implements the Strategy interface
+// NodeMarginStrategy represents the NMS strategy and implements the Strategy
+// interface.
 type NodeMarginStrategy struct {
 	hacfgupdater 	 hacfgupd.Updater
 	nodestbl 		 *nodestbl.TableNMS

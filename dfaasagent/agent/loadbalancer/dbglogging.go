@@ -394,9 +394,13 @@ func debugMsgNodeInfoNMS(msg MsgNodeInfoNMS) {
 	logger := logging.Logger()
 
 	logger.Debugf("    - Node Type: %d", msg.NodeType)
-	logger.Debugf("    - Node's functions: ")
-	for i := 0; i < len(msg.Functions); i++ {
-        logger.Debugf("       - " + msg.Functions[i] + ", ") 
+    if len(msg.Functions) == 0 {
+        logger.Debugf("    - Node's functions: empty")
+    } else {
+        logger.Debugf("    - Node's functions: ")
+        for i := 0; i < len(msg.Functions); i++ {
+            logger.Debugf("       - " + msg.Functions[i] + ", ") 
+        }
     }
 }
 

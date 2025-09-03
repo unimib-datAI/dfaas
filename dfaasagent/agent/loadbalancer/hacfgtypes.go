@@ -52,9 +52,6 @@ type HACfgFuncRecalc struct {
 type HACfgRecalc struct {
 	HACfg
 
-	HttpServerHost string
-	HttpServerPort uint
-
 	// String representation of RecalPeriod (e.g. "5s")
 	StrRecalc string
 	// Number of seconds of RecalPeriod
@@ -66,7 +63,6 @@ type HACfgRecalc struct {
 	// The key is the function name
 	Functions map[string]*HACfgFuncRecalc
 }
-
 
 /////////////////// HACFG TYPES FOR RECALC STRATEGY ///////////////////
 

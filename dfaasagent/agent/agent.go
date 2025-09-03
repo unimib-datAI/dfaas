@@ -249,6 +249,6 @@ func Main() {
     // Run agent.
     logger.Debugf("Running agent with configuration: %+v", _config)
     if err := runAgent(_config); err != nil {
-		logger.Fatal(err)
+        logger.Fatal(err)
 	}
 }
