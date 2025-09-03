@@ -6,12 +6,15 @@
 package config
 
 import (
+	"flag"
+	"fmt"
+	"os"
 	"time"
 
 	"github.com/spf13/viper"
 )
 
-// Configuration holds the post-processed configuration values
+// Configuration holds the post-processed configuration values.
 type Configuration struct {
 	DebugMode bool `mapstructure:"AGENT_DEBUG"`
 	DateTime  bool `mapstructure:"AGENT_LOG_DATETIME"`
@@ -41,6 +44,7 @@ type Configuration struct {
 	OpenFaaSHost string `mapstructure:"AGENT_OPENFAAS_HOST"`
 	OpenFaaSPort uint   `mapstructure:"AGENT_OPENFAAS_PORT"`
 	OpenFaaSUser string `mapstructure:"AGENT_OPENFAAS_USER"`
+	// TODO: IT IS BASE32!
 	OpenFaaSPass string `mapstructure:"AGENT_OPENFAAS_PASS"`
 
 	Strategy string `mapstructure:"AGENT_STRATEGY"`
@@ -54,18 +58,44 @@ type Configuration struct {
 	PowerThresholdNMS float64 `mapstructure:"AGENT_NMS_POWER_THRESHOLD"`
 }
 
-func LoadConfig(configPath string) (config Configuration, err error) {
-	viper.SetConfigFile(configPath)
-	viper.SetConfigType("env")
+// LoadConfig reads configuration from environment variables first, and then
+// optionally overwrites with a .env file specified by the --config command line
+// argument.
+func LoadConfig() (config Configuration, err error) {
+	// Parse command line arguments.
+	help := flag.Bool("help", false, "Show help message")
+	configPath := flag.String("config", "", "Path to .env file to overwrite env vars")
+	flag.Parse()
+
+	if *help {
+		fmt.Println("Usage: [--config config.env] [--help]")
+		fmt.Println("If --config is provided, values from the file will overwrite environment variables.")
+		os.Exit(0)
+	}
+
+	// Read env variables.
 	viper.SetEnvPrefix("AGENT")
 	viper.AllowEmptyEnv(true)
-
-	// Override values in config file with env vars.
 	viper.AutomaticEnv()
 
-	err = viper.ReadInConfig()
-	if err != nil {
-		return
+	// If --config is provided and the file exists, load it and overwrite env
+	// vars.
+	if *configPath != "" {
+		if _, statErr := os.Stat(*configPath); statErr == nil {
+			viper.SetConfigFile(*configPath)
+			viper.SetConfigType("env")
+
+			// Only overwrite values from the file.
+			readErr := viper.ReadInConfig()
+			if readErr != nil {
+				err = readErr
+				return
+			}
+		} else if !os.IsNotExist(statErr) {
+			// If error is not "file does not exist", return statErr
+			err = statErr
+			return
+		}
 	}
 
 	err = viper.Unmarshal(&config)

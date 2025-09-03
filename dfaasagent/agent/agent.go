@@ -12,7 +12,6 @@ import (
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/config"
 	"io/ioutil"
 	"log"
-    "flag"
 	"math/rand"
 	"os"
 	"os/signal"
@@ -235,23 +234,13 @@ func Main() {
 	// Initializes Go random number generator.
 	rand.Seed(int64(time.Now().Nanosecond()))
 
-    // Add basic CLI flags: --help and --config.
-	helpFlag := flag.Bool("help", false, "Show help message and exit.")
-	configFlag := flag.String("config", "./dfaasagent.env", "Path to configuration file.")
-	flag.Parse()
-
-	if *helpFlag {
-        flag.Usage()
-		os.Exit(0)
-	}
-
 	// Load configuration.
-	_config, err := config.LoadConfig(*configFlag)
+	_config, err := config.LoadConfig()
     if err != nil {
         log.Fatal(err)
     }
 
-	// Setup logging engine
+	// Setup logging engine.
 	logger, err := logging.Initialize(_config.DateTime, _config.DebugMode, _config.LogColors)
 	if err != nil {
 		log.Fatal(err)
@@ -259,8 +248,7 @@ func Main() {
 
     // Run agent.
     logger.Debugf("Running agent with configuration: %+v", _config)
-	err = runAgent(_config)
-	if err != nil {
+    if err := runAgent(_config); err != nil {
 		logger.Fatal(err)
 	}
 }
