@@ -8,13 +8,16 @@
 package offuncs
 
 import (
-	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"net/url"
 	"strconv"
+
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
+
+	"go.uber.org/zap"
 )
 
 /*
@@ -122,18 +125,13 @@ type Client struct {
 	password string
 }
 
-// NewClient returns a new Client. It decodes the password from base64.
-func NewClient(hostname string, port uint, username, base64Password string) (*Client, error) {
-	password, err := base64.StdEncoding.DecodeString(base64Password)
-	if err != nil {
-		return nil, fmt.Errorf("failed to decode password from base64: %w", err)
-	}
-
+// NewClient returns a new Client.
+func NewClient(hostname string, port uint, username, password string) (*Client, error) {
 	return &Client{
 		hostname: hostname,
 		port:     port,
 		username: username,
-		password: string(password),
+		password: password,
 	}, nil
 }
 
@@ -149,6 +147,10 @@ func (c *Client) doFuncsRequest() ([]byte, error) {
 	resp, err := http.Get(u.String())
 	if err != nil {
 		return nil, fmt.Errorf("HTTP GET to /system/functions: %w", err)
+	}
+
+	if resp.StatusCode != http.StatusOK {
+		return nil, fmt.Errorf("HTTP GET to /system/functions: %s", resp.Status)
 	}
 
 	defer resp.Body.Close()
@@ -173,6 +175,7 @@ func (c *Client) GetFuncsWithMaxRates() (map[string]uint, error) {
 	var respObj funcsMaxRatesResponse
 	err = json.Unmarshal(body, &respObj)
 	if err != nil {
+		logging.Logger().Debug("Body response that fails JSON decoding", zap.String("body", string(body)))
 		return nil, fmt.Errorf("deserializing JSON functions info: %w", err)
 	}
 
@@ -198,6 +201,7 @@ func (c *Client) GetFuncsNames() ([]string, error) {
 	var respObj funcsNamesResponse
 	err = json.Unmarshal(body, &respObj)
 	if err != nil {
+		logging.Logger().Debug("Body response that fails JSON decoding", zap.String("body", string(body)))
 		return nil, fmt.Errorf("deserializing JSON functions info: %w", err)
 	}
 
