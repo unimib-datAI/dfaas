@@ -7,6 +7,8 @@ alertmanager:
   enabled: false
 
 server:
-  # Change default (1 minute) to 5 seconds.
-  scrape_interval: 5s
-  evaluation_interval: 5s
+  global:
+    # Change default (1 minute) to 5 seconds.
+    scrape_interval: 5s
+    evaluation_interval: 5s
+    scrape_timeout: 4s
