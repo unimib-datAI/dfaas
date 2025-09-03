@@ -24,10 +24,9 @@ WORKDIR /usr/src/dfaasagent/
 
 # Copy the binary from the builder stage
 COPY --from=builder /usr/src/dfaasagent/dfaasagent .
-COPY k8s/configs/dfaasagent.env .
 COPY k8s/configs/group_list.json .
 
 # The DFaaS agent exposes a HTTP web server with /healtz endpoint.
-EXPOSE 8008
+EXPOSE 8080
 
 ENTRYPOINT ["/usr/src/dfaasagent/dfaasagent"]
