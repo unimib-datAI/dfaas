@@ -9,6 +9,7 @@ import (
 	"flag"
 	"fmt"
 	"os"
+	"reflect"
 	"time"
 
 	"github.com/spf13/viper"
@@ -44,7 +45,6 @@ type Configuration struct {
 	OpenFaaSHost string `mapstructure:"AGENT_OPENFAAS_HOST"`
 	OpenFaaSPort uint   `mapstructure:"AGENT_OPENFAAS_PORT"`
 	OpenFaaSUser string `mapstructure:"AGENT_OPENFAAS_USER"`
-	// TODO: IT IS BASE32!
 	OpenFaaSPass string `mapstructure:"AGENT_OPENFAAS_PASS"`
 
 	Strategy string `mapstructure:"AGENT_STRATEGY"`
@@ -58,10 +58,34 @@ type Configuration struct {
 	PowerThresholdNMS float64 `mapstructure:"AGENT_NMS_POWER_THRESHOLD"`
 }
 
+// viperBindConfig binds each field of the Configuration struct with its
+// corresponding environment variable.
+//
+// This is necessary because of a bug in the Viper library. See viper's bug
+// [188] for more information.
+//
+// [188]: https://github.com/spf13/viper/issues/188#issuecomment-1273983955
+func viperBindConfig() {
+	var cfg Configuration
+
+	t := reflect.TypeOf(cfg)
+	for i := 0; i < t.NumField(); i++ {
+		field := t.Field(i)
+		tag := field.Tag.Get("mapstructure")
+		if tag == "" {
+			continue // Skip field without mapstructure tag.
+		}
+		// Bind the environment variable.
+		_ = viper.BindEnv(tag, tag)
+	}
+}
+
 // LoadConfig reads configuration from environment variables first, and then
 // optionally overwrites with a .env file specified by the --config command line
 // argument.
 func LoadConfig() (config Configuration, err error) {
+	viperBindConfig()
+
 	// Parse command line arguments.
 	help := flag.Bool("help", false, "Show help message")
 	configPath := flag.String("config", "", "Path to .env file to overwrite env vars")
@@ -73,10 +97,7 @@ func LoadConfig() (config Configuration, err error) {
 		os.Exit(0)
 	}
 
-	// Read env variables.
-	viper.SetEnvPrefix("AGENT")
 	viper.AllowEmptyEnv(true)
-	viper.AutomaticEnv()
 
 	// If --config is provided and the file exists, load it and overwrite env
 	// vars.
