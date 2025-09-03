@@ -31,7 +31,7 @@ import (
 type RecalcStrategy struct {
 	hacfgupdater  hacfgupd.Updater
 	nodestbl 	  *nodestbl.TableRecalc
-	offuncsClient offuncs.Client
+	offuncsClient *offuncs.Client
 	hasockClient  haproxy.HAProxyClient
 	recalc		  recalc
 	it			  int // = 0 // Number of agent loop iterations
@@ -81,9 +81,11 @@ func (strategy *RecalcStrategy) RunStrategy() error {
 		millisSleep = millisInterval - (millisNow % millisInterval)
 		time.Sleep(time.Duration(millisSleep) * time.Millisecond)
 
-		err = strategy.recalcStep1()
-		if err != nil {
-			return err
+        if err := strategy.recalcStep1(); err != nil {
+            logger.Error("Failed Recalc step 1, skipping RunStrategy iteration ", err)
+            logger.Warn("Waiting 5 second before retrying RunStrategy")
+            time.Sleep(5 * time.Second)
+            continue
 		}
 
 		millisNow = time.Now().UnixNano() / 1000000
@@ -162,7 +164,7 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 
 	strategy.recalc.funcs, err = strategy.offuncsClient.GetFuncsWithMaxRates()
 	if err != nil {
-		return errors.Wrap(err, "Error while getting functions info from OpenFaaS")
+		return errors.Wrap(err, "get functions info from OpenFaaS")
 	}
 	debugFuncs(strategy.recalc.funcs)
 

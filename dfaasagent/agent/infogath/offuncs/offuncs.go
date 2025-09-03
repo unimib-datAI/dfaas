@@ -1,21 +1,20 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
 // Copyright 2021-2025 The DFaaS Authors. All rights reserved.
-// This file is licensed under the AGPL v3.0 or later license. See LICENSE and
+// This file is licensed under the AGPL v3.0-or later license. See LICENSE and
 // AUTHORS file for more information.
 
-// This package is for getting the functions list from the local OpenFaaS
-// cluster.
+// Package offuncs allows to retrieve the function lists and details from the
+// local OpenFaaS instance.
 package offuncs
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
-	"os"
+	"net/url"
 	"strconv"
-
-	"github.com/pkg/errors"
 )
 
 /*
@@ -115,63 +114,47 @@ type funcsNamesResponse []struct {
 	Name string `json:"name"`
 }
 
-// Client for gathering information from OpenFaaS
+// Client holds information for connecting to OpenFaaS instance.
 type Client struct {
-	Hostname string
-	Port     uint
-	Username string
-	Password string
+	hostname string
+	port     uint
+	username string
+	password string
 }
 
-////////////////////////////////// PRIVATE FUNCTIONS ////////////////////////////////
-
-// doFuncsRequest gets info about functions from "/system/functions".
-// The hostnameAndPort parameter can be like
-// "myhostname:8080" or "myhostname" (implicit port 80) "192.168.15.101:8080"
-// (specifying the IP address)
-func (client *Client) doFuncsRequest() ([]byte, error) {
-
-	//retrieve isKube from configmap
-	val := os.Getenv("IS_KUBE")
-	isKube, err := strconv.ParseBool(val)
+// NewClient returns a new Client. It decodes the password from base64.
+func NewClient(hostname string, port uint, username, base64Password string) (*Client, error) {
+	password, err := base64.StdEncoding.DecodeString(base64Password)
 	if err != nil {
-		fmt.Printf("Invalid IS_KUBE value: %s\n", val)
-		isKube = false
+		return nil, fmt.Errorf("failed to decode password from base64: %w", err)
 	}
 
-	var strURL string
+	return &Client{
+		hostname: hostname,
+		port:     port,
+		username: username,
+		password: string(password),
+	}, nil
+}
 
-	if isKube {
-		//retrieve secret from openfaas
-		user := os.Getenv("BASIC_AUTH_USER")
-		pass := os.Getenv("BASIC_AUTH_PASS")
-
-		strURL = fmt.Sprintf(
-			"http://%s:%s@%s:%d/system/functions",
-			user,
-			pass,
-			client.Hostname,
-			client.Port,
-		)
-	} else {
-		strURL = fmt.Sprintf(
-			"http://%s:%s@%s:%d/system/functions",
-			client.Username,
-			client.Password,
-			client.Hostname,
-			client.Port,
-		)
+// doFuncsRequest gets info about functions from "/system/functions" endpoint.
+func (c *Client) doFuncsRequest() ([]byte, error) {
+	u := &url.URL{
+		Scheme: "http",
+		User:   url.UserPassword(c.username, c.password),
+		Host:   fmt.Sprintf("%s:%d", c.hostname, c.port),
+		Path:   "/system/functions",
 	}
 
-	resp, err := http.Get(strURL)
+	resp, err := http.Get(u.String())
 	if err != nil {
-		return nil, errors.Wrap(err, "Error while performing an HTTP GET request to /system/functions")
+		return nil, fmt.Errorf("HTTP GET to /system/functions: %w", err)
 	}
 
 	defer resp.Body.Close()
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error while reading the content of an HTTP response from /system/functions")
+		return nil, fmt.Errorf("HTTP response from /system/functions: %w", err)
 	}
 
 	return body, nil
@@ -179,25 +162,25 @@ func (client *Client) doFuncsRequest() ([]byte, error) {
 
 /////////////////////////////////// PUBLIC INTERFACE ////////////////////////////////
 
-// GetFuncsWithMaxRates returns the functions list as a map[string]uint of function names
-// and dfaas.maxrate values.
-func (client *Client) GetFuncsWithMaxRates() (map[string]uint, error) {
-	body, err := client.doFuncsRequest()
+// GetFuncsWithMaxRates returns the functions list as a map[string]uint of
+// function names and dfaas.maxrate values.
+func (c *Client) GetFuncsWithMaxRates() (map[string]uint, error) {
+	body, err := c.doFuncsRequest()
 	if err != nil {
-		return nil, errors.Wrap(err, "Error while reading the content of an HTTP response from /system/functions")
+		return nil, fmt.Errorf("get functions info: %w", err)
 	}
 
 	var respObj funcsMaxRatesResponse
 	err = json.Unmarshal(body, &respObj)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error while deserializing a JSON string from /system/functions")
+		return nil, fmt.Errorf("deserializing JSON functions info: %w", err)
 	}
 
 	result := map[string]uint{}
 	for _, item := range respObj {
 		num, err := strconv.ParseUint(item.Labels.MaxRate, 10, 32)
 		if err != nil {
-			return nil, errors.Wrap(err, fmt.Sprintf("Error while parsing integer from /system/functions: %d", num))
+			return nil, fmt.Errorf("parsing max rate integer: %v", err)
 		}
 		result[item.Name] = uint(num)
 	}
@@ -205,17 +188,17 @@ func (client *Client) GetFuncsWithMaxRates() (map[string]uint, error) {
 	return result, nil
 }
 
-// GetFuncsNames returns the function names list as a string array.
-func (client *Client) GetFuncsNames() ([]string, error) {
-	body, err := client.doFuncsRequest()
+// GetFuncsNames returns the function names as list.
+func (c *Client) GetFuncsNames() ([]string, error) {
+	body, err := c.doFuncsRequest()
 	if err != nil {
-		return nil, errors.Wrap(err, "Error while reading the content of an HTTP response from /system/functions")
+		return nil, fmt.Errorf("get functions info: %w", err)
 	}
 
 	var respObj funcsNamesResponse
 	err = json.Unmarshal(body, &respObj)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error while deserializing a JSON string from /system/functions")
+		return nil, fmt.Errorf("deserializing JSON functions info: %w", err)
 	}
 
 	var result []string

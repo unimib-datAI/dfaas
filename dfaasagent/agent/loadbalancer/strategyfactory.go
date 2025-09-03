@@ -54,12 +54,13 @@ func (strategyFactory *recalcStrategyFactory) createStrategy() (Strategy, error)
 		Addr: _config.HAProxySockPath,
 	}
 
-	strategy.offuncsClient = offuncs.Client{
-		Hostname: _config.OpenFaaSHost,
-		Port:     _config.OpenFaaSPort,
-		Username: _config.OpenFaaSUser,
-		Password: _config.OpenFaaSPass,
-	}
+    strategy.offuncsClient, err = offuncs.NewClient(_config.OpenFaaSHost,
+                                                    _config.OpenFaaSPort,
+                                                    _config.OpenFaaSUser,
+                                                    _config.OpenFaaSPass)
+    if err != nil {
+        return nil, err
+    }
 
 	strategy.recalc = recalc{}
 	strategy.it = 0
@@ -90,14 +91,15 @@ func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, er
 		return nil, err
 	}
 
-	strategy.offuncsClient = offuncs.Client{
-		Hostname: _config.OpenFaaSHost,
-		Port:     _config.OpenFaaSPort,
-		Username: _config.OpenFaaSUser,
-		Password: _config.OpenFaaSPass,
-	}
+    strategy.offuncsClient, err = offuncs.NewClient(_config.OpenFaaSHost,
+                                                    _config.OpenFaaSPort,
+                                                    _config.OpenFaaSUser,
+                                                    _config.OpenFaaSPass)
+    if err != nil {
+        return nil, err
+    }
 
-	strategy.hasockClient = haproxy.HAProxyClient{
+    strategy.hasockClient = haproxy.HAProxyClient{
 		Addr: _config.HAProxySockPath,
 	}
 

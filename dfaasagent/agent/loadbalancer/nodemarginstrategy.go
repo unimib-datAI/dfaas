@@ -36,7 +36,7 @@ const powerUsageNodeMetric = "power_usage_node"
 type NodeMarginStrategy struct {
 	hacfgupdater 	 hacfgupd.Updater
 	nodestbl 		 *nodestbl.TableNMS
-	offuncsClient 	 offuncs.Client
+	offuncsClient 	 *offuncs.Client
 	hasockClient  	 haproxy.HAProxyClient
 	forecasterClient forecaster.Client
 	nodeInfo 		 nodeInfo
@@ -113,9 +113,11 @@ func (strategy *NodeMarginStrategy) RunStrategy() error {
 		}
 		debugPromRAMusage(_config.RecalcPeriod, ramUsage)
 
-		err = strategy.publishNodeInfo()
-		if err != nil {
-			return err
+        if err := strategy.publishNodeInfo(); err != nil {
+            logger.Error("Failed to publish node info, skipping RunStrategy iteration ", err)
+            logger.Warn("Waiting 5 second before retrying RunStrategy")
+            time.Sleep(5 * time.Second)
+            continue
 		}
 
 		strategy.updateCommonNeighbours()
@@ -206,7 +208,7 @@ func (strategy *NodeMarginStrategy) publishNodeInfo() error {
 	// Obtain our function names list
 	strategy.nodeInfo.funcs, err = strategy.offuncsClient.GetFuncsNames()
 	if err != nil {
-		return errors.Wrap(err, "Error while getting functions info from OpenFaaS")
+		return errors.Wrap(err, "get functions info from OpenFaaS")
 	}
 
 	msg := MsgNodeInfoNMS{
