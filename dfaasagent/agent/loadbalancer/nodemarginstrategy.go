@@ -22,6 +22,7 @@ import (
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/ofpromq"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/offuncs"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/hasock"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/httpserver"
 )
 
 // In this file is implemented the Node Margin strategy
@@ -164,6 +165,8 @@ func (strategy *NodeMarginStrategy) RunStrategy() error {
 		if err != nil {
 			return err
 		}
+
+        httpserver.NmsSuccessIterations.Inc()
 
 		millisNow = time.Now().UnixNano() / 1000000
 		millisSleep = millisInterval - (millisNow % millisInterval)

@@ -16,12 +16,21 @@ import (
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/config"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/forecaster"
+
+    "github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
+	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
 //////////////////// MAIN PRIVATE VARS AND INIT FUNCTION ////////////////////
 
 var _config config.Configuration
 var _forecasterClient forecaster.Client
+
+var NmsSuccessIterations = promauto.NewCounter(prometheus.CounterOpts{
+    Name: "dfaas_agent_nms_success_iterations",
+    Help: "The total number of successfully NodeMarginStrategy iterations.",
+})
 
 // Initialize initializes this package (sets some vars, etc...)
 func Initialize(config config.Configuration) {
@@ -37,7 +46,13 @@ func Initialize(config config.Configuration) {
 
 // Function to run the http server
 func RunHttpServer() error {
+    // Expose to Prometheus only custom metrics by creating a new registry.
+    customRegistry := prometheus.NewRegistry()
+
+    customRegistry.MustRegister(NmsSuccessIterations)
+
 	http.HandleFunc("/healthz", healthzHandler)
+    http.Handle("/metrics", promhttp.HandlerFor(customRegistry, promhttp.HandlerOpts{}))
 
 	ip := constants.HttpServerHost
 	port := strconv.FormatUint(uint64(constants.HttpServerPort), 10)
