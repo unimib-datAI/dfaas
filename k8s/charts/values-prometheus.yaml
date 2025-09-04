@@ -12,3 +12,6 @@ server:
     scrape_interval: 5s
     evaluation_interval: 5s
     scrape_timeout: 4s
+  extraArgs:
+    # Default is 15 days, but it is too large for the DFaaS Agent's needs.
+    storage.tsdb.retention.time: "5d"
