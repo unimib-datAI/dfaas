@@ -8,6 +8,7 @@ package agent
 import (
 	"context"
 	cryptorand "crypto/rand"
+	"fmt"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -165,18 +166,9 @@ func runAgent(config config.Configuration) error {
 	}
 
 	// Kademlia and DHT initialization, with connection to bootstrap nodes
-	err = kademlia.Initialize(
-		ctx,
-		_p2pHost,
-		bootstrapConfig,
-		config.Rendezvous,
-		config.KadIdleTime,
-	)
-
-	if err != nil {
-		return err
+	if err := kademlia.Initialize(ctx, _p2pHost, bootstrapConfig, config.Rendezvous, config.KadIdleTime); err != nil {
+		return fmt.Errorf("initializing Kademlia: %w", err)
 	}
-
 	logger.Debug("Connection to Kademlia bootstrap nodes completed")
 
 	// mDNS initialization.

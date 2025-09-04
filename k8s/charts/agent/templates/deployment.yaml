@@ -21,7 +21,9 @@ spec:
           ports:
             - containerPort: 8080
               name: healthz
-          env: 
+            - containerPort: 31600
+              name: kademlia
+          env:
             # Get OpenFaaS password, since it is generated on each installation.
             - name: AGENT_OPENFAAS_PASS
               valueFrom:

@@ -6,18 +6,34 @@ config:
   AGENT_LOG_DATETIME: true
   AGENT_LOG_COLORS: true
 
-  AGENT_LISTEN: "/ip4/0.0.0.0/tcp/0"
+  AGENT_LISTEN: "/ip4/0.0.0.0/tcp/31600"
   #AGENT_PRIVATE_KEY_FILE=
 
-  AGENT_BOOTSTRAP_NODES: false
-  AGENT_PUBLIC_BOOTSTRAP_NODES: false
+  # Whether to use bootstrap nodes.
+  AGENT_BOOTSTRAP_NODES: true
+
+  # If false, AGENT_BOOTSTRAP_NODES_LIST or AGENT_BOOTSTRAP_NODES_FILE should be
+  # provided.
+  AGENT_PUBLIC_BOOTSTRAP_NODES: true
+
+  # Explicit list of bootstrap node addresses.
   #AGENT_BOOTSTRAP_NODES_LIST=
+
+  # Path to a file containing bootstrap node information.
   #AGENT_BOOTSTRAP_NODES_FILE=
+
+  # If true, agent's initialization fails if any bootstrap peer cannot be
+  # contacted.
   AGENT_BOOTSTRAP_FORCE: false
-  AGENT_RENDEZVOUS: dfaasagent
-  AGENT_MDNS_INTERVAL: 1m
+
+  # Unique string used for grouping peers for discovery.
+  AGENT_RENDEZVOUS: dfaasagent-mYRGdJPC3chmJ
+
   AGENT_KAD_IDLE_TIME: 1m
   AGENT_PUBSUB_TOPIC: "/dfaasagent/1.0.0"
+
+  # mDNS is not supported in Kubernetes, so we disable it.
+  AGENT_MDNS_INTERVAL: 0 # Original value is "1m".
 
   AGENT_RECALC_PERIOD: 1m
 

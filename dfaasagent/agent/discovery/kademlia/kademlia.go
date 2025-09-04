@@ -8,29 +8,28 @@ package kademlia
 
 import (
 	"context"
-	"github.com/multiformats/go-multiaddr"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/utils/maddrhelp"
+	"fmt"
 	"sync"
 	"time"
+
+	"github.com/multiformats/go-multiaddr"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/utils/maddrhelp"
 
 	"github.com/libp2p/go-libp2p-core/host"
 	"github.com/libp2p/go-libp2p-core/peer"
 	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
-	"github.com/pkg/errors"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
+	"go.uber.org/zap"
 )
 
 type BootstrapConfiguration struct {
-	BootstrapNodes      bool    
+	BootstrapNodes       bool
 	PublicBootstrapNodes bool
-	BootstrapNodesList  []string
-	BootstrapNodesFile  string
-	BootstrapForce      bool
+	BootstrapNodesList   []string
+	BootstrapNodesFile   string
+	BootstrapForce       bool
 }
-
-// kademliaDebugLogging decides wheather to enable or disable logging for this pakcage
-const kademliaDebugLogging = true
 
 var _ctx context.Context
 var _p2pHost host.Host
@@ -50,39 +49,40 @@ func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig Bootstra
 	// inhibiting future peer discovery.
 	kadDHT, err := dht.New(ctx, p2pHost)
 	if err != nil {
-		return errors.Wrap(err, "Error while starting the DHT for Kademlia peer discovery")
+		return fmt.Errorf("Error while starting the DHT for Kademlia peer discovery: %w", err)
 	}
 
 	// Bootstrap the DHT. In the default configuration, this spawns a Background
 	// thread that will refresh the peer table every five minutes.
 	err = kadDHT.Bootstrap(ctx)
 	if err != nil {
-		return errors.Wrap(err, "Error while bootstrapping the DHT for Kademlia peer discovery")
+		return fmt.Errorf("Error while bootstrapping the DHT for Kademlia peer discovery: %w", err)
 	}
 
 	// Let's connect to the bootstrap nodes. They will tell us about the other
 	// nodes in the network.
 
 	bootstrapNodes, err := BuildBoostrapNodes(bootstrapConfig)
+	if err != nil {
+		return fmt.Errorf("building boostrap nodes: %w", err)
+	}
 
 	var wg sync.WaitGroup
 	var chanErrConn = make(chan error, len(bootstrapNodes))
 	for _, peerAddr := range bootstrapNodes {
 		peerInfo, err := peer.AddrInfoFromP2pAddr(peerAddr)
 		if err != nil {
-			return errors.Wrap(err, "Error while getting information from the bootstrap node's address \""+peerAddr.String()+"\"")
+			return fmt.Errorf("Error while getting information from the bootstrap node's address \"%s\": %w", peerAddr.String(), err)
 		}
 
-		if kademliaDebugLogging {
-			logger.Debug("Kademlia: connecting to bootstrap node \"" + peerAddr.String() + "\"...")
-		}
+		logger.Debug("Kademlia: connecting to bootstrap node \"" + peerAddr.String() + "\"...")
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 
 			err := p2pHost.Connect(ctx, *peerInfo)
 			if err != nil {
-				errWrap := errors.Wrap(err, "Connection failed to a bootstrap node (skipping)")
+				errWrap := fmt.Errorf("Connection failed to a bootstrap node (skipping): %w", err)
 
 				if bootstrapConfig.BootstrapForce {
 					chanErrConn <- errWrap
@@ -122,38 +122,38 @@ func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig Bootstra
 	return nil
 }
 
-// RunDiscovery runs the discovery process. It should run in a goroutine
+// RunDiscovery runs the discovery process. It should run in a goroutine.
 func RunDiscovery() error {
 	logger := logging.Logger()
 
 	for {
-		if kademliaDebugLogging {
-			logger.Debug("Kademlia: searching for other peers...")
+		logger.Debug("Current connected peers: ")
+		for _, conn := range _p2pHost.Network().Conns() {
+			logger.Debug(fmt.Sprintf("  - Peer: %s, Addr: %s\n", conn.RemotePeer(), conn.RemoteMultiaddr()))
 		}
 
+		logger.Debug("Searching for other peers...")
 		peerChan, err := _routingDisc.FindPeers(_ctx, _rendezvous)
 		if err != nil {
-			return errors.Wrap(err, "Error while searching for peers via Kademlia discovery")
+			return fmt.Errorf("searching for peers via Kademlia discovery: %w", err)
 		}
 
 		for peerInfo := range peerChan {
-			// Ignore ourselves
+			// Ignore ourselves.
 			if peerInfo.ID == _p2pHost.ID() {
 				continue
 			}
 
-			if kademliaDebugLogging {
-				logger.Debug("Kademlia: found peer \"", peerInfo, "\". Connecting...")
-			}
-			err := _p2pHost.Connect(_ctx, peerInfo)
-			if err != nil {
-				errWrap := errors.Wrap(err, "Connection failed to a discovered node (skipping)")
-				logger.Error("Kademlia: ", errWrap)
+			logger.Debug("Connecting to a new peer",
+				zap.Any("addrs", peerInfo.Addrs),
+				zap.String("id", peerInfo.ID.String()))
+			if err := _p2pHost.Connect(_ctx, peerInfo); err != nil {
+				logger.Error("Connection to peer (skipping)", zap.Error(err))
 				continue
 			}
-			if kademliaDebugLogging {
-				logger.Debug("Kademlia: connection successful to new discovered node \"", peerInfo, "\"")
-			}
+			logger.Debug("Connected to a new peer",
+				zap.Any("addrs", peerInfo.Addrs),
+				zap.String("id", peerInfo.ID.String()))
 		}
 
 		// Now wait a bit and relax...
@@ -165,21 +165,40 @@ func BuildBoostrapNodes(configuration BootstrapConfiguration) ([]multiaddr.Multi
 	var maddrs []multiaddr.Multiaddr
 	var err error
 
-	if configuration.BootstrapNodes {
-		if configuration.PublicBootstrapNodes {
-			// Use libp2p public bootstrap peers list
-			maddrs = dht.DefaultBootstrapPeers
-		} else if len(configuration.BootstrapNodesList) > 0 {
-			maddrs, err = maddrhelp.StringListToMultiaddrList(configuration.BootstrapNodesList)
-			if err != nil {
-				return nil, errors.Wrap(err, "Error while converting bootstrap peers string list to multiaddrs list")
-			}
-		} else if configuration.BootstrapNodesFile != "" {
-			maddrs, err = maddrhelp.ParseMAddrFile(configuration.BootstrapNodesFile)
-			if err != nil {
-				return nil, errors.Wrap(err, "Error while parsing bootstrap peers list from file")
-			}
-		}
+	logger := logging.Logger()
+
+	if !configuration.BootstrapNodes {
+		logger.Debug("Bootstrap nodes disabled")
+		return maddrs, nil
 	}
-	return maddrs, nil
+
+	if configuration.PublicBootstrapNodes {
+		logger.Debug("Using public bootstrap nodes")
+
+		// Use libp2p public bootstrap peers list.
+		maddrs = dht.DefaultBootstrapPeers
+		return maddrs, nil
+	}
+
+	if len(configuration.BootstrapNodesList) > 0 {
+		logger.Debug("Using bootstrap nodes list")
+
+		maddrs, err = maddrhelp.StringListToMultiaddrList(configuration.BootstrapNodesList)
+		if err != nil {
+			return nil, fmt.Errorf("converting bootstrap peers string list to multiaddrs list: %w", err)
+		}
+		return maddrs, nil
+	}
+
+	if configuration.BootstrapNodesFile != "" {
+		logger.Debug("Using bootstrap nodes file")
+
+		maddrs, err = maddrhelp.ParseMAddrFile(configuration.BootstrapNodesFile)
+		if err != nil {
+			return nil, fmt.Errorf("parsing bootstrap peers list from file: %w", err)
+		}
+		return maddrs, nil
+	}
+
+	return maddrs, fmt.Errorf("at least one of bootstrap public nodes, nodes list or nodes file must be provided")
 }
