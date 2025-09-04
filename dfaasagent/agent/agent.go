@@ -8,8 +8,6 @@ package agent
 import (
 	"context"
 	cryptorand "crypto/rand"
-	"github.com/multiformats/go-multiaddr"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/config"
 	"io/ioutil"
 	"log"
 	"math/rand"
@@ -18,6 +16,9 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/multiformats/go-multiaddr"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/config"
+
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p-core/crypto"
 	"github.com/libp2p/go-libp2p-core/host"
@@ -25,11 +26,11 @@ import (
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/communication"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/discovery/kademlia"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/discovery/mdns"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/loadbalancer"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/utils/maddrhelp"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/httpserver"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/loadbalancer"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/nodestbl"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/utils/maddrhelp"
 )
 
 //////////////////// PRIVATE VARIABLES ////////////////////
@@ -134,8 +135,8 @@ func runAgent(config config.Configuration) error {
 	////////// LOAD BALANCER INITIALIZATION //////////
 
 	loadbalancer.Initialize(_p2pHost, config)
-	
-	// Get the Strategy instance (which is a singleton) of type 
+
+	// Get the Strategy instance (which is a singleton) of type
 	// dependent on the strategy specified in the configuration
 	var strategy loadbalancer.Strategy
 	strategy, err = loadbalancer.GetStrategyInstance()
@@ -156,11 +157,11 @@ func runAgent(config config.Configuration) error {
 	////////// KADEMLIA DHT INITIALIZATION //////////
 
 	bootstrapConfig := kademlia.BootstrapConfiguration{
-		BootstrapNodes: config.BootstrapNodes,
+		BootstrapNodes:       config.BootstrapNodes,
 		PublicBootstrapNodes: config.PublicBootstrapNodes,
-		BootstrapNodesList: config.BootstrapNodesList,
-		BootstrapNodesFile: config.BootstrapNodesFile,
-		BootstrapForce: config.BootstrapForce,
+		BootstrapNodesList:   config.BootstrapNodesList,
+		BootstrapNodesFile:   config.BootstrapNodesFile,
+		BootstrapForce:       config.BootstrapForce,
 	}
 
 	// Kademlia and DHT initialization, with connection to bootstrap nodes
@@ -178,15 +179,16 @@ func runAgent(config config.Configuration) error {
 
 	logger.Debug("Connection to Kademlia bootstrap nodes completed")
 
-	////////// mDNS INITIALIZATION //////////
-
+	// mDNS initialization.
 	if config.MDNSInterval > 0 {
-		// mDNS discovery service initialization
-		err = mdns.Initialize(ctx, _p2pHost, config.Rendezvous, config.MDNSInterval)
-		if err != nil {
+		if err := mdns.Initialize(ctx, _p2pHost, config.Rendezvous, config.MDNSInterval); err != nil {
 			return err
 		}
+
 		logger.Debug("mDNS discovery service is enabled and initialized")
+		logger.Warn("mDNS discovery enabled but not currently supported in Kubernetes!")
+	} else {
+		logger.Debug("mDNS discovery disabled")
 	}
 
 	////////// NODESTBL INITIALIZATION //////////
@@ -194,9 +196,8 @@ func runAgent(config config.Configuration) error {
 	nodestbl.Initialize(config)
 
 	////////// HTTPSERVER INITIALIZATION //////////
-	
+
 	httpserver.Initialize(config)
-	
 
 	////////// GOROUTINES //////////
 
@@ -236,9 +237,9 @@ func Main() {
 
 	// Load configuration.
 	_config, err := config.LoadConfig()
-    if err != nil {
-        log.Fatal(err)
-    }
+	if err != nil {
+		log.Fatal(err)
+	}
 
 	// Setup logging engine.
 	logger, err := logging.Initialize(_config.DateTime, _config.DebugMode, _config.LogColors)
@@ -246,9 +247,9 @@ func Main() {
 		log.Fatal(err)
 	}
 
-    // Run agent.
-    logger.Debugf("Running agent with configuration: %+v", _config)
-    if err := runAgent(_config); err != nil {
-        logger.Fatal(err)
+	// Run agent.
+	logger.Debugf("Running agent with configuration: %+v", _config)
+	if err := runAgent(_config); err != nil {
+		logger.Fatal(err)
 	}
 }
