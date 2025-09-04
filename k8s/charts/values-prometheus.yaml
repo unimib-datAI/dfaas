@@ -1,9 +1,7 @@
-# Install only prometheus-node-exporter service.
+# Install only prometheus-node-exporter and alertmanager services.
 prometheus-pushgateway:
   enabled: false
 kube-state-metrics:
-  enabled: false
-alertmanager:
   enabled: false
 
 server:
@@ -12,6 +10,73 @@ server:
     scrape_interval: 5s
     evaluation_interval: 5s
     scrape_timeout: 4s
-  extraArgs:
-    # Default is 15 days, but it is too large for the DFaaS Agent's needs.
-    storage.tsdb.retention.time: "5d"
+
+  # Default metrics retention time is 15 days, but it is too large for the DFaaS
+  # Agent's needs.
+  retention: "5d"
+
+serverFiles:
+  alerting_rules.yml:
+    # Copied from official OpenFaaS Helm chart.
+    # See: https://github.com/openfaas/faas-netes/blob/87eca610c2c0cd4ed7b7aa37df716a6f98fb2851/chart/openfaas/templates/prometheus-cfg.yaml#L66
+    groups:
+      - name: openfaas
+        rules:
+        - alert: APIHighInvocationRate
+          expr: sum(rate(gateway_function_invocation_total{code="200"}[10s])) BY (function_name) > 5
+          for: 5s
+          labels:
+            service: gateway
+            severity: major
+          annotations:
+            description: High invocation total on "{{ "{{" }}$labels.function_name{{ "}}" }}"
+            summary: High invocation total on "{{ "{{" }}$labels.function_name{{ "}}" }}"
+
+# Prometheus's Alertmanager configuration.
+alertmanager:
+  enabled: true
+
+  # Volume with OpenFaaS password required to connect to OpenFaaS Gateway.
+  # Copied from official OpenFaaS Helm chart.
+  # See: https://github.com/openfaas/faas-netes/blob/87eca610c2c0cd4ed7b7aa37df716a6f98fb2851/chart/openfaas/templates/alertmanager-dep.yaml#L79-L99
+  extraVolumeMounts:
+    - name: auth
+      readOnly: true
+      mountPath: "/var/secrets"
+  extraVolumes:
+    - name: auth
+      secret:
+        secretName: basic-auth
+
+
+  config:
+    # The whole config is copied from the official OpenFaaS Helm chart.
+    # See: https://github.com/openfaas/faas-netes/blob/87eca610c2c0cd4ed7b7aa37df716a6f98fb2851/chart/openfaas/templates/alertmanager-cfg.yaml#L17-L49
+    route:
+      group_by: ['alertname', 'cluster', 'service']
+      group_wait: 5s
+      group_interval: 10s
+      repeat_interval: 30s
+      receiver: scale-up
+      routes:
+      - match:
+          service: gateway
+          receiver: scale-up
+          severity: major
+
+    inhibit_rules:
+      - source_match:
+          severity: 'critical'
+        target_match:
+          severity: 'warning'
+        equal: ['alertname', 'cluster', 'service']
+
+    receivers:
+      - name: "scale-up"
+        webhook_configs:
+          - url: http://gateway.default.svc.cluster.local:8080/system/alert
+            send_resolved: true
+            http_config:
+              basic_auth:
+                username: admin
+                password_file: /var/secrets/basic-auth-password
