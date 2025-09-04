@@ -13,54 +13,51 @@ import (
 	"io/ioutil"
 	"math"
 	"net/http"
-	"os"
 	"strconv"
 	"strings"
 	"time"
 
-	"github.com/pkg/errors"
-
-    "gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
-    "gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
 )
 
 // Query executes a Prometheus query and returns the JSON string.
 func Query(query string) (string, error) {
-    logger := logging.Logger()
+	logger := logging.Logger()
 
-    strURL := fmt.Sprintf("http://%s/api/v1/query", constants.PrometheusOrigin)
+	strURL := fmt.Sprintf("http://%s/api/v1/query", constants.PrometheusOrigin)
 
 	httpClient := &http.Client{}
 
 	req, err := http.NewRequest("GET", strURL, nil)
 	if err != nil {
-        logger.Error("Failed to build HTTP request for Prometheus query: ", err)
-		return "", errors.Wrap(err, "building HTTP request")
+		logger.Error("Failed to build HTTP request for Prometheus query: ", err)
+		return "", fmt.Errorf("building HTTP request: %w", err)
 	}
 
 	q := req.URL.Query()
 	q.Add("query", query)
 	req.URL.RawQuery = q.Encode()
 
-    logger.Debug("Full URL for Prometheus query: ", req.URL.String())
+	logger.Debug("Full URL for Prometheus query: ", req.URL.String())
 
 	resp, err := httpClient.Do(req)
 	if err != nil {
-        logger.Error("Prometheus HTTP request failed: ", err)
-		return "", errors.Wrap(err, "performing HTTP request")
+		logger.Error("Prometheus HTTP request failed: ", err)
+		return "", fmt.Errorf("performing HTTP request: %w", err)
 	}
 	defer resp.Body.Close()
 
-    logger.Debug("Prometheus query response status: ", resp.Status)
+	logger.Debug("Prometheus query response status: ", resp.Status)
 
 	body, err := ioutil.ReadAll(resp.Body)
 	if err != nil {
-        logger.Error("Failed to read HTTP response body: ", err)
-		return "", errors.Wrap(err, "reading response body")
+		logger.Error("Failed to read HTTP response body: ", err)
+		return "", fmt.Errorf("reading response body: %w", err)
 	}
 
-    // Avoid in production!
-    logger.Debug(fmt.Sprintf("Body preview: %.200s...\n", string(body)))
+	// Avoid in production!
+	logger.Debug(fmt.Sprintf("Body preview: %.200s...\n", string(body)))
 
 	return string(body), nil
 }
@@ -78,7 +75,7 @@ func queryAFETrate(query string) (map[string]float64, error) {
 	var respObj afetResponse
 	err = json.Unmarshal([]byte(strJSON), &respObj)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error while deserializing a JSON string from the Prometheus API endpoint")
+		return nil, fmt.Errorf("Error while deserializing a JSON string from the Prometheus API endpoint: %w", err)
 	}
 
 	result := map[string]float64{}
@@ -94,10 +91,12 @@ func queryAFETrate(query string) (map[string]float64, error) {
 }
 
 // Query that return invocation rate for each function.
-// The returned map contain for each function (key) the returned status code (other key)
-// and the invocation rate as value.
+//
+// The returned map contain for each function (key) the returned status code
+// (other key) and the invocation rate as value.
 func queryInvocRate(query string) (map[string]map[string]float64, error) {
-	//logger := logging.Logger()
+	logger := logging.Logger()
+
 	strJSON, err := Query(query)
 	if err != nil {
 		return nil, err
@@ -106,13 +105,12 @@ func queryInvocRate(query string) (map[string]map[string]float64, error) {
 	var respObj invocRateResponse
 	err = json.Unmarshal([]byte(strJSON), &respObj)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error while deserializing a JSON string from the Prometheus API endpoint")
+		return nil, fmt.Errorf("Error while deserializing a JSON string from the Prometheus API endpoint: %w", err)
 	}
-
-	//logger := logging.Logger()
 
 	result := map[string]map[string]float64{}
 	for _, item := range respObj.Data.Result {
+		//funcName := strings.TrimSuffix(item.Metric.FunctionName, ".default")
 		_, present := result[item.Metric.FunctionName]
 		if !present {
 			result[item.Metric.FunctionName] = make(map[string]float64)
@@ -121,18 +119,18 @@ func queryInvocRate(query string) (map[string]map[string]float64, error) {
 		if err != nil {
 			num = math.NaN()
 		}
-		//logger.Debug(item.Metric.FunctionName)
-		//logger.Debug(item.Metric.Code)
+		logger.Debug(item.Metric.FunctionName)
+		logger.Debug(item.Metric.Code)
 		result[item.Metric.FunctionName][item.Metric.Code] = num
 	}
 
-	//logger.Debugf("=======================================")
-	//for key, codeRates := range result {
-	//	for code, val := range codeRates {
-	//		logger.Debugf("  - FUNC %s, CODE %s: %.2f req/s", key, code, val)
-	//	}
-	//}
-	//logger.Debugf("=======================================")
+	logger.Debugf("=======================================")
+	for key, codeRates := range result {
+		for code, val := range codeRates {
+			logger.Debugf("  - FUNC %s, CODE %s: %.2f req/s", key, code, val)
+		}
+	}
+	logger.Debugf("=======================================")
 
 	return result, nil
 }
@@ -147,7 +145,7 @@ func queryServiceCount(query string) (map[string]int, error) {
 	var respObj serviceCountResponse
 	err = json.Unmarshal([]byte(strJSON), &respObj)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error while deserializing a JSON string from the Prometheus API endpoint")
+		return nil, fmt.Errorf("Error while deserializing a JSON string from the Prometheus API endpoint: %w", err)
 	}
 
 	result := map[string]int{}
@@ -174,7 +172,7 @@ func queryCPUusage(query string) (map[string]float64, error) {
 	var respObj cpuUsageResponse
 	err = json.Unmarshal([]byte(strJSON), &respObj)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error while deserializing a JSON string from the Prometheus API endpoint")
+		return nil, fmt.Errorf("Error while deserializing a JSON string from the Prometheus API endpoint: %w", err)
 	}
 
 	result := map[string]float64{}
@@ -199,7 +197,7 @@ func queryRAMusage(query string) (map[string]float64, error) {
 	var respObj ramUsageResponse
 	err = json.Unmarshal([]byte(strJSON), &respObj)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error while deserializing a JSON string from the Prometheus API endpoint")
+		return nil, fmt.Errorf("Error while deserializing a JSON string from the Prometheus API endpoint: %w", err)
 	}
 
 	result := map[string]float64{}
@@ -226,7 +224,7 @@ func queryCPUusagePerFunction(query string) (map[string]float64, error) {
 	var respObj perFunctionCpuUsageResponse
 	err = json.Unmarshal([]byte(strJSON), &respObj)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error while deserializing a JSON string from the Prometheus API endpoint")
+		return nil, fmt.Errorf("Error while deserializing a JSON string from the Prometheus API endpoint: %w", err)
 	}
 
 	result := map[string]float64{}
@@ -251,7 +249,7 @@ func queryRAMusagePerFunction(query string) (map[string]float64, error) {
 	var respObj perFunctionRamUsageResponse
 	err = json.Unmarshal([]byte(strJSON), &respObj)
 	if err != nil {
-		return nil, errors.Wrap(err, "Error while deserializing a JSON string from the Prometheus API endpoint")
+		return nil, fmt.Errorf("Error while deserializing a JSON string from the Prometheus API endpoint: %w", err)
 	}
 
 	result := map[string]float64{}
@@ -266,126 +264,168 @@ func queryRAMusagePerFunction(query string) (map[string]float64, error) {
 	return result, nil
 }
 
-///////////////// PUBLIC INTERFACE /////////////////////
-
 // QueryAFET returns, for each function, the Average Function Execution Time (in
-// seconds) as measured over the specified time span. The returned map has
-// function names as keys
+// seconds) as measured over the specified time span.
+//
+// The returned map has function names as keys.
+//
+// Warning: the time might be NaN if the values are too low.
+//
+// It uses metrics from the OpenFaaS Gateway.
 func QueryAFET(timeSpan time.Duration) (map[string]float64, error) {
 	strTimeSpan := fmt.Sprintf("%.0fm", timeSpan.Minutes())
-	query := fmt.Sprintf("rate(gateway_functions_seconds_sum[%s]) / rate(gateway_functions_seconds_count[%s])", strTimeSpan, strTimeSpan)
-	//logging.Logger().Debug(query)
+
+	rawQuery := `rate(gateway_functions_seconds_sum[%s]) / rate(gateway_functions_seconds_count[%s])`
+
+	query := fmt.Sprintf(rawQuery, strTimeSpan, strTimeSpan)
+
 	return queryAFETrate(query)
 }
 
 // QueryInvoc returns, for each function, the total invocation count as measured
-// over the previous time span. The returned map has function names as keys
+// over the specified time span.
+//
+// The returned map has function names as keys.
+//
+// Warning: the time might be NaN if the values are too low.
+//
+// It uses metrics from the OpenFaaS Gateway.
 func QueryInvoc(timeSpan time.Duration) (map[string]map[string]float64, error) {
-	//strTimeSpan := timeSpan.String()
 	strTimeSpan := fmt.Sprintf("%.0fm", timeSpan.Minutes())
-	query := fmt.Sprintf("rate(gateway_function_invocation_total[%s])", strTimeSpan)
+
+	query := fmt.Sprintf(`rate(gateway_function_invocation_total[%s])`, strTimeSpan)
+
 	return queryInvocRate(query)
 }
 
-// QueryServiceCount returns, for each function, the total number of service active for each
-// function. The returned map contains function names as keys.
+// QueryServiceCount returns, for each function, the total number of function
+// replicas that are currently running.
+//
+// The returned map has function names as keys.
+//
+// It uses metrics from the OpenFaaS Gateway.
 func QueryServiceCount() (map[string]int, error) {
-	//strTimeSpan := timeSpan.String()
-	//strTimeSpan := fmt.Sprintf("%.0fm", timeSpan.Minutes())
-	query := fmt.Sprintf("gateway_service_count")
-	return queryServiceCount(query)
+	return queryServiceCount("gateway_service_count")
 }
 
-// QueryCPUusage returns, for each active istance of node_exporter, the amount of CPU used
-// in that node. The returned map contains as keys the instance name and the CPU usage (percentage) as value.
+// QueryCPUusage returns the amount of CPU used in that node.
+//
+// The returned map contains as keys the instance name (there may be multiple
+// instances of node-exporer) and the CPU usage (percentage) as value.
+//
+// It uses metrics from the Prometheus node-exporter.
 func QueryCPUusage(timeSpan time.Duration) (map[string]float64, error) {
-    logger := logging.Logger()
-
-    // Check IS_KUBE env var, set to true if running on Kubernetes.
-    isKube := false
-	if val := os.Getenv("IS_KUBE"); val != "" {
-        var err error
-        isKube, err = strconv.ParseBool(val)
-        if err != nil {
-            logger.Error(fmt.Sprintf("Invalid IS_KUBE value: %s", val))
-        }
-    }
-
-	//strTimeSpan := timeSpan.String()
 	strTimeSpan := fmt.Sprintf("%.0fm", timeSpan.Minutes())
 
-	query := ""
+	// Note that the service label is optional since this metrics is exposed
+	// only by Prometheus node-exporter.
+	rawQuery := `1 - (avg by (instance) (rate(node_cpu_seconds_total{service="prometheus-prometheus-node-exporter", mode="idle"}[%s])))`
 
-	if isKube {
-		query = fmt.Sprintf("1 - (avg by (instance) (rate(node_cpu_seconds_total{job=\"node-exporter\",mode=\"idle\"}[%s])))", strTimeSpan)
-	} else {
-		query = fmt.Sprintf("1 - (avg by (instance) (rate(node_cpu_seconds_total{job=\"node\",mode=\"idle\"}[%s])))", strTimeSpan)
-	}
+	query := fmt.Sprintf(rawQuery, strTimeSpan)
 
 	return queryCPUusage(query)
 }
 
-// QueryRAMusage returns, for each active istance of node_exporter, the amount of RAM used
-// in that node. The returned map contains as keys the instance name and the RAM usage (percentage) as value.
+// QueryRAMusage returns the amount of RAM used in that node.
+//
+// The returned map contains as keys the instance name (there may be multiple
+// instances of node-exporter) and the RAM usage (percentage) as value.
+//
+// It uses metrics from the Prometheus node-exporter.
 func QueryRAMusage(timeSpan time.Duration) (map[string]float64, error) {
-	//strTimeSpan := timeSpan.String()
 	strTimeSpan := fmt.Sprintf("%.0fm", timeSpan.Minutes())
-	/*query := fmt.Sprintf(
-	`1 -
-	(
-		node_memory_MemAvailable_bytes or
-		(
-			node_memory_Buffers_bytes +
-			node_memory_Cached_bytes +
-			node_memory_MemFree_bytes +
-			node_memory_Slab_bytes
-		)
-	) / node_memory_MemTotal_bytes`)*/
 
-	query := fmt.Sprintf("(1 - ((avg_over_time(node_memory_MemFree_bytes[%s]) + avg_over_time(node_memory_Cached_bytes[%s]) + avg_over_time(node_memory_Buffers_bytes[%s])) / avg_over_time(node_memory_MemTotal_bytes[%s])))", strTimeSpan, strTimeSpan, strTimeSpan, strTimeSpan)
+	rawQuery := `(
+                    1 - ((
+                            avg_over_time(node_memory_MemFree_bytes[%s]) +
+                            avg_over_time(node_memory_Cached_bytes[%s]) +
+                            avg_over_time(node_memory_Buffers_bytes[%s])
+                        )
+                        /
+                        avg_over_time(node_memory_MemTotal_bytes[%s])
+                        )
+                )
+                `
+
+	query := fmt.Sprintf(rawQuery, strTimeSpan, strTimeSpan, strTimeSpan, strTimeSpan)
+
+	// Force the rawQuery to be a single line query.
+	query = strings.Join(strings.Fields(query), " ")
+
 	return queryRAMusage(query)
 }
 
-// QueryCPUusagePerFunction returns, for each function active instance, the amount of CPU used
-// by that function (avg on function containers - same number returned by service count).
-// The returned map contains as keys the function name and the CPU usage (percentage) as value.
-// Note: this function use metrics of cAdvisor (CPU usage of single container) and node_exporter (total amount of available CPU).
+// QueryCPUusagePerFunction returns, for each function active instance, the
+// amount of CPU used by that function (avg on function containers - same number
+// returned by service count).
+//
+// The returned map contains as keys the function name and the CPU usage
+// (percentage) as value.
+//
+// Note: this function use metrics of cAdvisor (CPU usage of single container)
+// and node-exporter (total amount of available CPU).
 func QueryCPUusagePerFunction(timeSpan time.Duration, funcName []string) (map[string]float64, error) {
-    logger := logging.Logger()
+	if len(funcName) == 0 {
+		logging.Logger().Warn("Empty funcName in QueryCPUusagePerFunction, returning empty map")
+		return map[string]float64{}, nil
+	}
 
-    isKube := false
-	if val := os.Getenv("IS_KUBE"); val != "" {
-        var err error
-        isKube, err = strconv.ParseBool(val)
-        if err != nil {
-            logger.Error(fmt.Sprintf("Invalid IS_KUBE value: %s", val))
-        }
-    }
-
-	//strTimeSpan := timeSpan.String()
 	strTimeSpan := fmt.Sprintf("%.0fm", timeSpan.Minutes())
 	funcFilter := strings.Join(funcName, "|")
 
-	query := ""
+	rawQuery := `
+		sum by (container) (
+			irate(container_cpu_usage_seconds_total{container=~"%s"}[%s])
+		)
+		/ on() group_left()
+		sum by (instance) (
+			irate(node_cpu_seconds_total{service="prometheus-prometheus-node-exporter"}[%s])
+		)
+	`
 
-	if isKube {
-		query = fmt.Sprintf("sum by (id) (irate(container_cpu_usage_seconds_total{id=~\".*(%s).*\"}[%s])) / on() group_left() sum by (instance) (irate(node_cpu_seconds_total{job=\"node-exporter\"}[%s]))", funcFilter, strTimeSpan, strTimeSpan)
-	} else {
-		query = fmt.Sprintf("sum by (id) (irate(container_cpu_usage_seconds_total{id=~\".*(%s).*\"}[%s])) / on() group_left() sum by (instance) (irate(node_cpu_seconds_total{job=\"node\"}[%s]))", funcFilter, strTimeSpan, strTimeSpan)
-	}
+	query := fmt.Sprintf(rawQuery, funcFilter, strTimeSpan, strTimeSpan)
+
+	// Force the rawQuery to be a single line query.
+	query = strings.Join(strings.Fields(query), " ")
 
 	return queryCPUusagePerFunction(query)
 }
 
-// QueryRAMusagePerFunction returns, for each function active instance, the amount of RAM used
-// by that function on total amount on available RAM (avg on function containers - same number returned by service count).
-// The returned map contains as keys the function name and the RAM usage (percentage) as value.
-// Note: this function use metrics of cAdvisor (RAM usage of single container) and node_exporter (total amount of available RAM).
+// QueryRAMusagePerFunction returns, for each function active instance, the
+// amount of RAM used by that function on total amount on available RAM (avg on
+// function containers - same number returned by service count).
+//
+// The returned map contains as keys the function name and the RAM usage
+// (percentage) as value.
+//
+// Note: this function use metrics of cAdvisor (RAM usage of single container)
+// and node_exporter (total amount of available RAM).
 func QueryRAMusagePerFunction(timeSpan time.Duration, funcName []string) (map[string]float64, error) {
-	//strTimeSpan := timeSpan.String()
+	if len(funcName) == 0 {
+		logging.Logger().Warn("Empty funcName in QueryCPUusagePerFunction, returning empty map")
+		return map[string]float64{}, nil
+	}
+
 	strTimeSpan := fmt.Sprintf("%.0fm", timeSpan.Minutes())
 	funcFilter := strings.Join(funcName, "|")
-	query := fmt.Sprintf("(sum (avg_over_time(container_memory_usage_bytes{id=~\".*(%s).*\"}[%s])) by(id)) / on() group_left() (avg_over_time(node_memory_MemTotal_bytes[%s]))", funcFilter, strTimeSpan, strTimeSpan)
+
+	rawQuery := `
+		(
+			sum (
+				avg_over_time(container_memory_usage_bytes{container=~"%s"}[%s])
+			)
+			by(container)
+		)
+		/ on() group_left()
+		(
+			avg_over_time(node_memory_MemTotal_bytes[%s])
+		)
+	`
+
+	query := fmt.Sprintf(rawQuery, funcFilter, strTimeSpan, strTimeSpan)
+
+	// Force the rawQuery to be a single line query.
+	query = strings.Join(strings.Fields(query), " ")
 
 	return queryRAMusagePerFunction(query)
 }
