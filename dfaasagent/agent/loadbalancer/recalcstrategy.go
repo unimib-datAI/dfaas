@@ -6,19 +6,21 @@
 package loadbalancer
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
-	"encoding/json"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
+
 	"github.com/bcicen/go-haproxy"
-	"github.com/libp2p/go-libp2p-core/peer"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/pkg/errors"
+
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/communication"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/hacfgupd"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/hacfgupd"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/hasock"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/ofpromq"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/offuncs"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/ofpromq"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/nodestbl"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/utils/p2phostutils"
@@ -26,15 +28,14 @@ import (
 
 // In this file is implemented the Recalc strategy
 
-
 // Struct representing a RecalcStrategy instance, which implements the Strategy interface
 type RecalcStrategy struct {
 	hacfgupdater  hacfgupd.Updater
-	nodestbl 	  *nodestbl.TableRecalc
+	nodestbl      *nodestbl.TableRecalc
 	offuncsClient *offuncs.Client
 	hasockClient  haproxy.HAProxyClient
-	recalc		  recalc
-	it			  int // = 0 // Number of agent loop iterations
+	recalc        recalc
+	it            int // = 0 // Number of agent loop iterations
 }
 
 // Private struct containing variables specific to the recalc algorithm, which
@@ -81,11 +82,11 @@ func (strategy *RecalcStrategy) RunStrategy() error {
 		millisSleep = millisInterval - (millisNow % millisInterval)
 		time.Sleep(time.Duration(millisSleep) * time.Millisecond)
 
-        if err := strategy.recalcStep1(); err != nil {
-            logger.Error("Failed Recalc step 1, skipping RunStrategy iteration ", err)
-            logger.Warn("Waiting 5 second before retrying RunStrategy")
-            time.Sleep(5 * time.Second)
-            continue
+		if err := strategy.recalcStep1(); err != nil {
+			logger.Error("Failed Recalc step 1, skipping RunStrategy iteration ", err)
+			logger.Warn("Waiting 5 second before retrying RunStrategy")
+			time.Sleep(5 * time.Second)
+			continue
 		}
 
 		millisNow = time.Now().UnixNano() / 1000000
@@ -593,7 +594,7 @@ func (strategy *RecalcStrategy) processMsgNodeInfoRecalc(sender string, msg *Msg
 			}
 
 			return nil
-		})		
+		})
 	}
 
 	return nil
@@ -624,8 +625,8 @@ func (strategy *RecalcStrategy) createHACfgObject(
 	funcLimits map[string]uint,
 ) *HACfgRecalc {
 	hacfg := &HACfgRecalc{
-		HACfg: HACfg{ 
-			MyNodeID: 	  myNodeID,
+		HACfg: HACfg{
+			MyNodeID:     myNodeID,
 			HAProxyHost:  _config.HAProxyHost,
 			OpenFaaSHost: openFaaSHost,
 			OpenFaaSPort: openFaaSPort,

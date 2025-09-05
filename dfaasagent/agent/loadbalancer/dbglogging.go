@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/bcicen/go-haproxy"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/hasock"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/nodestbl"
@@ -341,7 +341,7 @@ func debugNodesTblContentNMS(entries map[string]*nodestbl.EntryNMS) {
 			entry.Margin)
 
 		logger.Debugf("    - LOAD: highUsage=%.2f req/s, mediumhUsage=%.2f req/s, lowUsage=%.2f req/s",
-						entry.Load.RateHighUsage, entry.Load.RateMediumUsage, entry.Load.RateLowUsage)
+			entry.Load.RateHighUsage, entry.Load.RateMediumUsage, entry.Load.RateLowUsage)
 
 		logger.Debugf("    - FUNCTIONS:")
 		for _, funcName := range entry.Funcs {
@@ -394,14 +394,14 @@ func debugMsgNodeInfoNMS(msg MsgNodeInfoNMS) {
 	logger := logging.Logger()
 
 	logger.Debugf("    - Node Type: %d", msg.NodeType)
-    if len(msg.Functions) == 0 {
-        logger.Debugf("    - Node's functions: empty")
-    } else {
-        logger.Debugf("    - Node's functions: ")
-        for i := 0; i < len(msg.Functions); i++ {
-            logger.Debugf("       - " + msg.Functions[i] + ", ") 
-        }
-    }
+	if len(msg.Functions) == 0 {
+		logger.Debugf("    - Node's functions: empty")
+	} else {
+		logger.Debugf("    - Node's functions: ")
+		for i := 0; i < len(msg.Functions); i++ {
+			logger.Debugf("       - " + msg.Functions[i] + ", ")
+		}
+	}
 }
 
 func debugFuncsLoad(load GroupsLoad) {
@@ -412,9 +412,9 @@ func debugFuncsLoad(load GroupsLoad) {
 	logger := logging.Logger()
 
 	logger.Debugf("Node's Load: High Usage=%.2f req/s, Low Usage=%.2f req/s, Medium Usage=%.2f req/s",
-			load.RateHighUsage,
-			load.RateLowUsage,
-			load.RateMediumUsage)
+		load.RateHighUsage,
+		load.RateLowUsage,
+		load.RateMediumUsage)
 }
 
 func debugNodeMetricPredictions(predictions map[string]float64) {
@@ -425,10 +425,10 @@ func debugNodeMetricPredictions(predictions map[string]float64) {
 	logger := logging.Logger()
 
 	logger.Debugf("Node's usage predictions:")
-	logger.Debugf("Cpu usage: %.2f, Ram usage: %.2f, Power usage: %.2f", 
-					predictions[cpuUsageNodeMetric],
-					predictions[ramUsageNodeMetric],
-					predictions[powerUsageNodeMetric])
+	logger.Debugf("Cpu usage: %.2f, Ram usage: %.2f, Power usage: %.2f",
+		predictions[cpuUsageNodeMetric],
+		predictions[ramUsageNodeMetric],
+		predictions[powerUsageNodeMetric])
 }
 
 func debugOverloadNMS(overload bool) {
@@ -476,7 +476,7 @@ func debugWeightsNMS(weights map[string]map[string]uint) {
 	for fun, nodesWeights := range weights {
 		logger.Debugf("- " + fun + ": ")
 		for node, weight := range nodesWeights {
-			logger.Debugf("    - Node " + node + ": " + "%d", weight)
+			logger.Debugf("    - Node "+node+": "+"%d", weight)
 		}
 	}
 }

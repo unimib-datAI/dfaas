@@ -8,73 +8,63 @@ package mdns
 
 import (
 	"context"
-	"time"
+	"fmt"
 
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
-	"github.com/libp2p/go-libp2p/p2p/discovery"
-	"github.com/pkg/errors"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
+	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
+
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
 )
 
-// mDNSDiscNotifee is a data structure that will be used as a "notifier" for the
-// mDNS discovery service. It must implement the discovery.Notifee interface
-type mDNSDiscNotifee struct {
-	PeerChan chan peer.AddrInfo
+var service mdns.Service
+
+// notifee implements the mdns.Notifee interface. It receives notifications
+// about discovered peers via mDNS.
+type notifee struct {
+	host host.Host
 }
 
-// HandlePeerFound will be called automatically each time a new peer is found
-// trough the mDNS service. This actually implements discovery.Notifee on the
-// mDNSDiscNotifee struct
-func (n *mDNSDiscNotifee) HandlePeerFound(peerInfo peer.AddrInfo) {
-	n.PeerChan <- peerInfo
-}
+// HandlePeerFound is called when a new peer is found via mDNS.
+func (n *notifee) HandlePeerFound(peerInfo peer.AddrInfo) {
+	logger := logging.Logger()
+	logger.Debug(fmt.Sprintf("Found peer %q, connecting...", peerInfo))
 
-// mdnsDebugLogging decides wheather to enable or disable logging for this pakcage
-const mdnsDebugLogging = true
-
-var _ctx context.Context
-var _p2pHost host.Host
-var _mDNSService discovery.Service
-
-// Initialize initializes the mDNS discovery service
-func Initialize(ctx context.Context, p2pHost host.Host, rendezvous string, interval time.Duration) error {
-	mDNSService, err := discovery.NewMdnsService(ctx, p2pHost, interval, rendezvous)
-	if err != nil {
-		return errors.Wrap(err, "Error while initializing the mDNS discovery service")
+	if err := n.host.Connect(context.Background(), peerInfo); err != nil {
+		logger.Error(fmt.Sprintf("Connecting to a discovered node (skipping): %v", err))
+		return
 	}
 
-	// If everything successful, set the package's static vars
-	_ctx = ctx
-	_p2pHost = p2pHost
-	_mDNSService = mDNSService
+	logger.Debug(fmt.Sprintf("Connected to discovered node %q", peerInfo))
+}
 
+// Initialize builds the mDNS service and starts it.
+func Initialize(p2pHost host.Host, rendezvous string) error {
+	logger := logging.Logger()
+
+	if service != nil {
+		logger.Warn("mDNS discovery service already started!")
+		return nil
+	}
+
+	service = mdns.NewMdnsService(p2pHost, rendezvous, &notifee{host: p2pHost})
+
+	// Start the mDNS service with a peer found callback.
+	logger.Info("Starting mDNS discovery service")
+	if err := service.Start(); err != nil {
+		return fmt.Errorf("starting mDNS service discovery: %w", err)
+	}
 	return nil
 }
 
-// RunDiscovery runs the discovery process. It should run in a goroutine
-func RunDiscovery() error {
-	logger := logging.Logger()
-
-	notifier := &mDNSDiscNotifee{}
-	notifier.PeerChan = make(chan peer.AddrInfo)
-
-	_mDNSService.RegisterNotifee(notifier)
-
-	for peerInfo := range notifier.PeerChan {
-		if mdnsDebugLogging {
-			logger.Debug("mDNS: found peer \"", peerInfo, "\". Connecting...")
-		}
-		err := _p2pHost.Connect(_ctx, peerInfo)
-		if err != nil {
-			errWrap := errors.Wrap(err, "Connection failed to a discovered node (skipping)")
-			logger.Error("mDNS: ", errWrap)
-			continue
-		}
-		if mdnsDebugLogging {
-			logger.Debug("mDNS: connection successful to new discovered node \"", peerInfo, "\"")
-		}
+// Stop stops the mDNS service.
+func Stop() error {
+	if service == nil {
+		return fmt.Errorf("stopping a mDNS service not started")
 	}
 
+	if err := service.Close(); err != nil {
+		return fmt.Errorf("stopping mDNS service: %w", err)
+	}
 	return nil
 }

@@ -21,9 +21,9 @@ import (
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/config"
 
 	"github.com/libp2p/go-libp2p"
-	"github.com/libp2p/go-libp2p-core/crypto"
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/pkg/errors"
+	"github.com/libp2p/go-libp2p/core/crypto"
+	"github.com/libp2p/go-libp2p/core/host"
+
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/communication"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/discovery/kademlia"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/discovery/mdns"
@@ -60,19 +60,19 @@ func getPrivateKey(filePath string) (crypto.PrivKey, error) {
 
 		data, err = ioutil.ReadFile(filePath)
 		if err != nil {
-			return nil, errors.Wrap(err, "Error while loading the RSA private key file content")
+			return nil, fmt.Errorf("error while loading the RSA private key file content: %w", err)
 		}
 
 		prvKey, err = crypto.UnmarshalPrivateKey(data)
 		if err != nil {
-			return nil, errors.Wrap(err, "Error while unmarshalling the RSA private key from file")
+			return nil, fmt.Errorf("error while unmarshalling the RSA private key from file: %w", err)
 		}
 	} else {
 		logger.Debug("Generating a new RSA key pair")
 
 		prvKey, _, err = crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, cryptorand.Reader)
 		if err != nil {
-			return nil, errors.Wrap(err, "Error while generating a new RSA key pair")
+			return nil, fmt.Errorf("error while generating a new RSA key pair: %w", err)
 		}
 
 		if filePath != "" {
@@ -80,12 +80,12 @@ func getPrivateKey(filePath string) (crypto.PrivKey, error) {
 
 			data, err = crypto.MarshalPrivateKey(prvKey)
 			if err != nil {
-				return nil, errors.Wrap(err, "Error while marshalling the newly generated RSA private key")
+				return nil, fmt.Errorf("error while marshalling the newly generated RSA private key: %w", err)
 			}
 
 			err = ioutil.WriteFile(filePath, data, 0644)
 			if err != nil {
-				return nil, errors.Wrap(err, "Error while writing the RSA private key to file")
+				return nil, fmt.Errorf("error while writing the RSA private key to file: %w", err)
 			}
 		}
 	}
@@ -116,17 +116,17 @@ func runAgent(config config.Configuration) error {
 	var _addresses []multiaddr.Multiaddr
 	_addresses, err = maddrhelp.StringListToMultiaddrList(config.Listen)
 	if err != nil {
-		return errors.Wrap(err, "Error while converting string list to multiaddr list")
+		return fmt.Errorf("error while converting string list to multiaddr list: %w", err)
 	}
-	_p2pHost, err = libp2p.New(ctx, libp2p.ListenAddrs(_addresses...), libp2p.Identity(prvKey))
+	_p2pHost, err = libp2p.New(libp2p.ListenAddrs(_addresses...), libp2p.Identity(prvKey))
 	if err != nil {
-		return errors.Wrap(err, "Error while creating the libp2p Host")
+		return fmt.Errorf("error while creating the libp2p Host: %w", err)
 	}
 
 	// Print this host's multiaddresses
 	myMAddrs, err := maddrhelp.BuildHostFullMAddrs(_p2pHost)
 	if err != nil {
-		return errors.Wrap(err, "Error while building the p2p host's multiaddress")
+		return fmt.Errorf("error while building the p2p host's multiaddress: %w", err)
 	}
 	logger.Info("Libp2p host started. You can connect to this host by using the following multiaddresses:")
 	for i, addr := range myMAddrs {
@@ -142,7 +142,7 @@ func runAgent(config config.Configuration) error {
 	var strategy loadbalancer.Strategy
 	strategy, err = loadbalancer.GetStrategyInstance()
 	if err != nil {
-		return errors.Wrap(err, "Error while getting strategy instance")
+		return fmt.Errorf("error while getting strategy instance: %w", err)
 	}
 
 	////////// PUBSUB INITIALIZATION //////////
@@ -173,7 +173,7 @@ func runAgent(config config.Configuration) error {
 
 	// mDNS initialization.
 	if config.MDNSInterval > 0 {
-		if err := mdns.Initialize(ctx, _p2pHost, config.Rendezvous, config.MDNSInterval); err != nil {
+		if err := mdns.Initialize(_p2pHost, config.Rendezvous); err != nil {
 			return err
 		}
 
@@ -200,10 +200,6 @@ func runAgent(config config.Configuration) error {
 
 	go func() { chanErr <- kademlia.RunDiscovery() }()
 
-	if config.MDNSInterval > 0 {
-		go func() { chanErr <- mdns.RunDiscovery() }()
-	}
-
 	go func() { chanErr <- communication.RunReceiver() }()
 
 	go func() { chanErr <- strategy.RunStrategy() }()
@@ -213,9 +209,19 @@ func runAgent(config config.Configuration) error {
 	select {
 	case sig := <-chanStop:
 		logger.Warn("Caught " + sig.String() + " signal. Stopping.")
+		if config.MDNSInterval > 0 {
+			if err := mdns.Stop(); err != nil {
+				return err
+			}
+		}
 		_p2pHost.Close()
 		return nil
 	case err = <-chanErr:
+		if config.MDNSInterval > 0 {
+			if err := mdns.Stop(); err != nil {
+				return err
+			}
+		}
 		_p2pHost.Close()
 		return err
 	}

@@ -15,10 +15,11 @@ import (
 	"github.com/multiformats/go-multiaddr"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/utils/maddrhelp"
 
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
-	discovery "github.com/libp2p/go-libp2p-discovery"
 	dht "github.com/libp2p/go-libp2p-kad-dht"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
+	discovery "github.com/libp2p/go-libp2p/p2p/discovery/routing"
+	discoveryUtils "github.com/libp2p/go-libp2p/p2p/discovery/util"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
 	"go.uber.org/zap"
 )
@@ -103,9 +104,9 @@ func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig Bootstra
 	default:
 	}
 
-	// Announcing ourself on the Kademlia network
+	// Announcing ourself on the Kademlia network.
 	routingDisc := discovery.NewRoutingDiscovery(kadDHT)
-	discovery.Advertise(ctx, routingDisc, rendezvous)
+	discoveryUtils.Advertise(ctx, routingDisc, rendezvous)
 
 	if idleTime == 0 {
 		logger.Warn("Given Kademlia idle time must be a positive duration, using 1 minute by default")

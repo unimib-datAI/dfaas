@@ -6,23 +6,24 @@
 package loadbalancer
 
 import (
-	"fmt"
-	"time"
-	"math"
 	"encoding/json"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"fmt"
+	"math"
+	"time"
+
 	"github.com/bcicen/go-haproxy"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/pkg/errors"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/communication"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/hacfgupd"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/nodestbl"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/forecaster"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/ofpromq"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/offuncs"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/hasock"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/httpserver"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/forecaster"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/hasock"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/offuncs"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/ofpromq"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/nodestbl"
 )
 
 // In this file is implemented the Node Margin strategy
@@ -37,42 +38,42 @@ const powerUsageNodeMetric = "power_usage_node"
 // NodeMarginStrategy represents the NMS strategy and implements the Strategy
 // interface.
 type NodeMarginStrategy struct {
-	hacfgupdater 	 hacfgupd.Updater
-	nodestbl 		 *nodestbl.TableNMS
-	offuncsClient 	 *offuncs.Client
-	hasockClient  	 haproxy.HAProxyClient
+	hacfgupdater     hacfgupd.Updater
+	nodestbl         *nodestbl.TableNMS
+	offuncsClient    *offuncs.Client
+	hasockClient     haproxy.HAProxyClient
 	forecasterClient forecaster.Client
-	nodeInfo 		 nodeInfo
+	nodeInfo         nodeInfo
 	// Functions groups
-	funcsGroups 	 Groups
+	funcsGroups Groups
 	// Map with a metric name as key
 	// and max threshold values used to determine if the node is in overload
-	maxValues 	     map[string]float64
+	maxValues map[string]float64
 	// Map of target nodes, with node ID of a common neighbour as key,
 	// and array of common functions as value
-	targetNodes 	 map[string][]string
+	targetNodes map[string][]string
 	// Map containing for each node's function (key) another map containing
-	// for each node the corresponding forwarding weight 
-	weights 		 map[string]map[string]uint
+	// for each node the corresponding forwarding weight
+	weights map[string]map[string]uint
 }
 
 // groupsLoad represents the invocation rates for each group of functions on a node
 type GroupsLoad struct {
-	RateHighUsage 	float64
-	RateLowUsage 	float64
+	RateHighUsage   float64
+	RateLowUsage    float64
 	RateMediumUsage float64
 }
 
 // Private struct containing info about us
 type nodeInfo struct {
-	nodeType 			int 				// Node type (heavy=0, mid=1, light=2)
-	funcs 				[]string			// Our OpenFaaS functions
-	funcsGroupsLoad 	GroupsLoad			// Load rates for each group of functions
-	commonNeighboursNum int					// Number of neighbours with at least a function in common
-	funcsRates 			map[string]float64  // Map with function name as key, and invocation rate as value
-	margin 				float64				// Node's margin
-	overload 			bool				// True if node is in overload
-	metricsPredictions 	map[string]float64  // Map with metric name as key, and it's predicted value
+	nodeType            int                // Node type (heavy=0, mid=1, light=2)
+	funcs               []string           // Our OpenFaaS functions
+	funcsGroupsLoad     GroupsLoad         // Load rates for each group of functions
+	commonNeighboursNum int                // Number of neighbours with at least a function in common
+	funcsRates          map[string]float64 // Map with function name as key, and invocation rate as value
+	margin              float64            // Node's margin
+	overload            bool               // True if node is in overload
+	metricsPredictions  map[string]float64 // Map with metric name as key, and it's predicted value
 }
 
 //////////////////// PUBLIC FUNCTIONS FOR NODE MARGIN STRATEGY ////////////////////
@@ -80,7 +81,7 @@ type nodeInfo struct {
 // RunStrategy handles the periodic execution of the recalculation function. It
 // should run in a goroutine
 func (strategy *NodeMarginStrategy) RunStrategy() error {
-    logger := logging.Logger()
+	logger := logging.Logger()
 
 	var millisNow, millisSleep int64
 	var err error
@@ -100,27 +101,27 @@ func (strategy *NodeMarginStrategy) RunStrategy() error {
 	for {
 		cpuUsage, err = ofpromq.QueryCPUusage(_config.RecalcPeriod)
 		if err != nil {
-            logger.Error("Failed to execute Prometheus QueryCPUusage query, skipping RunStrategy iteration ", err)
-            logger.Warn("Waiting 5 second before retrying RunStrategy after Prometheus error")
-            time.Sleep(5 * time.Second)
-            continue
+			logger.Error("Failed to execute Prometheus QueryCPUusage query, skipping RunStrategy iteration ", err)
+			logger.Warn("Waiting 5 second before retrying RunStrategy after Prometheus error")
+			time.Sleep(5 * time.Second)
+			continue
 		}
 		debugPromCPUusage(_config.RecalcPeriod, cpuUsage)
 
 		ramUsage, err = ofpromq.QueryRAMusage(_config.RecalcPeriod)
 		if err != nil {
-            logger.Error("Failed to execute Prometheus QueryRAMusage query, skipping RunStrategy iteration ", err)
-            logger.Warn("Waiting 5 second before retrying RunStrategy after Prometheus error")
-            time.Sleep(5 * time.Second)
-            continue
+			logger.Error("Failed to execute Prometheus QueryRAMusage query, skipping RunStrategy iteration ", err)
+			logger.Warn("Waiting 5 second before retrying RunStrategy after Prometheus error")
+			time.Sleep(5 * time.Second)
+			continue
 		}
 		debugPromRAMusage(_config.RecalcPeriod, ramUsage)
 
-        if err := strategy.publishNodeInfo(); err != nil {
-            logger.Error("Failed to publish node info, skipping RunStrategy iteration ", err)
-            logger.Warn("Waiting 5 second before retrying RunStrategy")
-            time.Sleep(5 * time.Second)
-            continue
+		if err := strategy.publishNodeInfo(); err != nil {
+			logger.Error("Failed to publish node info, skipping RunStrategy iteration ", err)
+			logger.Warn("Waiting 5 second before retrying RunStrategy")
+			time.Sleep(5 * time.Second)
+			continue
 		}
 
 		strategy.updateCommonNeighbours()
@@ -166,7 +167,7 @@ func (strategy *NodeMarginStrategy) RunStrategy() error {
 			return err
 		}
 
-        httpserver.NmsSuccessIterations.Inc()
+		httpserver.NmsSuccessIterations.Inc()
 
 		millisNow = time.Now().UnixNano() / 1000000
 		millisSleep = millisInterval - (millisNow % millisInterval)
@@ -217,12 +218,12 @@ func (strategy *NodeMarginStrategy) publishNodeInfo() error {
 	}
 
 	msg := MsgNodeInfoNMS{
-		MsgType:		StrMsgNodeInfoTypeNMS,
-		HAProxyHost: 	_config.HAProxyHost,
-		HAProxyPort:	_config.HAProxyPort,
-		NodeType:		strategy.nodeInfo.nodeType,
-		MaxValues:		strategy.maxValues,
-		Functions:		strategy.nodeInfo.funcs,
+		MsgType:     StrMsgNodeInfoTypeNMS,
+		HAProxyHost: _config.HAProxyHost,
+		HAProxyPort: _config.HAProxyPort,
+		NodeType:    strategy.nodeInfo.nodeType,
+		MaxValues:   strategy.maxValues,
+		Functions:   strategy.nodeInfo.funcs,
 	}
 	debugMsgNodeInfoNMS(msg)
 
@@ -295,38 +296,38 @@ func (strategy *NodeMarginStrategy) getFunctionsRates() (map[string]float64, err
 // NOTE: at the moment invocation rates on node are gathered from HAProxy. In future
 // they should be gathered from the Forecaster, which predicts the future load received from the node
 func (strategy *NodeMarginStrategy) getFuncsGroupsLoad() (GroupsLoad, error) {
-		var err error
-		
-		strategy.nodeInfo.funcsRates, err = strategy.getFunctionsRates()
-		if err != nil {
-			return GroupsLoad{}, err
-		}
-	
-		var nodeGroupsLoad GroupsLoad
+	var err error
 
-		nodeGroupsLoad.RateHighUsage = 0.0
-		nodeGroupsLoad.RateLowUsage = 0.0
-		nodeGroupsLoad.RateMediumUsage = 0.0
-		
-		for funcName, rate := range strategy.nodeInfo.funcsRates {
-			if contains(strategy.funcsGroups.HighUsage, funcName) {
-				nodeGroupsLoad.RateHighUsage += rate
-			} else if contains(strategy.funcsGroups.MediumUsage, funcName) {
-				nodeGroupsLoad.RateMediumUsage += rate
-			} else if contains(strategy.funcsGroups.LowUsage, funcName) {
-				nodeGroupsLoad.RateLowUsage += rate
-			}
-		}
+	strategy.nodeInfo.funcsRates, err = strategy.getFunctionsRates()
+	if err != nil {
+		return GroupsLoad{}, err
+	}
 
-		debugFuncsLoad(nodeGroupsLoad)
-	
-		return nodeGroupsLoad, nil
+	var nodeGroupsLoad GroupsLoad
+
+	nodeGroupsLoad.RateHighUsage = 0.0
+	nodeGroupsLoad.RateLowUsage = 0.0
+	nodeGroupsLoad.RateMediumUsage = 0.0
+
+	for funcName, rate := range strategy.nodeInfo.funcsRates {
+		if contains(strategy.funcsGroups.HighUsage, funcName) {
+			nodeGroupsLoad.RateHighUsage += rate
+		} else if contains(strategy.funcsGroups.MediumUsage, funcName) {
+			nodeGroupsLoad.RateMediumUsage += rate
+		} else if contains(strategy.funcsGroups.LowUsage, funcName) {
+			nodeGroupsLoad.RateLowUsage += rate
+		}
+	}
+
+	debugFuncsLoad(nodeGroupsLoad)
+
+	return nodeGroupsLoad, nil
 }
 
 // Get node metric predictions from Forecaster
 func (strategy *NodeMarginStrategy) getNodeMetricPredictions(nodeType int, load GroupsLoad) (map[string]float64, error) {
 	var err error
-	
+
 	var req forecaster.NodeMetricPredReq
 	req.Node_type = nodeType
 	req.Rate_group_HIGH_USAGE = load.RateHighUsage
@@ -405,7 +406,7 @@ func (strategy *NodeMarginStrategy) calculateMargin(thresholds map[string]float6
 // Send margin message to neighbours
 func (strategy *NodeMarginStrategy) sendMarginToNeighbours() error {
 	var err error
-	
+
 	// Publish margin and load info only if there are common neighbours
 	if strategy.nodeInfo.commonNeighboursNum > 0 {
 		var marginMsg MsgNodeMarginInfoNMS
@@ -426,7 +427,6 @@ func (strategy *NodeMarginStrategy) sendMarginToNeighbours() error {
 
 	return nil
 }
-
 
 // Utility function used to check if a certain function is contained in a functions group
 func contains(s []string, str string) bool {
@@ -486,7 +486,7 @@ func (strategy *NodeMarginStrategy) calculateWeights() (map[string]map[string]ui
 			iterator[targetID] = 0
 		}
 
-		for (overload && (len(strategy.targetNodes) > 0)) {
+		for overload && (len(strategy.targetNodes) > 0) {
 			// Generate array of indexes to select different nodeTo at each iteration
 			var targetKeys []string
 			for targetID, _ := range strategy.targetNodes {
@@ -518,7 +518,7 @@ func (strategy *NodeMarginStrategy) calculateWeights() (map[string]map[string]ui
 					return err
 				}
 				nodeToPercentage := strategy.calculateNodeUsagePercentage(nodeToPredictions, entries[nodeTo].MaxValues)
-				
+
 				reqToTransfer := (mainteined[funcTo] * 0.01)
 
 				// Update the rate group load in request to Forecaster corresponding to the group of funcTo
@@ -552,10 +552,10 @@ func (strategy *NodeMarginStrategy) calculateWeights() (map[string]map[string]ui
 
 				margin := entries[nodeTo].Margin
 
-				if margin > newNodeToPercentage - nodeToPercentage {
+				if margin > newNodeToPercentage-nodeToPercentage {
 					mainteined[funcTo] -= reqToTransfer
 					fwdRequests[nodeTo][funcTo] += reqToTransfer
-					
+
 					if contains(strategy.funcsGroups.HighUsage, funcTo) {
 						mainteinedGroupsLoad.RateHighUsage -= reqToTransfer
 					} else if contains(strategy.funcsGroups.MediumUsage, funcTo) {
@@ -563,7 +563,7 @@ func (strategy *NodeMarginStrategy) calculateWeights() (map[string]map[string]ui
 					} else if contains(strategy.funcsGroups.LowUsage, funcTo) {
 						mainteinedGroupsLoad.RateLowUsage -= reqToTransfer
 					}
-					
+
 					logger.Debugf("This node's state after requests forwarding: ")
 					nodePredictions, err := strategy.getNodeMetricPredictions(strategy.nodeInfo.nodeType, mainteinedGroupsLoad)
 					if err != nil {
@@ -701,13 +701,13 @@ func (strategy *NodeMarginStrategy) processMsgNodeInfoNMS(sender string, msg *Ms
 		logger.Debugf("Node %s HAProxyHost: %s", sender, msg.HAProxyHost)
 		logger.Debugf("Node %s HAProxyPort: %d", sender, msg.HAProxyPort)
 		logger.Debugf("Max Values: CPU=%f, RAM=%f, Power=%f",
-				msg.MaxValues[cpuUsageNodeMetric], msg.MaxValues[ramUsageNodeMetric], msg.MaxValues[powerUsageNodeMetric])
-		
+			msg.MaxValues[cpuUsageNodeMetric], msg.MaxValues[ramUsageNodeMetric], msg.MaxValues[powerUsageNodeMetric])
+
 		var funcs string
 		for i := 0; i < len(msg.Functions); i++ {
 			funcs += msg.Functions[i] + ", "
 		}
-		logger.Debugf("Node %s functions: %s", sender, funcs) 
+		logger.Debugf("Node %s functions: %s", sender, funcs)
 	}
 
 	strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryNMS) error {
@@ -715,8 +715,8 @@ func (strategy *NodeMarginStrategy) processMsgNodeInfoNMS(sender string, msg *Ms
 		_, present := entries[sender]
 		if !present {
 			entries[sender] = &nodestbl.EntryNMS{
-				CommonNeighbour: 	false,
-				Load:				nodestbl.Load{},
+				CommonNeighbour: false,
+				Load:            nodestbl.Load{},
 			}
 			logger.Debugf("Node %s was not present and has been added to the table", sender)
 		}
@@ -749,19 +749,19 @@ func (strategy *NodeMarginStrategy) processMsgNodeMarginInfoNMS(sender string, m
 				logger.Debugf("Received margin info message from node %s", sender)
 				logger.Debugf("Margin: %f", msg.Margin)
 				logger.Debugf("Load: High Usage=%f, Low Usage=%f, Medium Usage=%f",
-				msg.Load.RateHighUsage, msg.Load.RateLowUsage, msg.Load.RateMediumUsage)
+					msg.Load.RateHighUsage, msg.Load.RateLowUsage, msg.Load.RateMediumUsage)
 			}
 			logger.Debugf("Setting received values for node %s into table", sender)
 
-				// Check if exists the neighbour with "sender" ID with its info in entries before adding new info to avoid errors
-				_, exists := entries[sender]
-				if exists {
-					entries[sender].TAlive = time.Now()
-					entries[sender].Margin = msg.Margin
-					entries[sender].Load.RateHighUsage = msg.Load.RateHighUsage
-					entries[sender].Load.RateMediumUsage = msg.Load.RateLowUsage
-					entries[sender].Load.RateMediumUsage = msg.Load.RateLowUsage
-				}
+			// Check if exists the neighbour with "sender" ID with its info in entries before adding new info to avoid errors
+			_, exists := entries[sender]
+			if exists {
+				entries[sender].TAlive = time.Now()
+				entries[sender].Margin = msg.Margin
+				entries[sender].Load.RateHighUsage = msg.Load.RateHighUsage
+				entries[sender].Load.RateMediumUsage = msg.Load.RateLowUsage
+				entries[sender].Load.RateMediumUsage = msg.Load.RateLowUsage
+			}
 		} else {
 			logger.Debugf("Ignore margin info message from node %s (not a common neighbour)", sender)
 		}
@@ -796,14 +796,14 @@ func (strategy *NodeMarginStrategy) createHACfgObject(
 	funcsWeights map[string]map[string]uint,
 ) *HACfgNMS {
 	hacfg := &HACfgNMS{
-		HACfg: HACfg{ 
-			MyNodeID: 	  myNodeID,
+		HACfg: HACfg{
+			MyNodeID:     myNodeID,
 			HAProxyHost:  _config.HAProxyHost,
 			OpenFaaSHost: openFaaSHost,
 			OpenFaaSPort: openFaaSPort,
 		},
 
-		StrRecalc:  recalcPeriod.String(),
+		StrRecalc: recalcPeriod.String(),
 
 		Nodes:     map[string]*HACfgNodeNMS{},
 		Functions: map[string]*HACfgFuncNMS{},

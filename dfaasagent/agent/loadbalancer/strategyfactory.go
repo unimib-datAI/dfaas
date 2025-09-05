@@ -10,7 +10,7 @@ import (
 
 	"github.com/bcicen/go-haproxy"
 
-    "gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/hacfgupd"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/forecaster"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/offuncs"
@@ -54,13 +54,13 @@ func (strategyFactory *recalcStrategyFactory) createStrategy() (Strategy, error)
 		Addr: _config.HAProxySockPath,
 	}
 
-    strategy.offuncsClient, err = offuncs.NewClient(_config.OpenFaaSHost,
-                                                    _config.OpenFaaSPort,
-                                                    _config.OpenFaaSUser,
-                                                    _config.OpenFaaSPass)
-    if err != nil {
-        return nil, err
-    }
+	strategy.offuncsClient, err = offuncs.NewClient(_config.OpenFaaSHost,
+		_config.OpenFaaSPort,
+		_config.OpenFaaSUser,
+		_config.OpenFaaSPass)
+	if err != nil {
+		return nil, err
+	}
 
 	strategy.recalc = recalc{}
 	strategy.it = 0
@@ -91,15 +91,15 @@ func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, er
 		return nil, err
 	}
 
-    strategy.offuncsClient, err = offuncs.NewClient(_config.OpenFaaSHost,
-                                                    _config.OpenFaaSPort,
-                                                    _config.OpenFaaSUser,
-                                                    _config.OpenFaaSPass)
-    if err != nil {
-        return nil, err
-    }
+	strategy.offuncsClient, err = offuncs.NewClient(_config.OpenFaaSHost,
+		_config.OpenFaaSPort,
+		_config.OpenFaaSUser,
+		_config.OpenFaaSPass)
+	if err != nil {
+		return nil, err
+	}
 
-    strategy.hasockClient = haproxy.HAProxyClient{
+	strategy.hasockClient = haproxy.HAProxyClient{
 		Addr: _config.HAProxySockPath,
 	}
 

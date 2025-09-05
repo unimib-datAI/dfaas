@@ -7,8 +7,8 @@ package loadbalancer
 
 import (
 	"encoding/json"
-	"os"
 	"io/ioutil"
+	"os"
 
 	"github.com/pkg/errors"
 )
@@ -30,13 +30,13 @@ import (
 // group.
 type Groups struct {
 	// High usage functions.
-	HighUsage 	[]string `json:"HIGH_USAGE"`
+	HighUsage []string `json:"HIGH_USAGE"`
 
 	// Medium usage functions.
 	MediumUsage []string `json:"MEDIUM_USAGE"`
 
 	// Low usage functions.
-	LowUsage 	[]string `json:"LOW_USAGE"`
+	LowUsage []string `json:"LOW_USAGE"`
 }
 
 //////////////////// PUBLIC METHODS ////////////////////

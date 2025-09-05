@@ -45,9 +45,9 @@ type MsgNodeInfoNMS struct {
 
 	HAProxyHost string
 	HAProxyPort uint
-	NodeType 	int
+	NodeType    int
 	MaxValues   map[string]float64
-	Functions 	[]string
+	Functions   []string
 }
 
 // StrMsgNodeInfoTypeNMS value for MsgNodeInfoNMS.MsgType
@@ -58,8 +58,8 @@ const StrMsgNodeInfoTypeNMS = "nodeinfoNMS"
 type MsgNodeMarginInfoNMS struct {
 	MsgType string
 
-	Margin 		float64
-	Load 		GroupsLoad
+	Margin float64
+	Load   GroupsLoad
 }
 
 // StrMsgNodeMarginInfoTypeNMS value for MsgNodeMarginInfoNMS.MsgType
