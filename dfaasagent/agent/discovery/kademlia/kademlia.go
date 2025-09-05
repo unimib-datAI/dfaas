@@ -145,11 +145,11 @@ func RunDiscovery() error {
 				continue
 			}
 
-			logger.Debug("Connecting to a new peer",
+            logger.Debug("Connecting to a new peer: ",
 				zap.Any("addrs", peerInfo.Addrs),
 				zap.String("id", peerInfo.ID.String()))
 			if err := _p2pHost.Connect(_ctx, peerInfo); err != nil {
-				logger.Error("Connection to peer (skipping)", zap.Error(err))
+                logger.Error("Connection to peer (skipping): ", zap.Error(err))
 				continue
 			}
 			logger.Debug("Connected to a new peer",
