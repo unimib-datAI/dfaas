@@ -21,6 +21,9 @@ dfaasagent/dfaasagent
 dfaasagent/haproxy.cfg
 dfaasagent/prvkey.dat
 
+# Ignore key files.
+*.pem
+
 # Ignore custom Ansible inventory files.
 **/inventory.yaml
 
