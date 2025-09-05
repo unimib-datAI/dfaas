@@ -26,8 +26,10 @@ type Configuration struct {
 	Listen []string `mapstructure:"AGENT_LISTEN"`
 
 	// File where the agent's private key can be found. The private key is the
-	// ID of the agent for other peers. If not given, a new one will be
-	// generated.
+	// ID of the agent for other peers.
+    //
+    // If not given or the file does not exist or it is empty, a new one will be
+    // generated.
 	PrivateKeyFile string `mapstructure:"AGENT_PRIVATE_KEY_FILE"`
 
 	// Where to use bootstrap nodes to found other nodes.

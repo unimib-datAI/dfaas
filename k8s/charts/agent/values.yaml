@@ -11,21 +11,25 @@ config:
   AGENT_LISTEN: "/ip4/0.0.0.0/tcp/31600"
 
   # File where the agent's private key can be found. The private key is the ID
-  # of the agent for other peers. If not given, a new one will be generated.
-  #AGENT_PRIVATE_KEY_FILE=
+  # of the agent for other peers.
+  #
+  # If not given or the file does not exist or it is empty, a new one will be
+  # generated.
+  AGENT_PRIVATE_KEY_FILE: /usr/src/dfaasagent/privatekey.pem
 
   # Whether to use bootstrap nodes.
-  AGENT_BOOTSTRAP_NODES: true
+  AGENT_BOOTSTRAP_NODES: false
 
   # If true, use public peers to found other nodes. If false,
   # AGENT_BOOTSTRAP_NODES_LIST or AGENT_BOOTSTRAP_NODES_FILE should be provided.
-  AGENT_PUBLIC_BOOTSTRAP_NODES: true
+  AGENT_PUBLIC_BOOTSTRAP_NODES: false
 
   # Explicit list of bootstrap node addresses.
-  #AGENT_BOOTSTRAP_NODES_LIST=
+  # Example "/ip4/10.0.2.40/tcp/31600/p2p/12D3KooWCGAEQ4umwA2qgK7AdVhqLgahzaNMd3qwMi9HtRGJXrp4".
+  #AGENT_BOOTSTRAP_NODES_LIST: ""
 
   # Path to a file containing bootstrap node information.
-  #AGENT_BOOTSTRAP_NODES_FILE=
+  #AGENT_BOOTSTRAP_NODES_FILE: 
 
   # If true, agent's initialization fails if any bootstrap peer cannot be
   # contacted.
@@ -61,3 +65,11 @@ config:
   AGENT_NMS_CPU_THRESHOLD: 120.0 # max cpu usage percentage
   AGENT_NMS_RAM_THRESHOLD: 5500000000.0 # max ram usage in bytes
   AGENT_NMS_POWER_THRESHOLD: 2100000.0 # max power usage in microwatts
+
+# Agent's private key in PEM format. If empty, the agent will generate a new
+# private key and it will print to the standard output.
+privateKey: ""
+# dfaasAgentPrivateKey: |
+#  -----BEGIN PRIVATE KEY-----
+#  ...your key here...
+#  -----END PRIVATE KEY-----

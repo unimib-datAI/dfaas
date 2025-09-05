@@ -34,3 +34,12 @@ spec:
             # Get the DFaaS Agent config.
             - configMapRef:
                 name: dfaas-agent-config
+          volumeMounts:
+            # Mount the private key from the ConfigMap
+            - name: dfaas-agent-private-key
+              mountPath: /usr/src/dfaasagent/privatekey.pem
+              subPath: privatekey.pem
+      volumes:
+        - name: dfaas-agent-private-key
+          configMap:
+            name: dfaas-agent-private-key
