@@ -6,14 +6,19 @@ config:
   AGENT_LOG_DATETIME: true
   AGENT_LOG_COLORS: true
 
+  # Address where to listen new peers. Should be in form
+  # "/ip4/192.0.2.0/tcp/6000". Suggested default is "/ip4/0.0.0.0/tcp/31600".
   AGENT_LISTEN: "/ip4/0.0.0.0/tcp/31600"
+
+  # File where the agent's private key can be found. The private key is the ID
+  # of the agent for other peers. If not given, a new one will be generated.
   #AGENT_PRIVATE_KEY_FILE=
 
   # Whether to use bootstrap nodes.
   AGENT_BOOTSTRAP_NODES: true
 
-  # If false, AGENT_BOOTSTRAP_NODES_LIST or AGENT_BOOTSTRAP_NODES_FILE should be
-  # provided.
+  # If true, use public peers to found other nodes. If false,
+  # AGENT_BOOTSTRAP_NODES_LIST or AGENT_BOOTSTRAP_NODES_FILE should be provided.
   AGENT_PUBLIC_BOOTSTRAP_NODES: true
 
   # Explicit list of bootstrap node addresses.
@@ -33,7 +38,7 @@ config:
   AGENT_PUBSUB_TOPIC: "/dfaasagent/1.0.0"
 
   # mDNS is not supported in Kubernetes, so we disable it.
-  AGENT_MDNS_INTERVAL: 0 # Original value is "1m".
+  AGENT_MDNS_ENABLED: false
 
   AGENT_RECALC_PERIOD: 1m
 

@@ -21,19 +21,42 @@ type Configuration struct {
 	DateTime  bool `mapstructure:"AGENT_LOG_DATETIME"`
 	LogColors bool `mapstructure:"AGENT_LOG_COLORS"`
 
-	Listen         []string `mapstructure:"AGENT_LISTEN"`
-	PrivateKeyFile string   `mapstructure:"AGENT_PRIVATE_KEY_FILE"`
+	// Address where to listen new peers. Should be in form
+	// "/ip4/192.0.2.0/tcp/6000". Suggested default is "/ip4/0.0.0.0/tcp/31600".
+	Listen []string `mapstructure:"AGENT_LISTEN"`
 
-	BootstrapNodes       bool     `mapstructure:"AGENT_BOOTSTRAP_NODES"`
-	PublicBootstrapNodes bool     `mapstructure:"AGENT_PUBLIC_BOOTSTRAP_NODES"`
-	BootstrapNodesList   []string `mapstructure:"AGENT_BOOTSTRAP_NODES_LIST"`
-	BootstrapNodesFile   string   `mapstructure:"AGENT_BOOTSTRAP_NODES_FILE"`
-	BootstrapForce       bool     `mapstructure:"AGENT_BOOTSTRAP_FORCE"`
+	// File where the agent's private key can be found. The private key is the
+	// ID of the agent for other peers. If not given, a new one will be
+	// generated.
+	PrivateKeyFile string `mapstructure:"AGENT_PRIVATE_KEY_FILE"`
 
-	Rendezvous   string        `mapstructure:"AGENT_RENDEZVOUS"`
-	MDNSInterval time.Duration `mapstructure:"AGENT_MDNS_INTERVAL"`
-	KadIdleTime  time.Duration `mapstructure:"AGENT_KAD_IDLE_TIME"`
-	PubSubTopic  string        `mapstructure:"AGENT_PUBSUB_TOPIC"`
+	// Where to use bootstrap nodes to found other nodes.
+	BootstrapNodes bool `mapstructure:"AGENT_BOOTSTRAP_NODES"`
+
+	// If true, use public peers to found other nodes. If false,
+	// AGENT_BOOTSTRAP_NODES_LIST or AGENT_BOOTSTRAP_NODES_FILE should be
+	// provided.
+	PublicBootstrapNodes bool `mapstructure:"AGENT_PUBLIC_BOOTSTRAP_NODES"`
+
+	// List of bootstrap nodes addresses.
+	BootstrapNodesList []string `mapstructure:"AGENT_BOOTSTRAP_NODES_LIST"`
+
+	// Path to a file containing bootstrap node information.
+	BootstrapNodesFile string `mapstructure:"AGENT_BOOTSTRAP_NODES_FILE"`
+
+	// If true, agent's initialization fails if any bootstrap peer cannot be
+	// contacted.
+	BootstrapForce bool `mapstructure:"AGENT_BOOTSTRAP_FORCE"`
+
+	// Unique string used for grouping peers for discovery.
+	Rendezvous string `mapstructure:"AGENT_RENDEZVOUS"`
+
+	// Set to true to mDNS discovery service to find other nodes.
+	MDNSEnabled bool `mapstructure:"AGENT_MDNS_ENABLED"`
+
+	KadIdleTime time.Duration `mapstructure:"AGENT_KAD_IDLE_TIME"`
+
+	PubSubTopic string `mapstructure:"AGENT_PUBSUB_TOPIC"`
 
 	RecalcPeriod time.Duration `mapstructure:"AGENT_RECALC_PERIOD"`
 

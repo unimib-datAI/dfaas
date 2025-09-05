@@ -76,7 +76,7 @@ func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig Bootstra
 			return fmt.Errorf("Error while getting information from the bootstrap node's address \"%s\": %w", peerAddr.String(), err)
 		}
 
-		logger.Debug("Kademlia: connecting to bootstrap node \"" + peerAddr.String() + "\"...")
+		logger.Debug("Connecting to bootstrap node ", zap.String("addrs", peerAddr.String()))
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -94,7 +94,7 @@ func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig Bootstra
 				return
 			}
 
-			logger.Info("Kademlia: connection successfully established with bootstrap node \"" + peerInfo.String() + "\"")
+            logger.Info("Connected to bootstrap node ", zap.String("PeerID", peerInfo.String()))
 		}()
 	}
 	wg.Wait()

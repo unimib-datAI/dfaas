@@ -172,7 +172,7 @@ func runAgent(config config.Configuration) error {
 	logger.Debug("Connection to Kademlia bootstrap nodes completed")
 
 	// mDNS initialization.
-	if config.MDNSInterval > 0 {
+	if config.MDNSEnabled {
 		if err := mdns.Initialize(_p2pHost, config.Rendezvous); err != nil {
 			return err
 		}
@@ -209,7 +209,7 @@ func runAgent(config config.Configuration) error {
 	select {
 	case sig := <-chanStop:
 		logger.Warn("Caught " + sig.String() + " signal. Stopping.")
-		if config.MDNSInterval > 0 {
+		if config.MDNSEnabled {
 			if err := mdns.Stop(); err != nil {
 				return err
 			}
@@ -217,7 +217,7 @@ func runAgent(config config.Configuration) error {
 		_p2pHost.Close()
 		return nil
 	case err = <-chanErr:
-		if config.MDNSInterval > 0 {
+		if config.MDNSEnabled {
 			if err := mdns.Stop(); err != nil {
 				return err
 			}
