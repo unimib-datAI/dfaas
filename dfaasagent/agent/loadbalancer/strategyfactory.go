@@ -6,12 +6,15 @@
 package loadbalancer
 
 import (
+	_ "embed"
+
 	"github.com/bcicen/go-haproxy"
+
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/hacfgupd"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/nodestbl"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/forecaster"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/ofpromq"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/offuncs"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/nodestbl"
 )
 
 // In this file is implemented the Factory creational pattern,
@@ -27,9 +30,12 @@ type strategyFactory interface {
 ////////////////// RECALC STRATEGY FACTORY ///////////////////
 
 // Struct representing the factory for Recalc strategy, which implements strategyFactory interface
-type recalcStrategyFactory struct {}
+type recalcStrategyFactory struct{}
 
-// createStrategy creates and returns a new RecalcStrategy instance 
+//go:embed haproxycfgrecalc.tmpl
+var haproxycfgrecalcTemplate string
+
+// createStrategy creates and returns a new RecalcStrategy instance
 func (strategyFactory *recalcStrategyFactory) createStrategy() (Strategy, error) {
 	strategy := &RecalcStrategy{}
 
@@ -37,10 +43,9 @@ func (strategyFactory *recalcStrategyFactory) createStrategy() (Strategy, error)
 
 	strategy.hacfgupdater = hacfgupd.Updater{
 		HAConfigFilePath: _config.HAProxyConfigFile,
-		CmdOnUpdated:     _config.HAProxyConfigUpdateCommand,
 	}
 
-	err := strategy.hacfgupdater.LoadTemplate(_config.HAProxyTemplateFileRecalc)
+	err := strategy.hacfgupdater.LoadTemplate(haproxycfgrecalcTemplate)
 	if err != nil {
 		return nil, err
 	}
@@ -49,16 +54,12 @@ func (strategyFactory *recalcStrategyFactory) createStrategy() (Strategy, error)
 		Addr: _config.HAProxySockPath,
 	}
 
-	strategy.ofpromqClient = ofpromq.Client{
-		Hostname: _config.PrometheusHost,
-		Port:     _config.PrometheusPort,
-	}
-
-	strategy.offuncsClient = offuncs.Client{
-		Hostname: _config.OpenFaaSHost,
-		Port:     _config.OpenFaaSPort,
-		Username: _config.OpenFaaSUser,
-		Password: _config.OpenFaaSPass,
+	strategy.offuncsClient, err = offuncs.NewClient(_config.OpenFaaSHost,
+		_config.OpenFaaSPort,
+		_config.OpenFaaSUser,
+		_config.OpenFaaSPass)
+	if err != nil {
+		return nil, err
 	}
 
 	strategy.recalc = recalc{}
@@ -70,9 +71,12 @@ func (strategyFactory *recalcStrategyFactory) createStrategy() (Strategy, error)
 ////////////////// NODE MARGIN STRATEGY FACTORY ///////////////////
 
 // Struct representing the factory for Node Margin strategy, which implements strategyFactory interface
-type nodeMarginStrategyFactory struct {}
+type nodeMarginStrategyFactory struct{}
 
-// createStrategy creates and returns a new NodeMarginStrategy instance 
+//go:embed haproxycfgnms.tmpl
+var haproxycfgnmsTemplate string
+
+// createStrategy creates and returns a new NodeMarginStrategy instance
 func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, error) {
 	strategy := &NodeMarginStrategy{}
 
@@ -80,24 +84,19 @@ func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, er
 
 	strategy.hacfgupdater = hacfgupd.Updater{
 		HAConfigFilePath: _config.HAProxyConfigFile,
-		CmdOnUpdated:     _config.HAProxyConfigUpdateCommand,
 	}
 
-	err := strategy.hacfgupdater.LoadTemplate(_config.HAProxyTemplateFileNMS)
+	err := strategy.hacfgupdater.LoadTemplate(haproxycfgnmsTemplate)
 	if err != nil {
 		return nil, err
 	}
 
-	strategy.ofpromqClient = ofpromq.Client{
-		Hostname: _config.PrometheusHost,
-		Port:     _config.PrometheusPort,
-	}
-
-	strategy.offuncsClient = offuncs.Client{
-		Hostname: _config.OpenFaaSHost,
-		Port:     _config.OpenFaaSPort,
-		Username: _config.OpenFaaSUser,
-		Password: _config.OpenFaaSPass,
+	strategy.offuncsClient, err = offuncs.NewClient(_config.OpenFaaSHost,
+		_config.OpenFaaSPort,
+		_config.OpenFaaSUser,
+		_config.OpenFaaSPass)
+	if err != nil {
+		return nil, err
 	}
 
 	strategy.hasockClient = haproxy.HAProxyClient{
@@ -105,8 +104,8 @@ func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, er
 	}
 
 	strategy.forecasterClient = forecaster.Client{
-		Hostname: _config.ForecasterHost,
-		Port:     _config.ForecasterPort,
+		Hostname: constants.ForecasterHost,
+		Port:     constants.ForeasterPort,
 	}
 
 	strategy.nodeInfo = nodeInfo{}

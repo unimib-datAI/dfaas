@@ -1,0 +1,22 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dfaas-forecaster
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dfaas-forecaster
+  template:
+    metadata:
+      labels:
+        app: dfaas-forecaster
+    spec:
+      containers:
+        - name: dfaas-forecaster
+          image: localhost/forecaster:dev
+          # Must be set to "Never" since we build the DFaaS Forecaster only
+          # locally.
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080

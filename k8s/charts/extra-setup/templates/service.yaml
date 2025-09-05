@@ -1,0 +1,14 @@
+# This Service forward traffic from "prometheus" DNS to "prometheus-server".
+#
+# It is required since "prometheus" is hard-coded inside OpenFaaS Gateway.
+apiVersion: v1
+kind: Service
+metadata:
+  name: prometheus
+spec:
+  ports:
+    - name: http
+      port: 9090
+      targetPort: 9090
+  selector:
+    app.kubernetes.io/name: prometheus

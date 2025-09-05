@@ -9,8 +9,9 @@ package communication
 import (
 	"context"
 	"encoding/json"
-	"github.com/libp2p/go-libp2p-core/host"
+
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/pkg/errors"
 )
 

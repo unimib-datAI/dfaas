@@ -21,9 +21,11 @@ dfaasagent/dfaasagent
 dfaasagent/haproxy.cfg
 dfaasagent/prvkey.dat
 
+# Ignore key files.
+*.pem
+
 # Ignore custom Ansible inventory files.
 **/inventory.yaml
-
 
 # Custom ignores
 __pycache__
@@ -37,3 +39,6 @@ framework/outputs/**
 !framework/outputs/**/.gitkeep
 simulation/outputs/**
 !simulation/outputs/**/.gitkeep
+
+# Container images.
+*.tar

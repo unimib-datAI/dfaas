@@ -1,0 +1,6 @@
+fastapi[all]
+scikit-learn
+lightgbm
+joblib
+pandas
+numpy

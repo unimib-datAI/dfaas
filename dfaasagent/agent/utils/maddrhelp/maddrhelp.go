@@ -10,7 +10,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/multiformats/go-multiaddr"
 )
 
@@ -22,7 +22,7 @@ import (
 func BuildHostFullMAddrs(p2pHost host.Host) ([]multiaddr.Multiaddr, error) {
 	maddrs := []multiaddr.Multiaddr{}
 
-	addrPart2, err := multiaddr.NewMultiaddr(fmt.Sprintf("/p2p/%s", p2pHost.ID().Pretty()))
+	addrPart2, err := multiaddr.NewMultiaddr(fmt.Sprintf("/p2p/%s", p2pHost.ID().String()))
 	if err != nil {
 		return nil, err
 	}

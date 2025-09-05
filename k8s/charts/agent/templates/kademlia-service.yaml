@@ -1,0 +1,14 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: dfaas-agent-kademlia
+spec:
+  type: NodePort
+  selector:
+    app: dfaas-agent
+  ports:
+    - name: kademlia
+      protocol: TCP
+      port: 31600
+      nodePort: 31600
+      targetPort: kademlia

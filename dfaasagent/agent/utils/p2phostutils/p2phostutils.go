@@ -6,8 +6,8 @@
 package p2phostutils
 
 import (
-	"github.com/libp2p/go-libp2p-core/host"
-	"github.com/libp2p/go-libp2p-core/peer"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
 )
 
 // GetConnNodeIDsUniq gets the IDs of the currently connected p2p peers,

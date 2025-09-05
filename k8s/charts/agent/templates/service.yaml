@@ -1,0 +1,19 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: dfaas-agent
+  # Let Prometheus to automatically scrape DFaaS Agent metrics.
+  # See: https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus#scraping-pod-metrics-via-annotations
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: /metrics
+    prometheus.io/port: "8080"
+spec:
+  type: ClusterIP
+  selector:
+    app: dfaas-agent
+  ports:
+    - name: healthz
+      protocol: TCP
+      port: 80
+      targetPort: healthz

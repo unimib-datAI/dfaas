@@ -7,11 +7,28 @@
 package constants
 
 const (
+	// Names of the different strategies supported by the DFaaS agent
+	RecalcStrategy     = "recalcstrategy"
+	NodeMarginStrategy = "nodemarginstrategy"
+
 	// HAProxyMaxWeight is the maximum possible weight value that should be used
 	// in the HAProxy configuration file
 	HAProxyMaxWeight = 100
 
-	// Names of the different strategies supported by the DFaaS agent
-	RecalcStrategy = "recalcstrategy"
-	NodeMarginStrategy = "nodemarginstrategy"
+	// Connection information for accessing the Data Plane API.
+	HAProxyDataPlaneAPIOrigin = "http://haproxy.default.svc.cluster.local:5555"
+	HAProxyDataPlaneUsername  = "admin"
+	HAProxyDataPlanePassword  = "admin"
+
+	// Connection information for accessing the DFaaS Forecaster service.
+	ForecasterHost = "dfaas-forecaster"
+	ForeasterPort  = 80
+
+	// Connection information used to run an HTTP Web Server for health checking
+	// at /healthz endpoint.
+	HttpServerHost = "0.0.0.0"
+	HttpServerPort = 8080
+
+    // Connection information for accessing Prometheus server.
+    PrometheusOrigin = "prometheus-server.default.svc.cluster.local:80"
 )

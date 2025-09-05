@@ -1,0 +1,32 @@
+# Dockerfile to build the DFaaS agent.
+#
+# Based on the official Go image: https://hub.docker.com/_/golang
+
+# Stage 1: Build the Go app.
+FROM docker.io/library/golang:1.24 AS builder
+
+# Set Go specific env vars. CGO_ENABLED=0 is necessary to use Alpine image!
+ENV CGO_ENABLED=0
+
+WORKDIR /usr/src/dfaasagent
+
+COPY dfaasagent/go.mod dfaasagent/go.sum ./
+RUN go mod download
+
+COPY dfaasagent/ .
+
+RUN go build -v -o dfaasagent .
+
+# Stage 2: Create a minimal image using Alpine.
+FROM alpine:3.22
+
+WORKDIR /usr/src/dfaasagent/
+
+# Copy the binary from the builder stage
+COPY --from=builder /usr/src/dfaasagent/dfaasagent .
+COPY k8s/configs/group_list.json .
+
+# The DFaaS agent exposes a HTTP web server with /healtz endpoint.
+EXPOSE 8080
+
+ENTRYPOINT ["/usr/src/dfaasagent/dfaasagent"]
