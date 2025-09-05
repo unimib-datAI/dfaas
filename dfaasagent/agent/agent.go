@@ -6,8 +6,11 @@
 package agent
 
 import (
+	"bytes"
 	"context"
-	cryptorand "crypto/rand"
+	"crypto/ed25519"
+	"crypto/x509"
+	"encoding/pem"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -38,56 +41,63 @@ import (
 
 var _p2pHost host.Host
 
-//////////////////// PRIVATE FUNCTIONS ////////////////////
+// Convert libp2p PrivKey to ed25519.PrivateKey.
+func toEd25519PrivateKey(priv crypto.PrivKey) (ed25519.PrivateKey, error) {
+	// Only works for Ed25519 keys.
+	bytes, err := priv.Raw()
+	if err != nil {
+		return nil, err
+	}
+	// Ed25519 private keys are 64 bytes: [32 seed | 32 public]
+	return ed25519.PrivateKey(bytes), nil
+}
 
-// getPrivateKey loads the libp2p Host's private key from file if it exists and
-// it is not empty, or generates it and writes it to the file otherwise
+// getPrivateKey loads the libp2p Host's private key from a PEM file if it exists
+// and is not empty.
+//
+// The file must contain the PEM-encoded Ed25519 private key in PKCS#8 format
+// (i.e., it should start with "-----BEGIN PRIVATE KEY-----").
+//
+// If the file does not exist or is empty, the function returns (nil, nil) and
+// does NOT generate or print a new key.
+//
+// Returns an error if the file cannot be read, is not a valid PEM file, is not
+// PKCS#8 format, or does not contain an Ed25519 private key.
 func getPrivateKey(filePath string) (crypto.PrivKey, error) {
-	var (
-		prvKey crypto.PrivKey = nil
-		err    error
-		data   []byte
-	)
+	if filePath == "" {
+		return nil, nil
+	}
 
-	logger := logging.Logger()
+	fileInfo, err := os.Stat(filePath)
+	if err != nil || fileInfo.Size() == 0 {
+		// File does not exist or is empty
+		return nil, nil
+	}
 
-	fileInfo, fileErr := os.Stat(filePath)
-	fileExists := fileErr == nil
-	keyAlreadyPresent := fileExists && fileInfo.Size() > 0
+	data, err := ioutil.ReadFile(filePath)
+	if err != nil {
+		return nil, fmt.Errorf("error reading private key file: %w", err)
+	}
 
-	if filePath != "" && keyAlreadyPresent {
-		logger.Debug("Loading the RSA private key file content from: \"", filePath, "\"")
+	block, _ := pem.Decode(data)
+	if block == nil || block.Type != "PRIVATE KEY" {
+		return nil, fmt.Errorf("failed to decode PEM block containing private key")
+	}
 
-		data, err = ioutil.ReadFile(filePath)
-		if err != nil {
-			return nil, fmt.Errorf("error while loading the RSA private key file content: %w", err)
-		}
+	key, err := x509.ParsePKCS8PrivateKey(block.Bytes)
+	if err != nil {
+		return nil, fmt.Errorf("error parsing PKCS#8 private key: %w", err)
+	}
 
-		prvKey, err = crypto.UnmarshalPrivateKey(data)
-		if err != nil {
-			return nil, fmt.Errorf("error while unmarshalling the RSA private key from file: %w", err)
-		}
-	} else {
-		logger.Debug("Generating a new RSA key pair")
+	edKey, ok := key.(ed25519.PrivateKey)
+	if !ok {
+		return nil, fmt.Errorf("not an Ed25519 private key")
+	}
 
-		prvKey, _, err = crypto.GenerateKeyPairWithReader(crypto.RSA, 2048, cryptorand.Reader)
-		if err != nil {
-			return nil, fmt.Errorf("error while generating a new RSA key pair: %w", err)
-		}
-
-		if filePath != "" {
-			logger.Debug("Writing the newly generated RSA private key to file")
-
-			data, err = crypto.MarshalPrivateKey(prvKey)
-			if err != nil {
-				return nil, fmt.Errorf("error while marshalling the newly generated RSA private key: %w", err)
-			}
-
-			err = ioutil.WriteFile(filePath, data, 0644)
-			if err != nil {
-				return nil, fmt.Errorf("error while writing the RSA private key to file: %w", err)
-			}
-		}
+	// UnmarshalEd25519PrivateKey expects the raw ed25519.PrivateKey bytes
+	prvKey, err := crypto.UnmarshalEd25519PrivateKey(edKey)
+	if err != nil {
+		return nil, fmt.Errorf("error unmarshalling Ed25519 private key: %w", err)
 	}
 
 	return prvKey, nil
@@ -106,21 +116,64 @@ func runAgent(config config.Configuration) error {
 
 	////////// LIBP2P INITIALIZATION //////////
 
-	// RSA key pair for this p2p host
+	prvKeyExist := false
 	prvKey, err := getPrivateKey(config.PrivateKeyFile)
 	if err != nil {
-		return err
+		return fmt.Errorf("getting private key file: %s", err)
+	}
+	if prvKey != nil {
+		prvKeyExist = true
+		logger.Info(fmt.Sprintf("Using private key from %q", config.PrivateKeyFile))
 	}
 
-	// Construct a new libp2p Host
+	// Construct a new libp2p Host.
 	var _addresses []multiaddr.Multiaddr
 	_addresses, err = maddrhelp.StringListToMultiaddrList(config.Listen)
 	if err != nil {
-		return fmt.Errorf("error while converting string list to multiaddr list: %w", err)
+		return fmt.Errorf("converting string list to multiaddr list: %w", err)
 	}
-	_p2pHost, err = libp2p.New(libp2p.ListenAddrs(_addresses...), libp2p.Identity(prvKey))
+
+	if prvKeyExist {
+		logger.Info("Creating libp2p host with a given private key...")
+		_p2pHost, err = libp2p.New(libp2p.ListenAddrs(_addresses...), libp2p.Identity(prvKey))
+	} else {
+		logger.Info("Creating libp2p host with a generated private key...")
+		_p2pHost, err = libp2p.New(libp2p.ListenAddrs(_addresses...))
+	}
 	if err != nil {
-		return fmt.Errorf("error while creating the libp2p Host: %w", err)
+		return fmt.Errorf("creating the libp2p Host: %w", err)
+	}
+
+	// Print agent's private key in PEM format.
+	if !prvKeyExist {
+		prvKey := _p2pHost.Peerstore().PrivKey(_p2pHost.ID())
+		if prvKey != nil {
+			edPriv, err := toEd25519PrivateKey(prvKey)
+			if err != nil {
+				return fmt.Errorf("converting libp2p private key to Go's private key: %w", err)
+			}
+
+			// Marshal to PKCS#8 DER format.
+			privBytes, err := x509.MarshalPKCS8PrivateKey(edPriv)
+			if err != nil {
+				return fmt.Errorf("marshal private key to PKCS#8 DER format: %w", err)
+			}
+
+			// Create PEM block and print to logger.
+			pemBlock := &pem.Block{Type: "PRIVATE KEY", Bytes: privBytes}
+
+			// Encode to a buffer.
+			var buf bytes.Buffer
+			if err := pem.Encode(&buf, pemBlock); err != nil {
+				return fmt.Errorf("encoding private key to buffer: %w", err)
+			}
+
+			// Get PEM as string and print to logger.
+			pemString := buf.String()
+			logger.Info(fmt.Sprintf("Libp2p generated private key (PEM):\n%s", pemString))
+		} else {
+			logger.Warn("Libp2p host has no private key in Peerstore")
+		}
 	}
 
 	// Print this host's multiaddresses
