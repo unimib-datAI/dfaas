@@ -1,0 +1,78 @@
+# Default DFaaS Agent configuration.
+# Note that AGENT_OPENFAAS_PASS is automatically created by the Deployment
+# object.
+config:
+  AGENT_DEBUG: true
+  AGENT_LOG_DATETIME: true
+  AGENT_LOG_COLORS: true
+
+  # IP address of the node where the agent runs. Used by other DFaaS agents to
+  # forward requests to this node. Leave blank, Kubernetes automatically injects
+  # this variable.
+  #AGENT_NODE_IP:
+
+  # Address where to listen new peers. Should be in form
+  # "/ip4/192.0.2.0/tcp/6000". Suggested default is "/ip4/0.0.0.0/tcp/31600".
+  AGENT_LISTEN: "/ip4/0.0.0.0/tcp/31600"
+
+  # File where the agent's private key can be found. The private key is the ID
+  # of the agent for other peers.
+  #
+  # If not given or the file does not exist or it is empty, a new one will be
+  # generated.
+  AGENT_PRIVATE_KEY_FILE: /usr/src/dfaasagent/privatekey.pem
+
+  # Whether to use bootstrap nodes.
+  AGENT_BOOTSTRAP_NODES: false
+
+  # If true, use public peers to found other nodes. If false,
+  # AGENT_BOOTSTRAP_NODES_LIST or AGENT_BOOTSTRAP_NODES_FILE should be provided.
+  AGENT_PUBLIC_BOOTSTRAP_NODES: false
+
+  # Explicit list of bootstrap node addresses.
+  # Example "/ip4/10.0.2.40/tcp/31600/p2p/12D3KooWCGAEQ4umwA2qgK7AdVhqLgahzaNMd3qwMi9HtRGJXrp4".
+  #AGENT_BOOTSTRAP_NODES_LIST: ""
+
+  # Path to a file containing bootstrap node information.
+  #AGENT_BOOTSTRAP_NODES_FILE: 
+
+  # If true, agent's initialization fails if any bootstrap peer cannot be
+  # contacted.
+  AGENT_BOOTSTRAP_FORCE: false
+
+  # Unique string used for grouping peers for discovery.
+  AGENT_RENDEZVOUS: dfaasagent-mYRGdJPC3chmJ
+
+  AGENT_KAD_IDLE_TIME: 1m
+  AGENT_PUBSUB_TOPIC: "/dfaasagent/1.0.0"
+
+  # mDNS is not supported in Kubernetes, so we disable it.
+  AGENT_MDNS_ENABLED: false
+
+  AGENT_RECALC_PERIOD: 1m
+
+  AGENT_HAPROXY_HOST: "haproxy.default.svc.cluster.local"
+  AGENT_HAPROXY_PORT: 80
+
+  AGENT_OPENFAAS_HOST: "gateway-external.default.svc.cluster.local"
+  AGENT_OPENFAAS_PORT: 8080
+  AGENT_OPENFAAS_USER: admin
+  #AGENT_OPENFAAS_PASS=aN4ClxntpBev
+
+  AGENT_STRATEGY: "nodemarginstrategy"
+
+  AGENT_GROUP_LIST_FILE_NAME: "./group_list.json"
+
+  AGENT_NODE_TYPE: 1 # heavy=0 mid=1 light=2
+
+  AGENT_NMS_CPU_THRESHOLD: 120.0 # max cpu usage percentage
+  AGENT_NMS_RAM_THRESHOLD: 5500000000.0 # max ram usage in bytes
+  AGENT_NMS_POWER_THRESHOLD: 2100000.0 # max power usage in microwatts
+
+# Agent's private key in PEM format. If empty, the agent will generate a new
+# private key and it will print to the standard output.
+privateKey: ""
+# dfaasAgentPrivateKey: |
+#  -----BEGIN PRIVATE KEY-----
+#  ...your key here...
+#  -----END PRIVATE KEY-----

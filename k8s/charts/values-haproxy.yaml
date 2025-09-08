@@ -1,0 +1,121 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# This YAML file overwrites the default values.yaml file in the HAProxy Helm
+# chart.
+#
+# The main point is that HAProxy runs in master-worker mode, which allows for
+# seamless restarts when the configuration is updated and enables the Dataplane
+# API process to run. This means that we run multiple processes in a single
+# container. While this is not ideal for Kubernetes, DFaaS is a prototype.
+#
+# Copyright 2025 The DFaaS Authors. All rights reserved.
+# This file is licensed under the AGPL v3.0 or later license. See LICENSE and
+# AUTHORS file for more information.
+
+config: |
+  # This is the basic HAProxy configuration, which overwrites the default
+  # configuration from the Helm chart. Note this configuration will be updated
+  # by the DFaaS agent.
+  global
+    # This is required since we also run the Dataplane API process.
+    master-worker
+    # Required by Dataplane API.
+    stats socket /var/run/haproxy.sock mode 660 level admin expose-fd listeners
+    insecure-fork-wanted
+    # The program section is deprecated.
+    expose-deprecated-directives
+    log stdout format raw local0
+    maxconn 1024
+
+  # An user is required by Dataplane API to work.
+  userlist dataplaneapi
+    user admin insecure-password admin
+
+  defaults
+    mode http
+    option httplog
+    log global
+    timeout client 60s
+    timeout connect 60s
+    timeout server 60s
+
+  frontend fe_main
+    bind :80
+    default_backend be_ok
+
+  backend be_ok
+    http-request return status 200 content-type "text/plain" string "This is a DFaaS node. The DFaaS agent is not running!\n"
+
+  program api
+    # The script is required because the dataplane API process does not run
+    # immediately when HAProxy is initializing. We must wait a few seconds.
+    # However, since the configuration does not support delays, we wrote a
+    # custom script.
+    command /bin/sh /usr/local/etc/haproxy/includes/dataplane-start.sh
+    no option start-on-reload
+
+# The original HAProxy configuration cannot be modified, so we placed it in a
+# different location.
+configMount:
+  mountPath: /usr/local/etc/haproxy/haproxy.init.readonly.cfg 
+  subPath: haproxy.cfg        
+
+includes:
+  # This script starts and restarts the dataplane API process until it
+  # stabilizes.
+  dataplane-start.sh: |
+    #!/bin/sh
+
+    while true; do
+      /usr/local/bin/dataplaneapi --host 0.0.0.0 --port 5555 --haproxy-bin /usr/sbin/haproxy --config-file /usr/local/etc/haproxy/config/haproxy.cfg --reload-cmd "kill -SIGUSR2 1" --restart-cmd "kill -SIGUSR2 1" --userlist dataplaneapi --log-level info
+      ret=$?
+      if [ "$ret" -eq 1 ]; then
+        echo "/usr/local/bin/dataplaneapi crashed with exit code 1. Restarting..." >&2
+        sleep 1
+      else
+        echo "/usr/local/bin/dataplaneapi exited with code $ret. Not restarting." >&2
+        break
+      fi
+    done
+
+# haproxy container will contain: /usr/local/etc/haproxy/includes/dataplane-start.sh
+includesMountPath: /usr/local/etc/haproxy/includes
+
+initContainers:
+  # Since the HAProxy configuration is read-only, we need to copy it to a
+  # writable volume. Then, we must configure HAProxy (and the dataplane) to use
+  # the copied configuration file.
+  - name: init-haproxy-config
+    image: "busybox:musl"
+    command: ["/bin/sh", "-c", "cp /opt/haproxy-config/haproxy.cfg /opt/haproxy-config-writable/haproxy.cfg && chmod 644 /opt/haproxy-config-writable/haproxy.cfg"]
+    volumeMounts:
+      - name: haproxy-config
+        mountPath: /opt/haproxy-config
+      - name: haproxy-config-writable
+        mountPath: /opt/haproxy-config-writable
+
+extraVolumes:
+  # This volume will only contain the writable HAProxy configuration file.
+  - name: haproxy-config-writable
+    emptyDir: {}
+
+extraVolumeMounts:
+  # Mounted on the main container "haproxy".
+  - name: haproxy-config-writable
+    mountPath: /usr/local/etc/haproxy/config
+
+args:
+  # Read the configuration from the writable mount.
+  defaults: ["-f", "/usr/local/etc/haproxy/config/haproxy.cfg"]
+
+service:
+  type: NodePort
+  nodePorts:
+    http: 30080
+    dataplane: 30555
+    stat: 31024
+
+containerPorts:
+  http: 80
+  https: 443
+  stat: 1024
+  dataplane: 5555

@@ -3,16 +3,19 @@
 // This file is licensed under the AGPL v3.0 or later license. See LICENSE and
 // AUTHORS file for more information.
 
-// This package handles the main operational logic of the DFaaSAgent application
+// This package handles the main operational logic of the DFaaSAgent
+// application.
 package loadbalancer
 
 import (
 	"sync"
+
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/libp2p/go-libp2p-core/host"
+	"github.com/libp2p/go-libp2p/core/host"
+
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/config"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
 )
 
 //////////////////// MAIN PRIVATE VARS AND INIT FUNCTION ////////////////////
@@ -32,7 +35,7 @@ var _strategyInstance Strategy
 // Initialize initializes this package
 func Initialize(p2pHost host.Host, config config.Configuration) {
 	// Obtain the global logger object.
-        logger := logging.Logger()
+	logger := logging.Logger()
 
 	_p2pHost = p2pHost
 	_config = config
@@ -46,12 +49,14 @@ func Initialize(p2pHost host.Host, config config.Configuration) {
 		_strategyFactory = &recalcStrategyFactory{}
 	case constants.NodeMarginStrategy:
 		_strategyFactory = &nodeMarginStrategyFactory{}
+	case constants.StaticStrategy:
+		_strategyFactory = &staticStrategyFactory{}
 	}
 }
 
 //////////////////// PUBLIC STRUCT TYPES ////////////////////
 
-// Strategy interface represents a generic strategy. 
+// Strategy interface represents a generic strategy.
 // Every new strategy for the agent must implement this interface.
 type Strategy interface {
 	// Method which executes the strategy

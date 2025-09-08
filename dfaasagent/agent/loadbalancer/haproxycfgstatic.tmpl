@@ -1,0 +1,168 @@
+# HAProxy configuration file updated by DFaaS Agent on {{.Now}}
+# DFaaS Agent running with Static strategy.
+
+# See k8s/charts/values-haproxy.yaml for more information about global,
+# userlist, defaults and program sections.
+global
+  master-worker
+  stats socket /var/run/haproxy.sock mode 660 level admin expose-fd listeners
+  insecure-fork-wanted
+  expose-deprecated-directives
+  log stdout format raw local0
+  maxconn 1024
+
+userlist dataplaneapi
+  user admin insecure-password admin
+
+defaults
+  mode http
+  option httplog
+  log global
+  timeout client 60s
+  timeout connect 60s
+  timeout server 60s
+
+program api
+  command /bin/sh /usr/local/etc/haproxy/includes/dataplane-start.sh
+  no option start-on-reload
+
+# The configuration is generated and changed by the DFaaS agent from this point
+# on.
+
+{{/* #################### FRONTEND #################### */ -}}
+
+frontend fe_main
+    bind *:80
+
+    {{/* Enable statistics web page */ -}}
+    stats enable
+    stats auth admin:admin
+    stats uri /haproxy?stats
+
+    {{/* ########### ACLs FOR CHECKING IF A NODE IS KNOWN ######### */ -}}
+    {{if not $.Nodes}}
+    acl is_hdr_nodeID_known always_false
+    {{end}}
+    {{range $nodeID, $_ := $.Nodes}}
+    acl is_hdr_nodeID_known req.hdr(DFaaS-Node-ID) -m str {{$nodeID}} {{/* Conditions with same name, called multiple times are joined with OR */}}
+    {{end}}
+
+    {{/* ACL check for DFaaS-Node-ID header with a variable */ -}}
+    http-request set-var(req.hdrcnt_nodeid) hdr_cnt(DFaaS-Node-ID)
+    acl has_nodeid_hdr var(req.hdrcnt_nodeid),add(0) gt 0 {{- /* The ",add(0)" is needed here, for some reason (maybe haproxy bug? like int/str conversion or something... if you remove it there will be problems!!!) */}}
+    http-request capture str(hdrID:),concat(,req.hdrcnt_nodeid,) len 10 {{- /* e.g. "hdrID:5" */}}
+
+    {{/* Path ACLs */ -}}
+    acl is_path_root path /
+    acl is_path_healthz path /healthz
+    acl is_path_haproxy path_beg /haproxy
+    acl is_path_system_funcs path /system/functions
+    acl is_path_function path_beg /function/
+
+    {{/* ACLs is_func_XXX */ -}}
+    {{range $funcName, $_ := .Functions -}}
+    acl is_func_{{$funcName}} path_beg /function/{{$funcName}}
+    {{end}}
+    
+    {{/* Capture some request headers in log */ -}}
+    http-request capture req.hdr(Host) len 50
+    http-request capture req.hdr(DFaaS-Node-ID) len 50
+
+    {{/* Deny requests which are not directed to a function or / (root) or the
+    stats page (note: the root path is needed for health checks by
+    other nodes) or to /healthz */ -}}
+    http-request deny unless is_path_root or is_path_healthz or is_path_haproxy or is_path_system_funcs or is_path_function
+
+    {{/* If a hdr DFaaS-Node-ID is present AND is not known deny request. 
+        * Returned message is 403 "Forbidden": The access to the resource is forbidden by this client.
+    */ -}}
+    http-request deny deny_status 403 if has_nodeid_hdr !is_hdr_nodeID_known
+    
+    {{/* ########## BACKEND SELECTION ########## */ -}}
+
+    use_backend be_ok if is_path_root
+    use_backend be_healthz if is_path_healthz
+    use_backend be_system_funcs if is_path_system_funcs
+
+    # For each deployed function, forward the incoming request to be_myself if
+    # it is coming from another DFaaS node, while forward to be_fnname if it is
+    # from a client.
+    {{range $funcName, $_ := .Functions -}}
+    use_backend be_myself if is_func_{{$funcName}} has_nodeid_hdr
+    use_backend be_{{$funcName}} if is_func_{{$funcName}} !has_nodeid_hdr
+    {{end}}
+
+# Backend for simple 200 OK responses.
+backend be_ok
+    http-request return status 200 content-type "text/plain" string "This is a DFaaS node. Call a function with /function/<funcname>\n"
+
+# Backend for health check.
+backend be_healthz
+    # Let HAProxy to perform HTTP health checks and remove the backend if not
+    # available.
+    option httpchk GET /healthz
+
+    # Enable HTTP connection closing on the server side. This provides the
+    # lowest latency on the client side (slow network) and the fastest session
+    # reuse on the server side to save server resources.
+    option http-server-close
+
+    # Forward requests to dfaas-agent.
+    server healthz dfaas-agent:80 check
+
+# Backend for managing the functions in self OpenFaaS instance.
+#
+# It is mostly similar to the be_healthz backend.
+backend be_system_funcs
+    option httpchk GET /
+    option http-server-close
+    server system_funcs {{.OpenFaaSHost}}:{{.OpenFaaSPort}} check
+
+# Backend for forwarding function requests to the self OpenFaaS Instance.
+#
+# This backend is used for requests coming from other DFaaS nodes.
+backend be_myself
+    option httpchk GET /healthz
+
+    # Enable insertion of the X-Forwarded-For header to requests sent to
+    # servers.
+    option forwardfor
+
+    option http-server-close
+
+    # Add DFaaS-Node-ID header of the current node if not exists.
+    http-request add-header DFaaS-Node-ID {{$.MyNodeID}}
+
+    # Add X-Server (IP:port) and DFaaS-Node-ID (libp2p's ID) headers to response
+    # to let clients know which DFaaS server served the request.
+    http-response set-header X-Server %s
+    http-response set-header DFaaS-Node-ID {{$.MyNodeID}}
+
+    server {{$.NodeIP}} {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} check
+
+# Backends for each deployed OpenFaaS function.
+#
+# These backends are used for incoming requests from clients, not from other
+# DFaaS nodes.
+
+{{range $funcName, $func := .Functions -}}
+backend be_{{$funcName}}
+    # Enable load-balancing using custom weights.
+    balance roundrobin
+
+    option httpchk GET /healthz
+    option forwardfor
+    option http-server-close
+
+    http-request add-header DFaaS-Node-ID {{$.MyNodeID}}
+
+    http-response set-header X-Server %s
+
+    {{range $nodeID, $weight := $func.Weights -}}
+    {{if (eq $nodeID $.MyNodeID) -}}
+    server {{$.NodeIP}} {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} weight {{$weight}} check
+    {{else -}}
+    server {{(index $.Nodes $nodeID).HAProxyHost}} {{(index $.Nodes $nodeID).HAProxyHost}}:{{(index $.Nodes $nodeID).HAProxyPort}} weight {{$weight}} check
+    {{end -}}
+    {{end}}
+{{end}}

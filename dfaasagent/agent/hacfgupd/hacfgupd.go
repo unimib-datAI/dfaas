@@ -3,39 +3,44 @@
 // This file is licensed under the AGPL v3.0 or later license. See LICENSE and
 // AUTHORS file for more information.
 
-// This package handles the HAProxy ConFiGuration UPDate process (caps are the
-// meaning of the acronym)
+// Package hacfgup updates the HAProxy configuration.
+//
+// The DFaaS agent communicates with HAProxy through the Data Plane API. That
+// service will then restart HAProxy with the new configuration.
 package hacfgupd
 
 import (
-	"os"
-	"os/exec"
-	"path"
+	"bytes"
+	"fmt"
+	"io/ioutil"
+	"net/http"
 	"text/template"
 
 	"github.com/Masterminds/sprig"
-	"github.com/pkg/errors"
+
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
 )
 
-// updateStdoutDebugLogging decides wheather to enable or disable stdout logging
-// for the CmdOnUpdated command
-const updateStdoutDebugLogging = false
-
-// Updater is the main type for updating an HAProxy configuration file using a
-// template
+// Updater is the main type for updating an HAProxy configuration using a
+// template.
 type Updater struct {
-	template         *template.Template // Loaded template to use for writing the HAProxy config file
-	HAConfigFilePath string             // Path to the HAProxy config file to write
-	CmdOnUpdated     string             // Command to be executed after the HAProxy config file has been successfully written
+	// Loaded template to use for writing the HAProxy config file.
+	template *template.Template
 }
 
-// LoadTemplate Loads the template from file
-func (updater *Updater) LoadTemplate(templateFilePath string) error {
-	tmpl := template.New(path.Base(templateFilePath)) // Create new empty template
-	tmpl = tmpl.Funcs(sprig.TxtFuncMap())             // Add sprig functions
-	tmpl, err := tmpl.ParseFiles(templateFilePath)    // Parse the template file
+// LoadTemplate loads the template from the given string.
+func (updater *Updater) LoadTemplate(templateContent string) error {
+	// Create a new empty template without name.
+	tmpl := template.New("")
+
+	// Add sprig functions to the template.
+	tmpl = tmpl.Funcs(sprig.TxtFuncMap())
+
+	// Parse template content.
+	tmpl, err := tmpl.Parse(templateContent)
 	if err != nil {
-		return errors.Wrap(err, "Error while loading HAProxy configuration template from file")
+		return fmt.Errorf("loading HAProxy configuration template from content: %w", err)
 	}
 
 	updater.template = tmpl
@@ -43,28 +48,43 @@ func (updater *Updater) LoadTemplate(templateFilePath string) error {
 	return nil
 }
 
-// UpdateHAConfig updates the HAProxy config file
+// UpdateHAConfig updates the HAProxy config file and posts it using an
+// in-memory buffer.
 func (updater *Updater) UpdateHAConfig(content interface{}) error {
-	f, err := os.Create(updater.HAConfigFilePath)
-	if err != nil {
-		return errors.Wrap(err, "Error while opening the HAProxy configuration file for writing")
-	}
-	defer f.Close()
+	logger := logging.Logger()
 
-	err = updater.template.Execute(f, content)
+	// Apply the template to a string buffer in RAM.
+	var buf bytes.Buffer
+	err := updater.template.Execute(&buf, content)
 	if err != nil {
-		return errors.Wrap(err, "Error while applying the HAProxy configuration template to the data")
+		return fmt.Errorf("applying the HAProxy configuration template to the data: %w", err)
+	}
+	configData := buf.Bytes()
+
+	// Create POST request.
+	url := fmt.Sprintf("%s/v3/services/haproxy/configuration/raw?skip_version=true", constants.HAProxyDataPlaneAPIOrigin)
+	req, err := http.NewRequest("POST", url, bytes.NewBuffer(configData))
+	if err != nil {
+		return fmt.Errorf("creating HTTP request to Data Plane API: %w", err)
+	}
+	req.Header.Set("Content-Type", "text/plain")
+	req.SetBasicAuth(constants.HAProxyDataPlaneUsername, constants.HAProxyDataPlanePassword)
+
+	// Send POST request.
+	client := &http.Client{}
+	resp, err := client.Do(req)
+	if err != nil {
+		return fmt.Errorf("sending HTTP request to Data Plane API: %w", err)
+	}
+	defer resp.Body.Close()
+
+	// Get response.
+	rawBody, err := ioutil.ReadAll(resp.Body)
+	if err != nil {
+		return fmt.Errorf("reading Data Plane API response: %w", err)
 	}
 
-	cmd := exec.Command("bash", "-c", updater.CmdOnUpdated)
-	if updateStdoutDebugLogging {
-		cmd.Stdout = os.Stdout
-	}
-	cmd.Stderr = os.Stderr
-	err = cmd.Run()
-	if err != nil {
-		return errors.Wrap(err, "Error while executing the HAProxy configuration update command (command: \""+updater.CmdOnUpdated+"\")")
-	}
+	logger.Debug(fmt.Sprintf("Data Plane API response %q: %s", resp.Status, string(rawBody)))
 
 	return nil
 }

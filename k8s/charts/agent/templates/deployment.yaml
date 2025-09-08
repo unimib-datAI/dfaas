@@ -1,0 +1,53 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dfaas-agent
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dfaas-agent
+  template:
+    metadata:
+      labels:
+        app: dfaas-agent
+    spec:
+      containers:
+        - name: dfaas-agent
+          image: localhost/agent:dev
+          # imagePullPolicy must be set to "Never" since we build the DFaaS
+          # Agent only locally.
+          imagePullPolicy: Never
+          ports:
+            - containerPort: 8080
+              name: healthz
+            - containerPort: 31600
+              name: kademlia
+          env:
+            # Get OpenFaaS password, since it is generated on each installation.
+            - name: AGENT_OPENFAAS_PASS
+              valueFrom:
+                secretKeyRef:
+                  name: basic-auth
+                  key: basic-auth-password
+            # IP address of the node where the agent runs. Used by other DFaaS
+            # agents to forward requests to this node. this variable.
+            #
+            # See: https://kubernetes.io/docs/concepts/workloads/pods/downward-api/
+            - name: AGENT_NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
+          envFrom:
+            # Get the DFaaS Agent config.
+            - configMapRef:
+                name: dfaas-agent-config
+          volumeMounts:
+            # Mount the private key from the ConfigMap
+            - name: dfaas-agent-private-key
+              mountPath: /usr/src/dfaasagent/privatekey.pem
+              subPath: privatekey.pem
+      volumes:
+        - name: dfaas-agent-private-key
+          configMap:
+            name: dfaas-agent-private-key

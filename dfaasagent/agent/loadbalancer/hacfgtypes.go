@@ -20,6 +20,7 @@ type HACfg struct {
 	Now time.Time
 
 	MyNodeID     string
+	NodeIP       string
 	HAProxyHost  string
 	OpenFaaSHost string
 	OpenFaaSPort uint
@@ -52,9 +53,6 @@ type HACfgFuncRecalc struct {
 type HACfgRecalc struct {
 	HACfg
 
-	HttpServerHost string
-	HttpServerPort uint
-
 	// String representation of RecalPeriod (e.g. "5s")
 	StrRecalc string
 	// Number of seconds of RecalPeriod
@@ -66,7 +64,6 @@ type HACfgRecalc struct {
 	// The key is the function name
 	Functions map[string]*HACfgFuncRecalc
 }
-
 
 /////////////////// HACFG TYPES FOR RECALC STRATEGY ///////////////////
 
@@ -87,9 +84,6 @@ type HACfgFuncNMS struct {
 type HACfgNMS struct {
 	HACfg
 
-	HttpServerHost string
-	HttpServerPort uint
-
 	// String representation of RecalPeriod (e.g. "5s")
 	StrRecalc string
 
@@ -98,4 +92,31 @@ type HACfgNMS struct {
 
 	// The key is the function name
 	Functions map[string]*HACfgFuncNMS
+}
+
+/////////////////// HACFG TYPES FOR STATIC STRATEGY ///////////////////
+
+// HACfgNodeStatic contains the info about a node for the HAProxy config file.
+type HACfgNodeStatic struct {
+	HAProxyHost string
+	HAProxyPort uint
+}
+
+// HACfgFuncNMS contains the weights info about a function for the HAProxy
+// config file.
+type HACfgFuncStatic struct {
+	// Weights of the nodes. The key is the node ID.
+	Weights map[string]uint
+}
+
+// HACfgNMS represents the information specific for Static strategy for writing
+// the HAProxy config file.
+type HACfgStatic struct {
+	HACfg
+
+	// The key is the node ID.
+	Nodes map[string]*HACfgNodeStatic
+
+	// The key is the function name.
+	Functions map[string]*HACfgFuncStatic
 }

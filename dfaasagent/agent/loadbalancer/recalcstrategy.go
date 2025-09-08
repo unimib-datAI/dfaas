@@ -6,19 +6,21 @@
 package loadbalancer
 
 import (
+	"encoding/json"
 	"fmt"
 	"time"
-	"encoding/json"
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
+
 	"github.com/bcicen/go-haproxy"
-	"github.com/libp2p/go-libp2p-core/peer"
+	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/pkg/errors"
+
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/communication"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/hacfgupd"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/hacfgupd"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/hasock"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/ofpromq"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/offuncs"
+	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/ofpromq"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/nodestbl"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/utils/p2phostutils"
@@ -26,16 +28,13 @@ import (
 
 // In this file is implemented the Recalc strategy
 
-
 // Struct representing a RecalcStrategy instance, which implements the Strategy interface
 type RecalcStrategy struct {
 	hacfgupdater  hacfgupd.Updater
-	nodestbl 	  *nodestbl.TableRecalc
-	ofpromqClient ofpromq.Client
-	offuncsClient offuncs.Client
-	hasockClient  haproxy.HAProxyClient
-	recalc		  recalc
-	it			  int // = 0 // Number of agent loop iterations
+	nodestbl      *nodestbl.TableRecalc
+	offuncsClient *offuncs.Client
+	recalc        recalc
+	it            int // = 0 // Number of agent loop iterations
 }
 
 // Private struct containing variables specific to the recalc algorithm, which
@@ -82,9 +81,11 @@ func (strategy *RecalcStrategy) RunStrategy() error {
 		millisSleep = millisInterval - (millisNow % millisInterval)
 		time.Sleep(time.Duration(millisSleep) * time.Millisecond)
 
-		err = strategy.recalcStep1()
-		if err != nil {
-			return err
+		if err := strategy.recalcStep1(); err != nil {
+			logger.Error("Failed Recalc step 1, skipping RunStrategy iteration ", err)
+			logger.Warn("Waiting 5 second before retrying RunStrategy")
+			time.Sleep(5 * time.Second)
+			continue
 		}
 
 		millisNow = time.Now().UnixNano() / 1000000
@@ -163,7 +164,7 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 
 	strategy.recalc.funcs, err = strategy.offuncsClient.GetFuncsWithMaxRates()
 	if err != nil {
-		return errors.Wrap(err, "Error while getting functions info from OpenFaaS")
+		return errors.Wrap(err, "get functions info from OpenFaaS")
 	}
 	debugFuncs(strategy.recalc.funcs)
 
@@ -173,7 +174,7 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 
 	for funcName := range strategy.recalc.funcs {
 		stName := fmt.Sprintf("st_users_func_%s", funcName)
-		stContent, err := hasock.ReadStickTable(&strategy.hasockClient, stName)
+		stContent, err := hasock.ReadStickTable(stName)
 
 		if err != nil {
 			errWrap := errors.Wrap(err, "Error while reading the stick-table \""+stName+"\" from the HAProxy socket")
@@ -195,7 +196,7 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 
 	for funcName := range strategy.recalc.funcs {
 		stName := fmt.Sprintf("st_local_func_%s", funcName)
-		stContent, err := hasock.ReadStickTable(&strategy.hasockClient, stName)
+		stContent, err := hasock.ReadStickTable(stName)
 
 		if err != nil {
 			errWrap := errors.Wrap(err, "Error while reading the stick-table \""+stName+"\" from the HAProxy socket")
@@ -225,31 +226,31 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 	*/
 	//////////////////// GATHER INFO FROM PROMETHEUS ////////////////////
 
-	strategy.recalc.afet, err = strategy.ofpromqClient.QueryAFET(_config.RecalcPeriod)
+	strategy.recalc.afet, err = ofpromq.QueryAFET(_config.RecalcPeriod)
 	if err != nil {
 		return errors.Wrap(err, "Error while execting Prometheus query")
 	}
 	debugPromAFET(_config.RecalcPeriod, strategy.recalc.afet)
 
-	strategy.recalc.invoc, err = strategy.ofpromqClient.QueryInvoc(_config.RecalcPeriod)
+	strategy.recalc.invoc, err = ofpromq.QueryInvoc(_config.RecalcPeriod)
 	if err != nil {
 		return errors.Wrap(err, "Error while executing Prometheus query")
 	}
 	debugPromInvoc(_config.RecalcPeriod, strategy.recalc.invoc)
 
-	strategy.recalc.serviceCount, err = strategy.ofpromqClient.QueryServiceCount()
+	strategy.recalc.serviceCount, err = ofpromq.QueryServiceCount()
 	if err != nil {
 		return errors.Wrap(err, "Error while executing Prometheus query")
 	}
 	debugPromServiceCount(strategy.recalc.serviceCount)
 
-	strategy.recalc.cpuUsage, err = strategy.ofpromqClient.QueryCPUusage(_config.RecalcPeriod)
+	strategy.recalc.cpuUsage, err = ofpromq.QueryCPUusage(_config.RecalcPeriod)
 	if err != nil {
 		return errors.Wrap(err, "Error while executing Prometheus query")
 	}
 	debugPromCPUusage(_config.RecalcPeriod, strategy.recalc.cpuUsage)
 
-	strategy.recalc.ramUsage, err = strategy.ofpromqClient.QueryRAMusage(_config.RecalcPeriod)
+	strategy.recalc.ramUsage, err = ofpromq.QueryRAMusage(_config.RecalcPeriod)
 	if err != nil {
 		return errors.Wrap(err, "Error while executing Prometheus query")
 	}
@@ -264,13 +265,13 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 			i++
 		}
 
-		strategy.recalc.perFuncCpuUsage, err = strategy.ofpromqClient.QueryCPUusagePerFunction(_config.RecalcPeriod, funcNames)
+		strategy.recalc.perFuncCpuUsage, err = ofpromq.QueryCPUusagePerFunction(_config.RecalcPeriod, funcNames)
 		if err != nil {
 			return errors.Wrap(err, "Error while executing Prometheus query")
 		}
 		debugPromCPUusagePerFunction(_config.RecalcPeriod, strategy.recalc.perFuncCpuUsage)
 
-		strategy.recalc.perFuncRamUsage, err = strategy.ofpromqClient.QueryRAMusagePerFunction(_config.RecalcPeriod, funcNames)
+		strategy.recalc.perFuncRamUsage, err = ofpromq.QueryRAMusagePerFunction(_config.RecalcPeriod, funcNames)
 		if err != nil {
 			return errors.Wrap(err, "Error while executing Prometheus query")
 		}
@@ -409,8 +410,8 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 
 	msg := MsgNodeInfoRecalc{
 		MsgType:     StrMsgNodeInfoTypeRecalc,
-		HAProxyHost: _config.HAProxyHost,
-		HAProxyPort: _config.HAProxyPort,
+		HAProxyHost: _config.NodeIP,
+		HAProxyPort: constants.HAProxyPort,
 		FuncLimits:  limits,
 	}
 	debugMsgNodeInfoRecalc(msg)
@@ -492,8 +493,6 @@ func (strategy *RecalcStrategy) recalcStep2() error {
 			strMyself,
 			_config.OpenFaaSHost,
 			_config.OpenFaaSPort,
-			_config.HttpServerHost,
-			_config.HttpServerPort,
 			_config.RecalcPeriod,
 			entries,
 			strategy.recalc.funcs,
@@ -594,7 +593,7 @@ func (strategy *RecalcStrategy) processMsgNodeInfoRecalc(sender string, msg *Msg
 			}
 
 			return nil
-		})		
+		})
 	}
 
 	return nil
@@ -620,22 +619,18 @@ func (strategy *RecalcStrategy) createHACfgObject(
 	myNodeID string,
 	openFaaSHost string,
 	openFaaSPort uint,
-	httpServerHost string,
-	httpServerPort uint,
 	recalcPeriod time.Duration,
 	entries map[string]*nodestbl.EntryRecalc,
 	funcLimits map[string]uint,
 ) *HACfgRecalc {
 	hacfg := &HACfgRecalc{
-		HACfg: HACfg{ 
-			MyNodeID: 	  myNodeID,
+		HACfg: HACfg{
+			MyNodeID:     myNodeID,
+			NodeIP:       _config.NodeIP,
 			HAProxyHost:  _config.HAProxyHost,
 			OpenFaaSHost: openFaaSHost,
 			OpenFaaSPort: openFaaSPort,
 		},
-
-		HttpServerHost: httpServerHost,
-		HttpServerPort: httpServerPort,
 
 		StrRecalc:  recalcPeriod.String(),
 		SecsRecalc: uint(recalcPeriod / time.Second),

@@ -1,0 +1,8 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dfaas-agent-config
+data:
+{{- range $key, $value := .Values.config }}
+  {{ $key }}: "{{ $value }}"
+{{- end }}
