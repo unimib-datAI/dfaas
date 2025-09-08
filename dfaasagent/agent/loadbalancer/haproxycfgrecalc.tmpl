@@ -248,10 +248,12 @@ backend be_myself
     
     {{end}}
 
-    {{/* Add X-Server header to response to know which server served the request */ -}}
+    # Add X-Server (IP:port) and DFaaS-Node-ID (libp2p's ID) headers to response
+    # to let clients know which DFaaS server served the request.
     http-response set-header X-Server %s
+    http-response set-header DFaaS-Node-ID {{$.MyNodeID}}
 
-    server {{$.HAProxyHost}} {{.OpenFaaSHost}}:{{.OpenFaaSPort}} check
+    server {{$.NodeIP}} {{.OpenFaaSHost}}:{{.OpenFaaSPort}} check
 
 {{/* #################### BACKEND FOR OTHER NODES' HAPROXIES #################### */ -}}
 

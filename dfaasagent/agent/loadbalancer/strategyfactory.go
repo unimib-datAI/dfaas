@@ -7,6 +7,7 @@ package loadbalancer
 
 import (
 	_ "embed"
+	"fmt"
 
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/hacfgupd"
@@ -96,6 +97,42 @@ func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, er
 
 	strategy.nodeInfo = nodeInfo{}
 	strategy.maxValues = make(map[string]float64)
+	strategy.targetNodes = make(map[string][]string)
+	strategy.weights = make(map[string]map[string]uint)
+
+	return strategy, nil
+}
+
+// Struct representing the factory for Static strategy, which implements
+// strategyFactory interface.
+type staticStrategyFactory struct{}
+
+//go:embed haproxycfgstatic.tmpl
+var haproxycfgStaticTemplate string
+
+// createStrategy creates and returns a new NodeMarginStrategy instance
+func (strategyFactory *staticStrategyFactory) createStrategy() (Strategy, error) {
+	var err error
+	strategy := &StaticStrategy{}
+
+	// TODO: Use a custom table.
+	strategy.nodestbl = nodestbl.NewTableNMS(_config.RecalcPeriod * 2)
+
+	strategy.hacfgupdater = hacfgupd.Updater{}
+
+	if err := strategy.hacfgupdater.LoadTemplate(haproxycfgStaticTemplate); err != nil {
+		return nil, fmt.Errorf("loading HAProxy config. template: %w", err)
+	}
+
+	strategy.offuncsClient, err = offuncs.NewClient(_config.OpenFaaSHost,
+		_config.OpenFaaSPort,
+		_config.OpenFaaSUser,
+		_config.OpenFaaSPass)
+	if err != nil {
+		return nil, err
+	}
+
+	strategy.nodeInfo = nodeInfoStatic{}
 	strategy.targetNodes = make(map[string][]string)
 	strategy.weights = make(map[string]map[string]uint)
 

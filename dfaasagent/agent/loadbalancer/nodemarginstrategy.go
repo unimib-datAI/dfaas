@@ -212,7 +212,7 @@ func (strategy *NodeMarginStrategy) publishNodeInfo() error {
 	// Obtain our function names list
 	strategy.nodeInfo.funcs, err = strategy.offuncsClient.GetFuncsNames()
 	if err != nil {
-		return errors.Wrap(err, "get functions info from OpenFaaS")
+		return fmt.Errorf("getting functions info from OpenFaaS: %w", err)
 	}
 
 	msg := MsgNodeInfoNMS{
@@ -227,7 +227,7 @@ func (strategy *NodeMarginStrategy) publishNodeInfo() error {
 
 	err = communication.MarshAndPublish(msg)
 	if err != nil {
-		return err
+		return fmt.Errorf("publishing node info to other DFaaS nodes: %w", err)
 	}
 
 	return nil
@@ -796,6 +796,7 @@ func (strategy *NodeMarginStrategy) createHACfgObject(
 	hacfg := &HACfgNMS{
 		HACfg: HACfg{
 			MyNodeID:     myNodeID,
+			NodeIP:       _config.NodeIP,
 			HAProxyHost:  _config.HAProxyHost,
 			OpenFaaSHost: openFaaSHost,
 			OpenFaaSPort: openFaaSPort,

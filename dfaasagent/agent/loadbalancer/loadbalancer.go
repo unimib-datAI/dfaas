@@ -3,7 +3,8 @@
 // This file is licensed under the AGPL v3.0 or later license. See LICENSE and
 // AUTHORS file for more information.
 
-// This package handles the main operational logic of the DFaaSAgent application
+// This package handles the main operational logic of the DFaaSAgent
+// application.
 package loadbalancer
 
 import (
@@ -48,6 +49,8 @@ func Initialize(p2pHost host.Host, config config.Configuration) {
 		_strategyFactory = &recalcStrategyFactory{}
 	case constants.NodeMarginStrategy:
 		_strategyFactory = &nodeMarginStrategyFactory{}
+	case constants.StaticStrategy:
+		_strategyFactory = &staticStrategyFactory{}
 	}
 }
 

@@ -70,6 +70,22 @@ type MsgNodeMarginInfoNMS struct {
 // StrMsgNodeMarginInfoTypeNMS value for MsgNodeMarginInfoNMS.MsgType
 const StrMsgNodeMarginInfoTypeNMS = "nodemargininfoNMS"
 
+// MsgNodeInfoStatic defines the format of the PubSub messages regarding a
+// node's information (for Static Strategy).
+type MsgNodeInfoStatic struct {
+	MsgType string
+
+	// Information for other DFaaS nodes to forward requests to this node.
+	// Consists of the node's public IP address and HAProxy's public port.
+	HAProxyHost string
+	HAProxyPort uint
+
+	Functions []string
+}
+
+// StrMsgNodeInfoTypeStatic value for MsgNodeInfoStatic.MsgType.
+const StrMsgNodeInfoTypeStatic = "nodeinfoStatic"
+
 // processMsgText processes a text message received from pubsub
 func processMsgText(sender string, msg *MsgText) error {
 	logger := logging.Logger()

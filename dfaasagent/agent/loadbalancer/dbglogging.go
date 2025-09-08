@@ -6,6 +6,7 @@
 package loadbalancer
 
 import (
+	"fmt"
 	"sort"
 	"strings"
 	"time"
@@ -391,16 +392,29 @@ func debugMsgNodeInfoNMS(msg MsgNodeInfoNMS) {
 		return
 	}
 
-	logger := logging.Logger()
+	var buf strings.Builder
 
-	logger.Debugf("    - Node Type: %d", msg.NodeType)
+	buf.WriteString(fmt.Sprintf("    - Node Type: %d\n", msg.NodeType))
 	if len(msg.Functions) == 0 {
-		logger.Debugf("    - Node's functions: empty")
+		buf.WriteString("    - Node's functions: empty\n")
 	} else {
-		logger.Debugf("    - Node's functions: ")
-		for i := 0; i < len(msg.Functions); i++ {
-			logger.Debugf("       - " + msg.Functions[i] + ", ")
-		}
+		buf.WriteString(fmt.Sprintf("    - Node's functions: %v", msg.Functions))
+	}
+
+	logger := logging.Logger()
+	logger.Debug(buf.String())
+}
+
+func debugMsgNodeInfoStatic(msg MsgNodeInfoStatic) {
+	if !logging.GetDebugMode() {
+		return
+	}
+
+	logger := logging.Logger()
+	if len(msg.Functions) == 0 {
+		logger.Debug("    - Node's functions: empty\n")
+	} else {
+		logger.Debug(fmt.Sprintf("    - Node's functions: %v", msg.Functions))
 	}
 }
 
@@ -470,13 +484,13 @@ func debugWeightsNMS(weights map[string]map[string]uint) {
 		return
 	}
 
-	logger := logging.Logger()
-
-	logger.Debugf("Calculated weights:")
+	var buf strings.Builder
+	buf.WriteString("Calculated weights:\n")
 	for fun, nodesWeights := range weights {
-		logger.Debugf("- " + fun + ": ")
+		fmt.Fprintf(&buf, "  - function %s:\n", fun)
 		for node, weight := range nodesWeights {
-			logger.Debugf("    - Node "+node+": "+"%d", weight)
+			fmt.Fprintf(&buf, "    - Node %s: %d\n", node, weight)
 		}
 	}
+	logging.Logger().Debug(buf.String())
 }

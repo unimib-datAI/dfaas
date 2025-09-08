@@ -1,4 +1,5 @@
-# HAProxy configuration file updated by DFaaS agent on {{.Now}}
+# HAProxy configuration file updated by DFaaS Agent on {{.Now}}
+# DFaaS Agent running with Static strategy.
 
 # See k8s/charts/values-haproxy.yaml for more information about global,
 # userlist, defaults and program sections.
@@ -27,16 +28,6 @@ program api
 
 # The configuration is generated and changed by the DFaaS agent from this point
 # on.
-
-# Stick tables: for NMS strategy there is one stick tables for each deployed
-# function.
-#
-# Each stick table tracks the number of HTTP requests seen and the rate of HTTP
-# requests per second for each key.
-{{range $funcName, $func := .Functions -}}
-backend st_users_func_{{$funcName}}
-    stick-table type integer size 10 expire {{$.StrRecalc}} store http_req_cnt,http_req_rate(1s)
-{{end}}
 
 {{/* #################### FRONTEND #################### */ -}}
 
@@ -101,12 +92,6 @@ frontend fe_main
     use_backend be_{{$funcName}} if is_func_{{$funcName}} !has_nodeid_hdr
     {{end}}
 
-    {{/* ########## TRACKING WITH STICK TABLES ########## */ -}}
-
-    {{range $funcName, $_ := .Functions -}}
-    http-request track-sc1 dst_port table st_users_func_{{$funcName}} if is_func_{{$funcName}} !has_nodeid_hdr {{- /* Using Sticky-Counter #1 */}}
-    {{end}}
-
 # Backend for simple 200 OK responses.
 backend be_ok
     http-request return status 200 content-type "text/plain" string "This is a DFaaS node. Call a function with /function/<funcname>\n"
@@ -145,7 +130,7 @@ backend be_myself
 
     option http-server-close
 
-    # Add DFaaS-Node-ID header of the current node (in any case).
+    # Add DFaaS-Node-ID header of the current node if not exists.
     http-request add-header DFaaS-Node-ID {{$.MyNodeID}}
 
     # Add X-Server (IP:port) and DFaaS-Node-ID (libp2p's ID) headers to response

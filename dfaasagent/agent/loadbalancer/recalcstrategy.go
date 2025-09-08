@@ -626,6 +626,7 @@ func (strategy *RecalcStrategy) createHACfgObject(
 	hacfg := &HACfgRecalc{
 		HACfg: HACfg{
 			MyNodeID:     myNodeID,
+			NodeIP:       _config.NodeIP,
 			HAProxyHost:  _config.HAProxyHost,
 			OpenFaaSHost: openFaaSHost,
 			OpenFaaSPort: openFaaSPort,
