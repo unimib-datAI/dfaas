@@ -1,265 +1,178 @@
 ---
-- name: Install dependencies
+- name: DFaaS node setup from scratch
   hosts: all
+  become: true
+  vars:
+    openfaas_url: "http://127.0.0.1:31112"
+    user_home: "{{ ansible_env.HOME }}"
 
   tasks:
-    - name: Update APT cache
-      ansible.builtin.apt:
-        update_cache: true
+    - name: Install buildah
+      apt:
+        name: buildah
+        state: present
+        update_cache: yes
 
-    - name: Upgrade current packages
-      ansible.builtin.apt:
-        upgrade: "dist"
+    - name: Disable UFW
+      ufw:
+        state: disabled
 
-    - name: Install required packages
-      ansible.builtin.apt:
+    - name: Install K3S
+      shell: curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable traefik" sh -
+      args:
+        executable: /bin/bash
+        creates: /usr/local/bin/k3s  # Prevents re-installation if already installed
+
+    - name: Build DFaaS agent and forecaster images and push to K3S
+      block:
+        - name: Build agent image
+          command: ./k8s/scripts/build-image.sh agent
+          args:
+            chdir: "{{ playbook_dir }}"
+
+        - name: Build forecaster image
+          command: ./k8s/scripts/build-image.sh forecaster
+          args:
+            chdir: "{{ playbook_dir }}"
+      become: false  # Run as regular user
+
+    - name: Install Helm dependencies
+      apt:
         name:
-          - git
-          - haproxy
-          - python3-pip
-          - python3-venv
+          - curl
+          - gpg
+          - apt-transport-https
+        state: present
 
-- name: Copy the DFaaS repository
-  hosts: all
+    - name: Add Helm GPG key
+      shell: curl -fsSL https://packages.buildkite.com/helm-linux/helm-debian/gpgkey | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
+      args:
+        executable: /bin/bash
+        creates: /usr/share/keyrings/helm.gpg
 
-  tasks:
-    - name: Ensure /opt/dfaas-src directory exists
-      ansible.builtin.file:
-        path: /opt/dfaas-src
-        state: directory
-        mode: "0755"
+    - name: Add Helm repository
+      copy:
+        content: "deb [signed-by=/usr/share/keyrings/helm.gpg] https://packages.buildkite.com/helm-linux/helm-debian/any/ any main"
+        dest: /etc/apt/sources.list.d/helm-stable-debian.list
 
+    - name: Install Helm
+      apt:
+        name: helm
+        state: present
+        update_cache: yes
 
-    - name: Copy the repository (only dfaasagent and docker directories)
-      ansible.builtin.copy:
-        src: "{{ item.src }}"
-        dest: "{{ item.dest }}"
-        mode: "0755"
-      loop:
-        - src: ./dfaasagent
-          dest: /opt/dfaas-src/
-        - src: ./docker
-          dest: /opt/dfaas-src/
+    - name: Add KUBECONFIG to .bashrc
+      lineinfile:
+        path: "{{ user_home }}/.bashrc"
+        line: 'export KUBECONFIG=/etc/rancher/k3s/k3s.yaml'
+        state: present
+      become: false
 
-- name: Deploy OpenFaaS (faasd)
-  hosts: all
+    - name: Configure sudo to preserve KUBECONFIG
+      copy:
+        content: |
+          # Preserve KUBECONFIG env variable.
+          Defaults:%sudo env_keep += "KUBECONFIG"
+          Defaults !always_set_home
+        dest: /etc/sudoers.d/50-helm
+        mode: '0440'
 
-  tasks:
-    - name: Ensure /opt/faasd directory exists
-      ansible.builtin.file:
-        path: /opt/faasd
-        state: directory
-        mode: "0755"
+    - name: Install faas-cli
+      block:
+        - name: Create ~/.local/bin directory
+          file:
+            path: "{{ user_home }}/.local/bin"
+            state: directory
+            mode: '0755'
 
-    - name: Clone the Git repository
-      ansible.builtin.git:
-        repo: "https://github.com/openfaas/faasd.git"
-        dest: /opt/faasd
-        version: 0.19.6
-        depth: 1
+        - name: Download faas-cli
+          get_url:
+            url: https://github.com/openfaas/faas-cli/releases/download/0.17.8/faas-cli
+            dest: "{{ user_home }}/.local/bin/faas-cli"
+            mode: '0755'
 
-    - name: Run installation script
-      ansible.builtin.command:
-        cmd: hack/install.sh
-        chdir: /opt/faasd
-        # Do not run the installation script if it is already done before,
-        # otherwhise the script will always fails.
-        creates: /usr/lib/systemd/system/faasd.service
+        - name: Add ~/.local/bin to PATH in .bashrc
+          lineinfile:
+            path: "{{ user_home }}/.bashrc"
+            line: 'export PATH="{{ user_home }}/.local/bin:$PATH"'
+            state: present
+      become: false
 
-    - name: Set OpenFaaS admin password
-      ansible.builtin.copy:
-        content: "admin"
-        dest: /var/lib/faasd/secrets/basic-auth-password
-        mode: "0655"
+    - name: Add Helm repositories
+      block:
+        - name: Add HAProxy Helm repository
+          command: helm repo add haproxytech https://haproxytech.github.io/helm-charts
 
-    - name: Override Prometheus configuration
-      ansible.builtin.copy:
-        src: ./docker/files/faasd/prometheus.yml
-        dest: /var/lib/faasd/prometheus.yml
-        mode: "0655"
+        - name: Add Prometheus Helm repository
+          command: helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 
-    - name: Start faasd service
-      ansible.builtin.systemd_service:
-        state: restarted
-        name: faasd
+        - name: Add OpenFaaS Helm repository
+          command: helm repo add openfaas https://openfaas.github.io/faas-netes/
 
-    - name: Start faasd-provider service
-      ansible.builtin.systemd_service:
-        state: restarted
-        name: faasd-provider
+        - name: Update Helm repositories
+          command: helm repo update
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
-- name: Deploy cAdvisor
-  hosts: all
+    - name: Install Helm charts
+      block:
+        - name: Install HAProxy on K3S
+          command: helm install haproxy haproxytech/haproxy --version 1.25.0 --values k8s/charts/values-haproxy.yaml
+          args:
+            chdir: "{{ playbook_dir }}"
 
-  tasks:
-    - name: Ensure /opt/cadvisor directory exists
-      ansible.builtin.file:
-        path: /opt/cadvisor
-        state: directory
-        mode: "0755"
+        - name: Install Prometheus on K3S
+          command: helm install prometheus prometheus-community/prometheus --version 27.37.0 --values k8s/charts/values-prometheus.yaml
+          args:
+            chdir: "{{ playbook_dir }}"
 
-    - name: Download cAdvisor
-      ansible.builtin.get_url:
-        url: https://github.com/google/cadvisor/releases/download/v0.49.2/cadvisor-v0.49.2-linux-amd64
-        dest: /opt/cadvisor/cadvisor
-        mode: u+x
+        - name: Install OpenFaaS on K3S
+          command: helm install openfaas openfaas/openfaas --version 14.2.124 --values ./k8s/charts/values-openfaas.yaml
+          args:
+            chdir: "{{ playbook_dir }}"
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
-    - name: Copy cAdvisor systemd unit file
-      ansible.builtin.copy:
-        src: ./docker/files/faasd/cadvisor.service
-        dest: /etc/systemd/system/cadvisor.service
-        mode: "0655"
+    - name: Configure OpenFaaS
+      block:
+        - name: Get OpenFaaS password
+          command: kubectl get secret basic-auth -o jsonpath={.data.basic-auth-password} | base64 --decode
+          register: openfaas_pwd
+          environment:
+            KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+          become: true
 
-    - name: Start cAdvisor service
-      ansible.builtin.systemd_service:
-        name: cadvisor
-        daemon_reload: true
-        enabled: true
-        state: started
+        - name: Add OPENFAAS_URL to .bashrc
+          lineinfile:
+            path: "{{ user_home }}/.bashrc"
+            line: 'export OPENFAAS_URL={{ openfaas_url }}'
+            state: present
 
-- name: Deploy Prometheus node exporter
-  hosts: all
+        - name: Login to OpenFaaS
+          shell: "{{ user_home }}/.local/bin/faas-cli login --password '{{ openfaas_pwd.stdout }}'"
+          environment:
+            OPENFAAS_URL: "{{ openfaas_url }}"
 
-  tasks:
-    - name: Ensure /opt/node_exporter directory exists
-      ansible.builtin.file:
-        path: /opt/node_exporter
-        state: directory
-        mode: "0755"
+        - name: Deploy OpenFaaS functions
+          shell: ./k8s/scripts/deploy_functions.sh
+          args:
+            chdir: "{{ playbook_dir }}"
+          environment:
+            OPENFAAS_URL: "{{ openfaas_url }}"
+            KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+            PATH: "{{ ansible_env.PATH }}:{{ user_home }}/.local/bin"
+      become: false
 
-    - name: Download Prometheus node exporter archive
-      ansible.builtin.get_url:
-        url: https://github.com/prometheus/node_exporter/releases/download/v1.9.0/node_exporter-1.9.0.linux-amd64.tar.gz
-        dest: /opt/node_exporter/node_exporter.tar.gz
-        mode: "0655"
+    - name: Install DFaaS Forecaster and extra-setup charts
+      block:
+        - name: Install Forecaster in K3S
+          command: helm install forecaster ./k8s/charts/forecaster
+          args:
+            chdir: "{{ playbook_dir }}"
 
-    - name: Extract Prometheus node exporter
-      ansible.builtin.unarchive:
-        src: /opt/node_exporter/node_exporter.tar.gz
-        dest: /opt/node_exporter/
-        remote_src: true
-
-    - name: Rename Prometheus node exporter binary
-      ansible.builtin.file:
-        path: /opt/node_exporter/node_exporter
-        mode: u+x
-        src: /opt/node_exporter/node_exporter-1.9.0.linux-amd64/node_exporter
-        state: link
-
-    - name: Copy Prometheus node exporter systemd unit file
-      ansible.builtin.copy:
-        src: ./docker/files/faasd/node-exporter.service
-        dest: /etc/systemd/system/node-exporter.service
-        mode: "0655"
-
-    - name: Enable Prometheus node exporter service
-      ansible.builtin.systemd_service:
-        name: node-exporter
-        daemon_reload: true
-        enabled: true
-
-- name: Deploy DFaaS Forecaster module
-  hosts: all
-
-  tasks:
-    - name: Ensure /opt/forecaster directory exists
-      ansible.builtin.file:
-        path: /opt/forecaster
-        state: directory
-        mode: "0755"
-
-    - name: Setup the Python virtualenv and depedencies
-      ansible.builtin.pip:
-        virtualenv: /opt/forecaster/pyenv
-        virtualenv_command: /usr/bin/python3 -m venv
-        name:
-          - "fastapi[all]"
-          - scikit-learn
-          - lightgbm
-          - joblib
-          - pandas
-          - numpy
-
-    - name: Copy the DFaaS Forecaster source code
-      ansible.builtin.copy:
-        src: ./docker/forecaster/
-        dest: /opt/forecaster
-        mode: "0755"
-
-    - name: Copy the DFaaS Forecaster systemd unit file
-      ansible.builtin.copy:
-        src: ./docker/files/forecaster/forecaster.service
-        dest: /etc/systemd/system/forecaster.service
-        mode: "0655"
-
-    - name: Start DFaaS Forecaster service
-      ansible.builtin.systemd_service:
-        name: forecaster
-        daemon_reload: true
-        enabled: true
-        state: started
-
-- name: Deploy the DFaaS agent (Node Margin Strategy)
-  hosts: all
-
-  tasks:
-    - name: Ensure /opt/dfaasagent directory exists
-      ansible.builtin.file:
-        path: /opt/dfaasagent
-        state: directory
-        mode: "0755"
-
-    - name: Copy DFaaS Agent executable and other files
-      ansible.builtin.copy:
-        src: "{{ item.src }}"
-        dest: "{{ item.dest }}"
-        mode: "0755"
-      loop:
-        - src: ./docker/files/dfaasagent/dfaasagent.service # Systemd unit file
-          dest: /etc/systemd/system/dfaasagent.service
-        - src: ./dfaasagent/agent/loadbalancer/haproxycfgrecalc.tmpl # Go templates for strategies
-          dest: /opt/dfaasagent/haproxycfgrecalc.tmpl
-        - src: ./dfaasagent/agent/loadbalancer/haproxycfgnms.tmpl
-          dest: /opt/dfaasagent/haproxycfgnms.tmpl
-        - src: ./docker/files/dfaasagent/group_list.json # Function group list
-          dest: /opt/dfaasagent/group_list.json
-        - src: ./dfaasagent/dfaasagent # Executable
-          dest: /opt/dfaasagent/dfaasagent
-        - src: ./dfaasagent.env # DFaaS configuration
-          dest: /opt/dfaasagent/dfaasagent.env
-
-    - name: Enable DFaaS Agent service
-      ansible.builtin.systemd_service:
-        name: dfaasagent
-        daemon_reload: true
-        enabled: true
-
-- name: Deploy ocr, shasum and figlet functions
-  hosts: all
-
-  tasks:
-    - name: Run the deploy function script
-      ansible.builtin.script: ./docker/files/deploy_functions.sh
-
-    - name: Call OpenFaaS directly
-      ansible.builtin.uri:
-        url: http://localhost:8080/function/figlet
-        body: "Hello world!"
-
-- name: Start the DFaaS Agent
-  hosts: all
-
-  tasks:
-    - name: Start the DFaaS Agent service
-      ansible.builtin.systemd_service:
-        name: dfaasagent
-        state: started
-
-    - name: Wait for the reconfiguration of HAProxy by the DFaaS Agent
-      ansible.builtin.wait_for:
-        timeout: 5
-
-    - name: Call the proxy
-      ansible.builtin.uri:
-        url: http://localhost:80/function/figlet
-        body: "Hello world!"
+        - name: Install DFaaS extra setup
+          command: helm install dfaas-extra-setup ./k8s/charts/extra-setup/
+          args:
+            chdir: "{{ playbook_dir }}"
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
