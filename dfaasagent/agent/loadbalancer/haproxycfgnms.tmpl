@@ -28,8 +28,11 @@ program api
 # The configuration is generated and changed by the DFaaS agent from this point
 # on.
 
-{{/* #################### STICK-TABLES #################### */ -}}
-
+# Stick tables: for NMS strategy there is one stick tables for each deployed
+# function.
+#
+# Each stick table tracks the number of HTTP requests seen and the rate of HTTP
+# requests per second for each key.
 {{range $funcName, $func := .Functions -}}
 backend st_users_func_{{$funcName}}
     stick-table type integer size 10 expire {{$.StrRecalc}} store http_req_cnt,http_req_rate(1s)
@@ -89,6 +92,10 @@ frontend fe_main
     use_backend be_ok if is_path_root
     use_backend be_healthz if is_path_healthz
     use_backend be_system_funcs if is_path_system_funcs
+
+    # For each deployed function, forward the incoming request to be_myself if
+    # it is coming from another DFaaS node, while forward to be_fnname if it is
+    # from a client.
     {{range $funcName, $_ := .Functions -}}
     use_backend be_myself if is_func_{{$funcName}} has_nodeid_hdr
     use_backend be_{{$funcName}} if is_func_{{$funcName}} !has_nodeid_hdr
@@ -106,7 +113,8 @@ backend be_ok
 
 # Backend for health check.
 backend be_healthz
-    # Perform HTTP health checks.
+    # Let HAProxy to perform HTTP health checks and remove the backend if not
+    # available.
     option httpchk GET /healthz
 
     # Enable HTTP connection closing on the server side. This provides the
@@ -114,60 +122,61 @@ backend be_healthz
     # reuse on the server side to save server resources.
     option http-server-close
 
+    # Forward requests to dfaas-agent.
     server healthz dfaas-agent:80 check
 
-{{/* #################### BACKEND FOR MANAGING OPENFAAS FUNCTIONS #################### */ -}}
-
+# Backend for managing the functions in self OpenFaaS instance.
+#
+# It is mostly similar to the be_healthz backend.
 backend be_system_funcs
-    {{/* Perform HTTP health checks */ -}}
     option httpchk GET /
-    {{/* Enable HTTP connection closing on the server side. This provides the lowest latency
-    on the client side (slow network) and the fastest session reuse on the server side
-    to save server resources */ -}}
     option http-server-close
     server system_funcs {{.OpenFaaSHost}}:{{.OpenFaaSPort}} check
 
-{{/* #################### BACKEND FOR SELF OPENFAAS INSTANCE #################### */ -}}
+# Backend for forwarding function requests to the self OpenFaaS Instance.
+#
+# This backend is used for requests coming from other DFaaS nodes.
 backend be_myself
-    {{/* Perform HTTP health checks */ -}}
     option httpchk GET /healthz
-    {{/* Enable insertion of the X-Forwarded-For header to requests sent to servers */ -}}
+
+    # Enable insertion of the X-Forwarded-For header to requests sent to
+    # servers.
     option forwardfor
-    {{/* Enable HTTP connection closing on the server side. This provides the lowest latency
-    on the client side (slow network) and the fastest session reuse on the server side
-    to save server resources */ -}}
+
     option http-server-close
 
-    {{/* Add DFaaS-Node-ID header (in any case) */ -}}
+    # Add DFaaS-Node-ID header of the current node (in any case).
     http-request add-header DFaaS-Node-ID {{$.MyNodeID}}
 
-    {{/* Add X-Server header to response to know which server served the request */ -}}
-    http-response set-header X-Server %s
+    # Save the Host header in a variable during the request phase.
+    # This is required because http-response can't access directly the
+    # requests' headers.
+    http-request set-var(txn.host) req.hdr(Host)
+
+    # Add X-Server header to response to let clients know which DFaaS server
+    # served the request.
+    http-response set-header X-Server %[var(txn.host)]
 
     server {{$.HAProxyHost}} {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} check
 
-{{/* #################### BACKEND FOR OPENFAAS FUNCTIONS #################### */ -}}
+# Backends for each deployed OpenFaaS function.
+#
+# These backends are used for incoming requests from clients, not from other
+# DFaaS nodes.
 
 {{range $funcName, $func := .Functions -}}
-
 backend be_{{$funcName}}
-    {{/* Enable load-balancing using custom weights */ -}}
+    # Enable load-balancing using custom weights.
     balance roundrobin
 
-    {{/* Perform HTTP health checks */ -}}
     option httpchk GET /healthz
-    {{/* Enable insertion of the X-Forwarded-For header to requests sent to servers */ -}}
     option forwardfor
-    {{/* Enable HTTP connection closing on the server side. This provides the lowest latency
-    on the client side (slow network) and the fastest session reuse on the server side
-    to save server resources */ -}}
     option http-server-close
 
-    {{/* Add DFaaS-Node-ID header (in any case) */ -}}
     http-request add-header DFaaS-Node-ID {{$.MyNodeID}}
 
-    {{/* Add X-Server header to response to know which server served the request */ -}}
-    http-response set-header X-Server %s
+    http-request set-var(txn.host) req.hdr(Host)
+    http-response set-header X-Server %[var(txn.host)]
 
     {{range $nodeID, $weight := $func.Weights -}}
     {{if (eq $nodeID $.MyNodeID) -}}

@@ -8,8 +8,6 @@ package loadbalancer
 import (
 	_ "embed"
 
-	"github.com/bcicen/go-haproxy"
-
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/hacfgupd"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/forecaster"
@@ -41,17 +39,11 @@ func (strategyFactory *recalcStrategyFactory) createStrategy() (Strategy, error)
 
 	strategy.nodestbl = nodestbl.NewTableRecalc(_config.RecalcPeriod + (_config.RecalcPeriod / 5))
 
-	strategy.hacfgupdater = hacfgupd.Updater{
-		HAConfigFilePath: _config.HAProxyConfigFile,
-	}
+	strategy.hacfgupdater = hacfgupd.Updater{}
 
 	err := strategy.hacfgupdater.LoadTemplate(haproxycfgrecalcTemplate)
 	if err != nil {
 		return nil, err
-	}
-
-	strategy.hasockClient = haproxy.HAProxyClient{
-		Addr: _config.HAProxySockPath,
 	}
 
 	strategy.offuncsClient, err = offuncs.NewClient(_config.OpenFaaSHost,
@@ -82,9 +74,7 @@ func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, er
 
 	strategy.nodestbl = nodestbl.NewTableNMS(_config.RecalcPeriod * 2)
 
-	strategy.hacfgupdater = hacfgupd.Updater{
-		HAConfigFilePath: _config.HAProxyConfigFile,
-	}
+	strategy.hacfgupdater = hacfgupd.Updater{}
 
 	err := strategy.hacfgupdater.LoadTemplate(haproxycfgnmsTemplate)
 	if err != nil {
@@ -97,10 +87,6 @@ func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, er
 		_config.OpenFaaSPass)
 	if err != nil {
 		return nil, err
-	}
-
-	strategy.hasockClient = haproxy.HAProxyClient{
-		Addr: _config.HAProxySockPath,
 	}
 
 	strategy.forecasterClient = forecaster.Client{

@@ -12,9 +12,6 @@ import (
 	"net/http"
 	"regexp"
 
-	"github.com/pkg/errors"
-
-	"github.com/bcicen/go-haproxy"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
 )
 
@@ -32,13 +29,9 @@ type haproxyAPIEntry struct {
 
 var _reStickTable *regexp.Regexp = nil
 
-// Note: to view the real-time content of a stick table directly from bash, use
-// the following command:
-// watch "echo show table st_src_global | socat stdio dfaasvolume1/haproxy.sock"
-
-// ReadStickTable reads the content of a stick table from an HAProxy socket
-// client. The stick table must be of type "http_req_cnt,http_req_rate(1s)"
-func ReadStickTable(hasockClient *haproxy.HAProxyClient, stName string) (map[string]*STEntry, error) {
+// ReadStickTable reads the content of a stick table from the HAProxy Data Plane
+// API. The stick table must be of type "http_req_cnt,http_req_rate(1s)"
+func ReadStickTable(stName string) (map[string]*STEntry, error) {
 	baseURL := fmt.Sprintf("%s/v3/services/haproxy/runtime", constants.HAProxyDataPlaneAPIOrigin)
 
 	client := &http.Client{}
@@ -47,13 +40,13 @@ func ReadStickTable(hasockClient *haproxy.HAProxyClient, stName string) (map[str
 	listURL := fmt.Sprintf("%s/stick_tables", baseURL)
 	req, err := http.NewRequest("GET", listURL, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create request for stick table list")
+		return nil, fmt.Errorf("creating request for stick table list: %w", err)
 	}
 	req.SetBasicAuth(constants.HAProxyDataPlaneUsername, constants.HAProxyDataPlanePassword)
 
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to call HAProxy stick_table list API")
+		return nil, fmt.Errorf("calling HAProxy stick_table list API: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -66,7 +59,7 @@ func ReadStickTable(hasockClient *haproxy.HAProxyClient, stName string) (map[str
 		Name string `json:"name"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&tables); err != nil {
-		return nil, errors.Wrap(err, "failed to decode stick_table list response")
+		return nil, fmt.Errorf("decoding stick_table list response: %w", err)
 	}
 
 	// Check if stName is in the list.
@@ -85,13 +78,13 @@ func ReadStickTable(hasockClient *haproxy.HAProxyClient, stName string) (map[str
 	entriesURL := fmt.Sprintf("%s/stick_tables/%s/entries", baseURL, stName)
 	req, err = http.NewRequest("GET", entriesURL, nil)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to create request for stick table entries")
+		return nil, fmt.Errorf("creating request for stick table entries: %w", err)
 	}
 	req.SetBasicAuth(constants.HAProxyDataPlaneUsername, constants.HAProxyDataPlanePassword)
 
 	resp, err = client.Do(req)
 	if err != nil {
-		return nil, errors.Wrap(err, "failed to call HAProxy stick_table entries API")
+		return nil, fmt.Errorf("calling HAProxy stick_table entries API: %w", err)
 	}
 	defer resp.Body.Close()
 
@@ -102,7 +95,7 @@ func ReadStickTable(hasockClient *haproxy.HAProxyClient, stName string) (map[str
 
 	var entries []haproxyAPIEntry
 	if err := json.NewDecoder(resp.Body).Decode(&entries); err != nil {
-		return nil, errors.Wrap(err, "failed to parse entries JSON")
+		return nil, fmt.Errorf("decoding entries JSON: %w", err)
 	}
 
 	// Convert to result format

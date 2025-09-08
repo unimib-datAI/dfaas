@@ -46,10 +46,8 @@ config:
 
   AGENT_RECALC_PERIOD: 1m
 
-  AGENT_HAPROXY_CONFIG_FILE: "./haproxy.cfg"
   AGENT_HAPROXY_HOST: "haproxy.default.svc.cluster.local"
   AGENT_HAPROXY_PORT: 80
-  AGENT_HAPROXY_SOCK_PATH: "unix:///run/haproxy/admin.sock"
 
   AGENT_OPENFAAS_HOST: "gateway-external.default.svc.cluster.local"
   AGENT_OPENFAAS_PORT: 8080

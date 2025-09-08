@@ -33,7 +33,6 @@ type RecalcStrategy struct {
 	hacfgupdater  hacfgupd.Updater
 	nodestbl      *nodestbl.TableRecalc
 	offuncsClient *offuncs.Client
-	hasockClient  haproxy.HAProxyClient
 	recalc        recalc
 	it            int // = 0 // Number of agent loop iterations
 }
@@ -175,7 +174,7 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 
 	for funcName := range strategy.recalc.funcs {
 		stName := fmt.Sprintf("st_users_func_%s", funcName)
-		stContent, err := hasock.ReadStickTable(&strategy.hasockClient, stName)
+		stContent, err := hasock.ReadStickTable(stName)
 
 		if err != nil {
 			errWrap := errors.Wrap(err, "Error while reading the stick-table \""+stName+"\" from the HAProxy socket")
@@ -197,7 +196,7 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 
 	for funcName := range strategy.recalc.funcs {
 		stName := fmt.Sprintf("st_local_func_%s", funcName)
-		stContent, err := hasock.ReadStickTable(&strategy.hasockClient, stName)
+		stContent, err := hasock.ReadStickTable(stName)
 
 		if err != nil {
 			errWrap := errors.Wrap(err, "Error while reading the stick-table \""+stName+"\" from the HAProxy socket")

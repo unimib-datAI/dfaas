@@ -11,7 +11,6 @@ import (
 	"math"
 	"time"
 
-	"github.com/bcicen/go-haproxy"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/pkg/errors"
 	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/communication"
@@ -41,7 +40,6 @@ type NodeMarginStrategy struct {
 	hacfgupdater     hacfgupd.Updater
 	nodestbl         *nodestbl.TableNMS
 	offuncsClient    *offuncs.Client
-	hasockClient     haproxy.HAProxyClient
 	forecasterClient forecaster.Client
 	nodeInfo         nodeInfo
 	// Functions groups
@@ -278,7 +276,7 @@ func (strategy *NodeMarginStrategy) getFunctionsRates() (map[string]float64, err
 
 	for _, funcName := range strategy.nodeInfo.funcs {
 		stName := fmt.Sprintf("st_users_func_%s", funcName)
-		stContent, err := hasock.ReadStickTable(&strategy.hasockClient, stName)
+		stContent, err := hasock.ReadStickTable(stName)
 
 		if err != nil {
 			return nil, err
