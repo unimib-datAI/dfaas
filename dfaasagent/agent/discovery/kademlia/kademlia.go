@@ -76,7 +76,7 @@ func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig Bootstra
 			return fmt.Errorf("Error while getting information from the bootstrap node's address \"%s\": %w", peerAddr.String(), err)
 		}
 
-		logger.Debug("Connecting to bootstrap node ", zap.String("addrs", peerAddr.String()))
+        logger.Debugf("Connecting to bootstrap node: %s", peerAddr.String())
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -94,7 +94,7 @@ func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig Bootstra
 				return
 			}
 
-            logger.Info("Connected to bootstrap node ", zap.String("PeerID", peerInfo.String()))
+            logger.Infof("Connected to bootstrap node %s", peerInfo.String())
 		}()
 	}
 	wg.Wait()
@@ -145,7 +145,7 @@ func RunDiscovery() error {
 				continue
 			}
 
-            logger.Debug("Connecting to a new peer: ",
+            logger.Debugf("Connecting to a new peer: ",
 				zap.Any("addrs", peerInfo.Addrs),
 				zap.String("id", peerInfo.ID.String()))
 			if err := _p2pHost.Connect(_ctx, peerInfo); err != nil {

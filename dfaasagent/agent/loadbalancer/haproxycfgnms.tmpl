@@ -157,7 +157,7 @@ backend be_myself
     # served the request.
     http-response set-header X-Server %[var(txn.host)]
 
-    server {{$.HAProxyHost}} {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} check
+    server local-openfaas {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} check
 
 # Backends for each deployed OpenFaaS function.
 #
@@ -180,7 +180,7 @@ backend be_{{$funcName}}
 
     {{range $nodeID, $weight := $func.Weights -}}
     {{if (eq $nodeID $.MyNodeID) -}}
-    server {{$.HAProxyHost}} {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} weight {{$weight}} check
+    server local-openfaas {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} weight {{$weight}} check
     {{else -}}
     server {{(index $.Nodes $nodeID).HAProxyHost}} {{(index $.Nodes $nodeID).HAProxyHost}}:{{(index $.Nodes $nodeID).HAProxyPort}} weight {{$weight}} check
     {{end -}}
