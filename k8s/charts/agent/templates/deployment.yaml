@@ -30,6 +30,14 @@ spec:
                 secretKeyRef:
                   name: basic-auth
                   key: basic-auth-password
+            # IP address of the node where the agent runs. Used by other DFaaS
+            # agents to forward requests to this node. this variable.
+            #
+            # See: https://kubernetes.io/docs/concepts/workloads/pods/downward-api/
+            - name: AGENT_NODE_IP
+              valueFrom:
+                fieldRef:
+                  fieldPath: status.hostIP
           envFrom:
             # Get the DFaaS Agent config.
             - configMapRef:

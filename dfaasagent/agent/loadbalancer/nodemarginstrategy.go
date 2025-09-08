@@ -217,8 +217,8 @@ func (strategy *NodeMarginStrategy) publishNodeInfo() error {
 
 	msg := MsgNodeInfoNMS{
 		MsgType:     StrMsgNodeInfoTypeNMS,
-		HAProxyHost: _config.HAProxyHost,
-		HAProxyPort: _config.HAProxyPort,
+		HAProxyHost: _config.NodeIP,
+		HAProxyPort: constants.HAProxyPort,
 		NodeType:    strategy.nodeInfo.nodeType,
 		MaxValues:   strategy.maxValues,
 		Functions:   strategy.nodeInfo.funcs,

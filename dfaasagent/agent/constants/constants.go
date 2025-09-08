@@ -20,6 +20,10 @@ const (
 	HAProxyDataPlaneUsername  = "admin"
 	HAProxyDataPlanePassword  = "admin"
 
+	// Public port for accessing HAProxy externally. In Kubernetes, HAProxy is
+	// exposed as a NodePort on 30080.
+	HAProxyPort = 30080
+
 	// Connection information for accessing the DFaaS Forecaster service.
 	ForecasterHost = "dfaas-forecaster"
 	ForeasterPort  = 80
@@ -29,6 +33,6 @@ const (
 	HttpServerHost = "0.0.0.0"
 	HttpServerPort = 8080
 
-    // Connection information for accessing Prometheus server.
-    PrometheusOrigin = "prometheus-server.default.svc.cluster.local:80"
+	// Connection information for accessing Prometheus server.
+	PrometheusOrigin = "prometheus-server.default.svc.cluster.local:80"
 )

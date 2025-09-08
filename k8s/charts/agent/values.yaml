@@ -6,6 +6,11 @@ config:
   AGENT_LOG_DATETIME: true
   AGENT_LOG_COLORS: true
 
+  # IP address of the node where the agent runs. Used by other DFaaS agents to
+  # forward requests to this node. Leave blank, Kubernetes automatically injects
+  # this variable.
+  #AGENT_NODE_IP:
+
   # Address where to listen new peers. Should be in form
   # "/ip4/192.0.2.0/tcp/6000". Suggested default is "/ip4/0.0.0.0/tcp/31600".
   AGENT_LISTEN: "/ip4/0.0.0.0/tcp/31600"

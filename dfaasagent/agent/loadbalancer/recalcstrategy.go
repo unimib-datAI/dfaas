@@ -410,8 +410,8 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 
 	msg := MsgNodeInfoRecalc{
 		MsgType:     StrMsgNodeInfoTypeRecalc,
-		HAProxyHost: _config.HAProxyHost,
-		HAProxyPort: _config.HAProxyPort,
+		HAProxyHost: _config.NodeIP,
+		HAProxyPort: constants.HAProxyPort,
 		FuncLimits:  limits,
 	}
 	debugMsgNodeInfoRecalc(msg)

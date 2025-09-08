@@ -21,15 +21,20 @@ type Configuration struct {
 	DateTime  bool `mapstructure:"AGENT_LOG_DATETIME"`
 	LogColors bool `mapstructure:"AGENT_LOG_COLORS"`
 
+	// IP address of the node where the agent runs. Used by other DFaaS agents
+	// to forward requests to this node. Kubernetes automatically injects this
+	// variable.
+	NodeIP string `mapstructure:"AGENT_NODE_IP"`
+
 	// Address where to listen new peers. Should be in form
 	// "/ip4/192.0.2.0/tcp/6000". Suggested default is "/ip4/0.0.0.0/tcp/31600".
 	Listen []string `mapstructure:"AGENT_LISTEN"`
 
 	// File where the agent's private key can be found. The private key is the
 	// ID of the agent for other peers.
-    //
-    // If not given or the file does not exist or it is empty, a new one will be
-    // generated.
+	//
+	// If not given or the file does not exist or it is empty, a new one will be
+	// generated.
 	PrivateKeyFile string `mapstructure:"AGENT_PRIVATE_KEY_FILE"`
 
 	// Where to use bootstrap nodes to found other nodes.

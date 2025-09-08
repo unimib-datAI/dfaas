@@ -26,6 +26,8 @@ const StrMsgTextType = "text"
 type MsgNodeInfoRecalc struct {
 	MsgType string
 
+	// Information for other DFaaS nodes to forward requests to this node.
+	// Consists of the node's public IP address and HAProxy's public port.
 	HAProxyHost string
 	HAProxyPort uint
 
@@ -43,11 +45,14 @@ const StrMsgNodeInfoTypeRecalc = "nodeinfoRecalc"
 type MsgNodeInfoNMS struct {
 	MsgType string
 
+	// Information for other DFaaS nodes to forward requests to this node.
+	// Consists of the node's public IP address and HAProxy's public port.
 	HAProxyHost string
 	HAProxyPort uint
-	NodeType    int
-	MaxValues   map[string]float64
-	Functions   []string
+
+	NodeType  int
+	MaxValues map[string]float64
+	Functions []string
 }
 
 // StrMsgNodeInfoTypeNMS value for MsgNodeInfoNMS.MsgType
