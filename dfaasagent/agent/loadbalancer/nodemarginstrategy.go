@@ -13,16 +13,16 @@ import (
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/pkg/errors"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/communication"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/hacfgupd"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/httpserver"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/forecaster"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/hasock"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/offuncs"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/ofpromq"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/nodestbl"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/communication"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/constants"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/forecaster"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/hasock"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/offuncs"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/ofpromq"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
 )
 
 // In this file is implemented the Node Margin strategy

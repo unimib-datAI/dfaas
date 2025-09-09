@@ -9,7 +9,7 @@
 package nodestbl
 
 import (
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/config"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/config"
 )
 
 //////////////////// MAIN PRIVATE VARS AND INIT FUNCTION ////////////////////

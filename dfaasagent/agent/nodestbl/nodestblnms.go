@@ -6,9 +6,10 @@
 package nodestbl
 
 import (
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
 	"sync"
 	"time"
+
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 )
 
 // In this file are defined types and methods to manage nodestbl information
@@ -18,8 +19,8 @@ import (
 
 // Load represents information about the requests load on a certain node
 type Load struct {
-	RateHighUsage 	float64 // Rate for functions in "high usage" group
-	RateLowUsage 	float64 // Rate for functions in "low usage" group
+	RateHighUsage   float64 // Rate for functions in "high usage" group
+	RateLowUsage    float64 // Rate for functions in "low usage" group
 	RateMediumUsage float64 // Rate for functions in "medium usage" group
 }
 
@@ -49,7 +50,7 @@ type EntryNMS struct {
 // TableNMS is actually a list of instances of the EntryNMS struct, which can be
 // accessed with concurrency-safe methods only
 type TableNMS struct {
-	mutex   *sync.Mutex
+	mutex         *sync.Mutex
 	EntryValidity time.Duration
 	// The list of the entries. The key is the node ID
 	entries map[string]*EntryNMS

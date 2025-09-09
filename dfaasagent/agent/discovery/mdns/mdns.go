@@ -14,7 +14,7 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/libp2p/go-libp2p/p2p/discovery/mdns"
 
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 )
 
 var service mdns.Service

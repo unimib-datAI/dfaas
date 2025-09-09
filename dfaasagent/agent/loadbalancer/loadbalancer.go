@@ -13,9 +13,9 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
 
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/config"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/config"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/constants"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 )
 
 //////////////////// MAIN PRIVATE VARS AND INIT FUNCTION ////////////////////

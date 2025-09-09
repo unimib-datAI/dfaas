@@ -17,8 +17,8 @@ import (
 	"strings"
 	"time"
 
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/constants"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 )
 
 // Query executes a Prometheus query and returns the JSON string.

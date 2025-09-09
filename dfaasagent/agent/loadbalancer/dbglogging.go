@@ -13,9 +13,9 @@ import (
 
 	"github.com/bcicen/go-haproxy"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/hasock"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/nodestbl"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/hasock"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
 )
 
 //////////////////// PRIVATE FUNCTIONS FOR LOGGING ////////////////////

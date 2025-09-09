@@ -8,11 +8,12 @@
 package forecaster
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"net/http"
 	"strings"
-	"encoding/json"
+
 	"github.com/pkg/errors"
 )
 
@@ -25,17 +26,17 @@ const power_usage_endpoint = "power_usage_node"
 
 // Struct for a request to Forecaster to predict node metrics
 type NodeMetricPredReq struct {
-	Rate_group_HIGH_USAGE 	float64 `json:"rate_group_HIGH_USAGE"`
-	Rate_group_LOW_USAGE 	float64 `json:"rate_group_LOW_USAGE"`
+	Rate_group_HIGH_USAGE   float64 `json:"rate_group_HIGH_USAGE"`
+	Rate_group_LOW_USAGE    float64 `json:"rate_group_LOW_USAGE"`
 	Rate_group_MEDIUM_USAGE float64 `json:"rate_group_MEDIUM_USAGE"`
-	Node_type 				int		`json:"node_type"`
+	Node_type               int     `json:"node_type"`
 }
 
 // Struct for the node metrics prediction response from Forecaster
 type NodeMetricPredRes struct {
-	Cpu_usage_node 		float64 `json:"cpu_usage_node"`
-	Ram_usage_node 		float64 `json:"ram_usage_node"`
-	Power_usage_node 	float64 `json:"power_usage_node"`
+	Cpu_usage_node   float64 `json:"cpu_usage_node"`
+	Ram_usage_node   float64 `json:"ram_usage_node"`
+	Power_usage_node float64 `json:"power_usage_node"`
 }
 
 // Client for gathering information from the Forecaster
@@ -98,7 +99,7 @@ func (client *Client) GetNodeUsagePredictions(request NodeMetricPredReq) (NodeMe
 	if err != nil {
 		return NodeMetricPredRes{}, errors.Wrap(err, "Error while converting json response from Forecaster")
 	}
-	
+
 	return predictionsResponse[0], nil
 }
 
@@ -121,7 +122,7 @@ func (client *Client) GetCPUUsageNodePredictions(request NodeMetricPredReq) (Nod
 	if err != nil {
 		return NodeMetricPredRes{}, errors.Wrap(err, "Error while converting json response from Forecaster")
 	}
-	
+
 	return predictionsResponse[0], nil
 }
 
@@ -144,7 +145,7 @@ func (client *Client) GetRAMUsageNodePredictions(request NodeMetricPredReq) (Nod
 	if err != nil {
 		return NodeMetricPredRes{}, errors.Wrap(err, "Error while converting json response from Forecaster")
 	}
-	
+
 	return predictionsResponse[0], nil
 }
 
@@ -167,7 +168,7 @@ func (client *Client) GetPowerUsageNodePredictions(request NodeMetricPredReq) (N
 	if err != nil {
 		return NodeMetricPredRes{}, errors.Wrap(err, "Error while converting json response from Forecaster")
 	}
-	
+
 	return predictionsResponse[0], nil
 }
 

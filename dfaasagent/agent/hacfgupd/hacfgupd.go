@@ -18,8 +18,8 @@ import (
 
 	"github.com/Masterminds/sprig"
 
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/constants"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 )
 
 // Updater is the main type for updating an HAProxy configuration using a

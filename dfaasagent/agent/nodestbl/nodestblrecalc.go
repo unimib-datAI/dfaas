@@ -6,9 +6,10 @@
 package nodestbl
 
 import (
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
 	"sync"
 	"time"
+
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 )
 
 // In this file are defined types and methods to manage nodestbl information
@@ -43,7 +44,7 @@ type EntryRecalc struct {
 // TableRecalc is actually a list of instances of the EntryRecalc struct, which can be
 // accessed with concurrency-safe methods only
 type TableRecalc struct {
-	mutex   *sync.Mutex
+	mutex         *sync.Mutex
 	EntryValidity time.Duration
 	// The list of the entries. The key is the node ID
 	entries map[string]*EntryRecalc

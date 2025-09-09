@@ -3,7 +3,7 @@
 // This file is licensed under the AGPL v3.0 or later license. See LICENSE and
 // AUTHORS file for more information.
 
-module gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent
+module github.com/unimib-datAI/dfaas/dfaasagent
 
 go 1.24.0
 

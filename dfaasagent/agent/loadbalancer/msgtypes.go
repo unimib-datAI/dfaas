@@ -6,7 +6,7 @@
 package loadbalancer
 
 import (
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 )
 
 //////////////////// MESSAGES' STRUCT TYPES ////////////////////

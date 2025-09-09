@@ -13,13 +13,13 @@ import (
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/communication"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/hacfgupd"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/httpserver"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/offuncs"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/nodestbl"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/communication"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/constants"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/offuncs"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
 )
 
 // StaticStrategy implements the Static strategy, where the local node always

@@ -6,7 +6,7 @@
 package main
 
 import (
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent"
 )
 
 func main() {

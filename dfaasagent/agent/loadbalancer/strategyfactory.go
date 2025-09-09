@@ -9,11 +9,11 @@ import (
 	_ "embed"
 	"fmt"
 
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/hacfgupd"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/forecaster"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/infogath/offuncs"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/nodestbl"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/constants"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/forecaster"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/offuncs"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
 )
 
 // In this file is implemented the Factory creational pattern,

@@ -12,7 +12,7 @@ import (
 	"net/http"
 	"regexp"
 
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/constants"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/constants"
 )
 
 // STEntry represents a row of a stick-table

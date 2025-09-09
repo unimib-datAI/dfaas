@@ -21,20 +21,20 @@ import (
 	"time"
 
 	"github.com/multiformats/go-multiaddr"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/config"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/config"
 
 	"github.com/libp2p/go-libp2p"
 	"github.com/libp2p/go-libp2p/core/crypto"
 	"github.com/libp2p/go-libp2p/core/host"
 
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/communication"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/discovery/kademlia"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/discovery/mdns"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/httpserver"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/loadbalancer"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/nodestbl"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/utils/maddrhelp"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/communication"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/discovery/kademlia"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/discovery/mdns"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/loadbalancer"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/utils/maddrhelp"
 )
 
 //////////////////// PRIVATE VARIABLES ////////////////////

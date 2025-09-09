@@ -13,14 +13,14 @@ import (
 	"time"
 
 	"github.com/multiformats/go-multiaddr"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/utils/maddrhelp"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/utils/maddrhelp"
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/host"
 	"github.com/libp2p/go-libp2p/core/peer"
 	discovery "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 	discoveryUtils "github.com/libp2p/go-libp2p/p2p/discovery/util"
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 	"go.uber.org/zap"
 )
 
@@ -76,7 +76,7 @@ func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig Bootstra
 			return fmt.Errorf("Error while getting information from the bootstrap node's address \"%s\": %w", peerAddr.String(), err)
 		}
 
-        logger.Debugf("Connecting to bootstrap node: %s", peerAddr.String())
+		logger.Debugf("Connecting to bootstrap node: %s", peerAddr.String())
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
@@ -94,7 +94,7 @@ func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig Bootstra
 				return
 			}
 
-            logger.Infof("Connected to bootstrap node %s", peerInfo.String())
+			logger.Infof("Connected to bootstrap node %s", peerInfo.String())
 		}()
 	}
 	wg.Wait()
@@ -145,11 +145,11 @@ func RunDiscovery() error {
 				continue
 			}
 
-            logger.Debugf("Connecting to a new peer: ",
+			logger.Debugf("Connecting to a new peer: ",
 				zap.Any("addrs", peerInfo.Addrs),
 				zap.String("id", peerInfo.ID.String()))
 			if err := _p2pHost.Connect(_ctx, peerInfo); err != nil {
-                logger.Error("Connection to peer (skipping): ", zap.Error(err))
+				logger.Error("Connection to peer (skipping): ", zap.Error(err))
 				continue
 			}
 			logger.Debug("Connected to a new peer",

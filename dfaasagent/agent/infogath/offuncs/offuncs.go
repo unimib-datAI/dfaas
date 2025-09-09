@@ -15,7 +15,7 @@ import (
 	"net/url"
 	"strconv"
 
-	"gitlab.com/team-dfaas/dfaas/node-stack/dfaasagent/agent/logging"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 
 	"go.uber.org/zap"
 )
