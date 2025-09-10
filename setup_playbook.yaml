@@ -8,36 +8,42 @@
 
   tasks:
     - name: Install buildah
-      apt:
+      ansible.builtin.apt:
         name: buildah
         state: present
         update_cache: yes
 
     - name: Disable UFW
-      ufw:
+      community.general.ufw:
         state: disabled
 
     - name: Install K3S
-      shell: curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable traefik" sh -
+      ansible.builtin.shell: curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable traefik" sh -
       args:
         executable: /bin/bash
         creates: /usr/local/bin/k3s  # Prevents re-installation if already installed
 
+    - name: Ensure k3s service is running
+      ansible.builtin.systemd_service:
+        name: k3s
+        state: started
+        enabled: yes
+
     - name: Build DFaaS agent and forecaster images and push to K3S
       block:
         - name: Build agent image
-          command: ./k8s/scripts/build-image.sh agent
+          ansible.builtin.command: ./k8s/scripts/build-image.sh agent
           args:
             chdir: "{{ playbook_dir }}"
 
         - name: Build forecaster image
-          command: ./k8s/scripts/build-image.sh forecaster
+          ansible.builtin.command: ./k8s/scripts/build-image.sh forecaster
           args:
             chdir: "{{ playbook_dir }}"
       become: false  # Run as regular user
 
     - name: Install Helm dependencies
-      apt:
+      ansible.builtin.apt:
         name:
           - curl
           - gpg
@@ -45,31 +51,31 @@
         state: present
 
     - name: Add Helm GPG key
-      shell: curl -fsSL https://packages.buildkite.com/helm-linux/helm-debian/gpgkey | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
+      ansible.builtin.shell: curl -fsSL https://packages.buildkite.com/helm-linux/helm-debian/gpgkey | gpg --dearmor | sudo tee /usr/share/keyrings/helm.gpg > /dev/null
       args:
         executable: /bin/bash
         creates: /usr/share/keyrings/helm.gpg
 
     - name: Add Helm repository
-      copy:
+      ansible.builtin.copy:
         content: "deb [signed-by=/usr/share/keyrings/helm.gpg] https://packages.buildkite.com/helm-linux/helm-debian/any/ any main"
         dest: /etc/apt/sources.list.d/helm-stable-debian.list
 
     - name: Install Helm
-      apt:
+      ansible.builtin.apt:
         name: helm
         state: present
         update_cache: yes
 
     - name: Add KUBECONFIG to .bashrc
-      lineinfile:
+      ansible.builtin.lineinfile:
         path: "{{ user_home }}/.bashrc"
         line: 'export KUBECONFIG=/etc/rancher/k3s/k3s.yaml'
         state: present
       become: false
 
     - name: Configure sudo to preserve KUBECONFIG
-      copy:
+      ansible.builtin.copy:
         content: |
           # Preserve KUBECONFIG env variable.
           Defaults:%sudo env_keep += "KUBECONFIG"
@@ -80,19 +86,19 @@
     - name: Install faas-cli
       block:
         - name: Create ~/.local/bin directory
-          file:
+          ansible.builtin.file:
             path: "{{ user_home }}/.local/bin"
             state: directory
             mode: '0755'
 
         - name: Download faas-cli
-          get_url:
+          ansible.builtin.get_url:
             url: https://github.com/openfaas/faas-cli/releases/download/0.17.8/faas-cli
             dest: "{{ user_home }}/.local/bin/faas-cli"
             mode: '0755'
 
         - name: Add ~/.local/bin to PATH in .bashrc
-          lineinfile:
+          ansible.builtin.lineinfile:
             path: "{{ user_home }}/.bashrc"
             line: 'export PATH="{{ user_home }}/.local/bin:$PATH"'
             state: present
@@ -101,33 +107,33 @@
     - name: Add Helm repositories
       block:
         - name: Add HAProxy Helm repository
-          command: helm repo add haproxytech https://haproxytech.github.io/helm-charts
+          ansible.builtin.command: helm repo add haproxytech https://haproxytech.github.io/helm-charts
 
         - name: Add Prometheus Helm repository
-          command: helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+          ansible.builtin.command: helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
 
         - name: Add OpenFaaS Helm repository
-          command: helm repo add openfaas https://openfaas.github.io/faas-netes/
+          ansible.builtin.command: helm repo add openfaas https://openfaas.github.io/faas-netes/
 
         - name: Update Helm repositories
-          command: helm repo update
+          ansible.builtin.command: helm repo update
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
     - name: Install Helm charts
       block:
         - name: Install HAProxy on K3S
-          command: helm install haproxy haproxytech/haproxy --version 1.25.0 --values k8s/charts/values-haproxy.yaml
+          ansible.builtin.command: helm install haproxy haproxytech/haproxy --version 1.25.0 --values k8s/charts/values-haproxy.yaml
           args:
             chdir: "{{ playbook_dir }}"
 
         - name: Install Prometheus on K3S
-          command: helm install prometheus prometheus-community/prometheus --version 27.37.0 --values k8s/charts/values-prometheus.yaml
+          ansible.builtin.command: helm install prometheus prometheus-community/prometheus --version 27.37.0 --values k8s/charts/values-prometheus.yaml
           args:
             chdir: "{{ playbook_dir }}"
 
         - name: Install OpenFaaS on K3S
-          command: helm install openfaas openfaas/openfaas --version 14.2.124 --values ./k8s/charts/values-openfaas.yaml
+          ansible.builtin.command: helm install openfaas openfaas/openfaas --version 14.2.124 --values ./k8s/charts/values-openfaas.yaml
           args:
             chdir: "{{ playbook_dir }}"
       environment:
@@ -136,25 +142,25 @@
     - name: Configure OpenFaaS
       block:
         - name: Get OpenFaaS password
-          command: kubectl get secret basic-auth -o jsonpath={.data.basic-auth-password} | base64 --decode
+          ansible.builtin.command: kubectl get secret basic-auth -o jsonpath={.data.basic-auth-password} | base64 --decode
           register: openfaas_pwd
           environment:
             KUBECONFIG: /etc/rancher/k3s/k3s.yaml
           become: true
 
         - name: Add OPENFAAS_URL to .bashrc
-          lineinfile:
+          ansible.builtin.lineinfile:
             path: "{{ user_home }}/.bashrc"
             line: 'export OPENFAAS_URL={{ openfaas_url }}'
             state: present
 
         - name: Login to OpenFaaS
-          shell: "{{ user_home }}/.local/bin/faas-cli login --password '{{ openfaas_pwd.stdout }}'"
+          ansible.builtin.shell: "{{ user_home }}/.local/bin/faas-cli login --password '{{ openfaas_pwd.stdout }}'"
           environment:
             OPENFAAS_URL: "{{ openfaas_url }}"
 
         - name: Deploy OpenFaaS functions
-          shell: ./k8s/scripts/deploy_functions.sh
+          ansible.builtin.shell: ./k8s/scripts/deploy_functions.sh
           args:
             chdir: "{{ playbook_dir }}"
           environment:
@@ -166,12 +172,12 @@
     - name: Install DFaaS Forecaster and extra-setup charts
       block:
         - name: Install Forecaster in K3S
-          command: helm install forecaster ./k8s/charts/forecaster
+          ansible.builtin.command: helm install forecaster ./k8s/charts/forecaster
           args:
             chdir: "{{ playbook_dir }}"
 
         - name: Install DFaaS extra setup
-          command: helm install dfaas-extra-setup ./k8s/charts/extra-setup/
+          ansible.builtin.command: helm install dfaas-extra-setup ./k8s/charts/extra-setup/
           args:
             chdir: "{{ playbook_dir }}"
       environment:
