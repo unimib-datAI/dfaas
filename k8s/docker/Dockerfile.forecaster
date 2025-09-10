@@ -4,6 +4,11 @@
 # framework and is run with uvicorn.
 FROM docker.io/library/python:3.9-slim
 
+# See: https://docs.github.com/en/packages/learn-github-packages/connecting-a-repository-to-a-package#connecting-a-repository-to-a-container-image-using-the-command-line
+LABEL org.opencontainers.image.source=https://github.com/unimib-datAI/dfaas
+LABEL org.opencontainers.image.description="DFaaS Forecaster"
+LABEL org.opencontainers.image.licenses="AGPL-3.0"
+
 # Install missing libgomp for LightGBM.
 # See: https://github.com/microsoft/LightGBM/issues/2223#issuecomment-499788066
 RUN apt-get update && \

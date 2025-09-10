@@ -5,6 +5,11 @@
 # Stage 1: Build the Go app.
 FROM docker.io/library/golang:1.24 AS builder
 
+# See: https://docs.github.com/en/packages/learn-github-packages/connecting-a-repository-to-a-package#connecting-a-repository-to-a-container-image-using-the-command-line
+LABEL org.opencontainers.image.source=https://github.com/unimib-datAI/dfaas
+LABEL org.opencontainers.image.description="DFaaS Agent"
+LABEL org.opencontainers.image.licenses="AGPL-3.0"
+
 # Set Go specific env vars. CGO_ENABLED=0 is necessary to use Alpine image!
 ENV CGO_ENABLED=0
 
