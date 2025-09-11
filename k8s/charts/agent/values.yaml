@@ -79,7 +79,7 @@ config:
 # Agent's private key in PEM format. If empty, the agent will generate a new
 # private key and it will print to the standard output.
 privateKey: ""
-# dfaasAgentPrivateKey: |
+# privateKey: |
 #  -----BEGIN PRIVATE KEY-----
 #  ...your key here...
 #  -----END PRIVATE KEY-----
