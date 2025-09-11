@@ -66,6 +66,8 @@ includes:
     #!/bin/sh
 
     while true; do
+      sleep 5
+      echo "/usr/local/bin/dataplaneapi starting..." >&2
       /usr/local/bin/dataplaneapi --host 0.0.0.0 --port 5555 --haproxy-bin /usr/sbin/haproxy --config-file /usr/local/etc/haproxy/config/haproxy.cfg --reload-cmd "kill -SIGUSR2 1" --restart-cmd "kill -SIGUSR2 1" --userlist dataplaneapi --log-level info
       ret=$?
       if [ "$ret" -ne 0 ]; then
