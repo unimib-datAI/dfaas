@@ -1,3 +1,10 @@
+# Default is the locally built image, manually imported into K3s.
+image: localhost/agent:dev
+imagePullPolicy: Never # The agent image is manually imported.
+# Alternative is the latest dev version from GitHub Container Registry.
+#image: ghcr.io/unimib-datai/agent:dev
+#imagePullPolicy: Always # Since the dev tag is overwritten with newer versions.
+
 # Default DFaaS Agent configuration.
 # Note that AGENT_OPENFAAS_PASS is automatically created by the Deployment
 # object.

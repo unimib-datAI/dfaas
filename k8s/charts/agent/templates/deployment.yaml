@@ -14,10 +14,8 @@ spec:
     spec:
       containers:
         - name: dfaas-agent
-          image: localhost/agent:dev
-          # imagePullPolicy must be set to "Never" since we build the DFaaS
-          # Agent only locally.
-          imagePullPolicy: Never
+          image: {{ .Values.image }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
           ports:
             - containerPort: 8080
               name: healthz

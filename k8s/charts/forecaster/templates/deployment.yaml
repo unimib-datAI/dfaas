@@ -14,9 +14,7 @@ spec:
     spec:
       containers:
         - name: dfaas-forecaster
-          image: localhost/forecaster:dev
-          # Must be set to "Never" since we build the DFaaS Forecaster only
-          # locally.
-          imagePullPolicy: Never
+          image: {{ .Values.image }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
           ports:
             - containerPort: 8080
