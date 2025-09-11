@@ -22,10 +22,6 @@ defaults
   timeout connect 60s
   timeout server 60s
 
-program api
-  command /bin/sh /usr/local/etc/haproxy/includes/dataplane-start.sh
-  no option start-on-reload
-
 # The configuration is generated and changed by the DFaaS agent from this point
 # on.
 
