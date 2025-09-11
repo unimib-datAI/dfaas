@@ -3,7 +3,7 @@
 # See k8s/charts/values-haproxy.yaml for more information about global,
 # userlist, defaults and program sections.
 global
-  master-worker
+  master-worker no-exit-on-failure
   stats socket /var/run/haproxy.sock mode 660 level admin expose-fd listeners
   insecure-fork-wanted
   expose-deprecated-directives

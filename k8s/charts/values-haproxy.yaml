@@ -17,7 +17,7 @@ config: |
   # by the DFaaS agent.
   global
     # This is required since we also run the Dataplane API process.
-    master-worker
+    master-worker no-exit-on-failure
     # Required by Dataplane API.
     stats socket /var/run/haproxy.sock mode 660 level admin expose-fd listeners
     insecure-fork-wanted
