@@ -1,4 +1,9 @@
 # Multiple VMs Environment
+
+> [!WARNING]  
+> This testing environment is not supported and won't work with latest DFaaS
+> versions! We are rewriting this environment to support Kubernetes.
+
 This environment has been exploited to execute some comparison tests beetween the old load balancing strategy adopted by the DFaaS Agent, and the newly implemented Node Margin Strategy.  
 It consists of three DFaaS nodes, called "Node Light" (2 CPU, 8 GB RAM), "Node Mid" (4 CPU, 16 GB RAM) and "Node Heavy" (6 CPU, 24 GB RAM), and an "Operator" node which automatically deploys functions on other nodes and starts load tests. The technical specifications of the three DFaaS nodes correspond to the specifications of the three nodes types on which the predictive models exploited by the Node Margin Strategy have been trained.  
 To deploy this environment you need three VMs with the specifications reported above, and antoher VM for the [Operator](../operator).
