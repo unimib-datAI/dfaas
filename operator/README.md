@@ -40,20 +40,23 @@ You need to configure the operator using a `.env` file, like the default
 Optionally modify [plot-results.py](docker/plot-results.py) if custom plotting
 behavior is needed, but you'll need to rebuild the image.
 
-:
+Then, use podman or Docker to run the container:
+
+```console
+$ podman run -d --env-file operator.env -v $(pwd)/test:/test operator:dev
+$ podman logs <container_id_or_name> -f
+```
 
 ## Build
 
-Use Buldah (or Docker) to build the image:
+Use the help script to build the image from the project's root directory:
 
 ```console
-$ buildah build -t operator:dev
+$ ./k8s/scripts/build-image operator none --dockerfile operator/Dockerfile
 ```
 
 Push the image to GitHub Container Registry (after login):
 
 ```console
-$ GHCR_TAG="ghcr.io/unimib-datai/dfaas-operator:dev"
-$ buildah tag operator:dev "${GHCR_TAG}"
-$ buildah push "${GHCR_TAG}"
+$ ./k8s/scripts/build-image operator push --dockerfile operator/Dockerfile
 ```
