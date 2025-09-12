@@ -38,9 +38,10 @@ var _rendezvous string
 var _idleTime time.Duration
 var _routingDisc *discovery.RoutingDiscovery
 
-// Initialize initializes the Kademlia DHT peer discovery engine. If
-// bootstrapForce = true, then this function fails if any of the bootstrap peers
-// cannot be contacted for some reason.
+// Initialize initializes the Kademlia DHT peer discovery engine.
+//
+// If boostrapConfig.BootstrapForce is true, the function loops until all
+// bootstrap nodes are connected.
 func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig BootstrapConfiguration, rendezvous string, idleTime time.Duration) error {
 	logger := logging.Logger()
 
@@ -69,40 +70,37 @@ func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig Bootstra
 	}
 
 	var wg sync.WaitGroup
-	var chanErrConn = make(chan error, len(bootstrapNodes))
 	for _, peerAddr := range bootstrapNodes {
 		peerInfo, err := peer.AddrInfoFromP2pAddr(peerAddr)
 		if err != nil {
 			return fmt.Errorf("Error while getting information from the bootstrap node's address \"%s\": %w", peerAddr.String(), err)
 		}
 
-		logger.Debugf("Connecting to bootstrap node: %s", peerAddr.String())
 		wg.Add(1)
 		go func() {
 			defer wg.Done()
 
-			err := p2pHost.Connect(ctx, *peerInfo)
-			if err != nil {
-				errWrap := fmt.Errorf("Connection failed to a bootstrap node (skipping): %w", err)
+			for {
+				logger.Debugf("Connecting to bootstrap node: %s", peerAddr.String())
+				err := p2pHost.Connect(ctx, *peerInfo)
+                if err == nil {
+					logger.Infof("Connected to bootstrap node %s", peerInfo.String())
+					return
+				}
+				logger.Error(fmt.Sprintf("Connection failed to a bootstrap node: %w", err))
+				errWrap := fmt.Errorf("Connection failed to a bootstrap node: %w", err)
 
 				if bootstrapConfig.BootstrapForce {
-					chanErrConn <- errWrap
+					logger.Infof("Waiting 5 second before retrying to connect to bootstrap node: %s", peerAddr.String())
+					time.Sleep(5 * time.Second)
+					continue
 				} else {
 					logger.Error("Kademlia: ", errWrap)
 				}
-
-				return
 			}
-
-			logger.Infof("Connected to bootstrap node %s", peerInfo.String())
 		}()
 	}
 	wg.Wait()
-	select {
-	case err := <-chanErrConn:
-		return err
-	default:
-	}
 
 	// Announcing ourself on the Kademlia network.
 	routingDisc := discovery.NewRoutingDiscovery(kadDHT)
