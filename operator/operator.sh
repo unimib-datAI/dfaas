@@ -41,58 +41,49 @@ vegeta_attack () {
 }
 
 
-# Perform health check on each node
-for j in "${!nodes[@]}"
-do
-  echo -e "Checking if node ${nodes[$j]} is healthy...\n";
-  HEALTHZ_ENDPOINT="http://${nodes[$j]}/healthz"
+# Perform health check on each node.
+for node in "${nodes[@]}"; do
+  echo -e "Checking if node $node is healthy...\n"
+  HEALTHZ_ENDPOINT="http://$node/healthz"
   TRIES=1
 
-  until [[ "$(curl -s -w '%{http_code}' -o /dev/null ${HEALTHZ_ENDPOINT})" -eq 200 || $TRIES -eq $MAX_TRIES ]]
-  do
-    echo -e "Node ${nodes[$j]} not ready yet.\nRetrying health check in 10 seconds...\n";
-    sleep 10;
-    ((TRIES+=1));
+  while [[ "$(curl --max-time 10 -s -w '%{http_code}' -o /dev/null "$HEALTHZ_ENDPOINT")" -ne 200 && $TRIES -lt $MAX_TRIES ]]; do
+    echo -e "Node $node not ready yet.\nRetrying health check in 10 seconds...\n"
+    sleep 10
+    ((TRIES++))
   done
 
-  if [[ $TRIES -eq $MAX_TRIES ]]
-  then
-    echo -e "Node ${nodes[$j]} is down.\n\n";
-    ((NODES_DOWN+=1));
+  if [[ $TRIES -eq $MAX_TRIES ]]; then
+    echo -e "Node $node is down.\n\n"
+    ((NODES_DOWN++))
   fi
 done
 
-# Proceeds only if all nodes are healthy
-if [[ $NODES_DOWN -eq 0 ]]
-then
-  # Execute Vegeta attacks
-  export VEGFOLDER="/tests/vegeta-results/$(date +%Y-%m-%d-%H%M%S)"
-  mkdir -p $VEGFOLDER
+# Proceeds only if all nodes are healthy.
+if (( NODES_DOWN == 0 )); then
+  VEGFOLDER="/tests/vegeta-results/$(date +%Y-%m-%d-%H%M%S)"
+  mkdir -p "$VEGFOLDER"
 
-  for i in "${!attacks_names[@]}"
-  do
-    echo -e "Attack "${attacks_names[$i]}" will start in "${delays[$i]}" seconds.\n";
-    vegeta_attack "${attacks_names[$i]}" "${delays[$i]}" "${targets[$i]}" "${methods[$i]}" "${bodies[$i]}" "${rates[$i]}" "${durations[$i]}" &
+  for i in "${!attacks_names[@]}"; do
+    echo -e "Attack ${attacks_names[i]} will start in ${delays[i]} seconds.\n"
+    vegeta_attack "${attacks_names[i]}" "${delays[i]}" "${targets[i]}" "${methods[i]}" "${bodies[i]}" "${rates[i]}" "${durations[i]}" &
   done
 
   wait
-  echo -e "All attacks completed.";
-  
-  # Aggregate attack's results
-  echo -e "Merging attacks results...\n";
-  RESULTS_FILES=""
+  echo -e "All attacks completed."
 
-  for i in "${!attacks_names[@]}"
-  do
-    RESULTS_FILES="${RESULTS_FILES} $VEGFOLDER/"${attacks_names[$i]}"/results.json"
+  echo -e "Merging attacks results...\n"
+  results_files=()
+  for name in "${attacks_names[@]}"; do
+    results_files+=("$VEGFOLDER/$name/results.json")
   done
 
-  mkdir -p $VEGFOLDER/merged-results
-  cat $RESULTS_FILES > $VEGFOLDER/merged-results/merged-results.json
+  mkdir -p "$VEGFOLDER/merged-results"
+  cat "${results_files[@]}" > "$VEGFOLDER/merged-results/merged-results.json"
 
-  /plot-results.py $VEGFOLDER/merged-results/merged-results.json $VEGFOLDER/merged-results 0 True
+  /plot-results.py "$VEGFOLDER/merged-results/merged-results.json" "$VEGFOLDER/merged-results" 0 True
 
-  echo -e "Results merged successfully.";
+  echo -e "Results merged successfully."
 fi
 
-exit 0;
+exit 0
