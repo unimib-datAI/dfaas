@@ -33,7 +33,7 @@ plots for both individual and merged results.
 You need to configure the operator using a `.env` file, like the default
 [operator.env](operator.env). Options includes:
 
-- **Target nodes**: IP addresses to run tests against.
+- **Target nodes**: Endpoints (IP and port pairs) to run tests against.
 - **Vegeta attack configuration**: For each attack, specify:
   - Delay before starting the attack
   - Duration

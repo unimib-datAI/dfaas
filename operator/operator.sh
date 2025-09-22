@@ -1,4 +1,4 @@
-#!/bin/bash
+#!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-or-later
 #
 # This is the DFaaS Operator script. It runs Vegeta to perform load testing on
@@ -11,17 +11,17 @@
 MAX_TRIES=25
 NODES_DOWN=0
 
-IFS=: read -r -a nodes <<< "$NODES"
-IFS=: read -r -a funcs_names <<< "$FUNCS_NAMES"
-IFS=: read -r -a funcs_images <<< "$FUNCS_IMAGES"
-IFS=: read -r -a funcs_limits <<< "$FUNCS_LIMITS"
-IFS=: read -r -a attacks_names <<< "$ATTACKS_NAME"
-IFS=: read -r -a delays <<< "$ATTACKS_DELAY"
-IFS=: read -r -a targets <<< "$ATTACKS_TARGET"
-IFS=: read -r -a methods <<< "$ATTACKS_METHOD"
-IFS=: read -r -a bodies <<< "$ATTACKS_BODY"
-IFS=: read -r -a rates <<< "$ATTACKS_RATE"
-IFS=: read -r -a durations <<< "$ATTACKS_DURATION"
+IFS=';' read -r -a nodes <<< "$NODES"
+IFS=';' read -r -a funcs_names <<< "$FUNCS_NAMES"
+IFS=';' read -r -a funcs_images <<< "$FUNCS_IMAGES"
+IFS=';' read -r -a funcs_limits <<< "$FUNCS_LIMITS"
+IFS=';' read -r -a attacks_names <<< "$ATTACKS_NAME"
+IFS=';' read -r -a delays <<< "$ATTACKS_DELAY"
+IFS=';' read -r -a targets <<< "$ATTACKS_TARGET"
+IFS=';' read -r -a methods <<< "$ATTACKS_METHOD"
+IFS=';' read -r -a bodies <<< "$ATTACKS_BODY"
+IFS=';' read -r -a rates <<< "$ATTACKS_RATE"
+IFS=';' read -r -a durations <<< "$ATTACKS_DURATION"
 
 # Function to perform a Vegeta attack
 vegeta_attack () {
