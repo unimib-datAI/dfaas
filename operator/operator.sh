@@ -28,16 +28,22 @@ vegeta_attack () {
   mkdir -p $VEGFOLDER/"$1"
   sleep "$2"
 
+  echo "Starting attack..."
   jq -ncM "{method: \"$4\", url: \"http://$3\", body: \"$5\" | @base64, header: {\"Content-Type\": [\"text/plain\"]}}" | \
   vegeta attack -name="$1" -duration=""$7"m" -rate="$6" -format=json | \
   tee $VEGFOLDER/"$1"/results.bin | \
   vegeta report -every=200ms
+  echo "Attack ended"
 
   # Plot attack's results
   cat $VEGFOLDER/"$1"/results.bin | vegeta report -output $VEGFOLDER/"$1"/report.txt
   cat $VEGFOLDER/"$1"/results.bin | vegeta encode > $VEGFOLDER/"$1"/results.json
   cat $VEGFOLDER/"$1"/results.bin | vegeta plot > $VEGFOLDER/"$1"/plot.html
-  /plot-results.py $VEGFOLDER/"$1"/results.json $VEGFOLDER/"$1" "$6" False
+
+  if [[ "${SKIP_PLOTS:-true}" == "false" ]]; then
+    echo "Making plots..."
+    /plot-results.py $VEGFOLDER/"$1"/results.json $VEGFOLDER/"$1" "$6" False
+  fi
 }
 
 
@@ -87,9 +93,12 @@ if (( NODES_DOWN == 0 )); then
   mkdir -p "$VEGFOLDER/merged-results"
   cat "${results_files[@]}" > "$VEGFOLDER/merged-results/merged-results.json"
 
-  /plot-results.py "$VEGFOLDER/merged-results/merged-results.json" "$VEGFOLDER/merged-results" 0 True
+  echo "Results merged successfully."
 
-  echo -e "Results merged successfully."
+  if [[ "${SKIP_PLOTS:-true}" == "false" ]]; then
+    echo "Making merged plots..."
+    /plot-results.py "$VEGFOLDER/merged-results/merged-results.json" "$VEGFOLDER/merged-results" 0 True
+  fi
 fi
 
 exit 0
