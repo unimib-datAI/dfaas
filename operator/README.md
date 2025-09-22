@@ -62,7 +62,7 @@ $ # Or use the short options format -it instead of --interactive and --tty.
 Use the help script to build the image from the project's root directory:
 
 ```console
-$ ./k8s/scripts/build-image operator none --dockerfile operator/Dockerfile
+$ ./k8s/scripts/build-image.sh operator none --dockerfile operator/Dockerfile
 ```
 
 This will generate the image with `localhost/operator:dev` tag. To push the
@@ -70,5 +70,5 @@ image to GitHub Container Registry (after login) with tag
 `ghcr.io/unimib-datai/dfaas-operator`:
 
 ```console
-$ ./k8s/scripts/build-image operator push --dockerfile operator/Dockerfile
+$ ./k8s/scripts/build-image.sh operator push --dockerfile operator/Dockerfile
 ```
