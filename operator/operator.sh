@@ -45,16 +45,22 @@ vegeta_attack () {
 for node in "${nodes[@]}"; do
   echo -e "Checking if node $node is healthy...\n"
   HEALTHZ_ENDPOINT="http://$node/healthz"
-  TRIES=1
+  TRIES=0
 
-  while [[ "$(curl --max-time 10 -s -w '%{http_code}' -o /dev/null "$HEALTHZ_ENDPOINT")" -ne 200 && $TRIES -lt $MAX_TRIES ]]; do
-    echo -e "Node $node not ready yet.\nRetrying health check in 10 seconds...\n"
-    sleep 10
-    ((TRIES++))
+  while [[ $TRIES -lt $MAX_TRIES ]]; do
+    STATUS_CODE=$(curl --max-time 10 -s -w '%{http_code}' -o /dev/null "$HEALTHZ_ENDPOINT")
+    if [[ "$STATUS_CODE" -eq 200 ]]; then
+      echo "Node $node is ready (status: $STATUS_CODE)"
+      break
+    else
+      echo -e "Node $node not ready yet (status: $STATUS_CODE).\nRetrying health check in 10 seconds...\n"
+      sleep 10
+      ((TRIES++))
+    fi
   done
 
-  if [[ $TRIES -eq $MAX_TRIES ]]; then
-    echo -e "Node $node is down.\n\n"
+  if [[ "$STATUS_CODE" -ne 200 ]]; then
+    echo "Node $node did not become ready after $MAX_TRIES tries (last status: $STATUS_CODE)."
     ((NODES_DOWN++))
   fi
 done
