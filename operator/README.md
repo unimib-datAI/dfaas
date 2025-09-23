@@ -53,7 +53,7 @@ $ podman logs --follow <container_id_or_name>
 Or run the container as a foreground process:
 
 ```console
-$ podman run --interactive --tty --env-file operator.env --volume $(pwd)/test:/test ghcr.io/unimib-datai/dfaas-operator:dev
+$ podman run --interactive --tty --env-file operator.env --volume $(pwd)/tests:/tests ghcr.io/unimib-datai/dfaas-operator:dev
 $ # Or use the short options format -it instead of --interactive and --tty.
 ```
 
