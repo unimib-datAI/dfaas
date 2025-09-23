@@ -26,15 +26,18 @@ sectors_dict = {
           'rate': '1050'},
 }
 
-'''
-    Read json file containing vegeta export.
-    
-    This function takes only one param: the path of json file.
-    This function returns a dataframe containing status codes, timestamps, X-Server and URL headers values.
-    The returned dataframe represent one packet send for each row with respective response.
-'''
-
 def read_json(path):
+    """
+    Read json file containing vegeta export.
+
+    This function takes only one param: the path of json file.
+
+    This function returns a dataframe containing status codes, timestamps,
+    X-Server and URL headers values.
+
+    The returned dataframe represent one packet send for each row with
+    respective response.
+    """
     code_stream = os.popen('cat ' + path + ' | jq -r .code')
     url_stream = os.popen('cat ' + path + ' | jq -r .url')
     timestamp_stream = os.popen('cat ' + path + ' | jq -r .timestamp')
@@ -58,15 +61,16 @@ def read_json(path):
 
     return df
 
-
-'''
-    Compute one column each parameter. Each of this columns has 1 correpsonding to rows that returns this specific value, 0 otherwise.
-    "node_x_server" columns specify if the node has replied, "node_url_ok" ("node_url_err") columns specify if the request directed to the node has been
-    (hasn't been) succesfully processed, "node_forwarded_req" columns specifiy if the request directed to the node has been forwarded to another node
-    and then successfully processed.
-'''
-
 def compute_df_columns(df):
+    """
+    Compute one column each parameter. Each of this columns has 1 correpsonding
+    to rows that returns this specific value, 0 otherwise. "node_x_server"
+    columns specify if the node has replied, "node_url_ok" ("node_url_err")
+    columns specify if the request directed to the node has been (hasn't been)
+    succesfully processed, "node_forwarded_req" columns specifiy if the request
+    directed to the node has been forwarded to another node and then
+    successfully processed.
+    """
     df["Success"] = np.where(df["code"] == '200', 1, 0)
 
     df["Error"] = np.where(df["code"] != '200', 1, 0)
@@ -83,13 +87,14 @@ def compute_df_columns(df):
 
     return df
 
-
-'''
-    Group row by 'rate', obtaining one row for each second of test.   
-    This function takes as input the source dataset, the rate of the test attack, if the input file is a "merged results" file, and return grouped dataset.
-'''
-
 def group_by_resp_for_seconds(df, rate, is_merged):
+    """
+    Group row by 'rate', obtaining one row for each second of test.   
+
+    This function takes as input the source dataset, the rate of the test
+    attack, if the input file is a "merged results" file, and return grouped
+    dataset.
+    """
     url_ok_cols = []
     url_err_cols = []
     x_server_cols = []
@@ -116,12 +121,10 @@ def group_by_resp_for_seconds(df, rate, is_merged):
         
     return df_by_second
 
-
-'''
-    Compute nodes' responses subplots.
-'''
-
 def compute_nodes_subplots(df, cols, labels, path, max_y, width, height):
+    """
+    Compute nodes' responses subplots.
+    """
     colors = plt.rcParams["axes.prop_cycle"]()
     f, axes = plt.subplots(len(cols), 1, sharey=True)
     f.set_size_inches(width, height)
@@ -134,13 +137,12 @@ def compute_nodes_subplots(df, cols, labels, path, max_y, width, height):
         axes[i].grid()
     f.legend(loc='upper right')
     plt.savefig(path)
-
-
-'''
-    Compute nodes' responses and cumulatives subplots.
-'''
+    print(f"Plot saved to: {os.path.abspath(path)}")
 
 def compute_nodes_subplots_and_cumulatives(df, cols, labels, path, max_y, width, height, log=False):
+    """
+    Compute nodes' responses and cumulatives subplots.
+    """
     colors = plt.rcParams["axes.prop_cycle"]()
     f, axes = plt.subplots(len(cols) - 1, 1)
     f.set_size_inches(width, height)
@@ -162,13 +164,12 @@ def compute_nodes_subplots_and_cumulatives(df, cols, labels, path, max_y, width,
     axes[len(cols) - 2].legend(loc='upper right')
     axes[len(cols) - 2].grid()
     plt.savefig(path)
-
-
-'''
-    Compute nodes' client side success rate subplots with forwarded requests.
-'''
+    print(f"Plot saved to: {os.path.abspath(path)}")
 
 def compute_nodes_subplots_with_forwarded_req(df, cols, labels, path, max_y, width, height):
+    """
+    Compute nodes' client side success rate subplots with forwarded requests.
+    """
     colors = plt.rcParams["axes.prop_cycle"]()
     f, axes = plt.subplots(int(len(cols) / 2), 1, sharey=True)
     f.set_size_inches(width, height)
@@ -182,13 +183,12 @@ def compute_nodes_subplots_with_forwarded_req(df, cols, labels, path, max_y, wid
         axes[i].grid()
     f.legend(loc='upper right')
     plt.savefig(path)
-
-
-'''
-    Compute nodes' cumulatives subplots.
-'''
+    print(f"Plot saved to: {os.path.abspath(path)}")
 
 def compute_nodes_cumulatives_subplots(df, cols_succ, cols_err, path, width, height, log=False):
+    """
+    Compute nodes' cumulatives subplots.
+    """
     colors = plt.rcParams["axes.prop_cycle"]()
     f, axes = plt.subplots(len(cols_succ), 1, sharey=True)
     f.set_size_inches(width, height)
@@ -204,13 +204,12 @@ def compute_nodes_cumulatives_subplots(df, cols_succ, cols_err, path, width, hei
         axes[i].legend(loc='upper right')
         axes[i].grid()
     plt.savefig(path)
-
-
-'''
-    Compute cumulatives plot.
-'''
+    print(f"Plot saved to: {os.path.abspath(path)}")
 
 def compute_cumulatives_plot(df, cols, labels, path, width, height, log=False):
+    """
+    Compute cumulatives plot.
+    """
     plt.figure(figsize=(width, height))
     plt.xlabel("Time (s)")
     plt.ylabel("Cumulatives")
@@ -221,14 +220,12 @@ def compute_cumulatives_plot(df, cols, labels, path, width, height, log=False):
     plt.legend(loc="upper right")
     plt.grid()
     plt.savefig(path)
-
-
-'''
-    Compute report with success rate values.
-
-'''
+    print(f"Plot saved to: {os.path.abspath(path)}")
 
 def compute_report(input_file_path, output_dir_path, is_merged):
+    """
+    Compute report with success rate values.
+    """
     succ_responses_num = int(os.popen('cat ' + input_file_path + '| jq -r \'select(.code == 200) | .code\' | jq -s \'. | length\'').read())
     total_responses = int(os.popen('cat ' + input_file_path + '| jq -r \'.code\' | jq -s \'. | length\'').read())
     success_rate = ( succ_responses_num / total_responses ) * 100
@@ -245,16 +242,15 @@ def compute_report(input_file_path, output_dir_path, is_merged):
             for node in nodes_succ_rate:
                 text_file.write(f'Success rate {node}: {nodes_succ_rate[node]:.2f}%\n')
 
+def main(file_input, output_dir, rate, merged):
+    """
+    The script takes as input the following parameters: 'results.json' file
+    path, output directory, rate of the attack and a boolean parameter that
+    specifies if the input file has been obtained merging results files of
+    multiple parallel attacks.
 
-'''
-    The script takes as input the following parameters: 'results.json' file path, output directory, rate of the attack
-    and a boolean parameter that specifies if the input file has been obtained merging results files of multiple parallel attacks.
     If merged is true, "Rate" parameter isn't used and can be set to any value.
-'''
-
-def main(argv):
-    file_input, output_dir, rate, merged = str(argv[0]), str(argv[1]), int(argv[2]), eval(argv[3])
-
+    """
     # Reading datasets from json file.
     df1 = read_json(file_input)
 
@@ -295,18 +291,28 @@ def main(argv):
     # Compute report with success rates
     compute_report(file_input, output_dir, is_merged=merged)
 
-
 if __name__ == '__main__':
     raw_nodes = os.getenv("NODES")
     if raw_nodes is None:
         print("Missing 'NODES' env variable, exiting...")
         exit(1)
-    nodes = raw_nodes.split(":")
-    if len(nodes) != 3:
-        print("Only 3 nodes are supported, exiting...")
-        exit(1)
-    nodes_dict["Node light"] = nodes[0]
-    nodes_dict["Node mid"] = nodes[1]
-    nodes_dict["Node heavy"] = nodes[2]
+    # NODES format: ip1;ip2;ip3
+    nodes = raw_nodes.split(";")
+    for ip in nodes:
+        ip = ip.strip()
+        if not ip:
+            print(f"Invalid IP entry: '{ip}', exiting...")
+            exit(1)
+        nodes_dict[ip] = ip
 
-    main(sys.argv[1:])
+    print(f"Nodes: {list(nodes_dict.keys())}")
+    if (nodes_len := len(nodes_dict)) != 3:
+        print("Found {nodes_len} nodes, but only 3 are supported. Exiting...")
+        exit(1)
+
+    if len(sys.argv) < 5:
+        print("Usage: data_analysis_tool.py <results.json> <output_dir> <rate> <merged>")
+        exit(1)
+
+    file_input, output_dir, rate, merged = str(sys.argv[1]), str(sys.argv[2]), int(sys.argv[3]), eval(sys.argv[4])
+    main(file_input, output_dir, rate, merged)
