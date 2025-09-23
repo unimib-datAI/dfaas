@@ -24,7 +24,6 @@ config: |
     # The program section is deprecated.
     expose-deprecated-directives
     log stdout format raw local0
-    maxconn 1024
 
   # An user is required by Dataplane API to work.
   userlist dataplaneapi

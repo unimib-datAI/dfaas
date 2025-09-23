@@ -17,6 +17,16 @@
       community.general.ufw:
         state: disabled
 
+    - name: Increase number of allowed file descriptors and processes (for HAProxy)
+      ansible.builtin.blockinfile:
+        path: /etc/security/limits.conf
+        marker: "# {mark} ANSIBLE MANAGED BLOCK: unlimited nofile/nproc"
+        block: |
+          * soft nofile unlimited
+          * hard nofile unlimited
+          * soft nproc unlimited
+          * hard nproc unlimited
+
     - name: Install K3S
       ansible.builtin.shell: curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable traefik" sh -
       args:
