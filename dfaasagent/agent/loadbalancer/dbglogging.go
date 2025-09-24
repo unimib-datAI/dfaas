@@ -58,10 +58,12 @@ func debugHAProxyStats(stats []*haproxy.Stat) {
 
 	logger := logging.Logger()
 
-	logger.Debug("HAProxy stats:")
+	var b strings.Builder
+	b.WriteString("HAProxy stats:\n")
 	for _, item := range stats {
-		logger.Debugf("  - %s (%s): %s (%d req/s)", item.PxName, item.SvName, item.Status, item.ReqRate)
+		b.WriteString(fmt.Sprintf("  - %s (%s): %s (%d req/s)\n", item.PxName, item.SvName, item.Status, item.ReqRate))
 	}
+	logger.Debug(b.String())
 }
 
 func debugPromAFET(timeSpan time.Duration, data map[string]float64) {
@@ -78,10 +80,12 @@ func debugPromAFET(timeSpan time.Duration, data map[string]float64) {
 
 	sort.Strings(keys)
 
-	logger.Debug("Average functions exec times (over " + timeSpan.String() + " time span):")
+	var b strings.Builder
+	b.WriteString("Average functions exec times (over " + timeSpan.String() + " time span):\n")
 	for _, funcName := range keys {
-		logger.Debugf("  - FUNC %s: %.3f ms", funcName, data[funcName]*1000)
+		b.WriteString(fmt.Sprintf("  - FUNC %s: %.3f ms\n", funcName, data[funcName]*1000))
 	}
+	logger.Debug(b.String())
 }
 
 func debugPromInvoc(timeSpan time.Duration, data map[string]map[string]float64) {
@@ -98,12 +102,14 @@ func debugPromInvoc(timeSpan time.Duration, data map[string]map[string]float64) 
 
 	sort.Strings(keys)
 
-	logger.Debug("Functions invocation counts (over " + timeSpan.String() + " time span):")
+	var b strings.Builder
+	b.WriteString("Functions invocation counts (over " + timeSpan.String() + " time span):\n")
 	for _, funcName := range keys {
 		for code, rate := range data[funcName] {
-			logger.Debugf("  - FUNC %s, CODE %s: %.2f req/s", funcName, code, rate)
+			b.WriteString(fmt.Sprintf("  - FUNC %s, CODE %s: %.2f req/s\n", funcName, code, rate))
 		}
 	}
+	logger.Debug(b.String())
 }
 
 func debugPromServiceCount(data map[string]int) {
@@ -120,10 +126,12 @@ func debugPromServiceCount(data map[string]int) {
 
 	sort.Strings(keys)
 
-	logger.Debug("Functions service counts:")
+	var b strings.Builder
+	b.WriteString("Functions service counts:\n")
 	for _, funcName := range keys {
-		logger.Debugf("  - FUNC %s: %d active function replicas", funcName, data[funcName])
+		b.WriteString(fmt.Sprintf("  - FUNC %s: %d active function replicas\n", funcName, data[funcName]))
 	}
+	logger.Debug(b.String())
 }
 
 func debugPromCPUusage(timeSpan time.Duration, data map[string]float64) {
@@ -140,10 +148,12 @@ func debugPromCPUusage(timeSpan time.Duration, data map[string]float64) {
 
 	sort.Strings(keys)
 
-	logger.Debug("Nodes CPU usage (over " + timeSpan.String() + " time span):")
+	var b strings.Builder
+	b.WriteString("Nodes CPU usage (over " + timeSpan.String() + " time span):\n")
 	for _, instance := range keys {
-		logger.Debugf("  - Instance %s CPU utilization: %.2f%%", instance, data[instance]*100)
+		b.WriteString(fmt.Sprintf("  - Instance %s CPU utilization: %.2f%%\n", instance, data[instance]*100))
 	}
+	logger.Debug(b.String())
 }
 
 func debugPromRAMusage(timeSpan time.Duration, data map[string]float64) {
@@ -160,10 +170,12 @@ func debugPromRAMusage(timeSpan time.Duration, data map[string]float64) {
 
 	sort.Strings(keys)
 
-	logger.Debug("Nodes RAM usage (over " + timeSpan.String() + " time span):")
+	var b strings.Builder
+	b.WriteString("Nodes RAM usage (over " + timeSpan.String() + " time span):\n")
 	for _, instance := range keys {
-		logger.Debugf("  - Instance %s RAM utilization: %.2f%%", instance, data[instance]*100)
+		b.WriteString(fmt.Sprintf("  - Instance %s RAM utilization: %.2f%%\n", instance, data[instance]*100))
 	}
+	logger.Debug(b.String())
 }
 
 func debugPromCPUusagePerFunction(timeSpan time.Duration, data map[string]float64) {
@@ -180,10 +192,12 @@ func debugPromCPUusagePerFunction(timeSpan time.Duration, data map[string]float6
 
 	sort.Strings(keys)
 
-	logger.Debug("Nodes CPU usage for function (over " + timeSpan.String() + " time span) and averaged on number of container:")
+	var b strings.Builder
+	b.WriteString("Nodes CPU usage for function (over " + timeSpan.String() + " time span) and averaged on number of container:\n")
 	for _, funcName := range keys {
-		logger.Debugf("  - FUNC %s CPU utilization: %.2f%%", funcName, data[funcName]*100)
+		b.WriteString(fmt.Sprintf("  - FUNC %s CPU utilization: %.2f%%\n", funcName, data[funcName]*100))
 	}
+	logger.Debug(b.String())
 }
 
 func debugPromRAMusagePerFunction(timeSpan time.Duration, data map[string]float64) {
@@ -200,10 +214,12 @@ func debugPromRAMusagePerFunction(timeSpan time.Duration, data map[string]float6
 
 	sort.Strings(keys)
 
-	logger.Debug("Nodes RAM usage for function (over " + timeSpan.String() + " time span) and averaged on number of container:")
+	var b strings.Builder
+	b.WriteString("Nodes RAM usage for function (over " + timeSpan.String() + " time span) and averaged on number of container:\n")
 	for _, funcName := range keys {
-		logger.Debugf("  - FUNC %s RAM utilization: %.2f%%", funcName, data[funcName]*100)
+		b.WriteString(fmt.Sprintf("  - FUNC %s RAM utilization: %.2f%%\n", funcName, data[funcName]*100))
 	}
+	logger.Debug(b.String())
 }
 
 func debugHAProxyUserRates(data map[string]float64) {
@@ -220,10 +236,12 @@ func debugHAProxyUserRates(data map[string]float64) {
 
 	sort.Strings(keys)
 
-	logger.Debug("Invocation rates of requests from users only (calculated from HAProxy stick-table):")
+	var b strings.Builder
+	b.WriteString("Invocation rates of requests from users only (calculated from HAProxy stick-table):\n")
 	for _, funcName := range keys {
-		logger.Debugf("  - FUNC %s: %.2f req/s", funcName, data[funcName])
+		b.WriteString(fmt.Sprintf("  - FUNC %s: %.2f req/s\n", funcName, data[funcName]))
 	}
+	logger.Debug(b.String())
 }
 
 func debugFuncs(data map[string]uint) {
@@ -240,10 +258,12 @@ func debugFuncs(data map[string]uint) {
 
 	sort.Strings(keys)
 
-	logger.Debug("Available functions:")
+	var b strings.Builder
+	b.WriteString("Available functions:\n")
 	for _, funcName := range keys {
-		logger.Debugf("  - FUNC %s: limit %d req/s", funcName, data[funcName])
+		b.WriteString(fmt.Sprintf("  - FUNC %s: limit %d req/s\n", funcName, data[funcName]))
 	}
+	logger.Debug(b.String())
 }
 
 func debugOverloads(data map[string]bool) {
@@ -261,7 +281,8 @@ func debugOverloads(data map[string]bool) {
 	sort.Strings(keys)
 
 	var strMode string
-	logger.Debug("Functions overload/underload modes:")
+	var b strings.Builder
+	b.WriteString("Functions overload/underload modes:\n")
 	for _, funcName := range keys {
 		if data[funcName] {
 			strMode = "Overload"
@@ -269,8 +290,9 @@ func debugOverloads(data map[string]bool) {
 			strMode = "Underload"
 		}
 
-		logger.Debugf("  - FUNC %s: %s", funcName, strMode)
+		b.WriteString(fmt.Sprintf("  - FUNC %s: %s\n", funcName, strMode))
 	}
+	logger.Debug(b.String())
 }
 
 func debugNodesTblContent(entries map[string]*nodestbl.EntryRecalc) {
@@ -287,14 +309,15 @@ func debugNodesTblContent(entries map[string]*nodestbl.EntryRecalc) {
 
 	sort.Strings(nodeIDs)
 
-	logger.Debug("Content of nodestbl:")
+	var b strings.Builder
+	b.WriteString("Content of nodestbl:\n")
 	for _, nodeID := range nodeIDs {
 		entry := entries[nodeID]
 
-		logger.Debugf("  - NODE %s (HAProxy=%s:%d)",
+		b.WriteString(fmt.Sprintf("  - NODE %s (HAProxy=%s:%d)\n",
 			nodeID,
 			entry.HAProxyHost,
-			entry.HAProxyPort)
+			entry.HAProxyPort))
 
 		funcNames := make([]string, 0, len(entry.FuncsData))
 		for k := range entry.FuncsData {
@@ -306,13 +329,14 @@ func debugNodesTblContent(entries map[string]*nodestbl.EntryRecalc) {
 		for _, funcName := range funcNames {
 			funcData := entry.FuncsData[funcName]
 
-			logger.Debugf("    - FUNC %s: LimitIn=%.2f LimitOut=%.2f NodeWeight=%d",
+			b.WriteString(fmt.Sprintf("    - FUNC %s: LimitIn=%.2f LimitOut=%.2f NodeWeight=%d\n",
 				funcName,
 				funcData.LimitIn,
 				funcData.LimitOut,
-				funcData.NodeWeight)
+				funcData.NodeWeight))
 		}
 	}
+	logger.Debug(b.String())
 }
 
 func debugNodesTblContentNMS(entries map[string]*nodestbl.EntryNMS) {
@@ -329,26 +353,28 @@ func debugNodesTblContentNMS(entries map[string]*nodestbl.EntryNMS) {
 
 	sort.Strings(nodeIDs)
 
-	logger.Debug("Content of nodestbl:")
+	var b strings.Builder
+	b.WriteString("Content of nodestbl:\n")
 	for _, nodeID := range nodeIDs {
 		entry := entries[nodeID]
 
-		logger.Debugf("  - NODE %s (HAProxy=%s:%d), type: %d, common neighbour: %t, margin: %.2f",
+		b.WriteString(fmt.Sprintf("  - NODE %s (HAProxy=%s:%d), type: %d, common neighbour: %t, margin: %.2f\n",
 			nodeID,
 			entry.HAProxyHost,
 			entry.HAProxyPort,
 			entry.NodeType,
 			entry.CommonNeighbour,
-			entry.Margin)
+			entry.Margin))
 
-		logger.Debugf("    - LOAD: highUsage=%.2f req/s, mediumhUsage=%.2f req/s, lowUsage=%.2f req/s",
-			entry.Load.RateHighUsage, entry.Load.RateMediumUsage, entry.Load.RateLowUsage)
+		b.WriteString(fmt.Sprintf("    - LOAD: highUsage=%.2f req/s, mediumhUsage=%.2f req/s, lowUsage=%.2f req/s\n",
+			entry.Load.RateHighUsage, entry.Load.RateMediumUsage, entry.Load.RateLowUsage))
 
-		logger.Debugf("    - FUNCTIONS:")
+		b.WriteString("    - FUNCTIONS:\n")
 		for _, funcName := range entry.Funcs {
-			logger.Debugf("       FUNC: %s", funcName)
+			b.WriteString(fmt.Sprintf("       FUNC: %s\n", funcName))
 		}
 	}
+	logger.Debug(b.String())
 }
 
 func debugStickTable(stName string, stContent map[string]*hasock.STEntry) {
@@ -365,11 +391,13 @@ func debugStickTable(stName string, stContent map[string]*hasock.STEntry) {
 
 	sort.Strings(clients)
 
-	logger.Debug("Stick-table \"" + stName + "\" content:")
+	var b strings.Builder
+	b.WriteString("Stick-table \"" + stName + "\" content:\n")
 	for _, key := range clients {
 		stEntry := stContent[key]
-		logger.Debugf("  - key=%s: cnt=%d rate=%d", key, stEntry.HTTPReqCnt, stEntry.HTTPReqRate)
+		b.WriteString(fmt.Sprintf("  - key=%s: cnt=%d rate=%d\n", key, stEntry.HTTPReqCnt, stEntry.HTTPReqRate))
 	}
+	logger.Debug(b.String())
 }
 
 func debugMsgNodeInfoRecalc(msg MsgNodeInfoRecalc) {
@@ -379,12 +407,14 @@ func debugMsgNodeInfoRecalc(msg MsgNodeInfoRecalc) {
 
 	logger := logging.Logger()
 
+	var b strings.Builder
 	for _nodeID, _limits := range msg.FuncLimits {
-		logger.Debugf("Functions limits for node %s:", _nodeID)
+		b.WriteString(fmt.Sprintf("Functions limits for node %s:\n", _nodeID))
 		for funcName := range _limits {
-			logger.Debugf("	Function %s LimitOut: %f", funcName, _limits[funcName])
+			b.WriteString(fmt.Sprintf("	Function %s LimitOut: %f\n", funcName, _limits[funcName]))
 		}
 	}
+	logger.Debug(b.String())
 }
 
 func debugMsgNodeInfoNMS(msg MsgNodeInfoNMS) {
@@ -393,16 +423,12 @@ func debugMsgNodeInfoNMS(msg MsgNodeInfoNMS) {
 	}
 
 	var buf strings.Builder
-
-	buf.WriteString(fmt.Sprintf("    - Node Type: %d\n", msg.NodeType))
 	if len(msg.Functions) == 0 {
-		buf.WriteString("    - Node's functions: empty\n")
+		buf.WriteString(fmt.Sprintf("MsgNodeInfoNMS content: type=%d functions=empty\n", msg.NodeType))
 	} else {
-		buf.WriteString(fmt.Sprintf("    - Node's functions: %v", msg.Functions))
+		buf.WriteString(fmt.Sprintf("MsgNodeInfoNMS content: type=%d functions=%v\n", msg.NodeType, msg.Functions))
 	}
-
-	logger := logging.Logger()
-	logger.Debug(buf.String())
+	logging.Logger().Debug(buf.String())
 }
 
 func debugMsgNodeInfoStatic(msg MsgNodeInfoStatic) {
@@ -410,12 +436,13 @@ func debugMsgNodeInfoStatic(msg MsgNodeInfoStatic) {
 		return
 	}
 
-	logger := logging.Logger()
+	var buf strings.Builder
 	if len(msg.Functions) == 0 {
-		logger.Debug("    - Node's functions: empty\n")
+		buf.WriteString("MsgNodeInfoStatic content: functions=empty\n")
 	} else {
-		logger.Debug(fmt.Sprintf("    - Node's functions: %v", msg.Functions))
+		buf.WriteString(fmt.Sprintf("MsgNodeInfoStatic content: functions=%v\n", msg.Functions))
 	}
+	logging.Logger().Debug(buf.String())
 }
 
 func debugFuncsLoad(load GroupsLoad) {
@@ -438,11 +465,13 @@ func debugNodeMetricPredictions(predictions map[string]float64) {
 
 	logger := logging.Logger()
 
-	logger.Debugf("Node's usage predictions:")
-	logger.Debugf("Cpu usage: %.2f, Ram usage: %.2f, Power usage: %.2f",
+	var b strings.Builder
+	b.WriteString("Node's usage predictions:\n")
+	b.WriteString(fmt.Sprintf("CPU usage: %.2f, RAM usage: %.2f, Power usage: %.2f\n",
 		predictions[cpuUsageNodeMetric],
 		predictions[ramUsageNodeMetric],
-		predictions[powerUsageNodeMetric])
+		predictions[powerUsageNodeMetric]))
+	logger.Debug(b.String())
 }
 
 func debugOverloadNMS(overload bool) {

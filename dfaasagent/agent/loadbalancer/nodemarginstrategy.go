@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strings"
 	"time"
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -500,9 +501,6 @@ func (strategy *NodeMarginStrategy) calculateWeights() (map[string]map[string]ui
 			nodeTo := targetKeys[iterator["targetIndex"]]
 			funcTo := strategy.targetNodes[nodeTo][iterator[nodeTo]]
 
-			logger.Debugf("Selected node: %s", nodeTo)
-			logger.Debugf("Selected function: %s", funcTo)
-
 			if mainteined[funcTo] > 0.0 {
 				// Get nodeTo usage percentage with its original load
 				var load GroupsLoad
@@ -510,7 +508,7 @@ func (strategy *NodeMarginStrategy) calculateWeights() (map[string]map[string]ui
 				load.RateMediumUsage = entries[nodeTo].Load.RateMediumUsage
 				load.RateLowUsage = entries[nodeTo].Load.RateLowUsage
 
-				logger.Debugf("Before requests forwarding (node %s):", nodeTo)
+				logger.Debugf("Predictions before reqs. forwarding (funcTo: %q, nodeTo: %q)", funcTo, nodeTo)
 				nodeToPredictions, err := strategy.getNodeMetricPredictions(entries[nodeTo].NodeType, load)
 				if err != nil {
 					return err
@@ -541,7 +539,7 @@ func (strategy *NodeMarginStrategy) calculateWeights() (map[string]map[string]ui
 						newLoad.RateLowUsage += rate
 					}
 				}
-				logger.Debugf("After requests forwarding (node %s):", nodeTo)
+				logger.Debugf("Predictions after reqs. forwarding (funcTo: %q, nodeTo: %q)", funcTo, nodeTo)
 				newNodeToPredictions, err := strategy.getNodeMetricPredictions(entries[nodeTo].NodeType, newLoad)
 				if err != nil {
 					return err
@@ -562,7 +560,7 @@ func (strategy *NodeMarginStrategy) calculateWeights() (map[string]map[string]ui
 						mainteinedGroupsLoad.RateLowUsage -= reqToTransfer
 					}
 
-					logger.Debugf("This node's state after requests forwarding: ")
+					logger.Debugf("Predictions this node's state after reqs. forwarding (funcTo: %q, nodeTo: %q)", funcTo, nodeTo)
 					nodePredictions, err := strategy.getNodeMetricPredictions(strategy.nodeInfo.nodeType, mainteinedGroupsLoad)
 					if err != nil {
 						return err
@@ -597,7 +595,7 @@ func (strategy *NodeMarginStrategy) calculateWeights() (map[string]map[string]ui
 					}
 				}
 			} else {
-				logger.Debugf("Selected function has no requests.")
+				logger.Debugf("Function %q has no requests", funcTo)
 				// Remove funcTo from all target nodes possibilities
 				for targetID, targetFuncs := range strategy.targetNodes {
 					for i := 0; i < len(targetFuncs); i++ {
@@ -694,18 +692,24 @@ func (strategy *NodeMarginStrategy) processMsgNodeInfoNMS(sender string, msg *Ms
 	}
 
 	if logging.GetDebugMode() {
-		logger.Debugf("Received node info message from node %s", sender)
-		logger.Debugf("Node %s type: %d", sender, msg.NodeType)
-		logger.Debugf("Node %s HAProxyHost: %s", sender, msg.HAProxyHost)
-		logger.Debugf("Node %s HAProxyPort: %d", sender, msg.HAProxyPort)
-		logger.Debugf("Max Values: CPU=%f, RAM=%f, Power=%f",
-			msg.MaxValues[cpuUsageNodeMetric], msg.MaxValues[ramUsageNodeMetric], msg.MaxValues[powerUsageNodeMetric])
+		var b strings.Builder
+		b.WriteString(fmt.Sprintf("Received node info message from node %s\n", sender))
+		b.WriteString(fmt.Sprintf("Node %s type: %d\n", sender, msg.NodeType))
+		b.WriteString(fmt.Sprintf("Node %s HAProxyHost: %s\n", sender, msg.HAProxyHost))
+		b.WriteString(fmt.Sprintf("Node %s HAProxyPort: %d\n", sender, msg.HAProxyPort))
+		b.WriteString(fmt.Sprintf("Max Values: CPU=%f, RAM=%f, Power=%f\n",
+			msg.MaxValues[cpuUsageNodeMetric], msg.MaxValues[ramUsageNodeMetric], msg.MaxValues[powerUsageNodeMetric]))
 
-		var funcs string
+		b.WriteString(fmt.Sprintf("Node %s functions: ", sender))
 		for i := 0; i < len(msg.Functions); i++ {
-			funcs += msg.Functions[i] + ", "
+			b.WriteString(msg.Functions[i])
+			if i < len(msg.Functions)-1 {
+				b.WriteString(", ")
+			}
 		}
-		logger.Debugf("Node %s functions: %s", sender, funcs)
+		b.WriteString("\n")
+
+		logger.Debug(b.String())
 	}
 
 	strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryNMS) error {
@@ -744,10 +748,13 @@ func (strategy *NodeMarginStrategy) processMsgNodeMarginInfoNMS(sender string, m
 		// Check if sender is a common neighbour. If not, ignore the message
 		if entries[sender].CommonNeighbour {
 			if logging.GetDebugMode() {
-				logger.Debugf("Received margin info message from node %s", sender)
-				logger.Debugf("Margin: %f", msg.Margin)
-				logger.Debugf("Load: High Usage=%f, Low Usage=%f, Medium Usage=%f",
-					msg.Load.RateHighUsage, msg.Load.RateLowUsage, msg.Load.RateMediumUsage)
+				var b strings.Builder
+				b.WriteString(fmt.Sprintf("Received margin info message from node %s\n", sender))
+				b.WriteString(fmt.Sprintf("Margin: %f\n", msg.Margin))
+				b.WriteString(fmt.Sprintf("Load: High Usage=%f, Low Usage=%f, Medium Usage=%f\n",
+					msg.Load.RateHighUsage, msg.Load.RateLowUsage, msg.Load.RateMediumUsage))
+
+				logger.Debug(b.String())
 			}
 			logger.Debugf("Setting received values for node %s into table", sender)
 

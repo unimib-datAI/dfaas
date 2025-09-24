@@ -22,6 +22,8 @@ if [[ -z "$1" || -z "$2" ]]; then
   echo "The image will be automatically tagged with 'dev'. Accepts multiple"
   echo "modes (eg. 'push k3s')."
   echo ""
+  echo "If 'push' is used, make sure that buildah is logged in to GHCR!"
+  echo ""
   echo "If image is operator, be sure to specify Dockerfile and to not use k3s"
   echo "mode, only push."
   exit 1
