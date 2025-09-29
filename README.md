@@ -117,7 +117,8 @@ $ ansible-playbook -i inventory.yaml setup_playbook.yaml
 ```
 
 This deploys a basic, fully functional DFaaS node using the Node Margin
-Strategy.
+Strategy. See [here](docs/agent-strategies.md) for a list of available
+strategies for the agents.
 
 You can make automatic calls to the node with the **operator**. More information
 about it in the [dedicated directory](operator).
