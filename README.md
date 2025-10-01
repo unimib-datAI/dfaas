@@ -134,6 +134,10 @@ script to automatically deploy the default function to the local DFaaS instance.
 If you used the Ansible playbook or the custom init script, this step is not
 required.
 
+We also created a basic ML inference function for OpenFaaS named
+`image-classification`. Refer to [its
+documentation](functions/image-classification/README.md) for more details.
+
 ### Invoke a function
 
 Each node exposes HAProxy with port `30080` on the node's IP address. Only

@@ -9,7 +9,7 @@ set -euo pipefail
 if [[ $# -gt 0 && ( "$1" == "-h" || "$1" == "--help" ) ]]; then
     echo "Usage: $0 [FUNCTION ...]"
     echo
-    echo "Deploy OpenFaaS functions to the local k3s cluster."
+    echo "Deploy basic OpenFaaS functions to the local k3s cluster."
     echo
     echo "Options:"
     echo "  -h, --help    Show this help message and exit."
@@ -17,6 +17,9 @@ if [[ $# -gt 0 && ( "$1" == "-h" || "$1" == "--help" ) ]]; then
     echo "Arguments:"
     echo "  FUNCTION      List of functions to deploy. If none are provided,"
     echo "                defaults (figlet, shasum, ocr) will be used."
+    echo
+    echo "Warning: the label 'dfaas.maxrate=100' is added to all deployed"
+    echo "functions."
     exit 0
 fi
 
@@ -44,6 +47,10 @@ for func in "${FUNCTIONS[@]}"; do
     fi
 
     # Deploy function.
+    #
+    # Note: the custom label is used by the DFaaS Agent with the Recalc
+    # Strategy. It is the max number of requests per second this function can
+    # handle.
     echo "faas-cli store deploy '$func' --label dfaas.maxrate=100"
     faas-cli store deploy "$func" --label dfaas.maxrate=100
 done

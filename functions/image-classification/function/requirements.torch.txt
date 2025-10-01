@@ -1,0 +1,5 @@
+# PyTorch dependencies must be listed in a separate file, since they are
+# downloaded from pytorch.org rather than PyPI.
+--index-url https://download.pytorch.org/whl/cpu
+torch==2.8.0 
+torchvision==0.23.0
