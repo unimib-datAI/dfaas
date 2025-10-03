@@ -130,9 +130,8 @@ exploiting the playbook and configuration files in
 ### Deploy functions
 
 Use the [`k8s/scripts/deploy-functions.sh`](k8s/scripts/deploy-functions.sh)
-script to automatically deploy the default function to the local DFaaS instance.
-If you used the Ansible playbook or the custom init script, this step is not
-required.
+script to automatically deploy the default functions to the local DFaaS
+instance. If you use the Ansible playbook, this step is done automatically.
 
 We also created a basic ML inference function for OpenFaaS named
 `image-classification`. Refer to [its
@@ -147,6 +146,8 @@ example:
 ```console
 $ curl -i http://127.0.0.1:30080/function/figlet -d 'Hello DFaaS world!'
 ```
+
+In this case we assume that you have deployed the figlet function.
 
 ### Execute workload to a node using [vegeta](https://github.com/tsenart/vegeta)
 
