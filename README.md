@@ -221,10 +221,13 @@ $ sudo kubectl logs --follow $POD
 
 ## Emulator
 
-For a complex setup running several emulated edge nodes with different
-topologies see [emulator directory](emulator). We provide instructions and
-examples to execute DFaaS nodes via [Containernet
-emulator](https://containernet.github.io/).
+Until commit 7a8512b, an emulator was available in the [emulator
+directory](https://github.com/unimib-datAI/dfaas/tree/7a8512be642321dfad8638b1c422ea59f3a98b32/emulator),
+allowing multiple DFaaS edge nodes to be emulated on a single machine using
+Docker and [Containernet](https://containernet.github.io/). The emulator was
+removed when DFaaS migrated to Kubernetes (k3s), which requires a separate VM
+for each node. The recommended approach is now to run multiple VMs that can
+automatically connect on a hypervisor, which is the method we currently use.
 
 ## Simulator
 
