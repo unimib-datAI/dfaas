@@ -83,7 +83,7 @@ func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig Bootstra
 			for {
 				logger.Debugf("Connecting to bootstrap node: %s", peerAddr.String())
 				err := p2pHost.Connect(ctx, *peerInfo)
-                if err == nil {
+				if err == nil {
 					logger.Infof("Connected to bootstrap node %s", peerInfo.String())
 					return
 				}

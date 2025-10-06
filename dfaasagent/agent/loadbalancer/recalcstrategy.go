@@ -8,16 +8,17 @@ package loadbalancer
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/bcicen/go-haproxy"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/pkg/errors"
 
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/communication"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/constants"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/hasock"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/offuncs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/ofpromq"
@@ -26,20 +27,22 @@ import (
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/utils/p2phostutils"
 )
 
-// In this file is implemented the Recalc strategy
+// This file contains the implementation of the Recalc strategy.
 
 // Struct representing a RecalcStrategy instance, which implements the Strategy interface
+
+// RecalcStrategy represent a Recalc strategy instance.
+//
+// As it implements the Strategy interface, it has the RunStrategy() and
+// OnReceived() methods.
+//
+// As an internal detail, the strategy action is divided into two steps.
 type RecalcStrategy struct {
 	hacfgupdater  hacfgupd.Updater
 	nodestbl      *nodestbl.TableRecalc
 	offuncsClient *offuncs.Client
-	recalc        recalc
-	it            int // = 0 // Number of agent loop iterations
-}
 
-// Private struct containing variables specific to the recalc algorithm, which
-// need to be shared amongst the two recalc steps
-type recalc struct {
+	// The following variables are specific to the Recalc algorithm.
 	nodeIDs         []peer.ID                     // IDs of the connected p2p nodes
 	stats           []*haproxy.Stat               // HAProxy stats
 	funcs           map[string]uint               // Our OpenFaaS functions with dfaas.maxrate limits
@@ -55,27 +58,37 @@ type recalc struct {
 	// For each function, the value is true if the node is currently in overload
 	// mode (req/s >= maxrate), false if underload
 	overloads map[string]bool
+
+	it int // = 0 // Number of agent loop iterations
 }
 
-//////////////////// PUBLIC FUNCTIONS FOR RECALC ////////////////////
-
 // RunStrategy handles the periodic execution of the recalculation function. It
-// should run in a goroutine
+// should run in a goroutine.
 func (strategy *RecalcStrategy) RunStrategy() error {
-	// Obtain the global logger object
 	logger := logging.Logger()
 
 	var millisNow, millisSleep int64
-	var err error
 
 	if _config.RecalcPeriod == 0 {
 		logger.Warn("Given RecalcPeriod must be a positive time duration, using 1 minute by default")
 		_config.RecalcPeriod = 1 * time.Minute
 	}
 
+	// Set the interval to wait after a failed recalculation attempt. This is
+	// used for both step 1 and step 2 error recovery.
+	failedInterval := 5 * time.Second
+
+	// Calculate the interval (in milliseconds) at which the recalculation
+	// should occur.
 	millisInterval := int64(_config.RecalcPeriod / time.Millisecond)
+
+	// Calculate half of the interval (in milliseconds). Used for timing the
+	// second recalculation step to occur halfway between intervals.
 	millisIntervalHalf := millisInterval / 2
 
+	// The Recalc strategy code is divided into two steps: the first gathers
+	// data and updates the local state, and the second calculates the new
+	// weights and updates the HAProxy configuration.
 	for {
 		millisNow = time.Now().UnixNano() / 1000000
 		millisSleep = millisInterval - (millisNow % millisInterval)
@@ -83,8 +96,8 @@ func (strategy *RecalcStrategy) RunStrategy() error {
 
 		if err := strategy.recalcStep1(); err != nil {
 			logger.Error("Failed Recalc step 1, skipping RunStrategy iteration ", err)
-			logger.Warn("Waiting 5 second before retrying RunStrategy")
-			time.Sleep(5 * time.Second)
+			logger.Warnf("Waiting %v before retrying RunStrategy", failedInterval.Seconds())
+			time.Sleep(failedInterval)
 			continue
 		}
 
@@ -92,116 +105,95 @@ func (strategy *RecalcStrategy) RunStrategy() error {
 		millisSleep = millisInterval - ((millisNow + millisIntervalHalf) % millisInterval)
 		time.Sleep(time.Duration(millisSleep) * time.Millisecond)
 
-		err = strategy.recalcStep2()
-		if err != nil {
-			return err
+		if err := strategy.recalcStep2(); err != nil {
+			logger.Error("Failed Recalc step 2, skipping RunStrategy iteration ", err)
+			logger.Warnf("Waiting %v before retrying RunStrategy", failedInterval.Seconds())
+			time.Sleep(failedInterval)
+			continue
 		}
+
+		httpserver.StrategySuccessIterations.Inc()
 	}
 }
 
-// OnReceived should be executed every time a message from a peer is received
+// OnReceived is executed every time a message from a peer is received.
 func (strategy *RecalcStrategy) OnReceived(msg *pubsub.Message) error {
 	var msgForType struct{ MsgType string }
-	err := json.Unmarshal(msg.GetData(), &msgForType)
-	if err != nil {
-		return errors.Wrap(err, "Error while deserializing a message from the PubSub subscription")
+	if err := json.Unmarshal(msg.GetData(), &msgForType); err != nil {
+		return fmt.Errorf("Error while deserializing a message from the PubSub subscription: %w", err)
 	}
 
 	switch msgForType.MsgType {
 	case StrMsgTextType:
 		var objMsg MsgText
-		err := json.Unmarshal(msg.GetData(), &objMsg)
-		if err != nil {
-			return errors.Wrap(err, "Error while deserializing a message from the PubSub subscription")
+		if err := json.Unmarshal(msg.GetData(), &objMsg); err != nil {
+			return fmt.Errorf("Error while deserializing a message from the PubSub subscription: %w", err)
 		}
 
 		processMsgText(msg.GetFrom().String(), &objMsg)
 	case StrMsgNodeInfoTypeRecalc:
 		var objMsg MsgNodeInfoRecalc
-		err := json.Unmarshal(msg.GetData(), &objMsg)
-		if err != nil {
-			return errors.Wrap(err, "Error while deserializing a message from the PubSub subscription")
+		if err := json.Unmarshal(msg.GetData(), &objMsg); err != nil {
+			return fmt.Errorf("Error while deserializing a message from the PubSub subscription: %w", err)
 		}
 
 		strategy.processMsgNodeInfoRecalc(msg.GetFrom().String(), &objMsg)
+	default:
+		logging.Logger().Warnf("Unrecognized message type %q", msgForType.MsgType)
 	}
 
 	return nil
 }
 
-//////////////////// PRIVATE FUNCTIONS FOR RECALC ////////////////////
-
 func (strategy *RecalcStrategy) recalcStep1() error {
 	var err error
 	logger := logging.Logger()
-	millisNow := time.Now().UnixNano() / 1000000
-	logger.Debugf("#################### RECALC: STEP 1 (UnixMillis %d) ####################", millisNow)
 
-	//////////////////// EXAMPLE TEXT MESSAGE ////////////////////
+	// Get list of connected nodes.
+	strategy.nodeIDs = p2phostutils.GetConnNodeIDsUniq(_p2pHost)
+	debugConnectedNodes(strategy.nodeIDs)
 
-	//err := communication.MarshAndPublish(MsgText{
-	//	MsgType: StrMsgTextType,
-	//	Text:    "I'm alive!",
-	//})
-	//if err != nil {
-	//	return err
-	//}
-
-	//////////////////// GET LIST OF CONNECTED NODES ////////////////////
-
-	strategy.recalc.nodeIDs = p2phostutils.GetConnNodeIDsUniq(_p2pHost)
-	debugConnectedNodes(strategy.recalc.nodeIDs)
-
-	//////////////////// GATHER HAPROXY STATS ////////////////////
-
-	//_recalc.stats, err = _hasockClient.Stats()
-	//if err != nil {
-	//	return errors.Wrap(err, "Error while gathering HAProxy stats from socket")
-	//}
-	//debugHAProxyStats(_recalc.stats)
-
-	//////////////////// GATHER INFO ABOUT OPENFAAS FUNCTIONS ////////////////////
-
-	strategy.recalc.funcs, err = strategy.offuncsClient.GetFuncsWithMaxRates()
+	// Get stats about OpenFaaS functions.
+	strategy.funcs, err = strategy.offuncsClient.GetFuncsWithMaxRates()
 	if err != nil {
-		return errors.Wrap(err, "get functions info from OpenFaaS")
+		return fmt.Errorf("get functions info from OpenFaaS: %w", err)
 	}
-	debugFuncs(strategy.recalc.funcs)
+	debugFuncs(strategy.funcs)
 
-	//////////////////// GATHER INFO FROM HAPROXY STICKTABLES st_users_func_* ////////////////////
-
-	strategy.recalc.userRates = map[string]float64{}
-
-	for funcName := range strategy.recalc.funcs {
+	// Get stats from HAProxy stick tables (st_users_func_*).
+	strategy.userRates = map[string]float64{}
+	for funcName := range strategy.funcs {
 		stName := fmt.Sprintf("st_users_func_%s", funcName)
 		stContent, err := hasock.ReadStickTable(stName)
 
 		if err != nil {
-			errWrap := errors.Wrap(err, "Error while reading the stick-table \""+stName+"\" from the HAProxy socket")
-			logger.Error(errWrap)
-			logger.Warn("Not changing userRates for stick-table \"" + stName + "\" but this should be ok")
-		} else {
-			for _, stEntry := range stContent {
-				// There should be only one line, with key "80", which is the port of the HAProxy frontend
-				strategy.recalc.userRates[funcName] = float64(stEntry.HTTPReqCnt) / float64(_config.RecalcPeriod/time.Second) * 2
-				// Note: the whole formula is multiplied by two at the end because we know we restarted HAProxy at the end of recalcStep2
-			}
+			logger.Error(fmt.Errorf("Error while reading the stick-table %q from the HAProxy socket: %w", stName, err))
+			logger.Warnf("Not changing userRates for stick-table %q but this should be ok", stName)
+			continue
+		}
+
+		for _, stEntry := range stContent {
+			// There should be only one line, with key "80", which is the port
+			// of the HAProxy frontend
+			//
+			// Note: the whole formula is multiplied by two at the end because
+			// we know we restarted HAProxy at the end of recalcStep2
+			strategy.userRates[funcName] = float64(stEntry.HTTPReqCnt) / float64(_config.RecalcPeriod/time.Second) * 2
 		}
 
 		debugStickTable(stName, stContent)
 	}
-	debugHAProxyUserRates(strategy.recalc.userRates)
+	debugHAProxyUserRates(strategy.userRates)
 
-	//////////////////// [NEW] GATHER INFO FROM HAPROXY STICKTABLES st_local_func_* ////////////////////
-
-	for funcName := range strategy.recalc.funcs {
+	// Get stats from HAProxy stick tables (st_local_func_*).
+	for funcName := range strategy.funcs {
 		stName := fmt.Sprintf("st_local_func_%s", funcName)
 		stContent, err := hasock.ReadStickTable(stName)
 
 		if err != nil {
-			errWrap := errors.Wrap(err, "Error while reading the stick-table \""+stName+"\" from the HAProxy socket")
-			logger.Error(errWrap)
-			logger.Warn("Not changing local rates for stick-table \"" + stName + "\" but this should be ok")
+			logger.Error(fmt.Errorf("Error while reading the stick-table %q from the HAProxy socket: %w", stName, err))
+			logger.Warnf("Not changing local rates for stick-table %q but this should be ok", stName)
+			continue
 		}
 
 		debugStickTable(stName, stContent)
@@ -209,13 +201,13 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 
 	//////////////////// [NEW] GATHER INFO FOR STICKTABLES OF DATA FROM OTHER NODES ////////////////////
 	/*
-		for funcName := range _recalc.funcs {
-			for _, nodeID := range _recalc.nodeIDs {
+		for funcName := range strategy.funcs {
+			for _, nodeID := range strategy.nodeIDs {
 				stName := fmt.Sprintf("st_other_node_%s_%s", funcName, nodeID.String())
 				stContent, err := hasock.ReadStickTable(&_hasockClient, stName)
 
 				if err != nil {
-					errWrap := errors.Wrap(err, "Error while reading the stick-table \""+stName+"\" from the HAProxy socket")
+					errWrap := fmt.Errorf("Error while reading the stick-table \"%s\" from the HAProxy socket: %w", stName, err)
 					logger.Error(errWrap)
 					logger.Warn("Not changing other nodes rates for stick-table \"" + stName + "\" but this should be ok")
 				}
@@ -224,85 +216,78 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 			}
 		}
 	*/
-	//////////////////// GATHER INFO FROM PROMETHEUS ////////////////////
 
-	strategy.recalc.afet, err = ofpromq.QueryAFET(_config.RecalcPeriod)
+	// Get info from Prometheus.
+	strategy.afet, err = ofpromq.QueryAFET(_config.RecalcPeriod)
 	if err != nil {
-		return errors.Wrap(err, "Error while execting Prometheus query")
+		return fmt.Errorf("Error while execting Prometheus query: %w", err)
 	}
-	debugPromAFET(_config.RecalcPeriod, strategy.recalc.afet)
+	debugPromAFET(_config.RecalcPeriod, strategy.afet)
 
-	strategy.recalc.invoc, err = ofpromq.QueryInvoc(_config.RecalcPeriod)
+	strategy.invoc, err = ofpromq.QueryInvoc(_config.RecalcPeriod)
 	if err != nil {
-		return errors.Wrap(err, "Error while executing Prometheus query")
+		return fmt.Errorf("Error while executing Prometheus query: %w", err)
 	}
-	debugPromInvoc(_config.RecalcPeriod, strategy.recalc.invoc)
+	debugPromInvoc(_config.RecalcPeriod, strategy.invoc)
 
-	strategy.recalc.serviceCount, err = ofpromq.QueryServiceCount()
+	strategy.serviceCount, err = ofpromq.QueryServiceCount()
 	if err != nil {
-		return errors.Wrap(err, "Error while executing Prometheus query")
+		return fmt.Errorf("Error while executing Prometheus query: %w", err)
 	}
-	debugPromServiceCount(strategy.recalc.serviceCount)
+	debugPromServiceCount(strategy.serviceCount)
 
-	strategy.recalc.cpuUsage, err = ofpromq.QueryCPUusage(_config.RecalcPeriod)
+	strategy.cpuUsage, err = ofpromq.QueryCPUusage(_config.RecalcPeriod)
 	if err != nil {
-		return errors.Wrap(err, "Error while executing Prometheus query")
+		return fmt.Errorf("Error while executing Prometheus query: %w", err)
 	}
-	debugPromCPUusage(_config.RecalcPeriod, strategy.recalc.cpuUsage)
+	debugPromCPUusage(_config.RecalcPeriod, strategy.cpuUsage)
 
-	strategy.recalc.ramUsage, err = ofpromq.QueryRAMusage(_config.RecalcPeriod)
+	strategy.ramUsage, err = ofpromq.QueryRAMusage(_config.RecalcPeriod)
 	if err != nil {
-		return errors.Wrap(err, "Error while executing Prometheus query")
+		return fmt.Errorf("Error while executing Prometheus query: %w", err)
 	}
-	debugPromRAMusage(_config.RecalcPeriod, strategy.recalc.ramUsage)
+	debugPromRAMusage(_config.RecalcPeriod, strategy.ramUsage)
 
-	if len(strategy.recalc.funcs) > 0 {
-		// Get function's name as a slice.
-		funcNames := make([]string, len(strategy.recalc.funcs))
+	// Also get specific info for each function.
+	if len(strategy.funcs) > 0 {
+		funcNames := make([]string, len(strategy.funcs))
 		i := 0
-		for k := range strategy.recalc.funcs {
+		for k := range strategy.funcs {
 			funcNames[i] = k
 			i++
 		}
 
-		strategy.recalc.perFuncCpuUsage, err = ofpromq.QueryCPUusagePerFunction(_config.RecalcPeriod, funcNames)
+		strategy.perFuncCpuUsage, err = ofpromq.QueryCPUusagePerFunction(_config.RecalcPeriod, funcNames)
 		if err != nil {
-			return errors.Wrap(err, "Error while executing Prometheus query")
+			return fmt.Errorf("Error while executing Prometheus query: %w", err)
 		}
-		debugPromCPUusagePerFunction(_config.RecalcPeriod, strategy.recalc.perFuncCpuUsage)
+		debugPromCPUusagePerFunction(_config.RecalcPeriod, strategy.perFuncCpuUsage)
 
-		strategy.recalc.perFuncRamUsage, err = ofpromq.QueryRAMusagePerFunction(_config.RecalcPeriod, funcNames)
+		strategy.perFuncRamUsage, err = ofpromq.QueryRAMusagePerFunction(_config.RecalcPeriod, funcNames)
 		if err != nil {
-			return errors.Wrap(err, "Error while executing Prometheus query")
+			return fmt.Errorf("Error while executing Prometheus query: %w", err)
 		}
-		debugPromRAMusagePerFunction(_config.RecalcPeriod, strategy.recalc.perFuncRamUsage)
+		debugPromRAMusagePerFunction(_config.RecalcPeriod, strategy.perFuncRamUsage)
 	}
 
-	//////////////////// OVERLOAD / UNDERLOAD MODE DECISION ////////////////////
-
-	strategy.recalc.overloads = map[string]bool{}
-
-	for funcName, maxRate := range strategy.recalc.funcs {
-		logger.Debugf("Computing if %s function is on overload", funcName)
-		invocRate, present := strategy.recalc.userRates[funcName]
+	// Set overload/underload state for each function.
+	strategy.overloads = map[string]bool{}
+	for funcName, maxRate := range strategy.funcs {
+		invocRate, present := strategy.userRates[funcName]
 
 		if !present || invocRate < float64(maxRate) {
-			strategy.recalc.overloads[funcName] = false
+			strategy.overloads[funcName] = false
 		} else {
-			strategy.recalc.overloads[funcName] = true
+			strategy.overloads[funcName] = true
 		}
+
+		logger.Debugf("Function %q overloaded: %t", funcName, strategy.overloads[funcName])
 	}
-	debugOverloads(strategy.recalc.overloads) // Debug purpose.
 
-	strategy.it++
-
-	//////////////////// LIMITS AND WEIGHTS CALCULATIONS ////////////////////
-
-	for funcName, ovrld := range strategy.recalc.overloads {
-		logger.Debugf("Calculating limits and weights for %s function", funcName)
-		if ovrld {
-			// Set all funcData.LimitIn to zero for this function
-			logger.Debugf("%s function is on overload! Setting LimitIn to 0", funcName)
+	// Calculate limits and weights.
+	for funcName, overloaded := range strategy.overloads {
+		if overloaded {
+			logger.Debugf("Function %q is on overloaded! Setting LimitIn to 0", funcName)
 			strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryRecalc) error {
 				for _, entry := range entries {
 					funcData, present := entry.FuncsData[funcName]
@@ -310,101 +295,70 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 						funcData.LimitIn = 0
 					}
 				}
-
 				return nil
 			})
+			continue
+		}
+
+		// If not overloaded, we calculate the rate margin.
+		invocRate, present := strategy.userRates[funcName]
+		maxRate := strategy.funcs[funcName]
+		var margin uint
+		if present {
+			margin = maxRate - uint(invocRate)
 		} else {
-			// Calculate the rate margin
-			logger.Debugf("Calculating rate margin for %s function", funcName)
-			invocRate, present := strategy.recalc.userRates[funcName]
-			maxRate := strategy.recalc.funcs[funcName]
-			logger.Debugf("%s function invocation rate is %f", funcName, invocRate)
-			logger.Debugf("%s function max rate is %d", funcName, maxRate)
-			var margin uint
-			if present {
-				margin = maxRate - uint(invocRate)
-			} else {
-				margin = maxRate
+			margin = maxRate
+		}
+		logger.Debugf("Function %q: invocation rate=%f max rate=%d margin=%d", funcName, invocRate, maxRate, margin)
+
+		strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryRecalc) error {
+			nNodes := uint(0)
+			for _, entry := range entries {
+				funcData, present := entry.FuncsData[funcName]
+				if present {
+					funcData.NodeWeight = 0
+					nNodes++
+					logger.Debugf("Set Weight to 0 for %s function", funcName)
+				}
 			}
-
-			logger.Debugf("%s function margin equal to %d", funcName, margin)
-
-			// Set all funcData.Weight to zero for this function, and set the
-			// LimitIn for each node
-			logger.Debugf("Setting Weight to 0 for %s function and setting LimitIn for each node", funcName)
-			strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryRecalc) error {
-				nNodes := uint(0)
-
+			if nNodes > 0 {
+				limitIn := margin / nNodes
 				for _, entry := range entries {
 					funcData, present := entry.FuncsData[funcName]
 					if present {
-						// Weights represent likelihood of send a request toward i-th
-						// function instance.
-						// Considering that this function instance is labelled as "underload"
-						// it is not necessary to send request towards other nodes.
-						funcData.NodeWeight = 0
-						nNodes++
-						logger.Debugf("Set Weight to 0 for %s function", funcName)
+						funcData.LimitIn = float64(limitIn)
+						logger.Debugf("Set LiminIn to %f for %s function", funcData.LimitIn, funcName)
 					}
 				}
-
-				// Note: if nNodes == 0, it means that (for now) i am the only
-				// one to have this function, so i don't have to set the LimitIn
-				// for anyone because no one needs it. Note also that the
-				// nodestbl.SetReceivedValues() function sets the LimitIn to
-				// zero, so not setting it here is ok
-
-				if nNodes > 0 {
-					limitIn := margin / nNodes // Equal distribution! May be
-					// replaced in the future with a more efficient algorithm
-
-					for _, entry := range entries {
-						funcData, present := entry.FuncsData[funcName]
-						if present {
-							funcData.LimitIn = float64(limitIn)
-							logger.Debugf("Set LiminIn to %f for %s function", funcData.LimitIn, funcName)
-						}
-					}
-				}
-
-				return nil
-			})
-		}
+			}
+			return nil
+		})
 	}
 
-	//////////////////// PRINT CONTENT OF NODESTBL ////////////////////
-
+	// Print content of NodeStbl.
 	strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryRecalc) error {
 		debugNodesTblContent(entries)
 		return nil
 	})
 
-	//////////////////// P2P MESSAGES PUBLISHING ////////////////////
-
+	// Publish messages on p2p network.
 	limits := map[string]map[string]float64{}
-
 	strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryRecalc) error {
-		for _, nodeID := range strategy.recalc.nodeIDs {
+		for _, nodeID := range strategy.nodeIDs {
 			strNodeID := nodeID.String()
-
 			entry, present := entries[strNodeID]
 			if present {
-				// If this node has sent me some messages before, i send him the
-				// limits according to the nodestbl
 				limits[strNodeID] = map[string]float64{}
 				for funcName, funcData := range entry.FuncsData {
 					limits[strNodeID][funcName] = funcData.LimitIn
 				}
 			} else {
-				// If this node has not sent me anything before, i send him all
-				// the functions i have, but with all limits set to zero
 				limits[strNodeID] = map[string]float64{}
-				for funcName := range strategy.recalc.funcs {
+				for funcName := range strategy.funcs {
 					limits[strNodeID][funcName] = 0
 				}
 			}
 		}
-
 		return nil
 	})
 
@@ -420,71 +374,63 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 	if err != nil {
 		return err
 	}
-	//////////////////// IF EVERYTHING OK, RETURN NIL ////////////////////
-
 	return nil
 }
 
 func (strategy *RecalcStrategy) recalcStep2() error {
-	var err error
-	logger := logging.Logger()
-	millisNow := time.Now().UnixNano() / 1000000
-	logger.Debugf("#################### RECALC: STEP 2 (UnixMillis %d) ####################", millisNow)
-
-	//////////////////// CALC WEIGHTS FOR FUNCTIONS IN OVERLOAD MODE ////////////////////
-
-	for funcName, ovrld := range strategy.recalc.overloads {
-		if ovrld {
-			// Calculate the weights for this function
-			strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryRecalc) error {
-				totLimitsOut := float64(0)
-
-				// Loop on all node in _nodestbl, check if that node
-				// has this function running; if is present sum the amount of
-				// req/sec forwardable to this node.
-				for _, entry := range entries {
-					funcData, present := entry.FuncsData[funcName]
-					if present {
-						totLimitsOut += funcData.LimitOut
-					}
-				}
-
-				if totLimitsOut <= 0 {
-					// If no node is available to help me with this function, i
-					// set totLimitsOut to 1, only to avoid division by zero
-					// problems. All the weights will be zero anyway
-					totLimitsOut = 1
-				}
-
-				// Loop on all all node in _nodestbl, if function funcName is present in this node
-				// that is in "oveload" state, is present also in i-th node, calculate
-				// weight for the instance of function in i-th node.
-				// Weight is based on LimitOut (number of req/sec forwardable to this node)
-				// divided by total forwardable request.
-				// All multiplied by 100, that is the sum of weights; this op allow to
-				// express weights as the percentage of requests forwarded by this node to
-				// other functions that runs on other nodes.
-				for _, entry := range entries {
-					funcData, present := entry.FuncsData[funcName]
-					if present {
-						funcData.NodeWeight = uint(funcData.LimitOut * constants.HAProxyMaxWeight / totLimitsOut)
-					}
-				}
-
-				return nil
-			})
+	// Calculate weights for functions in overloaded mode.
+	for funcName, overloaded := range strategy.overloads {
+		if !overloaded {
+			continue
 		}
+
+		// Calculate the weights for this function.
+		strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryRecalc) error {
+			totLimitsOut := float64(0)
+
+			// Loop on all node in _nodestbl, check if that node
+			// has this function running; if is present sum the amount of
+			// req/sec forwardable to this node.
+			for _, entry := range entries {
+				funcData, present := entry.FuncsData[funcName]
+				if present {
+					totLimitsOut += funcData.LimitOut
+				}
+			}
+
+			if totLimitsOut <= 0 {
+				// If no node is available to help me with this function, i
+				// set totLimitsOut to 1, only to avoid division by zero
+				// problems. All the weights will be zero anyway
+				totLimitsOut = 1
+			}
+
+			// Loop on all all node in _nodestbl, if function funcName is present in this node
+			// that is in "oveload" state, is present also in i-th node, calculate
+			// weight for the instance of function in i-th node.
+			// Weight is based on LimitOut (number of req/sec forwardable to this node)
+			// divided by total forwardable request.
+			// All multiplied by 100, that is the sum of weights; this op allow to
+			// express weights as the percentage of requests forwarded by this node to
+			// other functions that runs on other nodes.
+			for _, entry := range entries {
+				funcData, present := entry.FuncsData[funcName]
+				if present {
+					funcData.NodeWeight = uint(funcData.LimitOut * constants.HAProxyMaxWeight / totLimitsOut)
+				}
+			}
+
+			return nil
+		})
 	}
 
-	//////////////////// PRINT CONTENT OF NODESTBL ////////////////////
-
+	// Print content of nodestbl.
 	strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryRecalc) error {
 		debugNodesTblContent(entries)
 		return nil
 	})
 
-	//////////////////// UPDATE HAPROXY CONFIGURATION ////////////////////
-
+	// Update HAProxy config.
 	strMyself := _p2pHost.ID().String()
 
 	var hacfg *HACfgRecalc
@@ -495,22 +441,19 @@ func (strategy *RecalcStrategy) recalcStep2() error {
 			_config.OpenFaaSPort,
 			_config.RecalcPeriod,
 			entries,
-			strategy.recalc.funcs,
+			strategy.funcs,
 		)
 		return nil
 	})
 
-	err = strategy.updateHAProxyConfig(hacfg)
-	if err != nil {
-		return err
+	if err := strategy.updateHAProxyConfig(hacfg); err != nil {
+		return fmt.Errorf("Updating HAProxy config: %w", err)
 	}
-
-	//////////////////// IF EVERYTHING OK, RETURN NIL ////////////////////
 
 	return nil
 }
 
-// processMsgNodeInfoRecalc processes a node info message received from pubsub
+// processMsgNodeInfoRecalc processes a node info message received from pubsub.
 func (strategy *RecalcStrategy) processMsgNodeInfoRecalc(sender string, msg *MsgNodeInfoRecalc) error {
 	logger := logging.Logger()
 	myself := _p2pHost.ID().String()
@@ -520,80 +463,77 @@ func (strategy *RecalcStrategy) processMsgNodeInfoRecalc(sender string, msg *Msg
 	}
 
 	if logging.GetDebugMode() {
-		logger.Debugf("Received node info message from node %s", sender)
+		var debugBuffer strings.Builder
+		debugBuffer.WriteString(fmt.Sprintf("Received node info message from node %s\n", sender))
 		for _nodeID, _limits := range msg.FuncLimits {
-			logger.Debugf("Functions limits for node %s:", _nodeID)
+			debugBuffer.WriteString(fmt.Sprintf("Functions limits for node %s:\n", _nodeID))
 			for funcName := range _limits {
-				logger.Debugf("	Function %s LimitOut: %f", funcName, _limits[funcName])
+				debugBuffer.WriteString(fmt.Sprintf("\tFunction %s LimitOut: %f\n", funcName, _limits[funcName]))
 			}
 		}
+		logger.Debug(debugBuffer.String())
 	}
 
-	// Note: if the sender node do not "know" us (we aren't in his FuncLimits) we just ignore his message
+	// Note: if the sender node do not "know" us (we aren't in his FuncLimits)
+	// we just ignore his message.
 	funcLimits, present := msg.FuncLimits[myself]
-	if present {
-		logger.Debugf("Setting received values for node %s into table", sender)
-		return strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryRecalc) error {
-			// If the message arrives from a sender node with ID nodeID that is
-			// not present in _nodesbl yet, it is added to the table.
-			_, present := entries[sender]
+	if !present {
+		return nil
+	}
+	err := strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryRecalc) error {
+		var debugBuffer strings.Builder
+		debugBuffer.WriteString(fmt.Sprintf("Setting received values for node %s into table\n", sender))
+
+		// If the message arrives from a sender node with ID nodeID that is not
+		// present in _nodesbl yet, it is added to the table.
+		_, present := entries[sender]
+		if !present {
+			entries[sender] = &nodestbl.EntryRecalc{
+				FuncsData: map[string]*nodestbl.FuncData{},
+			}
+			debugBuffer.WriteString(fmt.Sprintf("Node %s was not present and has been added to the table\n", sender))
+		}
+
+		entries[sender].TAlive = time.Now()
+
+		entries[sender].HAProxyHost = msg.HAProxyHost
+		entries[sender].HAProxyPort = msg.HAProxyPort
+
+		// Remove from my table the functions limits which are no more present
+		// in the new updated message.
+		debugBuffer.WriteString(fmt.Sprintf("Removing functions limits no more present in the received message from node %s\n", sender))
+		for funcName := range entries[sender].FuncsData {
+			_, present := funcLimits[funcName]
 			if !present {
-				entries[sender] = &nodestbl.EntryRecalc{
-					FuncsData: map[string]*nodestbl.FuncData{},
-				}
-				logger.Debugf("Node %s was not present and has been added to the table", sender)
+				delete(entries[sender].FuncsData, funcName)
+				debugBuffer.WriteString(fmt.Sprintf("%s function is no more present in the received message from node %s and has been removed\n", funcName, sender))
 			}
+		}
 
-			entries[sender].TAlive = time.Now()
-
-			entries[sender].HAProxyHost = msg.HAProxyHost
-			entries[sender].HAProxyPort = msg.HAProxyPort
-
-			// Remove from my table the functions limits which are no more present
-			// in the new updated message
-			logger.Debugf("Removing functions limits no more present in the received message from node %s", sender)
-			for funcName := range entries[sender].FuncsData {
-				// Once this routine executed a message from another node of the
-				// p2p net has been received.
-				// If I (and I am the receiver node) stored in _nodestbl functions
-				// that are not more present in sender node, identified by the fact
-				// that they are not more present in received message, I can remove them
-				// from my local table.
-				_, present := funcLimits[funcName]
-				if !present {
-					delete(entries[sender].FuncsData, funcName)
-					logger.Debugf("%s function is no more present in the received message from node %s and has been removed", funcName, sender)
+		// Update the functions limits with the received values (also add new
+		// functions which weren't present before).
+		debugBuffer.WriteString(fmt.Sprintf("Updating functions limits with received values from node %s\n", sender))
+		for funcName, limit := range funcLimits {
+			_, present := entries[sender].FuncsData[funcName]
+			if present {
+				entries[sender].FuncsData[funcName].LimitOut = limit
+				debugBuffer.WriteString(fmt.Sprintf("Updated LimitOut to %f for %s function of node %s\n", limit, funcName, sender))
+			} else {
+				entries[sender].FuncsData[funcName] = &nodestbl.FuncData{
+					LimitIn:    0,
+					LimitOut:   limit,
+					NodeWeight: 0,
 				}
+				debugBuffer.WriteString(fmt.Sprintf("Set LimitOut to %f, LimitIn to 0 and NodeWeight to 0 for %s function of node %s\n", limit, funcName, sender))
 			}
+		}
 
-			// Update the functions limits with the received values (also add new
-			// functions which weren't present before)
-			logger.Debugf("Updating functions limits with received values from node %s", sender)
-			for funcName, limit := range funcLimits {
-				_, present := entries[sender].FuncsData[funcName]
-				if present {
-					// For each function received by sender node, updates
-					// corrisponding line of _nodestbl table.
-					// If entry for sender node is present, updates LimitOut
-					// for that node with received limit.
-					// LimitOut means number of req/sec that I can fwd
-					// toward this node.
-					// Note: this LimitOut is updated on the base of LimitIn
-					// for this function received by i-th node (sender).
-					entries[sender].FuncsData[funcName].LimitOut = limit
-					logger.Debugf("Updated LimitOut to %f for %s function of node %s", limit, funcName, sender)
-				} else {
-					entries[sender].FuncsData[funcName] = &nodestbl.FuncData{
-						LimitIn:    0,
-						LimitOut:   limit,
-						NodeWeight: 0,
-					}
-					logger.Debugf("Set LimitOut to %f, LimitIn to 0 and NodeWeight to 0 for %s function of node %s", limit, funcName, sender)
-				}
-			}
+		logger.Debug(debugBuffer.String())
 
-			return nil
-		})
+		return nil
+	})
+	if err != nil {
+		return err
 	}
 
 	return nil

@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bcicen/go-haproxy"
 	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/hasock"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
@@ -25,14 +24,11 @@ func debugConnectedNodes(nodeIDs []peer.ID) {
 		return
 	}
 
-	logger := logging.Logger()
-
 	var b strings.Builder
-
 	b.WriteString("Currently connected nodes:")
 
 	if len(nodeIDs) == 0 {
-		b.WriteString(" (none)")
+		b.WriteString(" 0 nodes")
 	} else {
 		shortIDs := make([]string, len(nodeIDs))
 
@@ -48,22 +44,7 @@ func debugConnectedNodes(nodeIDs []peer.ID) {
 		}
 	}
 
-	logger.Debug(b.String())
-}
-
-func debugHAProxyStats(stats []*haproxy.Stat) {
-	if !logging.GetDebugMode() {
-		return
-	}
-
-	logger := logging.Logger()
-
-	var b strings.Builder
-	b.WriteString("HAProxy stats:\n")
-	for _, item := range stats {
-		b.WriteString(fmt.Sprintf("  - %s (%s): %s (%d req/s)\n", item.PxName, item.SvName, item.Status, item.ReqRate))
-	}
-	logger.Debug(b.String())
+	logging.Logger().Debug(b.String())
 }
 
 func debugPromAFET(timeSpan time.Duration, data map[string]float64) {
@@ -93,8 +74,6 @@ func debugPromInvoc(timeSpan time.Duration, data map[string]map[string]float64) 
 		return
 	}
 
-	logger := logging.Logger()
-
 	keys := make([]string, 0, len(data))
 	for k := range data {
 		keys = append(keys, k)
@@ -103,13 +82,18 @@ func debugPromInvoc(timeSpan time.Duration, data map[string]map[string]float64) 
 	sort.Strings(keys)
 
 	var b strings.Builder
-	b.WriteString("Functions invocation counts (over " + timeSpan.String() + " time span):\n")
-	for _, funcName := range keys {
-		for code, rate := range data[funcName] {
-			b.WriteString(fmt.Sprintf("  - FUNC %s, CODE %s: %.2f req/s\n", funcName, code, rate))
+	b.WriteString(fmt.Sprintf("Functions invocation counts (over %v time span):", timeSpan))
+	if len(keys) > 0 {
+		b.WriteString("\n")
+		for _, funcName := range keys {
+			for code, rate := range data[funcName] {
+				b.WriteString(fmt.Sprintf("  - FUNC %q, CODE %s: %.2f req/s\n", funcName, code, rate))
+			}
 		}
+	} else {
+		b.WriteString(" no available functions")
 	}
-	logger.Debug(b.String())
+	logging.Logger().Debug(b.String())
 }
 
 func debugPromServiceCount(data map[string]int) {
@@ -249,8 +233,6 @@ func debugFuncs(data map[string]uint) {
 		return
 	}
 
-	logger := logging.Logger()
-
 	keys := make([]string, 0, len(data))
 	for k := range data {
 		keys = append(keys, k)
@@ -259,40 +241,14 @@ func debugFuncs(data map[string]uint) {
 	sort.Strings(keys)
 
 	var b strings.Builder
-	b.WriteString("Available functions:\n")
-	for _, funcName := range keys {
-		b.WriteString(fmt.Sprintf("  - FUNC %s: limit %d req/s\n", funcName, data[funcName]))
-	}
-	logger.Debug(b.String())
-}
-
-func debugOverloads(data map[string]bool) {
-	if !logging.GetDebugMode() {
-		return
-	}
-
-	logger := logging.Logger()
-
-	keys := make([]string, 0, len(data))
-	for k := range data {
-		keys = append(keys, k)
-	}
-
-	sort.Strings(keys)
-
-	var strMode string
-	var b strings.Builder
-	b.WriteString("Functions overload/underload modes:\n")
-	for _, funcName := range keys {
-		if data[funcName] {
-			strMode = "Overload"
-		} else {
-			strMode = "Underload"
+	b.WriteString(fmt.Sprintf("Available functions: %d functions", len(keys)))
+	if len(keys) > 0 {
+		b.WriteString("\n")
+		for _, funcName := range keys {
+			b.WriteString(fmt.Sprintf("  - Function %q (limit %d req/s)\n", funcName, data[funcName]))
 		}
-
-		b.WriteString(fmt.Sprintf("  - FUNC %s: %s\n", funcName, strMode))
 	}
-	logger.Debug(b.String())
+	logging.Logger().Debug(b.String())
 }
 
 func debugNodesTblContent(entries map[string]*nodestbl.EntryRecalc) {
@@ -382,8 +338,6 @@ func debugStickTable(stName string, stContent map[string]*hasock.STEntry) {
 		return
 	}
 
-	logger := logging.Logger()
-
 	clients := make([]string, 0, len(stContent))
 	for k := range stContent {
 		clients = append(clients, k)
@@ -392,12 +346,12 @@ func debugStickTable(stName string, stContent map[string]*hasock.STEntry) {
 	sort.Strings(clients)
 
 	var b strings.Builder
-	b.WriteString("Stick-table \"" + stName + "\" content:\n")
+	b.WriteString(fmt.Sprintf("Stick-table %q content:\n", stName))
 	for _, key := range clients {
 		stEntry := stContent[key]
 		b.WriteString(fmt.Sprintf("  - key=%s: cnt=%d rate=%d\n", key, stEntry.HTTPReqCnt, stEntry.HTTPReqRate))
 	}
-	logger.Debug(b.String())
+	logging.Logger().Debug(b.String())
 }
 
 func debugMsgNodeInfoRecalc(msg MsgNodeInfoRecalc) {

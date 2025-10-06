@@ -166,7 +166,7 @@ func (strategy *NodeMarginStrategy) RunStrategy() error {
 			return err
 		}
 
-		httpserver.NmsSuccessIterations.Inc()
+		httpserver.StrategySuccessIterations.Inc()
 
 		millisNow = time.Now().UnixNano() / 1000000
 		millisSleep = millisInterval - (millisNow % millisInterval)
