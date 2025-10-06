@@ -1,4 +1,5 @@
 # HAProxy configuration file updated by DFaaS agent on {{.Now}}
+# DFaaS Agent running with Recalc strategy.
 
 # See k8s/charts/values-haproxy.yaml for more information about global,
 # userlist, defaults and program sections.
@@ -20,8 +21,9 @@ defaults
   timeout connect 60s
   timeout server 60s
 
-# The configuration is generated and changed by the DFaaS agent from this point
-# on.
+{{/* Warning: The order of plain comments (“#”) in the HAProxy config is not
+preserved. From this point on, the configuration is managed by the DFaaS agent.
+*/}}
 
 {{/* #################### STICK-TABLES #################### */ -}}
 
@@ -283,5 +285,7 @@ backend be_others_func_{{$funcName}}
 {{/* Note: It could be divided in alla specific be for nodes and functions and returns a specific error message */ -}}
 {{/* 503 (Service Unavailable) status code can be used.
     At the moment 429 has been used for test purpose. */}}
+# Backend for deny exceeding limit in requests.
 backend be_limitInExceeds
+    http-response set-header DFaaS-Node-ID {{$.MyNodeID}}
     http-request deny deny_status 429
