@@ -241,11 +241,11 @@ func debugFuncs(data map[string]uint) {
 	sort.Strings(keys)
 
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("Available functions: %d functions", len(keys)))
+	b.WriteString(fmt.Sprintf("Available functions: %d", len(keys)))
 	if len(keys) > 0 {
-		b.WriteString("\n")
+		b.WriteString(" (limit req/s) ")
 		for _, funcName := range keys {
-			b.WriteString(fmt.Sprintf("  - Function %q (limit %d req/s)\n", funcName, data[funcName]))
+			b.WriteString(fmt.Sprintf("%q (%s) ", funcName, data[funcName]))
 		}
 	}
 	logging.Logger().Debug(b.String())
@@ -346,11 +346,16 @@ func debugStickTable(stName string, stContent map[string]*hasock.STEntry) {
 	sort.Strings(clients)
 
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("Stick-table %q content:\n", stName))
-	for _, key := range clients {
-		stEntry := stContent[key]
-		b.WriteString(fmt.Sprintf("  - key=%s: cnt=%d rate=%d\n", key, stEntry.HTTPReqCnt, stEntry.HTTPReqRate))
-	}
+	b.WriteString(fmt.Sprintf("HAProxy stick-table %q content:", stName))
+    if len(clients) == 0 {
+        b.WriteString(" empty")
+    } else {
+        b.WriteString("\n")
+        for _, key := range clients {
+            stEntry := stContent[key]
+            b.WriteString(fmt.Sprintf("  - key=%s: cnt=%d rate=%d\n", key, stEntry.HTTPReqCnt, stEntry.HTTPReqRate))
+        }
+    }
 	logging.Logger().Debug(b.String())
 }
 
