@@ -60,13 +60,10 @@ The weights recalculation occurs at intervals defined by the
 
 The following metrics are collected and used:
 
+* List of connected nodes,
+* List of functions with associated max rate for the local node,
 * Function invocation rates (requests per second for each function),
-* CPU and RAM usage,
-* Average function execution times,
-* Node overload status,
-* Service count (active requests to functions per node),
-* Per-function CPU usage,
-* Per-function RAM usage.
+* Node overload status.
 
 The Recalc strategy uses the concept of **maxrate** (maximum requests per
 second) for each function to determine how many requests a node can handle for

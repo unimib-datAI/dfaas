@@ -11,7 +11,6 @@ import (
 	"strings"
 	"time"
 
-	"github.com/bcicen/go-haproxy"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/peer"
 
@@ -21,7 +20,6 @@ import (
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/hasock"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/offuncs"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/ofpromq"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/utils/p2phostutils"
@@ -43,17 +41,9 @@ type RecalcStrategy struct {
 	offuncsClient *offuncs.Client
 
 	// The following variables are specific to the Recalc algorithm.
-	nodeIDs         []peer.ID                     // IDs of the connected p2p nodes
-	stats           []*haproxy.Stat               // HAProxy stats
-	funcs           map[string]uint               // Our OpenFaaS functions with dfaas.maxrate limits
-	userRates       map[string]float64            // Invocation rates for users only (in req/s) (from HAProxy stick-tables)
-	afet            map[string]float64            // Average Function Execution Times (from Prometheus)
-	invoc           map[string]map[string]float64 // Invocation rates (in req/s) (from Prometheus)
-	serviceCount    map[string]int
-	cpuUsage        map[string]float64
-	ramUsage        map[string]float64
-	perFuncCpuUsage map[string]float64
-	perFuncRamUsage map[string]float64
+	nodeIDs   []peer.ID          // IDs of the connected p2p nodes
+	funcs     map[string]uint    // Our OpenFaaS functions with dfaas.maxrate limits
+	userRates map[string]float64 // Invocation rates for users only (in req/s) (from HAProxy stick-tables)
 
 	// For each function, the value is true if the node is currently in overload
 	// mode (req/s >= maxrate), false if underload
@@ -160,7 +150,26 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 	}
 	debugFuncs(strategy.funcs)
 
-	// Get stats from HAProxy stick tables (st_users_func_*).
+	// For each function, the following stick tables are defined in HAProxy:
+	//
+	//  - Per-function, per-user requests: st_users_func_<funcName>
+	//    Purpose: Track invocation count and rate for each OpenFaaS function,
+	//    only for requests from users (not other nodes).
+	//
+	//  - Per-function, local requests: st_local_func_<funcName>
+	//    Purpose: Track invocation count and rate for each function handled by
+	//    the local OpenFaaS instance.
+	//
+	//  - Per-function, per-node requests: st_other_node_<funcName>_<nodeID>
+	//    Purpose: Track requests forwarded from other DFaaS nodes for each
+	//    function, per node.
+	//
+	// These stick tables are used for rate limiting, forwarding logic, LimitIn
+	// enforcement and tracking.
+	//
+	// Only st_users_func_<funcName> data are used to calculate weights!
+
+	// Get stats from HAProxy stick tables (st_users_func_<funcName>).
 	strategy.userRates = map[string]float64{}
 	for funcName := range strategy.funcs {
 		stName := fmt.Sprintf("st_users_func_%s", funcName)
@@ -185,7 +194,7 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 	}
 	debugHAProxyUserRates(strategy.userRates)
 
-	// Get stats from HAProxy stick tables (st_local_func_*).
+	// Get stats from HAProxy stick tables (st_local_func_<funcName>).
 	for funcName := range strategy.funcs {
 		stName := fmt.Sprintf("st_local_func_%s", funcName)
 		stContent, err := hasock.ReadStickTable(stName)
@@ -199,75 +208,18 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 		debugStickTable(stName, stContent)
 	}
 
-	//////////////////// [NEW] GATHER INFO FOR STICKTABLES OF DATA FROM OTHER NODES ////////////////////
-	/*
-		for funcName := range strategy.funcs {
-			for _, nodeID := range strategy.nodeIDs {
-				stName := fmt.Sprintf("st_other_node_%s_%s", funcName, nodeID.String())
-				stContent, err := hasock.ReadStickTable(&_hasockClient, stName)
-
-				if err != nil {
-					errWrap := fmt.Errorf("Error while reading the stick-table \"%s\" from the HAProxy socket: %w", stName, err)
-					logger.Error(errWrap)
-					logger.Warn("Not changing other nodes rates for stick-table \"" + stName + "\" but this should be ok")
-				}
-
-				debugStickTable(stName, stContent)
+	// Get stats for HAProxy stick tables (st_other_node_<funcName>_<nodeID>).
+	for funcName := range strategy.funcs {
+		for _, nodeID := range strategy.nodeIDs {
+			stName := fmt.Sprintf("st_other_node_%s_%s", funcName, nodeID.String())
+			stContent, err := hasock.ReadStickTable(stName)
+			if err != nil {
+				logger.Error(fmt.Errorf("Error while reading the stick-table %q from the HAProxy socket: %w", stName, err))
+				logger.Warnf("Not changing other node rates for stick-table %q but this should be ok", stName)
+				continue
 			}
+			debugStickTable(stName, stContent)
 		}
-	*/
-
-	// Get info from Prometheus.
-	strategy.afet, err = ofpromq.QueryAFET(_config.RecalcPeriod)
-	if err != nil {
-		return fmt.Errorf("Error while execting Prometheus query: %w", err)
-	}
-	debugPromAFET(_config.RecalcPeriod, strategy.afet)
-
-	strategy.invoc, err = ofpromq.QueryInvoc(_config.RecalcPeriod)
-	if err != nil {
-		return fmt.Errorf("Error while executing Prometheus query: %w", err)
-	}
-	debugPromInvoc(_config.RecalcPeriod, strategy.invoc)
-
-	strategy.serviceCount, err = ofpromq.QueryServiceCount()
-	if err != nil {
-		return fmt.Errorf("Error while executing Prometheus query: %w", err)
-	}
-	debugPromServiceCount(strategy.serviceCount)
-
-	strategy.cpuUsage, err = ofpromq.QueryCPUusage(_config.RecalcPeriod)
-	if err != nil {
-		return fmt.Errorf("Error while executing Prometheus query: %w", err)
-	}
-	debugPromCPUusage(_config.RecalcPeriod, strategy.cpuUsage)
-
-	strategy.ramUsage, err = ofpromq.QueryRAMusage(_config.RecalcPeriod)
-	if err != nil {
-		return fmt.Errorf("Error while executing Prometheus query: %w", err)
-	}
-	debugPromRAMusage(_config.RecalcPeriod, strategy.ramUsage)
-
-	// Also get specific info for each function.
-	if len(strategy.funcs) > 0 {
-		funcNames := make([]string, len(strategy.funcs))
-		i := 0
-		for k := range strategy.funcs {
-			funcNames[i] = k
-			i++
-		}
-
-		strategy.perFuncCpuUsage, err = ofpromq.QueryCPUusagePerFunction(_config.RecalcPeriod, funcNames)
-		if err != nil {
-			return fmt.Errorf("Error while executing Prometheus query: %w", err)
-		}
-		debugPromCPUusagePerFunction(_config.RecalcPeriod, strategy.perFuncCpuUsage)
-
-		strategy.perFuncRamUsage, err = ofpromq.QueryRAMusagePerFunction(_config.RecalcPeriod, funcNames)
-		if err != nil {
-			return fmt.Errorf("Error while executing Prometheus query: %w", err)
-		}
-		debugPromRAMusagePerFunction(_config.RecalcPeriod, strategy.perFuncRamUsage)
 	}
 
 	// Set overload/underload state for each function.
