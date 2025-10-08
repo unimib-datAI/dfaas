@@ -16,11 +16,15 @@ ENV CGO_ENABLED=0
 WORKDIR /usr/src/dfaasagent
 
 COPY dfaasagent/go.mod dfaasagent/go.sum ./
-RUN go mod download
+RUN go mod download -x
 
 COPY dfaasagent/ .
 
-RUN go build -v -o dfaasagent .
+# Cache Go modules and intermediate build files to speed up subsequent
+# compilations.
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go build -v -o dfaasagent .
 
 # Stage 2: Create a minimal image using Alpine.
 FROM alpine:3.22
