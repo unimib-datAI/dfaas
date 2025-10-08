@@ -52,18 +52,31 @@ The Recalc strategy is a basic dynamic load balancing approach in which each
 agent periodically recalculates the forwarding weights according to real-time
 metrics and the state of the system.
 
-The weights recalculation occurs at intervals defined by the
-`AGENT_RECALC_PERIOD` option. The recalculation process involves:
+The weights recalculation occurs at intervals defined by the  
+`AGENT_RECALC_PERIOD` option. The recalculation process involves two phases:
 
-1. The agent gather statistics and update local state,
-2. Then it calculates new weights and apply them to the HAProxy configuration.
+1. The agent gathers statistics and updates the local state.  
+2. It then calculates new weights and applies them to the HAProxy configuration.
+
+Between the two phases, there is a pause of `AGENT_RECALC_PERIOD`/2.
 
 The following metrics are collected and used:
 
-* List of connected nodes,
-* List of functions with associated max rate for the local node,
-* Function invocation rates (requests per second for each function),
-* Node overload status.
+* List of connected nodes with their supported functions and status (to
+  determine how many requests the local node can forward to neighbors).  
+* List of functions with the associated maximum rate for the local node.  
+* Function invocation rates for the local node over the previous 1 second.
+
+Among these metrics, the most important is the last one, as it determines the
+overload status for each function. Function invocation rates are compared with
+the corresponding maximum rate, and if the rate is higher the function is
+considered overloaded. If underloaded, the "margin" (the capacity to accept
+requests from users or other nodes) is calculated for each function and evenly
+distributed among all neighbors. In phase 2, the HAProxy weights are then
+computed and applied based on this information.
+
+At the end of each iteration, each node sends the status of each function to all
+other nodes.
 
 The Recalc strategy uses the concept of **maxrate** (maximum requests per
 second) for each function to determine how many requests a node can handle for
@@ -74,10 +87,6 @@ deploying a function to a node:
 ```console
 faas-cli deploy --image=[...] --name=[...] --label dfaas.maxrate=100
 ```
-
-The maxrate value is used to detect overload (when a node's invocation rate for
-a function approaches or exceeds its maxrate) and capacity (when the invocation
-rate is well below the maxrate, indicating the node can accept more requests).
 
 ### Node Margin
 
