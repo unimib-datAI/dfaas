@@ -189,6 +189,8 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 			// FIXME: The http_req_rate value is taken from the previous
 			// 1-second period, not averaged over the entire recalculation
 			// period. This is a known limitation of the current strategy.
+            //
+            // See: https://github.com/unimib-datAI/dfaas/issues/45
 			strategy.userRates[funcName] = float64(stEntry.HTTPReqRate)
 		}
 
