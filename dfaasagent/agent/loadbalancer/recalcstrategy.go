@@ -80,10 +80,6 @@ func (strategy *RecalcStrategy) RunStrategy() error {
 	// data and updates the local state, and the second calculates the new
 	// weights and updates the HAProxy configuration.
 	for {
-		millisNow = time.Now().UnixNano() / 1000000
-		millisSleep = millisInterval - (millisNow % millisInterval)
-		time.Sleep(time.Duration(millisSleep) * time.Millisecond)
-
 		if err := strategy.recalcStep1(); err != nil {
 			logger.Error("Failed Recalc step 1, skipping RunStrategy iteration ", err)
 			logger.Warnf("Waiting %v before retrying RunStrategy", failedInterval.Seconds())
@@ -103,6 +99,10 @@ func (strategy *RecalcStrategy) RunStrategy() error {
 		}
 
 		httpserver.StrategySuccessIterations.Inc()
+
+		millisNow = time.Now().UnixNano() / 1000000
+		millisSleep = millisInterval - (millisNow % millisInterval)
+		time.Sleep(time.Duration(millisSleep) * time.Millisecond)
 	}
 }
 
@@ -189,15 +189,15 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 			// FIXME: The http_req_rate value is taken from the previous
 			// 1-second period, not averaged over the entire recalculation
 			// period. This is a known limitation of the current strategy.
-            //
-            // See: https://github.com/unimib-datAI/dfaas/issues/45
+			//
+			// See: https://github.com/unimib-datAI/dfaas/issues/45
 			strategy.userRates[funcName] = float64(stEntry.HTTPReqRate)
 		}
 
 		debugStickTable(stName, stContent)
 	}
 
-	/* Just for debugging purpores, not really used to calculate weights.
+	/* Just for debugging purposes, not really used to calculate weights.
 
 	// Get stats from HAProxy stick tables (st_local_func_<funcName>).
 	for funcName := range strategy.funcs {
@@ -239,14 +239,15 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 		} else {
 			strategy.overloads[funcName] = true
 		}
-
-		logger.Debugf("Function %q overloaded: %t", funcName, strategy.overloads[funcName])
 	}
 
 	// Calculate limits and weights.
 	for funcName, overloaded := range strategy.overloads {
 		if overloaded {
-			logger.Debugf("Function %q is on overloaded! Setting LimitIn to 0", funcName)
+			logger.Debugf("Function %q: overloaded=true invocation_rate=%f max_rate=%d margin=0", funcName, strategy.userRates[funcName], maxRate)
+
+			// Set LimitIn to zero: other DFaaS nodes will not forward requests
+			// to this node for this function.
 			strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryRecalc) error {
 				for _, entry := range entries {
 					funcData, present := entry.FuncsData[funcName]
@@ -268,9 +269,10 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 		} else {
 			margin = maxRate
 		}
-		logger.Debugf("Function %q: invocation rate=%f max_rate=%d margin=%d", funcName, invocRate, maxRate, margin)
+		logger.Debugf("Function %q: overloaded=false invocation_rate=%f max_rate=%d margin=%d", funcName, invocRate, maxRate, margin)
 
 		strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryRecalc) error {
+			// Retrieve only DFaaS nodes running the same function.
 			nNodes := uint(0)
 			for _, entry := range entries {
 				funcData, present := entry.FuncsData[funcName]
@@ -280,6 +282,8 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 					logger.Debugf("Set Weight to 0 for %s function", funcName)
 				}
 			}
+
+			// The margin is evenly distributed among neighbors.
 			if nNodes > 0 {
 				limitIn := margin / nNodes
 				for _, entry := range entries {
@@ -358,20 +362,23 @@ func (strategy *RecalcStrategy) recalcStep2() error {
 			}
 
 			if totLimitsOut <= 0 {
-				// If no node is available to help me with this function, i
-				// set totLimitsOut to 1, only to avoid division by zero
-				// problems. All the weights will be zero anyway
+				// If no node is available to help me with this function, i set
+				// totLimitsOut to 1, only to avoid division by zero problems.
+				// All the weights will be zero anyway.
 				totLimitsOut = 1
 			}
 
-			// Loop on all all node in _nodestbl, if function funcName is present in this node
-			// that is in "oveload" state, is present also in i-th node, calculate
-			// weight for the instance of function in i-th node.
-			// Weight is based on LimitOut (number of req/sec forwardable to this node)
-			// divided by total forwardable request.
-			// All multiplied by 100, that is the sum of weights; this op allow to
-			// express weights as the percentage of requests forwarded by this node to
-			// other functions that runs on other nodes.
+			// Loop on all all node in _nodestbl, if function funcName is
+			// present in this node that is in "oveload" state, is present also
+			// in i-th node, calculate weight for the instance of function in
+			// i-th node.
+			//
+			// Weight is based on LimitOut (number of req/sec forwardable to
+			// this node) divided by total forwardable request.
+			//
+			// All multiplied by 100, that is the sum of weights; this op allow
+			// to express weights as the percentage of requests forwarded by
+			// this node to other functions that runs on other nodes.
 			for _, entry := range entries {
 				funcData, present := entry.FuncsData[funcName]
 				if present {
