@@ -57,6 +57,8 @@ func (strategy *StaticStrategy) RunStrategy() error {
 	millisInterval := int64(_config.RecalcPeriod / time.Millisecond)
 
 	for {
+		start := time.Now()
+
 		if err := strategy.publishNodeInfo(); err != nil {
 			logger.Error("Failed to publish node info, skipping RunStrategy iteration ", err)
 			logger.Warn("Waiting 5 second before retrying RunStrategy")
@@ -74,8 +76,10 @@ func (strategy *StaticStrategy) RunStrategy() error {
 		if err = strategy.setProxyWeights(); err != nil {
 			return fmt.Errorf("setting new weights: %w", err)
 		}
+		duration := time.Since(start)
 
 		httpserver.StrategySuccessIterations.Inc()
+		httpserver.StrategyIterationDuration.Set(duration.Seconds())
 
 		millisNow = time.Now().UnixNano() / 1000000
 		millisSleep = millisInterval - (millisNow % millisInterval)

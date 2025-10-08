@@ -32,6 +32,11 @@ var StrategySuccessIterations = promauto.NewCounter(prometheus.CounterOpts{
 	Help: "The total number of successfully strategy iterations.",
 })
 
+var StrategyIterationDuration = prometheus.NewGauge(prometheus.GaugeOpts{
+    Name: "dfaas_agent_strategy_iteration_duration_seconds",
+    Help: "Execution duration of a successfully strategy iteration in seconds",
+})
+
 // Initialize initializes this package (sets some vars, etc...)
 func Initialize(config config.Configuration) {
 	_config = config
@@ -50,6 +55,7 @@ func RunHttpServer() error {
 	customRegistry := prometheus.NewRegistry()
 
 	customRegistry.MustRegister(StrategySuccessIterations)
+	customRegistry.MustRegister(StrategyIterationDuration)
 
 	http.HandleFunc("/healthz", healthzHandler)
 	http.Handle("/metrics", promhttp.HandlerFor(customRegistry, promhttp.HandlerOpts{}))

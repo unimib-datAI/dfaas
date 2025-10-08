@@ -80,25 +80,32 @@ func (strategy *RecalcStrategy) RunStrategy() error {
 	// data and updates the local state, and the second calculates the new
 	// weights and updates the HAProxy configuration.
 	for {
+		startStep1 := time.Now()
 		if err := strategy.recalcStep1(); err != nil {
 			logger.Error("Failed Recalc step 1, skipping RunStrategy iteration ", err)
 			logger.Warnf("Waiting %v before retrying RunStrategy", failedInterval.Seconds())
 			time.Sleep(failedInterval)
 			continue
 		}
+		durationStep1 := time.Since(startStep1)
 
 		millisNow = time.Now().UnixNano() / 1000000
 		millisSleep = millisInterval - ((millisNow + millisIntervalHalf) % millisInterval)
 		time.Sleep(time.Duration(millisSleep) * time.Millisecond)
 
+		startStep2 := time.Now()
 		if err := strategy.recalcStep2(); err != nil {
 			logger.Error("Failed Recalc step 2, skipping RunStrategy iteration ", err)
 			logger.Warnf("Waiting %v before retrying RunStrategy", failedInterval.Seconds())
 			time.Sleep(failedInterval)
 			continue
 		}
+		durationStep2 := time.Since(startStep2)
+
+		totalDuration := durationStep1 + durationStep2
 
 		httpserver.StrategySuccessIterations.Inc()
+		httpserver.StrategyIterationDuration.Set(totalDuration.Seconds())
 
 		millisNow = time.Now().UnixNano() / 1000000
 		millisSleep = millisInterval - (millisNow % millisInterval)
@@ -244,7 +251,7 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 	// Calculate limits and weights.
 	for funcName, overloaded := range strategy.overloads {
 		if overloaded {
-			logger.Debugf("Function %q: overloaded=true invocation_rate=%f max_rate=%d margin=0", funcName, strategy.userRates[funcName], maxRate)
+			logger.Debugf("Function %q: overloaded=true invocation_rate=%f max_rate=%d margin=0", funcName, strategy.userRates[funcName], strategy.funcs[funcName])
 
 			// Set LimitIn to zero: other DFaaS nodes will not forward requests
 			// to this node for this function.

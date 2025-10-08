@@ -98,6 +98,8 @@ func (strategy *NodeMarginStrategy) RunStrategy() error {
 	var ramUsage = make(map[string]float64)
 
 	for {
+		start := time.Now()
+
 		cpuUsage, err = ofpromq.QueryCPUusage(_config.RecalcPeriod)
 		if err != nil {
 			logger.Error("Failed to execute Prometheus QueryCPUusage query, skipping RunStrategy iteration ", err)
@@ -166,7 +168,10 @@ func (strategy *NodeMarginStrategy) RunStrategy() error {
 			return err
 		}
 
+		duration := time.Since(start)
+
 		httpserver.StrategySuccessIterations.Inc()
+		httpserver.StrategyIterationDuration.Set(duration.Seconds())
 
 		millisNow = time.Now().UnixNano() / 1000000
 		millisSleep = millisInterval - (millisNow % millisInterval)
