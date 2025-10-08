@@ -126,13 +126,13 @@ type Client struct {
 }
 
 // NewClient returns a new Client.
-func NewClient(hostname string, port uint, username, password string) (*Client, error) {
+func NewClient(hostname string, port uint, username, password string) *Client {
 	return &Client{
 		hostname: hostname,
 		port:     port,
 		username: username,
 		password: password,
-	}, nil
+	}
 }
 
 // doFuncsRequest gets info about functions from "/system/functions" endpoint.

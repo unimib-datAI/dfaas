@@ -54,16 +54,12 @@ type TableRecalc struct {
 
 // InitTable initializes a TableRecalc's fields if they are empty
 func (tbl *TableRecalc) initTable() {
-	logger := logging.Logger()
-
 	if tbl.entries == nil {
 		tbl.entries = map[string]*EntryRecalc{}
-		logger.Debug("Initialized table entries")
 	}
 
 	if tbl.mutex == nil {
 		tbl.mutex = &sync.Mutex{}
-		logger.Debug("Initialized table mutex")
 	}
 }
 

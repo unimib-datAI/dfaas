@@ -16,60 +16,63 @@ import (
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
 )
 
-// In this file is implemented the Factory creational pattern,
-// useful to create the correct Strategy instance
+// This file contains the implementation of the factory pattern for defining and
+// creating specific load balancing strategies.
+//
+// The core of the factory is the strategyFactor interface. To create a new
+// strategy, you need to define two types:
+//
+// 1. One that implements the strategyFactor interface,
+// 2. One that implements the Strategy interface.
+//
+// Usually, each strategy has a corresponding HAProxy configuration template,
+// embedded using the embed module.
+//
+// After defining a new strategy factory and strategy, you need to update the
+// registry in the Initialize method in the loadbalancer.go filep.
 
 // strategyFactory is the interface which represents a generic strategy factory.
-// Every factory for new strategies must implement this interface
+// Every factory for new strategies must implement this interface.
 type strategyFactory interface {
-	// Method to create a new Strategy instance
+	// Creates and returns a new Strategy instance for this strategy.
 	createStrategy() (Strategy, error)
 }
 
-////////////////// RECALC STRATEGY FACTORY ///////////////////
-
-// Struct representing the factory for Recalc strategy, which implements strategyFactory interface
+// recalcStrategyFactory is the strategy factory for the Recalc strategy.
 type recalcStrategyFactory struct{}
 
 //go:embed haproxycfgrecalc.tmpl
 var haproxycfgrecalcTemplate string
 
-// createStrategy creates and returns a new RecalcStrategy instance
+// createStrategy creates and returns a new RecalcStrategy instance.
 func (strategyFactory *recalcStrategyFactory) createStrategy() (Strategy, error) {
 	strategy := &RecalcStrategy{}
 
+	// Avoid premature expiration of nodes in the table between strategy runs.
 	strategy.nodestbl = nodestbl.NewTableRecalc(_config.RecalcPeriod + (_config.RecalcPeriod / 5))
 
 	strategy.hacfgupdater = hacfgupd.Updater{}
-
-	err := strategy.hacfgupdater.LoadTemplate(haproxycfgrecalcTemplate)
-	if err != nil {
-		return nil, err
+	if err := strategy.hacfgupdater.LoadTemplate(haproxycfgrecalcTemplate); err != nil {
+		return nil, fmt.Errorf("loading HAProxy config. template: %w", err)
 	}
 
-	strategy.offuncsClient, err = offuncs.NewClient(_config.OpenFaaSHost,
+	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost,
 		_config.OpenFaaSPort,
 		_config.OpenFaaSUser,
 		_config.OpenFaaSPass)
-	if err != nil {
-		return nil, err
-	}
 
-	strategy.recalc = recalc{}
 	strategy.it = 0
 
 	return strategy, nil
 }
 
-////////////////// NODE MARGIN STRATEGY FACTORY ///////////////////
-
-// Struct representing the factory for Node Margin strategy, which implements strategyFactory interface
+// nodeStrategyFactory is the strategy factory for the Node Margin strategy.
 type nodeMarginStrategyFactory struct{}
 
 //go:embed haproxycfgnms.tmpl
 var haproxycfgnmsTemplate string
 
-// createStrategy creates and returns a new NodeMarginStrategy instance
+// createStrategy creates and returns a new NodeMarginStrategy instance.
 func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, error) {
 	strategy := &NodeMarginStrategy{}
 
@@ -82,13 +85,10 @@ func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, er
 		return nil, err
 	}
 
-	strategy.offuncsClient, err = offuncs.NewClient(_config.OpenFaaSHost,
+	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost,
 		_config.OpenFaaSPort,
 		_config.OpenFaaSUser,
 		_config.OpenFaaSPass)
-	if err != nil {
-		return nil, err
-	}
 
 	strategy.forecasterClient = forecaster.Client{
 		Hostname: constants.ForecasterHost,
@@ -103,16 +103,14 @@ func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, er
 	return strategy, nil
 }
 
-// Struct representing the factory for Static strategy, which implements
-// strategyFactory interface.
+// staticStrategyFactory is the strategy factory for the Static strategy.
 type staticStrategyFactory struct{}
 
 //go:embed haproxycfgstatic.tmpl
 var haproxycfgStaticTemplate string
 
-// createStrategy creates and returns a new NodeMarginStrategy instance
+// createStrategy creates and returns a new Static instance.
 func (strategyFactory *staticStrategyFactory) createStrategy() (Strategy, error) {
-	var err error
 	strategy := &StaticStrategy{}
 
 	// TODO: Use a custom table.
@@ -124,13 +122,10 @@ func (strategyFactory *staticStrategyFactory) createStrategy() (Strategy, error)
 		return nil, fmt.Errorf("loading HAProxy config. template: %w", err)
 	}
 
-	strategy.offuncsClient, err = offuncs.NewClient(_config.OpenFaaSHost,
+	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost,
 		_config.OpenFaaSPort,
 		_config.OpenFaaSUser,
 		_config.OpenFaaSPass)
-	if err != nil {
-		return nil, err
-	}
 
 	strategy.nodeInfo = nodeInfoStatic{}
 	strategy.targetNodes = make(map[string][]string)

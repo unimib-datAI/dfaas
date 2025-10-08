@@ -52,7 +52,7 @@ type Configuration struct {
 	BootstrapNodesFile string `mapstructure:"AGENT_BOOTSTRAP_NODES_FILE"`
 
 	// If true, agent's initialization loops until all bootstrap nodes can be
-    // contacted.
+	// contacted.
 	BootstrapForce bool `mapstructure:"AGENT_BOOTSTRAP_FORCE"`
 
 	// Unique string used for grouping peers for discovery.
