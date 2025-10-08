@@ -54,8 +54,6 @@ type TableRecalc struct {
 
 // InitTable initializes a TableRecalc's fields if they are empty
 func (tbl *TableRecalc) initTable() {
-	logger := logging.Logger()
-
 	if tbl.entries == nil {
 		tbl.entries = map[string]*EntryRecalc{}
 	}

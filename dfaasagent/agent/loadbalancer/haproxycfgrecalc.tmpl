@@ -21,43 +21,33 @@ defaults
   timeout connect 60s
   timeout server 60s
 
-{{/* Warning: The order of plain comments ("#") in the HAProxy config is not
-preserved. From this point on, the configuration is managed by the DFaaS agent.
-*/}}
-
-{{/* #################### STICK-TABLES #################### */ -}}
-
 {{range $funcName, $func := .Functions -}}
-{{/* Stick-Table for specific function invocations:
-    - not denied
-    - from users only
-    - only one row, for all clients
-The size is set to 10, but setting it to 1 should be already enough. */ -}}
+# Stick table for invocations of function {{$funcName}} from users, not from
+# other DFaaS nodes. We just use one row for all clients. Denied requests are
+# not counted here.
+#
+# Among all stick tables, this is the only one used by the DFaaS agent to
+# calculate forwarding weights.
 backend st_users_func_{{$funcName}}
-    stick-table type integer size 10 expire {{$.StrRecalc}} store http_req_cnt,http_req_rate(1s)
-{{/* Stick-Table for specific function invocations:
-    - not denied
-    - to local OpenFaaS instance only
-    - only one row, for all clients
-The size is set to 10, but setting it t!bgo 1 should be already enough. */ -}}
+    stick-table type integer size 10 expire {{$.SecsRecalc}}s store http_req_cnt,http_req_rate(1s)
+
+# Stick table for invocations of functions {{$funcName}} from all sources (users
+# and other DFaaS nodes). Same structure as st_users_func{{$funcName}}.
 backend st_local_func_{{$funcName}}
-    stick-table type integer size 10 expire {{$.StrRecalc}} store http_req_cnt,http_req_rate(1s)
+    stick-table type integer size 10 expire {{$.SecsRecalc}}s store http_req_cnt,http_req_rate(1s)
 
-{{/* [NEW] Stick-Table for counting request from others agents:
-    - One table for each tuple (node, function).
-    - Key is destination port (80).
-    - Counting request num and rate.
-    - RecalTime for expiring why LimitIn are updated every "RecalPeriod" time.
-    - Count number of requests and check rate for periods of 1 sec.
-*/ -}}
 {{range $nodeID, $_ := $func.LimitsIn -}}
+# Stick table for invocation of function {{$funcName}} from the DFaaS node with
+# id {{$nodeID}}.
+#
+# We use destination port (80) as key and we count requests num and rate.
+# RecalTime for expiring why LimitIn are updated every "RecalPeriod" time. Count
+# number of requests and check rate for periods of 1 sec.
 backend st_other_node_{{$funcName}}_{{$nodeID}}
-    stick-table type integer size 10 expire {{$.StrRecalc}} store http_req_cnt,http_req_rate(1s)
+    stick-table type integer size 10 expire {{$.SecsRecalc}}s store http_req_cnt,http_req_rate(1s)
 {{end}}
 
 {{end}}
-
-{{/* #################### FRONTEND #################### */ -}}
 
 frontend fe_main
     bind *:80
@@ -179,100 +169,93 @@ frontend fe_main
 
     {{end}}
 
+# Note: for all backend we enable HTTP health checks and HTTP connection closing
+# on the server side. This provides the lowest latency on the client side (slow
+# network) and the fastest session reuse on the server side to save server
+# resources.
+
 # Backend for simple 200 OK responses.
 backend be_ok
     http-request return status 200 content-type "text/plain" string "This is a DFaaS node. Call a function with /function/<funcname>\n"
 
 # Backend for health check.
 backend be_healthz
-    # Perform HTTP health checks.
     option httpchk GET /healthz
-
-    # Enable HTTP connection closing on the server side. This provides the
-    # lowest latency on the client side (slow network) and the fastest session
-    # reuse on the server side to save server resources.
     option http-server-close
-
     server healthz dfaas-agent:80 check
 
-{{/* #################### BACKEND FOR MANAGING OPENFAAS FUNCTIONS #################### */ -}}
-
+# Backend for OpenFaaS Administrative API (/system/functions)
 backend be_system_funcs
-    {{/* Perform HTTP health checks */ -}}
     option httpchk GET /
-    {{/* Enable HTTP connection closing on the server side. This provides the lowest latency
-    on the client side (slow network) and the fastest session reuse on the server side
-    to save server resources */ -}}
     option http-server-close
     server system_funcs {{.OpenFaaSHost}}:{{.OpenFaaSPort}} check
 
-{{/* #################### BACKEND FOR SELF OPENFAAS INSTANCE #################### */ -}}
-
+# Backend for the local OpenFaaS instance. Requests (functions) arriving here
+# will be handled locally.
+#
+# Requests may originate directly from a client or from another DFaaS node. We
+# differentiate these cases using the DFaaS-Node-ID header.
+#
+# When the OpenFaaS instance responds, we add an X-Server header containing the
+# node's IP address and a DFaaS-Node-ID header with the agent's ID (libp2p ID).
+# This allows clients to identify which DFaaS node processed the request.
 backend be_myself
-    {{/* Perform HTTP health checks (with the OPTIONS method by default) */ -}}
     option httpchk GET /
-    {{/* Enable insertion of the X-Forwarded-For header to requests sent to servers */ -}}
-    option forwardfor
-    {{/* Enable HTTP connection closing on the server side. This provides the lowest latency
-    on the client side (slow network) and the fastest session reuse on the server side
-    to save server resources */ -}}
     option http-server-close
 
-    {{/* Add DFaaS-Node-ID header (in any case) */ -}}
+    # Automatically add the X-Forwarded-For header to let know the local
+    # OpenFaaS instance of the original client's IP address.
+    option forwardfor
+
+    # Always include the DFaaS-Node-ID header containing the node's ID.
     http-request add-header DFaaS-Node-ID {{.MyNodeID}}
 
-    {{/* [NEW] Replicated ACLs for visibility. */}}
-    acl has_nodeid_hdr var(req.hdrcnt_nodeid),add(0) gt 0 {{- /* The ",add(0)" is needed here, for some reason (maybe haproxy bug? like int/str conversion or something... if you remove it there will be problems!!!) */}}
+    # Replicate here some ACLs from the frontend. They will be used to track
+    # statistics.
+    acl has_nodeid_hdr var(req.hdrcnt_nodeid),add(0) gt 0
     {{range $nodeID, $_ := $.Nodes}}
     acl is_node_{{$nodeID}} req.hdr(DFaaS-Node-ID) -m str {{$nodeID}}
     {{end}}
 
+    # For each function, record statistics in a dedicated stick table named
+    # st_local_func_<funcname>. Additionally, at the neighbor node level, track
+    # each function/node pair in a dedicated stick table named
+    # st_other_node_<funcname>_<nodeid>.
     {{range $funcName, $func := .Functions -}}
     acl is_func_{{$funcName}} path_beg /function/{{$funcName}}
-    {{/* Track all clients (this works because dst_port is 80 for every possible request) */ -}}
-    http-request track-sc2 dst_port table st_local_func_{{$funcName}} if is_func_{{$funcName}} {{- /* Using Sticky-Counter #2 */}}
-    
-    {{/* [NEW] ########### TRACKING WITH STICK TABLES FWD MESSAGED ########## */ -}}
-    {{/* How it works?
-            - If a message has a header "DFaaSNode..." it comes from another DFaaS node, indeed the message
-              has been forwarded.
-            - If a message has been forwarded from another node, increment row in a specific stick table.
-        If the above condition are satisfied increment specific table.
-    */ -}}
+    http-request track-sc2 dst_port table st_local_func_{{$funcName}} if is_func_{{$funcName}}
+
     {{range $nodeID, $_ := $func.LimitsIn -}}
-    http-request track-sc0 dst_port table st_other_node_{{$funcName}}_{{$nodeID}} if is_func_{{$funcName}} has_nodeid_hdr is_node_{{$nodeID}} {{/*is_hdr_nodeID_known*/ -}} {{- /* Using Sticky-Counter #0 */}}
+    http-request track-sc0 dst_port table st_other_node_{{$funcName}}_{{$nodeID}} if is_func_{{$funcName}} has_nodeid_hdr is_node_{{$nodeID}}
     {{end}}
     
     {{end}}
 
-    # Add X-Server (IP:port) and DFaaS-Node-ID (libp2p's ID) headers to response
-    # to let clients know which DFaaS server served the request.
     http-response set-header X-Server %s
     http-response set-header DFaaS-Node-ID {{$.MyNodeID}}
 
     server {{$.NodeIP}} {{.OpenFaaSHost}}:{{.OpenFaaSPort}} check
 
-{{/* #################### BACKEND FOR OTHER NODES' HAPROXIES #################### */ -}}
-
 {{range $funcName, $func := .Functions -}}
+# Backend responsible for forwarding incoming user requests to other DFaaS
+# nodes. This backend is specific to the {{$funcName}} function.
+#
+# Forwarding follows a round-robin method with custom weights.
+#
+# As with the be_myself backend, the reply will have X-Server with the DFaaS
+# agent IP address that served the requests and its node ID in DFaaS-Node-ID
+# header.
+#
+# Neighbor nodes with a weight of 0 will be excluded.
 backend be_others_func_{{$funcName}}
-    {{/* Enable load-balancing using custom weights */ -}}
-    balance roundrobin
-
-    {{/* Perform HTTP health checks (with the OPTIONS method by default) */ -}}
     option httpchk GET /
-    {{/* Enable insertion of the X-Forwarded-For header to requests sent to servers */ -}}
     option forwardfor
-    {{/* Enable HTTP connection closing on the server side. This provides the lowest latency
-    on the client side (slow network) and the fastest session reuse on the server side
-    to save server resources */ -}}
     option http-server-close
 
-    {{/* Add DFaaS-Node-ID header (in any case) */ -}}
-    http-request add-header DFaaS-Node-ID {{$.MyNodeID}}
+    balance roundrobin
 
-    {{/* Add X-Server header to response to know which server served the request */ -}}
     http-response set-header X-Server %s
+    http-request add-header DFaaS-Node-ID {{$.MyNodeID}}
 
     {{range $nodeID, $weight := $func.Weights -}}
     {{if (gt $weight 0) -}}
@@ -281,11 +264,14 @@ backend be_others_func_{{$funcName}}
     {{end}}
 {{end}}
 
-{{/* [NEW] #################### BACKEND FOR DENY EXCEEDING LIMIT IN REQUESTS #################### */ -}}
-{{/* Note: It could be divided in alla specific be for nodes and functions and returns a specific error message */ -}}
-{{/* 503 (Service Unavailable) status code can be used.
-    At the moment 429 has been used for test purpose. */}}
 # Backend for deny exceeding limit in requests.
+#
+# As with the be_myself backend, the reply will have X-Server with the local
+# DFaaS node IP and its node IS in DFaaS-Node-ID.
+#
+# TODO: It could be divided in alla specific be for nodes and functions and
+# returns a specific error message.
 backend be_limitInExceeds
+    http-response set-header X-Server {{$.NodeIP}}
     http-response set-header DFaaS-Node-ID {{$.MyNodeID}}
     http-request deny deny_status 429

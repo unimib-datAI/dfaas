@@ -164,10 +164,7 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 	//    Purpose: Track requests forwarded from other DFaaS nodes for each
 	//    function, per node.
 	//
-	// These stick tables are used for rate limiting, forwarding logic, LimitIn
-	// enforcement and tracking.
-	//
-	// Only st_users_func_<funcName> data are used to calculate weights!
+	// Warning: only st_users_func_<funcName> data are used to calculate weights!
 
 	// Get stats from HAProxy stick tables (st_users_func_<funcName>).
 	strategy.userRates = map[string]float64{}
@@ -182,17 +179,23 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 		}
 
 		for _, stEntry := range stContent {
-			// There should be only one line, with key "80", which is the port
-			// of the HAProxy frontend
+			// This stick table contains a single key, "80", which tracks both
+			// the number of requests within the given time window and the rate
+			// per second during the recalculation period. We only use the rate.
 			//
-			// Note: the whole formula is multiplied by two at the end because
-			// we know we restarted HAProxy at the end of recalcStep2
-			strategy.userRates[funcName] = float64(stEntry.HTTPReqCnt) / float64(_config.RecalcPeriod/time.Second) * 2
+			// Note: Do not use http_req_cnt, as HAProxy restarts every
+			// recalculation period, causing all counters to reset.
+			//
+			// FIXME: The http_req_rate value is taken from the previous
+			// 1-second period, not averaged over the entire recalculation
+			// period. This is a known limitation of the current strategy.
+			strategy.userRates[funcName] = float64(stEntry.HTTPReqRate)
 		}
 
 		debugStickTable(stName, stContent)
 	}
-	debugHAProxyUserRates(strategy.userRates)
+
+	/* Just for debugging purpores, not really used to calculate weights.
 
 	// Get stats from HAProxy stick tables (st_local_func_<funcName>).
 	for funcName := range strategy.funcs {
@@ -221,6 +224,8 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 			debugStickTable(stName, stContent)
 		}
 	}
+
+	*/
 
 	// Set overload/underload state for each function.
 	strategy.overloads = map[string]bool{}

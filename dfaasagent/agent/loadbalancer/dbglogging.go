@@ -206,31 +206,6 @@ func debugPromRAMusagePerFunction(timeSpan time.Duration, data map[string]float6
 	logger.Debug(b.String())
 }
 
-func debugHAProxyUserRates(data map[string]float64) {
-	if !logging.GetDebugMode() {
-		return
-	}
-
-	keys := make([]string, 0, len(data))
-	for k := range data {
-		keys = append(keys, k)
-	}
-
-	sort.Strings(keys)
-
-	var b strings.Builder
-	b.WriteString("Invocation rates of requests from users only (calculated from HAProxy stick-table):")
-	if len(keys) == 0 {
-		b.WriteString("empty")
-	} else {
-		for _, funcName := range keys {
-			b.WriteString("\n")
-			b.WriteString(fmt.Sprintf("  - FUNC %s: %.2f req/s\n", funcName, data[funcName]))
-		}
-	}
-	logging.Logger().Debug(b.String())
-}
-
 func debugFuncs(data map[string]uint) {
 	if !logging.GetDebugMode() {
 		return
@@ -248,7 +223,7 @@ func debugFuncs(data map[string]uint) {
 	if len(keys) > 0 {
 		b.WriteString(" (limit req/s) ")
 		for _, funcName := range keys {
-			b.WriteString(fmt.Sprintf("%q (%s) ", funcName, data[funcName]))
+			b.WriteString(fmt.Sprintf("%q (%d) ", funcName, data[funcName]))
 		}
 	}
 	logging.Logger().Debug(b.String())
@@ -363,7 +338,7 @@ func debugStickTable(stName string, stContent map[string]*hasock.STEntry) {
 		b.WriteString("\n")
 		for _, key := range clients {
 			stEntry := stContent[key]
-			b.WriteString(fmt.Sprintf("  - key=%s: cnt=%d rate=%d\n", key, stEntry.HTTPReqCnt, stEntry.HTTPReqRate))
+			b.WriteString(fmt.Sprintf("  - key=%s cnt=%d rate=%d\n", key, stEntry.HTTPReqCnt, stEntry.HTTPReqRate))
 		}
 	}
 	logging.Logger().Debug(b.String())
