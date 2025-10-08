@@ -123,7 +123,7 @@
     - name: Install Helm charts
       block:
         - name: Install HAProxy on K3S
-          ansible.builtin.command: helm install haproxy haproxytech/haproxy --version 1.25.0 --values k8s/charts/values-haproxy.yaml
+          ansible.builtin.command: helm install haproxy haproxytech/haproxy --version 1.26.1 --values k8s/charts/values-haproxy.yaml
           args:
             chdir: "{{ playbook_dir }}"
 
