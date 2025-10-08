@@ -261,7 +261,7 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 		} else {
 			margin = maxRate
 		}
-		logger.Debugf("Function %q: invocation rate=%f max rate=%d margin=%d", funcName, invocRate, maxRate, margin)
+		logger.Debugf("Function %q: invocation rate=%f max_rate=%d margin=%d", funcName, invocRate, maxRate, margin)
 
 		strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryRecalc) error {
 			nNodes := uint(0)

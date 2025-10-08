@@ -211,8 +211,6 @@ func debugHAProxyUserRates(data map[string]float64) {
 		return
 	}
 
-	logger := logging.Logger()
-
 	keys := make([]string, 0, len(data))
 	for k := range data {
 		keys = append(keys, k)
@@ -221,11 +219,16 @@ func debugHAProxyUserRates(data map[string]float64) {
 	sort.Strings(keys)
 
 	var b strings.Builder
-	b.WriteString("Invocation rates of requests from users only (calculated from HAProxy stick-table):\n")
-	for _, funcName := range keys {
-		b.WriteString(fmt.Sprintf("  - FUNC %s: %.2f req/s\n", funcName, data[funcName]))
+	b.WriteString("Invocation rates of requests from users only (calculated from HAProxy stick-table):")
+	if len(keys) == 0 {
+		b.WriteString("empty")
+	} else {
+		for _, funcName := range keys {
+			b.WriteString("\n")
+			b.WriteString(fmt.Sprintf("  - FUNC %s: %.2f req/s\n", funcName, data[funcName]))
+		}
 	}
-	logger.Debug(b.String())
+	logging.Logger().Debug(b.String())
 }
 
 func debugFuncs(data map[string]uint) {
@@ -266,7 +269,14 @@ func debugNodesTblContent(entries map[string]*nodestbl.EntryRecalc) {
 	sort.Strings(nodeIDs)
 
 	var b strings.Builder
-	b.WriteString("Content of nodestbl:\n")
+	b.WriteString("Content of nodestbl:")
+	if len(nodeIDs) == 0 {
+		b.WriteString("empty")
+		logger.Debug(b.String())
+		return
+	}
+
+	b.WriteString("\n")
 	for _, nodeID := range nodeIDs {
 		entry := entries[nodeID]
 
@@ -347,15 +357,15 @@ func debugStickTable(stName string, stContent map[string]*hasock.STEntry) {
 
 	var b strings.Builder
 	b.WriteString(fmt.Sprintf("HAProxy stick-table %q content:", stName))
-    if len(clients) == 0 {
-        b.WriteString(" empty")
-    } else {
-        b.WriteString("\n")
-        for _, key := range clients {
-            stEntry := stContent[key]
-            b.WriteString(fmt.Sprintf("  - key=%s: cnt=%d rate=%d\n", key, stEntry.HTTPReqCnt, stEntry.HTTPReqRate))
-        }
-    }
+	if len(clients) == 0 {
+		b.WriteString(" empty")
+	} else {
+		b.WriteString("\n")
+		for _, key := range clients {
+			stEntry := stContent[key]
+			b.WriteString(fmt.Sprintf("  - key=%s: cnt=%d rate=%d\n", key, stEntry.HTTPReqCnt, stEntry.HTTPReqRate))
+		}
+	}
 	logging.Logger().Debug(b.String())
 }
 
