@@ -46,3 +46,6 @@ simulation/outputs/**
 
 # Ignore Python venv.
 *.env
+
+# Ignore generated plots with custom Python script.
+k6/plots

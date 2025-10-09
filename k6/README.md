@@ -37,12 +37,21 @@ first decompress the file with gunzip, for example:
 
 ```console
 $ gunzip -c result.json.gz | jq -c 'select(.type == "Point")' | wc -l
+$ gunzip -c result.json.gz | fx
 ```
 
 To run the Python script:
 
 ```console
-$ WIP
+$ python single_node_plots.py result.json.gz
+WARNING: This script is tailored for the single node test!
+Duration: 0:02:59.986858
+Total seconds: 179.986858
+Saved figure: plots/responses_per_second.pdf
+Saved figure: plots/responses_status_per_second.pdf
+Saved figure: plots/responses_cumulative.pdf
+Saved figure: plots/responses_status_cumulative.pdf
+Saved figure: plots/response_duration.pdf
 ```
 
 As with the test definition, the Python script is tailored for a specific test.
@@ -65,10 +74,10 @@ $ pip install --requirement requirements.txt
   (defined when the function has been deployed). As a result, the node must
   either forward requests to other nodes or reject them if no additional nodes
   are available.
-* "Three nodes" (WIP): Three parallel load tests are executed on three DFaaS
-  nodes, each with a different request-per-second rate, start delay, and
-  duration. The figlet function is the target of these tests. These tests were
-  originally used with the old Operator component.
+* "Three nodes" ([`three_nodes.js`](three_nodes.js)): Three parallel load tests
+  are executed on three DFaaS nodes, each with a different request-per-second
+  rate, start delay, and duration. The figlet function is the target of these
+  tests. These tests were originally used with the old Operator component.
 
 ## Old operator
 
