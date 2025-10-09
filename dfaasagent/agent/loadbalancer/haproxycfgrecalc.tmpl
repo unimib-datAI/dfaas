@@ -242,11 +242,14 @@ backend be_myself
 #
 # Forwarding follows a round-robin method with custom weights.
 #
-# As with the be_myself backend, the reply will have X-Server with the DFaaS
-# agent IP address that served the requests and its node ID in DFaaS-Node-ID
-# header.
+# As with the be_myself backend, the reply will have X-Server header with the
+# DFaaS agent IP address that served the requests and its node ID in
+# DFaaS-Node-ID header.
 #
 # Neighbor nodes with a weight of 0 will be excluded.
+#
+# If no servers are available (no other DFaaS nodes are up), HAProxy will return
+# a 503 error (with X-Server and DFaaS-Node-ID local node values).
 backend be_others_func_{{$funcName}}
     option httpchk GET /
     option forwardfor
@@ -256,6 +259,10 @@ backend be_others_func_{{$funcName}}
 
     http-response set-header X-Server %s
     http-request add-header DFaaS-Node-ID {{$.MyNodeID}}
+
+    # Overwrite default HAProxy 503 error with custom error. This allow to add
+    # custom headers, otherwise the reply won't have X-Server and DFaaS-Node-ID.
+    http-error status 503 content-type "text/plain" string "Overloaded function {{$funcName}}, no other DFaaS nodes available" hdr "X-Server" "{{$.NodeIP}}" hdr "DFaaS-Node-ID" "{{$.MyNodeID}}"
 
     {{range $nodeID, $weight := $func.Weights -}}
     {{if (gt $weight 0) -}}
