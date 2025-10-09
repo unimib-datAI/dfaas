@@ -19,8 +19,8 @@ Use the help script to build the image from the project's root directory:
 $ ./k8s/scripts/build-image.sh openfaas-image-classification none --dockerfile functions/image-classification/Dockerfile
 ```
 
-This will generate the image with `localhost/operator:dev` tag. To push the
-image to GitHub Container Registry (after login) with tag
+This will generate the image with `localhost/openfaas-image-classification:dev`
+tag. To push the image to GitHub Container Registry (after login) with tag
 `ghcr.io/unimib-datai/dfaas-openfaas-image-classification`:
 
 ```console

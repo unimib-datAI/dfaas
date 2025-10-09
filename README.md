@@ -120,7 +120,7 @@ This deploys a basic, fully functional DFaaS node using the Node Margin
 Strategy. See [here](docs/agent-strategies.md) for a list of available
 strategies for the agents.
 
-You can make automatic calls to the node with the **operator**. More information
+You can make automatic calls to the node with k6. More information
 about it in the [dedicated directory](operator).
 
 If you have four different VMs it's recommended to deploy the entire system
@@ -148,60 +148,6 @@ $ curl -i http://127.0.0.1:30080/function/figlet -d 'Hello DFaaS world!'
 ```
 
 In this case we assume that you have deployed the figlet function.
-
-### Execute workload to a node using [vegeta](https://github.com/tsenart/vegeta)
-
-> [!WARNING]  
-> Outdated information. We are rewriting this section!
-
-We provide an example that use [vegeta](https://github.com/tsenart/vegeta) HTTP load testing tool to run workload on a node
-and demonstrate the load distribution over the federation.
-
-You can install vegeta by executing the following commands:
-```shell
-wget https://github.com/tsenart/vegeta/releases/download/v12.8.4/vegeta_12.8.4_linux_amd64.tar.gz
-tar -xf vegeta_12.8.4_linux_amd64.tar.gz && rm vegeta_12.8.4_linux_amd64.tar.gz
-sudo mv vegeta /usr/local/bin/
-```
-
-This example uses the [vegeta json format](https://github.com/tsenart/vegeta#json-format) and requires [jq](https://stedolan.github.io/jq/).
-
-In a nutshell:
-- it runs a vegeta attack (duration: `5 minutes`, rate: `50 req/s`) to the `figlet` function on the first node
-- it saves the results and produces report ever 200ms
-
-```shell
-# Create the vegeta results directory
-mkdir -p vegeta-results
-export VEGFOLDER="vegeta-results/$(date +%Y-%m-%d-%H%M%S)"
-mkdir -p $VEGFOLDER
-
-jq -ncM '{method: "GET", url: "http://localhost:8081/function/figlet", body: "Hello DFaaS world!" | @base64, header: {"Content-Type": ["text/plain"]}}' | \
-  vegeta attack -duration=5m -rate=50 -format=json | \
-  tee $VEGFOLDER/results.bin | \
-  vegeta report -every=200ms
-```
-
-You can also start multiple parallel Vegeta attacks exploiting [operator](operator) functionalities.
-
-#### Create plots from vegeta results
-
-You can produce some plots from vegeta results by exploiting the `vegeta plot` command or our [plot-results.py](operator/docker/files/plot-results.py) script, which is automatically executed after tests execution with the [operator](operator).
-To use our script, you need to install the required Python packages listed in [plot-requirements.txt](operator/docker/files/plot-requirements.txt).
-
-```shell
-# Encode results as JSON
-cat $VEGFOLDER/results.bin | vegeta encode > $VEGFOLDER/results.json
-
-# Create plot with vegeta
-cat $VEGFOLDER/results.bin | vegeta plot > $VEGFOLDER/plot.html
-
-# 1st arg: path  results.json
-# 2nd arg: path output folder
-# 3rd arg: rate req/s used for the attack (if merged is True specify rate=0)
-# 4th arg: boolean merged (is the input file merged from multiple attacks?)
-./operator/docker/files/plot-results.py $VEGFOLDER/results.json $VEGFOLDER/plots 50 False
-```
 
 ### Forwarding traffic as a malicious node
 

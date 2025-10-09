@@ -1,74 +1,56 @@
 # Operator
 
-The **Operator** container automates the execution of load tests using
-[Vegeta](https://github.com/tsenart/vegeta) on DFaaS nodes. Its workflow is
-managed by the [operator.sh](./docker/operator.sh) script.
-
-The Operator performs the following tasks:
-
-1. **Health Checks**: Verifies the status of target DFaaS nodes.
-2. **Load Testing**: Launches one or more parallel Vegeta attacks according to
-   the configuration.
-3. **Results Visualization**: Generates plots for individual and merged attack
-   results using [plot-results.py](docker/plot-results.py).
-
-The Operator supports running multiple Vegeta attacks in parallel, each with
-independently configured start delays, durations, and rates.
-
-For each attack, it generates performance plots using
-[plot-results.py](docker/plot-results.py).
-
-After all attacks complete, their `results.json` files are merged into a single
-`merged-results.json`. Aggregated plots are then produced from this file.
-
-**Note:** before running the Operator, ensure that
-[plot-results.py](docker/plot-results.py) is configured to properly generate
-plots for both individual and merged results.
+The **Operator** is a external DFaaS component used to perform load tests across
+one or more DFaaS nodes. It leverages [**k6**](https://grafana.com/oss/k6/) for
+load generation and a custom Python script (using *matplotlib*) to produce plots.
+Each test is defined and configured through a custom JavaScript file.
 
 ## How to run
 
-> [!IMPORTANT]
-> You must deploy at least one DFaaS node before starting the operator!
-
-You need to configure the operator using a `.env` file, like the default
-[operator.env](operator.env). Options includes:
-
-- **Target nodes**: Endpoints (IP and port pairs) to run tests against.
-- **Vegeta attack configuration**: For each attack, specify:
-  - Delay before starting the attack
-  - Duration
-  - Rate (requests per second)
-  - HTTP request specification (method, URL, headers, body, etc.)
-
-Optionally modify [plot-results.py](docker/plot-results.py) if custom plotting
-behavior is needed, but you'll need to rebuild the image.
-
-Then, use podman or Docker to run the container in background:
+To execute a test, run k6 as follows:
 
 ```console
-$ podman run --detach --env-file operator.env --volume $(pwd)/test:/test ghcr.io/unimib-datai/dfaas-operator:dev
-$ podman logs --follow <container_id_or_name>
+$ k6 run single_node_test.js --out json=result.json
 ```
 
-Or run the container as a foreground process:
+You may need to manually edit the JavaScript file to specify the IP addresses of
+the DFaaS nodes and the function endpoint(s).
+
+We assume k6 is installed locally. For other installation or execution options
+(via Podman or Docker), see the [official k6
+documentation](https://grafana.com/docs/k6/latest/set-up/install-k6/).
+
+After execution, k6 produces a summary on standard output and a JSON file
+containing real-time metrics (see the [k6
+documentation](https://grafana.com/docs/k6/latest/results-output/real-time/json/)
+for details). You can analyze this JSON file using tools like
+[jq](https://jqlang.org/) or [fx](https://fx.wtf/), or generate plots using the
+provided Python script.
+
+To run the Python script:
 
 ```console
-$ podman run --interactive --tty --env-file operator.env --volume $(pwd)/tests:/tests ghcr.io/unimib-datai/dfaas-operator:dev
-$ # Or use the short options format -it instead of --interactive and --tty.
+$ WIP
 ```
 
-## Build
-
-Use the help script to build the image from the project's root directory:
+As with the test definition, the Python script is tailored for a specific test.
+You may need to modify it for your use case. Before running it, set up a virtual
+environment as follows:
 
 ```console
-$ ./k8s/scripts/build-image.sh operator none --dockerfile operator/Dockerfile
+$ sudo apt install python3-venv # On Ubuntu
+$ python3 -m venv .env
+$ source .env/bin/activate
+$ pip install --requirement requirements.txt
 ```
 
-This will generate the image with `localhost/operator:dev` tag. To push the
-image to GitHub Container Registry (after login) with tag
-`ghcr.io/unimib-datai/dfaas-operator`:
+## Old operator
 
-```console
-$ ./k8s/scripts/build-image.sh operator push --dockerfile operator/Dockerfile
-```
+An older, unsupported version of the operator used
+[Vegeta](https://github.com/tsenart/vegeta) for load testing DFaaS nodes. It has
+since been replaced by k6, which supersedes both Vegeta and the custom Bash
+script used to run it. The Python plotting script was updated accordingly, and
+Docker images for the old operator are no longer built or published. While the
+legacy images [remain
+available](https://github.com/unimib-datAI/dfaas/pkgs/container/dfaas-operator),
+they are no longer supported.

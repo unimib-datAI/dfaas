@@ -33,9 +33,6 @@ if [[ $# -eq 0 || "$1" == "-h" || "$1" == "--help" ]]; then
   echo "When imported into the local k3s instance, the tag remains 'NAME:dev.'"
   echo
   echo "If 'push' is used, make sure that buildah is logged in to GHCR!"
-  echo
-  echo "For the operator component, do not push to the local k3s instance, as it"
-  echo "is an external component."
   exit 0
 fi
 
