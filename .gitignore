@@ -17,10 +17,6 @@
 # Ignore dfaasagent binary.
 dfaasagent/dfaasagent
 
-# Ignore temporary files.
-dfaasagent/haproxy.cfg
-dfaasagent/prvkey.dat
-
 # Ignore key files.
 *.pem
 
@@ -42,3 +38,7 @@ simulation/outputs/**
 
 # Container images.
 *.tar
+
+# JSON or YAML not directly included.
+*.json
+*.yaml

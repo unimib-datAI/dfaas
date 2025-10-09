@@ -121,7 +121,7 @@ Strategy. See [here](docs/agent-strategies.md) for a list of available
 strategies for the agents.
 
 You can make automatic calls to the node with k6. More information
-about it in the [dedicated directory](operator).
+about it in the [dedicated directory](k6).
 
 If you have four different VMs it's recommended to deploy the entire system
 exploiting the playbook and configuration files in
