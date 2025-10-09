@@ -42,3 +42,7 @@ simulation/outputs/**
 # JSON or YAML not directly included.
 *.json
 *.yaml
+*.json.gz
+
+# Ignore Python venv.
+*.env
