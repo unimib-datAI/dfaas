@@ -13,7 +13,7 @@ documentation](https://grafana.com/docs/k6/latest/).
 To execute a test, run k6 as follows:
 
 ```console
-$ k6 run single_node_test.js --out json=result.json
+$ k6 run single_node_test.js --out json=result.json.gz
 ```
 
 You may need to manually edit the JavaScript file to specify the IP addresses of
@@ -29,6 +29,15 @@ documentation](https://grafana.com/docs/k6/latest/results-output/real-time/json/
 for details). You can analyze this JSON file using tools like
 [jq](https://jqlang.org/) or [fx](https://fx.wtf/), or generate plots using the
 provided Python script.
+
+Note: we recommend producing a Gzipped version of the JSON file. More
+specifically, it is a JSONL file, with one entry per line. The Python scripts
+support the `json.gz` file format, whereas jq and fx do not. To use these tools,
+first decompress the file with gunzip, for example:
+
+```console
+$ gunzip -c result.json.gz | jq -c 'select(.type == "Point")' | wc -l
+```
 
 To run the Python script:
 
