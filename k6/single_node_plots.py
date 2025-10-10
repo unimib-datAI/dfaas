@@ -14,14 +14,17 @@ from datetime import datetime
 import pandas as pd
 import matplotlib.pyplot as plt
 
-def plot_responses_per_second(df):
+
+def plot_responses_per_second(df, output_dir):
     df_http_reqs = df[(df["metric"] == "http_reqs") & (df["type"] == "Point")]
 
     # Extract only "time" and convert as real timestamp, not string.
-    df_timestamps = pd.DataFrame({"time": df_http_reqs["data"].apply(lambda x: x["time"])})
+    df_timestamps = pd.DataFrame(
+        {"time": df_http_reqs["data"].apply(lambda x: x["time"])}
+    )
     df_timestamps["time"] = pd.to_datetime(df_timestamps["time"])
     # Bin the timestamps by the closest second.
-    df_timestamps["second"] = df_timestamps["time"].dt.floor('s')
+    df_timestamps["second"] = df_timestamps["time"].dt.floor("s")
 
     # Get only seconds and count requests per second.
     df_reqs_per_sec = df_timestamps.groupby("second").count()
@@ -36,13 +39,14 @@ def plot_responses_per_second(df):
     ax.set_axisbelow(True)
     fig.tight_layout()
 
-    base_dir = Path("plots")
+    base_dir = Path(output_dir)
     base_dir.mkdir(parents=True, exist_ok=True)
     output = base_dir / Path("responses_per_second.pdf")
     fig.savefig(output)
     print(f"Saved figure: {output.as_posix()}")
 
-def plot_responses_status_per_second(df):
+
+def plot_responses_status_per_second(df, output_dir):
     """
     Plots the number of responses per second, grouped by HTTP status code.
     """
@@ -50,22 +54,34 @@ def plot_responses_status_per_second(df):
 
     # Extract timestamps and status codes. See plot_responses_per_second, it is
     # similar.
-    df_status = pd.DataFrame({
-        "time": df_http_reqs["data"].apply(lambda x: x["time"]),
-        "status": df_http_reqs["data"].apply(lambda x: x.get("tags", {}).get("status", "unknown"))
-    })
+    df_status = pd.DataFrame(
+        {
+            "time": df_http_reqs["data"].apply(lambda x: x["time"]),
+            "status": df_http_reqs["data"].apply(
+                lambda x: x.get("tags", {}).get("status", "unknown")
+            ),
+        }
+    )
     df_status["time"] = pd.to_datetime(df_status["time"])
-    df_status["second"] = df_status["time"].dt.floor('s')
+    df_status["second"] = df_status["time"].dt.floor("s")
 
     # Group by second and status, count occurrences.
-    pd_status_counts = df_status.groupby(["second", "status"]).size().unstack(fill_value=0)
+    pd_status_counts = (
+        df_status.groupby(["second", "status"]).size().unstack(fill_value=0)
+    )
     seconds = pd_status_counts.shape[0]
 
     # Prepare data for stackplot (one array for each status).
-    stack_data = [pd_status_counts[status].values for status in pd_status_counts.columns]
+    stack_data = [
+        pd_status_counts[status].values for status in pd_status_counts.columns
+    ]
 
     fig, ax = plt.subplots(figsize=(10, 5))
-    ax.stackplot(range(seconds), stack_data, labels=[status for status in pd_status_counts.columns])
+    ax.stackplot(
+        range(seconds),
+        stack_data,
+        labels=[status for status in pd_status_counts.columns],
+    )
     ax.set_xlabel("Time (seconds)")
     ax.set_ylabel("Responses per second")
     ax.set_title("Responses per second by HTTP status")
@@ -74,22 +90,25 @@ def plot_responses_status_per_second(df):
     ax.legend(title="HTTP Status")
     fig.tight_layout()
 
-    base_dir = Path("plots")
+    base_dir = Path(output_dir)
     base_dir.mkdir(parents=True, exist_ok=True)
     output = base_dir / Path("responses_status_per_second.pdf")
     fig.savefig(output)
     print(f"Saved figure: {output.as_posix()}")
 
-def plot_responses_cumulative(df):
+
+def plot_responses_cumulative(df, output_dir):
     """
     Show response rate as cumulative (similar to plot_responses_per_second but cumulative).
     """
     df_http_reqs = df[(df["metric"] == "http_reqs") & (df["type"] == "Point")]
 
     # Extract only "time" and convert as real timestamp.
-    df_timestamps = pd.DataFrame({"time": df_http_reqs["data"].apply(lambda x: x["time"])})
+    df_timestamps = pd.DataFrame(
+        {"time": df_http_reqs["data"].apply(lambda x: x["time"])}
+    )
     df_timestamps["time"] = pd.to_datetime(df_timestamps["time"])
-    df_timestamps["second"] = df_timestamps["time"].dt.floor('s')
+    df_timestamps["second"] = df_timestamps["time"].dt.floor("s")
 
     # Count requests per second.
     df_reqs_per_sec = df_timestamps.groupby("second").count()
@@ -106,35 +125,48 @@ def plot_responses_cumulative(df):
     ax.set_axisbelow(True)
     fig.tight_layout()
 
-    base_dir = Path("plots")
+    base_dir = Path(output_dir)
     base_dir.mkdir(parents=True, exist_ok=True)
     output = base_dir / Path("responses_cumulative.pdf")
     fig.savefig(output)
     print(f"Saved figure: {output.as_posix()}")
 
-def plot_responses_status_cumulative(df):
+
+def plot_responses_status_cumulative(df, output_dir):
     """
     Similar to plot_responses_status_per_second but cumulative.
     """
     df_http_reqs = df[(df["metric"] == "http_reqs") & (df["type"] == "Point")]
 
-    df_status = pd.DataFrame({
-        "time": df_http_reqs["data"].apply(lambda x: x["time"]),
-        "status": df_http_reqs["data"].apply(lambda x: x.get("tags", {}).get("status", "unknown"))
-    })
+    df_status = pd.DataFrame(
+        {
+            "time": df_http_reqs["data"].apply(lambda x: x["time"]),
+            "status": df_http_reqs["data"].apply(
+                lambda x: x.get("tags", {}).get("status", "unknown")
+            ),
+        }
+    )
     df_status["time"] = pd.to_datetime(df_status["time"])
-    df_status["second"] = df_status["time"].dt.floor('s')
+    df_status["second"] = df_status["time"].dt.floor("s")
 
     # Group by second and status, count occurrences.
-    pd_status_counts = df_status.groupby(["second", "status"]).size().unstack(fill_value=0)
+    pd_status_counts = (
+        df_status.groupby(["second", "status"]).size().unstack(fill_value=0)
+    )
     pd_status_counts_cum = pd_status_counts.cumsum()
     seconds = pd_status_counts_cum.shape[0]
 
     # Prepare data for stackplot (one array for each status).
-    stack_data = [pd_status_counts_cum[status].values for status in pd_status_counts_cum.columns]
+    stack_data = [
+        pd_status_counts_cum[status].values for status in pd_status_counts_cum.columns
+    ]
 
     fig, ax = plt.subplots(figsize=(10, 5))
-    ax.stackplot(range(seconds), stack_data, labels=[status for status in pd_status_counts_cum.columns])
+    ax.stackplot(
+        range(seconds),
+        stack_data,
+        labels=[status for status in pd_status_counts_cum.columns],
+    )
     ax.set_xlabel("Time (seconds)")
     ax.set_ylabel("Cumulative responses")
     ax.set_title("Cumulative responses over time by HTTP status")
@@ -143,13 +175,14 @@ def plot_responses_status_cumulative(df):
     ax.legend(title="HTTP Status")
     fig.tight_layout()
 
-    base_dir = Path("plots")
+    base_dir = Path(output_dir)
     base_dir.mkdir(parents=True, exist_ok=True)
     output = base_dir / Path("responses_status_cumulative.pdf")
     fig.savefig(output)
     print(f"Saved figure: {output.as_posix()}")
 
-def plot_response_duration(df):
+
+def plot_response_duration(df, output_dir):
     """
     Plots the response duration (http_req_duration) for requests with status 200.
     Uses seconds (from first request) as X axis.
@@ -158,11 +191,15 @@ def plot_response_duration(df):
     df_duration = df[(df["metric"] == "http_req_duration") & (df["type"] == "Point")]
 
     # Extract response time, status code, and timestamp.
-    df_plot = pd.DataFrame({
-        "duration": df_duration["data"].apply(lambda x: x["value"]),
-        "status": df_duration["data"].apply(lambda x: x.get("tags", {}).get("status", "unknown")),
-        "time": df_duration["data"].apply(lambda x: x["time"])
-    })
+    df_plot = pd.DataFrame(
+        {
+            "duration": df_duration["data"].apply(lambda x: x["value"]),
+            "status": df_duration["data"].apply(
+                lambda x: x.get("tags", {}).get("status", "unknown")
+            ),
+            "time": df_duration["data"].apply(lambda x: x["time"]),
+        }
+    )
 
     # Keep only responses with HTTP status 200.
     df_plot_200 = df_plot[df_plot["status"] == "200"].copy()
@@ -184,15 +221,23 @@ def plot_response_duration(df):
     ax.set_axisbelow(True)
     fig.tight_layout()
 
-    base_dir = Path("plots")
+    base_dir = Path(output_dir)
     base_dir.mkdir(parents=True, exist_ok=True)
     output = base_dir / Path("response_duration.pdf")
     fig.savefig(output)
     print(f"Saved figure: {output.as_posix()}")
 
+
 def main():
     parser = argparse.ArgumentParser(description="Generate plots")
     parser.add_argument("result", type=Path, help="Path to the .json.gz file")
+    parser.add_argument(
+        "--output-dir",
+        "-o",
+        type=str,
+        default="plots",
+        help="Output directory for plots (default: 'plots')",
+    )
 
     args = parser.parse_args()
 
@@ -221,13 +266,14 @@ def main():
     print("Duration:", duration)
     print("Total seconds:", duration.total_seconds())
 
-    plot_responses_per_second(df)
-    plot_responses_status_per_second(df)
+    plot_responses_per_second(df, args.output_dir)
+    plot_responses_status_per_second(df, args.output_dir)
 
-    plot_responses_cumulative(df)
-    plot_responses_status_cumulative(df)
+    plot_responses_cumulative(df, args.output_dir)
+    plot_responses_status_cumulative(df, args.output_dir)
 
-    plot_response_duration(df)
+    plot_response_duration(df, args.output_dir)
+
 
 if __name__ == "__main__":
     main()
