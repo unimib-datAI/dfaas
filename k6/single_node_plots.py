@@ -4,9 +4,6 @@
 # This file is licensed under the AGPL v3.0 or later license. See LICENSE and
 # AUTHORS file for more information.
 
-# TODO: Add plots for forwarding (see X-Server header from dfaas_requests
-# metric).
-
 import argparse
 from pathlib import Path
 from datetime import datetime
@@ -61,6 +58,31 @@ class Plots:
         self.df_timestamps["time"] = pd.to_datetime(self.df_timestamps["time"])
         # Bin the timestamps to the closest second.
         self.df_timestamps["second"] = self.df_timestamps["time"].dt.floor("s")
+
+        # Filter for dfaas_requests metrics of type Point.
+        df_dfaas_reqs = self.df[
+            (self.df["metric"] == "dfaas_requests") & (self.df["type"] == "Point")
+        ]
+        # Extract timestamps, x_server, and target from the "data" column.
+        self.df_dfaas_reqs = pd.DataFrame(
+            {
+                "time": df_dfaas_reqs["data"].apply(lambda x: x["time"]),
+                "status": df_dfaas_reqs["data"].apply(lambda x: x["tags"]["status"]),
+                "x_server": df_dfaas_reqs["data"].apply(
+                    lambda x: x["tags"]["x_server"]
+                ),
+                "target": df_dfaas_reqs["data"].apply(lambda x: x["tags"]["target"]),
+            }
+        )
+        # Bin requests by seconds.
+        self.df_dfaas_reqs["time"] = pd.to_datetime(self.df_dfaas_reqs["time"])
+        self.df_dfaas_reqs["second"] = self.df_dfaas_reqs["time"].dt.floor("s")
+
+        # Assume 'target' is always the same, this is the single node case!
+        targets = self.df_dfaas_reqs["target"].unique()
+        assert len(targets) == 1, f"Unsupported multiple targets: {targets}"
+        # All requests are set to this DFaaS node.
+        self.target = targets[0]
 
     def _savefig(self, fig, name):
         """
@@ -144,6 +166,85 @@ class Plots:
         fig.tight_layout()
 
         self._savefig(fig, "responses_status_per_second")
+
+    def responses_host_per_second(self):
+        """
+        Plot the number of responses per second, grouped by DFaaS nodes.
+
+        The stackplot shows how many responses were processed by each DFaaS node
+        per second. The plot title includes the original DFaaS node destination.
+
+        Saves the plot as 'responses_host_per_second.pdf' in the output
+        directory.
+        """
+        # Group by second and x_server, count occurrences.
+        pd_host_counts = (
+            self.df_dfaas_reqs.groupby(["second", "x_server"])
+            .size()
+            .unstack(fill_value=0)
+        )
+        seconds = pd_host_counts.shape[0]
+
+        # Prepare data for stackplot (one array for each x_server).
+        stack_data = [pd_host_counts[host].values for host in pd_host_counts.columns]
+
+        fig, ax = plt.subplots(figsize=(10, 5))
+        ax.stackplot(
+            range(seconds),
+            stack_data,
+            labels=[host for host in pd_host_counts.columns],
+        )
+        ax.set_xlabel("Time (seconds)")
+        ax.set_ylabel("Requests per second")
+        ax.set_title(f"Requests sent to {self.target}")
+        ax.grid(axis="both")
+        ax.set_axisbelow(True)
+        ax.legend(title="DFaaS node IP")
+        fig.tight_layout()
+
+        self._savefig(fig, "responses_host_per_second")
+
+    def responses_host_cumulative(self):
+        """
+        Plot the cumulative number of requests processed by each DFaaS node over
+        time.
+
+        The stackplot shows how the total number of requests processed by each
+        DFaaS node grows over time. The plot title includes the original DFaaS
+        node destination.
+
+        Saves the plot as 'responses_host_cumulative.pdf' in the output
+        directory.
+        """
+        # Group by second and x_server, count occurrences.
+        pd_host_counts = (
+            self.df_dfaas_reqs.groupby(["second", "x_server"])
+            .size()
+            .unstack(fill_value=0)
+        )
+        pd_host_counts_cum = pd_host_counts.cumsum()
+        seconds = pd_host_counts_cum.shape[0]
+
+        # Prepare data for stackplot (one array for each x_server).
+        stack_data = [
+            pd_host_counts_cum[host].values for host in pd_host_counts_cum.columns
+        ]
+
+        fig, ax = plt.subplots(figsize=(10, 5))
+        ax.stackplot(
+            range(seconds),
+            stack_data,
+            labels=[host for host in pd_host_counts_cum.columns],
+        )
+        ax.set_xlabel("Time (seconds)")
+        ax.set_ylabel("Cumulative requests")
+        ax.set_title(f"Cumulative requests sent to {self.target}")
+        ax.grid(axis="both")
+        ax.set_axisbelow(True)
+        ax.legend(title="DFaaS node IP")
+        fig.tight_layout()
+
+        self._savefig(fig, "responses_host_cumulative")
 
     def responses_cumulative(self):
         """
@@ -299,6 +400,9 @@ def main():
     plots.responses_status_cumulative()
 
     plots.response_duration()
+
+    plots.responses_host_per_second()
+    plots.responses_host_cumulative()
 
 
 if __name__ == "__main__":
