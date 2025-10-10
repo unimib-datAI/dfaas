@@ -8,6 +8,7 @@ import argparse
 from pathlib import Path
 from datetime import datetime
 from functools import cached_property
+import inspect
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -54,17 +55,17 @@ class Plots:
         self.target = targets[0]
 
     @cached_property
-    def df_http_reqs(self):
+    def _df_http_reqs(self):
         """Filtered for HTTP requests of type 'Point' and metric "http_reqs"."""
         return self.df[
             (self.df["metric"] == "http_reqs") & (self.df["type"] == "Point")
         ]
 
     @cached_property
-    def df_timestamps(self):
+    def _df_timestamps(self):
         """Extracted and binned timestamps for http requests."""
         df = pd.DataFrame(
-            {"time": self.df_http_reqs["data"].apply(lambda x: x["time"])}
+            {"time": self._df_http_reqs["data"].apply(lambda x: x["time"])}
         )
         df["time"] = pd.to_datetime(df["time"])
         df["second"] = df["time"].dt.floor("s")
@@ -110,7 +111,7 @@ class Plots:
         Saves the plot as 'responses_per_second.pdf' in the output directory.
         """
         # Get only seconds and count requests per second.
-        df_reqs_per_sec = self.df_timestamps.groupby("second").count()
+        df_reqs_per_sec = self._df_timestamps.groupby("second").count()
 
         seconds = df_reqs_per_sec.shape[0]  # Nr. of rows = total seconds.
 
@@ -137,8 +138,8 @@ class Plots:
         # method, it is similar.
         df_status = pd.DataFrame(
             {
-                "time": self.df_http_reqs["data"].apply(lambda x: x["time"]),
-                "status": self.df_http_reqs["data"].apply(
+                "time": self._df_http_reqs["data"].apply(lambda x: x["time"]),
+                "status": self._df_http_reqs["data"].apply(
                     lambda x: x.get("tags", {}).get("status", "unknown")
                 ),
             }
@@ -366,7 +367,7 @@ class Plots:
         Saves the plot as 'responses_cumulative.pdf' in the output directory.
         """
         # Count requests per second.
-        df_reqs_per_sec = self.df_timestamps.groupby("second").count()
+        df_reqs_per_sec = self._df_timestamps.groupby("second").count()
         df_reqs_per_sec_cum = df_reqs_per_sec.cumsum()
 
         seconds = df_reqs_per_sec_cum.shape[0]
@@ -394,8 +395,8 @@ class Plots:
         """
         df_status = pd.DataFrame(
             {
-                "time": self.df_http_reqs["data"].apply(lambda x: x["time"]),
-                "status": self.df_http_reqs["data"].apply(
+                "time": self._df_http_reqs["data"].apply(lambda x: x["time"]),
+                "status": self._df_http_reqs["data"].apply(
                     lambda x: x.get("tags", {}).get("status", "unknown")
                 ),
             }
@@ -490,6 +491,15 @@ def main():
         default="plots",
         help="Output directory for plots (default: 'plots')",
     )
+    parser.add_argument(
+        "--plot",
+        "-p",
+        action="append",
+        help=(
+            "Name of plot to generate (method name of Plots class). "
+            "Can be repeated. If not given, all public Plots methods are called."
+        ),
+    )
 
     args = parser.parse_args()
 
@@ -503,17 +513,30 @@ def main():
 
     plots = Plots(df, args.output_dir)
 
-    plots.responses_per_second()
-    plots.responses_status_per_second()
+    # Determine which plots to generate.
+    if args.plot:
+        plots_to_generate = args.plot
+    else:
+        # Use introspection to get all public methods. Only pick those that are
+        # bound methods and have no required arguments. We assume they are used
+        # only for plots.
+        plots_to_generate = [
+            name
+            for name, member in inspect.getmembers(plots, predicate=inspect.ismethod)
+            if not name.startswith("_")  # Skip non-public members.
+            and name != "main"  # Skip "main" if present.
+            and callable(member)  # Skip non methods.
+            and len(inspect.signature(member).parameters) == 0
+        ]
 
-    plots.responses_cumulative()
-    plots.responses_status_cumulative()
+    # Generate plots.
+    for plot in plots_to_generate:
+        method = getattr(plots, plot, None)
+        if not (method and callable(method)):
+            print(f"Method {plot!r} not found in Plots class, skipping.")
+            continue
 
-    plots.response_duration()
-
-    plots.responses_host_per_second()
-    plots.responses_host_cumulative()
-    plots.responses_status_per_host()
+        method()
 
 
 if __name__ == "__main__":
