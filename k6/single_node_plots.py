@@ -7,6 +7,7 @@
 import argparse
 from pathlib import Path
 from datetime import datetime
+from functools import cached_property
 
 import pandas as pd
 import matplotlib.pyplot as plt
@@ -23,7 +24,8 @@ class Plots:
 
     WARNING: Shared dataframes (e.g. self.df_http_reqs, self.df_timestamps) are
     reused across multiple methods for efficiency. If you need to modify them,
-    make a copy first.
+    make a copy first. The dataframes are cached and calculated only when called
+    by the methods.
 
     Args:
         df (pandas.DataFrame): DataFrame with k6 metrics.
@@ -32,9 +34,6 @@ class Plots:
     Attributes:
         df (pandas.DataFrame): The provided metrics DataFrame.
         output_dir (Path): Directory for saving plots.
-        df_http_reqs (pandas.DataFrame): Filtered for HTTP requests of type
-            'Point' and metric "http_reqs".
-        df_timestamps (pandas.DataFrame): Extracted and binned timestamps.
     """
 
     def __init__(self, df, output_dir):
@@ -46,25 +45,36 @@ class Plots:
         self.output_dir = Path(output_dir)
         self.output_dir.mkdir(parents=True, exist_ok=True)
 
-        # Commonly used dataframes.
-        self.df_http_reqs = self.df[
+        # Assume 'target' is always the same, this is the single node case!
+        targets = self._df_dfaas_reqs["target"].unique()
+        assert len(targets) == 1, f"Unsupported multiple targets: {targets}"
+        # All requests are set to this DFaaS node.
+        self.target = targets[0]
+
+    @cached_property
+    def df_http_reqs(self):
+        """Filtered for HTTP requests of type 'Point' and metric "http_reqs"."""
+        return self.df[
             (self.df["metric"] == "http_reqs") & (self.df["type"] == "Point")
         ]
 
-        # Extract only "time" and convert to real timestamp, not as a string.
-        self.df_timestamps = pd.DataFrame(
+    @cached_property
+    def df_timestamps(self):
+        """Extracted and binned timestamps for http requests."""
+        df = pd.DataFrame(
             {"time": self.df_http_reqs["data"].apply(lambda x: x["time"])}
         )
-        self.df_timestamps["time"] = pd.to_datetime(self.df_timestamps["time"])
-        # Bin the timestamps to the closest second.
-        self.df_timestamps["second"] = self.df_timestamps["time"].dt.floor("s")
+        df["time"] = pd.to_datetime(df["time"])
+        df["second"] = df["time"].dt.floor("s")
+        return df
 
-        # Filter for dfaas_requests metrics of type Point.
+    @cached_property
+    def _df_dfaas_reqs(self):
+        """DFaaS requests metrics filtered and binned by seconds."""
         df_dfaas_reqs = self.df[
             (self.df["metric"] == "dfaas_requests") & (self.df["type"] == "Point")
         ]
-        # Extract timestamps, x_server, and target from the "data" column.
-        self.df_dfaas_reqs = pd.DataFrame(
+        df = pd.DataFrame(
             {
                 "time": df_dfaas_reqs["data"].apply(lambda x: x["time"]),
                 "status": df_dfaas_reqs["data"].apply(lambda x: x["tags"]["status"]),
@@ -74,15 +84,9 @@ class Plots:
                 "target": df_dfaas_reqs["data"].apply(lambda x: x["tags"]["target"]),
             }
         )
-        # Bin requests by seconds.
-        self.df_dfaas_reqs["time"] = pd.to_datetime(self.df_dfaas_reqs["time"])
-        self.df_dfaas_reqs["second"] = self.df_dfaas_reqs["time"].dt.floor("s")
-
-        # Assume 'target' is always the same, this is the single node case!
-        targets = self.df_dfaas_reqs["target"].unique()
-        assert len(targets) == 1, f"Unsupported multiple targets: {targets}"
-        # All requests are set to this DFaaS node.
-        self.target = targets[0]
+        df["time"] = pd.to_datetime(df["time"])
+        df["second"] = df["time"].dt.floor("s")
+        return df
 
     def _savefig(self, fig, name):
         """
@@ -179,7 +183,7 @@ class Plots:
         """
         # Group by second and x_server, count occurrences.
         pd_host_counts = (
-            self.df_dfaas_reqs.groupby(["second", "x_server"])
+            self._df_dfaas_reqs.groupby(["second", "x_server"])
             .size()
             .unstack(fill_value=0)
         )
@@ -218,7 +222,7 @@ class Plots:
         """
         # Group by second and x_server, count occurrences.
         pd_host_counts = (
-            self.df_dfaas_reqs.groupby(["second", "x_server"])
+            self._df_dfaas_reqs.groupby(["second", "x_server"])
             .size()
             .unstack(fill_value=0)
         )
