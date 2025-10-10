@@ -11,6 +11,8 @@ from functools import cached_property
 
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.patches import Patch
+import numpy as np
 
 
 class Plots:
@@ -207,6 +209,110 @@ class Plots:
         fig.tight_layout()
 
         self._savefig(fig, "responses_host_per_second")
+
+    def responses_status_per_host(self):
+        """
+        Plot the number of responses per second for each DFaaS node, grouped by
+        HTTP status code.
+
+        Saves the plot as 'responses_status_per_host.pdf' in the output
+        directory.
+        """
+        # The self._df_dfaas_reqs requests are already compacted by the second
+        # column, extract also x_server and HTTP status code.
+        df = pd.DataFrame(
+            {
+                "second": self._df_dfaas_reqs["second"],
+                "x_server": self._df_dfaas_reqs["x_server"],
+                "status": self._df_dfaas_reqs["status"],
+            }
+        )
+
+        # Use relative seconds in the X axis, not the absolute times.
+        abs_seconds = sorted(df["second"].unique())
+        seconds = np.arange(len(abs_seconds))
+
+        # Get all possibile hosts and assign a color.
+        hosts = sorted(df["x_server"].unique())
+        colors = plt.rcParams["axes.prop_cycle"].by_key()["color"]
+        host_colors = {host: colors[i] for i, host in enumerate(hosts)}
+
+        # Get all possible HTTP statuses and assign a pattern.
+        statuses = sorted(df["status"].unique())
+        dense_hatches = ["//", "\\\\", "||", "XX", "oo"]
+        status_hatches = {status: dense_hatches[i] for i, status in enumerate(statuses)}
+
+        # Manually build the legend with all hosts and statuses.
+        legend_items = []
+        for host in hosts:
+            legend_items.append(Patch(facecolor=host_colors[host], label=host))
+        for status in statuses:
+            # By default facecolor is not "none", also the hatch color is taken
+            # from the edgecolor.
+            legend_items.append(
+                Patch(
+                    facecolor="none",
+                    edgecolor="black",
+                    hatch=status_hatches[status],
+                    label=status,
+                )
+            )
+
+        # Prepare stack data: for each host-status, counts per second.
+        stack_data = []
+        stack_colors = []
+        stack_hatches = []
+        for host in hosts:
+            for status in statuses:
+                counts = []
+                for sec in abs_seconds:
+                    count = df[
+                        (df["second"] == sec)
+                        & (df["x_server"] == host)
+                        & (df["status"] == status)
+                    ].shape[0]
+                    counts.append(count)
+                stack_data.append(counts)
+                stack_colors.append(host_colors[host])
+                stack_hatches.append(status_hatches[status])
+
+        fig, ax = plt.subplots(figsize=(12, 6))
+
+        # Calculate stack heights.
+        stack_data = np.array(stack_data)  # shape: (num_stacks, num_seconds)
+        cum_data = np.cumsum(stack_data, axis=0)
+
+        # Draw stackplot manually with fill_between for hatches.
+        prev = np.zeros_like(seconds)
+        for i in range(stack_data.shape[0]):
+            color = stack_colors[i]
+            hatch = stack_hatches[i]
+            top = cum_data[i]
+
+            # Draw the line and the fill. Make the lines and colors a bit
+            # lighter, to avoid killing the eyes.
+            ax.fill_between(
+                seconds,
+                prev,
+                top,
+                facecolor=color,
+                hatch=hatch,
+                edgecolor="black",
+                linewidth=0.5,
+                alpha=0.7,
+                step="pre",
+            )
+            prev = top
+
+        ax.set_xlabel("Time (seconds since first response)")
+        ax.set_ylabel("Responses per second")
+        ax.set_title(f"Responses of requests sent to {self.target} by status and host")
+        ax.grid(axis="both")
+        ax.set_axisbelow(True)
+        ax.legend(handles=legend_items, title="Host & HTTP Status")
+        fig.tight_layout()
+
+        self._savefig(fig, "responses_status_per_host")
 
     def responses_host_cumulative(self):
         """
@@ -407,6 +513,7 @@ def main():
 
     plots.responses_host_per_second()
     plots.responses_host_cumulative()
+    plots.responses_status_per_host()
 
 
 if __name__ == "__main__":
