@@ -40,7 +40,8 @@ $ faas-cli deploy --image=ghcr.io/unimib-datai/dfaas-openfaas-image-classificati
 ```
 
 This will deploy the function to the local OpenFaaS instance. The
-`dfaas.maxrate` label is required by the Recalc strategy.
+`dfaas.maxrate` label is required by the Recalc strategy. You can omit the label
+if the DFaaS Agent does not use this strategy.
 
 ## Test
 
