@@ -36,7 +36,7 @@ $ ./k8s/scripts/build-image.sh openfaas-image-classification push --dockerfile f
 Use the public image to deploy the function to OpenFaaS:
 
 ```console
-$ faas-cli deploy --image=ghcr.io/unimib-datai/dfaas-openfaas-image-classification:dev --name=openfaas-image-classification --label dfaas.maxrate=100
+$ faas-cli deploy --image=ghcr.io/unimib-datai/dfaas-openfaas-image-classification:dev --name=mlimage --label dfaas.maxrate=100
 ```
 
 This will deploy the function to the local OpenFaaS instance. The
