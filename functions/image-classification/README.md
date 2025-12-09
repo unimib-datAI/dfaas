@@ -39,7 +39,11 @@ Use the public image to deploy the function to OpenFaaS:
 $ faas-cli deploy --image=ghcr.io/unimib-datai/dfaas-openfaas-image-classification:dev --name=mlimage --label dfaas.maxrate=100
 ```
 
-This will deploy the function to the local OpenFaaS instance. The
+> [!IMPORTANT]
+> Do not use hyphens or underscores, otherwise they will break the HAProxy
+> generated configuration!
+
+This will deploy the function to the local OpenFaaS instance as `mlimage`. The
 `dfaas.maxrate` label is required by the Recalc strategy. You can omit the label
 if the DFaaS Agent does not use this strategy.
 
@@ -50,7 +54,7 @@ samples from
 [github.com/EliSchwartz/imagenet-sample-images](https://github.com/EliSchwartz/imagenet-sample-images):
 
 ```console
-$ wget https://github.com/EliSchwartz/imagenet-sample-images/blob/master/n01770393_scorpion.JPEG?raw=true -O scorpion.jpg
+$ wget https://github.com/EliSchwartz/imagenet-sample-images/blob/master/n01770393_scorpion.JPEG?raw=true -O scorpion.jpeg
 $ wget https://github.com/EliSchwartz/imagenet-sample-images/blob/master/n01616318_vulture.JPEG?raw=true -O vulture.jpeg
 $ wget https://github.com/EliSchwartz/imagenet-sample-images/blob/master/n01770393_scorpion.JPEG?raw=true -O scorpion.jpeg
 ```
@@ -58,7 +62,7 @@ $ wget https://github.com/EliSchwartz/imagenet-sample-images/blob/master/n017703
 Then, use curl to send the requests:
 
 ```console
-$ curl -X POST --data-binary "@path/file.jpg" -H "Content-Type: image/jpeg" http://127.0.0.1:30080/function/image-classification
+$ curl -X POST --data-binary "@path/file.jpg" -H "Content-Type: image/jpeg" http://127.0.0.1:30080/function/mlimage
 # Example output:
 content-length: 58
 content-type: application/json
@@ -73,5 +77,6 @@ x-server: IP
 [{"class": "scorpion", "probability": 0.9953627586364746}]
 ```
 
-Note that the endpoint is http://127.0.0.1:30080, but it should be adjusted to
-match your local OpenFaaS instance.
+Note that the endpoint is http://127.0.0.1:30080, the HAProxy public port, and
+not directly the OpenFaaS Gateway. The IP address should be adjusted to match
+your local OpenFaaS instance.
