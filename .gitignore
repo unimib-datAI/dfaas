@@ -49,3 +49,8 @@ simulation/outputs/**
 
 # Ignore generated plots with custom Python script.
 k6/plots
+
+# Ignore generated files by
+# metrics_predictions/samples_generator/samples-generator.py and
+# samples-generator-profiler.py Python scripts.
+metrics_predictions/output/**

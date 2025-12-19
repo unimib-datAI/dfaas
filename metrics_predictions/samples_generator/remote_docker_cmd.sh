@@ -1,8 +1,8 @@
 #!/bin/bash
 
 # SSH connection info
-USER="thomashg" # Replace with username used on the VM
-HOST="10.99.217.210" # Replace with IP of the remote VM
+USER="user" # Replace with username used on the VM
+HOST="10.12.38.4" # Replace with IP of the remote VM
 
 # Check if at least one argument (function name) is provided
 if [ "$#" -eq 0 ]; then

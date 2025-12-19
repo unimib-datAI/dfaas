@@ -16,7 +16,7 @@ def get_prometheus_service_port():
     service_name = "prometheus"
 
     # Run the kubectl command to get the information about the service
-    command = f"kubectl --context=midnode-minikube-context get svc -n openfaas {service_name} -o json"
+    command = f"kubectl --context=mid get svc -n openfaas {service_name} -o json"
     result = subprocess.run(command, shell=True, capture_output=True, text=True)
 
     if result.returncode != 0:
@@ -40,7 +40,7 @@ def get_prometheus_service_port():
 # Get the Prometheus NodePort
 PROMETHEUS_PORT = 30411
 ### CONSTANTS ###
-PROMETHEUS_SERVICE_IP = "10.99.217.210"
+PROMETHEUS_SERVICE_IP = "10.12.38.4"
 
 PROMETHEUS_QUERY_URL = f"http://{PROMETHEUS_SERVICE_IP}:{PROMETHEUS_PORT}/api/v1/query"
 PROMETHEUS_QUERY_RANGE_URL = f"http://{PROMETHEUS_SERVICE_IP}:{PROMETHEUS_PORT}/api/v1/query_range"
@@ -89,7 +89,7 @@ def generate_rates_list_profiler(max_rate):
 def vegeta_attack(function_name, rate, duration='30s', format='json'):
     if(rate != 0):
         body = FUNCTION_BODIES[function_name]
-        target = f'\'{{method: "GET", url: "http://10.99.217.210:31112/function/{function_name}", body: "{body}" | @base64, header: {{"Content-Type": ["text/plain"]}}}}\''
+        target = f'\'{{method: "GET", url: "http://10.12.38.4:31112/function/{function_name}", body: "{body}" | @base64, header: {{"Content-Type": ["text/plain"]}}}}\''
         attack = f'vegeta attack -duration={duration} -rate={rate} -format={format} -timeout=30s | vegeta report --type=json > reports/report-{function_name}-{rate}.json'
         return 'jq -ncM ' + target + ' | ' + attack
     return ''

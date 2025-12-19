@@ -1,4 +1,0 @@
-function_nmap,rate_function_nmap,function_env,rate_function_env,function_curl,rate_function_curl
-nmap,10,,,,
-nmap,10,env,190,,
-nmap,10,env,190,curl,200

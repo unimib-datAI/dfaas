@@ -41,8 +41,8 @@ echo Overwriting the configuration.txt file with new starting configuration...
 # Resting the remote minikube cluster
 
 # SSH connection info
-USER="thomashg" # Replace with username used on the VM
-HOST="10.99.217.210" # Replace with IP of the remote VM
+USER="user" # Replace with username used on the VM
+HOST="10.12.38.4" # Replace with IP of the remote VM
 
 # Remote command you want to run on the VM
 REMOTE_COMMAND="~/dfaas/metrics_predictions/minikube_builder.sh"

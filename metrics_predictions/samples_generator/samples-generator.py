@@ -9,15 +9,17 @@ import subprocess
 import csv
 import itertools
 from datetime import datetime
+from pathlib import Path
 import multiprocessing
 
 from utils import *
 
 ### CONSTANTS ### 
-FUNCTION_NAMES = ['figlet', 'shasum', 'nmap', 'env', 'curl', 'cavecal/eat-memory']
+#FUNCTION_NAMES = ['figlet', 'shasum', 'nmap', 'env', 'curl', 'cavecal/eat-memory']
+FUNCTION_NAMES = ["figlet", "shasum", "nmap"]
 MAX_ITERATION_PER_CONFIG = 3
 MAX_RATE = 200
-OPENFAAS_SERVICE_IP = "http://10.99.217.210:31112"   
+OPENFAAS_SERVICE_IP = "http://10.12.38.4:31112"   
 
 def main():
     scaphandre = True
@@ -27,12 +29,20 @@ def main():
     if "--no-scaphandre" in sys.argv:
         scaphandre = False
     #num_physical_cpus = multiprocessing.cpu_count() # Could use kubectl get node -o jsonpath="{.items[0].status.capacity.cpu}" instead
-    num_physical_cpus_cmd = ['kubectl','--context=midnode-minikube-context', 'get', 'node', '-o', 'jsonpath={.items[0].status.capacity.cpu}']
+    num_physical_cpus_cmd = ['kubectl','--context=mid', 'get', 'node', '-o', 'jsonpath={.items[0].status.capacity.cpu}']
     num_physical_cpus = int(subprocess.check_output(num_physical_cpus_cmd, text=True).strip())
     print(f"Numero di CPU fisiche: {num_physical_cpus}")
     max_cpu_percentage = num_physical_cpus * 100
     cpu_overload_percentage = (max_cpu_percentage * 80) / 100
-    function_combinations = generate_functions_combinations(FUNCTION_NAMES, 3, 4)
+    #function_combinations = generate_functions_combinations(FUNCTION_NAMES, 3, 4)
+    function_combinations = generate_functions_combinations(FUNCTION_NAMES, 2, 3)
+
+    # Create some directories that will be used later.
+    output_dir, reports_dir = Path("../output"), Path("reports")
+    output_dir.mkdir(exist_ok=True)
+    reports_dir.mkdir(exist_ok=True)
+    print(f"Output directory created: {output_dir.as_posix()!r}")
+    print(f"Reports directory created: {reports_dir.as_posix()!r}")
     
     print(function_combinations)
 
@@ -43,6 +53,7 @@ def main():
     functions = configuration.readline()
 
     # Change configuration only if is present in the file
+    loaded_config = []
     if len(functions) != 0:
         functions = functions[:-1]
         loads = configuration.readline().split(',')
@@ -78,7 +89,7 @@ def main():
         time.sleep(30)
 
         # Use kubectl to get the OpenFaaS basic-auth secret and decode the password from Base64
-        password_cmd = 'kubectl --context=midnode-minikube-context get secret -n openfaas basic-auth -o jsonpath="{.data.basic-auth-password}" | base64 --decode'
+        password_cmd = 'kubectl --context=mid get secret -n openfaas basic-auth -o jsonpath="{.data.basic-auth-password}" | base64 --decode'
         password = subprocess.check_output(password_cmd, shell=True, text=True).strip()
 
         # Construct the faas-cli login command using the obtained password and OpenFaaS service IP
@@ -120,32 +131,34 @@ def main():
             base_cpu_usage_node_idle, base_ram_usage_node_idle, base_ram_usage_node_p_idle, base_power_usage_node_idle, rest_seconds = rest(base_cpu_usage_node_idle, base_ram_usage_node_idle, base_power_usage_node_idle, duration, scaphandre)
             
         print('\nCPU, RAM and POWER usage in idle state')
-        print({ 'cpu_node': base_cpu_usage_node_idle, 'ram_usage': base_ram_usage_node_idle, 'ram_usage_percentage': base_ram_usage_node_p_idle, 'power_usage': base_power_usage_node_idle})
-
+        print({'cpu_node': base_cpu_usage_node_idle, 'ram_usage': base_ram_usage_node_idle, 'ram_usage_percentage': base_ram_usage_node_p_idle, 'power_usage': base_power_usage_node_idle})
+        print()
         
         function_with_rate_combinations = []
+        print("Function, Combinations")
         for function_name in function_tuple_config:
             temp = []
             print(function_name, rates)
             for element in itertools.product([function_name], rates):
                 temp.append(element)
             function_with_rate_combinations.append(temp)
+        print()
             
         # Creation of output files
+        print("Creation of", RESULT_FILE_NAME)
         with open(RESULT_FILE_NAME, 'a') as f:  
             writer = csv.DictWriter(f, fieldnames=generate_csv_header(function_tuple_config))
             writer.writeheader()
-            f.close()
             
+        print("Creation of", SKIPPED_RESULT_FILE_NAME)
         with open(SKIPPED_RESULT_FILE_NAME, 'a') as f:  
             writer = csv.DictWriter(f, fieldnames=generate_skipped_config_csv_header(function_tuple_config))
             writer.writeheader()
-            f.close()
         
         actual_dominant_config = None
         overload_counter = 0
-        config_combinations_total = itertools.product(*function_with_rate_combinations)
-        config_combinations_suport = itertools.product(*function_with_rate_combinations)
+        config_combinations_total = list(itertools.product(*function_with_rate_combinations))
+        config_combinations_suport = list(itertools.product(*function_with_rate_combinations))
         previous_config = -1
 
         for config in config_combinations_suport:
@@ -166,9 +179,12 @@ def main():
     
         batch_iterator = batch_iterator + 1  
         for config in config_combinations_total:
+            print('\n----------------------------------------')
+            print("Current executed configuration:", config)
+            print('----------------------------------------\n')
             current_functions = []
             attack_configs = []
-            print('\n----------------------------------------')
+
             for attack_data in config:
                 # Setup vegeta attack
                 function_name = attack_data[0]; invocation_rate = attack_data[1]
