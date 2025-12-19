@@ -1,5 +1,9 @@
 # Introduction
 
+> [!WARNING]
+> This section is under active development. We are currently improving the
+> metrics collection process based on profiling of FaaS functions.
+
 The work conducted allows for gathering system metrics from FaaS functions and nodes based on the input load per second received by the functions. The data collected in this manner will then be used to model the performance of a node. The components and their interactions can be seen in the simplified figure.
 
 ![Figure Title](/images/workflow.png)
