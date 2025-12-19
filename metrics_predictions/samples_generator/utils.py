@@ -9,13 +9,14 @@ import requests
 import itertools
 import subprocess
 import ast
+import sys
 
 # Retrieve Prometheus service port
 def get_prometheus_service_port():
     service_name = "prometheus"
 
     # Run the kubectl command to get the information about the service
-    command = f"kubectl get svc -n openfaas {service_name} -o json"
+    command = f"kubectl --context=midnode-minikube-context get svc -n openfaas {service_name} -o json"
     result = subprocess.run(command, shell=True, capture_output=True, text=True)
 
     if result.returncode != 0:
@@ -37,9 +38,9 @@ def get_prometheus_service_port():
     return prometheus_port
 
 # Get the Prometheus NodePort
-PROMETHEUS_PORT = get_prometheus_service_port()
+PROMETHEUS_PORT = 30411
 ### CONSTANTS ###
-PROMETHEUS_SERVICE_IP = "192.168.49.2"
+PROMETHEUS_SERVICE_IP = "10.99.217.210"
 
 PROMETHEUS_QUERY_URL = f"http://{PROMETHEUS_SERVICE_IP}:{PROMETHEUS_PORT}/api/v1/query"
 PROMETHEUS_QUERY_RANGE_URL = f"http://{PROMETHEUS_SERVICE_IP}:{PROMETHEUS_PORT}/api/v1/query_range"
@@ -55,6 +56,7 @@ FUNCTION_BODIES = {
     'qrcode-go': 'http://www.google.com',
     'eat-memory': ''
 }
+
 
 # It generates an array of tuple with every combination of function names.
 # Each tuple generated will have a number of functions that goes from min_number_of_functions (included) to max_number_of_functions (excluded).
@@ -87,7 +89,7 @@ def generate_rates_list_profiler(max_rate):
 def vegeta_attack(function_name, rate, duration='30s', format='json'):
     if(rate != 0):
         body = FUNCTION_BODIES[function_name]
-        target = f'\'{{method: "GET", url: "http://192.168.49.2:31112/function/{function_name}", body: "{body}" | @base64, header: {{"Content-Type": ["text/plain"]}}}}\''
+        target = f'\'{{method: "GET", url: "http://10.99.217.210:31112/function/{function_name}", body: "{body}" | @base64, header: {{"Content-Type": ["text/plain"]}}}}\''
         attack = f'vegeta attack -duration={duration} -rate={rate} -format={format} -timeout=30s | vegeta report --type=json > reports/report-{function_name}-{rate}.json'
         return 'jq -ncM ' + target + ' | ' + attack
     return ''
@@ -138,15 +140,17 @@ def retrieve_function_replicas():
     return replicas
 
 # This function let the system rest for Sampler Generator
-def rest(base_cpu_usage_idle, base_ram_usage_idle, base_power_usage_node_idle, duration):
+def rest(base_cpu_usage_idle, base_ram_usage_idle, base_power_usage_node_idle, duration, scaphandre):
     time.sleep(10)
     sleep_time_count = 10
 
-    cpu_usage, ram_usage, ram_usage_p, power_usage = retrieve_node_resources_usage(duration, None, None)
+    cpu_usage, ram_usage, ram_usage_p, power_usage = retrieve_node_resources_usage(duration, None, None, scaphandre)
     while(cpu_usage > (base_cpu_usage_idle + (base_cpu_usage_idle * 15/100)) or ram_usage > (base_ram_usage_idle + (base_ram_usage_idle * 15/100)) or power_usage > (base_power_usage_node_idle + (base_power_usage_node_idle * 15/100))):
         time.sleep(5)
         sleep_time_count += 5
-        cpu_usage, ram_usage, ram_usage_p, power_usage = retrieve_node_resources_usage(duration, None, None)
+        cpu_usage, ram_usage, ram_usage_p, power_usage = retrieve_node_resources_usage(duration, None, None, scaphandre)
+        if (sleep_time_count >180):
+            sys.exit(1)  # Exit the script with a non-zero status to indicate an abnormal termination
     wait = True
     while(wait):
         wait = False
@@ -162,15 +166,15 @@ def rest(base_cpu_usage_idle, base_ram_usage_idle, base_power_usage_node_idle, d
     return cpu_usage, ram_usage, ram_usage_p, power_usage, sleep_time_count
 
 # This function let the system rest for Sampler Generator Profiler
-def rest_for_profiler(base_cpu_usage_idle, base_ram_usage_idle, base_power_usage_node_idle, duration):
+def rest_for_profiler(base_cpu_usage_idle, base_ram_usage_idle, base_power_usage_node_idle, duration, scaphandre):
     time.sleep(30)
     sleep_time_count = 10
 
-    cpu_usage, ram_usage, ram_usage_p, power_usage = retrieve_node_resources_usage(duration, None, None)
+    cpu_usage, ram_usage, ram_usage_p, power_usage = retrieve_node_resources_usage(duration, None, None, scaphandre)
     while(cpu_usage > (base_cpu_usage_idle + (base_cpu_usage_idle * 15/100)) or ram_usage > (base_ram_usage_idle + (base_ram_usage_idle * 15/100)) or power_usage > (base_power_usage_node_idle + (base_power_usage_node_idle * 15/100))):
         time.sleep(10)
         sleep_time_count += 5
-        cpu_usage, ram_usage, ram_usage_p, power_usage = retrieve_node_resources_usage(duration, None, None)
+        cpu_usage, ram_usage, ram_usage_p, power_usage = retrieve_node_resources_usage(duration, None, None, scaphandre)
     wait = True
     while(wait):
         wait = False
@@ -186,7 +190,7 @@ def rest_for_profiler(base_cpu_usage_idle, base_ram_usage_idle, base_power_usage
     return cpu_usage, ram_usage, ram_usage_p, power_usage, sleep_time_count
 
 # It interrogates Prometheus to retrieve the node CPU and RAM usage in a given time span.
-def retrieve_node_resources_usage(time_span, start_time, end_time):
+def retrieve_node_resources_usage(time_span, start_time, end_time, scaphandre):
     if(start_time and end_time):
         # CPU USAGE NODE 0% - 800% (8 CORE) https://www.robustperception.io/understanding-machine-cpu-usage/
         cpu_usage = execute_query(PROMETHEUS_QUERY_RANGE_URL, {
@@ -211,14 +215,16 @@ def retrieve_node_resources_usage(time_span, start_time, end_time):
             'end': end_time,
             'step': '10s'
         }, True)
-
-        # POWER USAGE NODE
-        power_usage = execute_query(PROMETHEUS_QUERY_RANGE_URL, {
-            'query': ('avg_over_time(scaph_host_power_microwatts[%s])' % (time_span)),
-            'start': start_time,
-            'end': end_time,
-            'step': '10s'
-        }, True)
+        if scaphandre == True:
+            # POWER USAGE NODE
+            power_usage = execute_query(PROMETHEUS_QUERY_RANGE_URL, {
+                'query': ('avg_over_time(scaph_host_power_microwatts[%s])' % (time_span)),
+                'start': start_time,
+                'end': end_time,
+                'step': '10s'
+            }, True)
+        else:
+            power_usage = float('nan')
         return cpu_usage, ram_usage, ram_usage_p, power_usage
     else:
         # CPU USAGE NODE 0% - 800% (8 CORE) https://www.robustperception.io/understanding-machine-cpu-usage/
@@ -235,15 +241,18 @@ def retrieve_node_resources_usage(time_span, start_time, end_time):
         ram_usage_p = execute_query(PROMETHEUS_QUERY_URL, {
             'query': ('100 * avg(1 - ((avg_over_time(node_memory_MemFree_bytes[%s]) + avg_over_time(node_memory_Cached_bytes[%s]) + avg_over_time(node_memory_Buffers_bytes[%s])) / avg_over_time(node_memory_MemTotal_bytes[%s])))' % (time_span, time_span, time_span, time_span))
         })
+        if scaphandre == True:
+            # POWER USAGE NODE IN MICROWATTS
+            power_usage = execute_query(PROMETHEUS_QUERY_URL, {
+                'query': ('scaph_host_power_microwatts')
+            })
+        else:
+            power_usage = float('nan')
 
-        # POWER USAGE NODE IN MICROWATTS
-        power_usage = execute_query(PROMETHEUS_QUERY_URL, {
-            'query': ('scaph_host_power_microwatts')
-        })
         return cpu_usage, ram_usage, ram_usage_p, power_usage
 
 # It interrogates Prometheus to retrieve CPU and RAM usage for each functions in a given time span.
-def retrieve_functions_resource_usage(function_names, functions_pids, time_span, start_time, end_time):
+def retrieve_functions_resource_usage(function_names, functions_pids, time_span, start_time, end_time, scaphandre):
 
     if(start_time and end_time):
         # RAM USAGE FUNCTIONS IN BYTES
@@ -269,16 +278,19 @@ def retrieve_functions_resource_usage(function_names, functions_pids, time_span,
         # POWER USAGE PER FUNCTION
         power_usage_per_functions = []
         for function_name in function_names:
-            pid_list = [str(k) + '|' for k in functions_pids[function_name]]
-            pid_str = ''.join(pid_list)
-            query = f'sum(avg_over_time(scaph_process_power_consumption_microwatts{{pid=~"{pid_str}"}}[{time_span}]))'
-            print(query)
-            power_usage_per_functions.append(execute_query(PROMETHEUS_QUERY_RANGE_URL, {
-                'query': (query),
-                'start': start_time,
-                'end': end_time,
-                'step': '10s'
-            }, True))
+            if scaphandre == True:
+                pid_list = [str(k) + '|' for k in functions_pids[function_name]]
+                pid_str = ''.join(pid_list)
+                query = f'sum(avg_over_time(scaph_process_power_consumption_microwatts{{pid=~"{pid_str}"}}[{time_span}]))'
+                print(query)
+                power_usage_per_functions.append(execute_query(PROMETHEUS_QUERY_RANGE_URL, {
+                    'query': (query),
+                    'start': start_time,
+                    'end': end_time,
+                    'step': '10s'
+                }, True))
+            else:
+                power_usage_per_functions.append(float('nan'))
     else:
         ram_usage_per_functions = []
         for function_name in function_names:
@@ -290,11 +302,14 @@ def retrieve_functions_resource_usage(function_names, functions_pids, time_span,
 
         power_usage_per_functions = []
         for function_name in function_names:
-            power_usage_per_functions.append(0)
+            if scaphandre == True:
+                power_usage_per_functions.append(0)
+            else:
+                power_usage_per_functions.append(float('nan'))
     return cpu_usage_per_functions, ram_usage_per_functions, power_usage_per_functions
 
 # It interrogates Prometheus to retrieve CPU and RAM usage for a given function in a given time span.
-def retrieve_function_resource_usage_for_profile(function_name, function_pids, time_span, start_time, end_time):
+def retrieve_function_resource_usage_for_profile(function_name, function_pids, time_span, start_time, end_time, scaphandre):
     if start_time and end_time:
         # RAM USAGE FUNCTION IN BYTES
         ram_usage = execute_query(PROMETHEUS_QUERY_RANGE_URL, {
@@ -313,20 +328,26 @@ def retrieve_function_resource_usage_for_profile(function_name, function_pids, t
         }, True)
 
         # POWER USAGE FOR FUNCTION
-        pid_list = [str(k) + '|' for k in function_pids[function_name]]
-        pid_str = ''.join(pid_list)
-        query = f'sum(avg_over_time(scaph_process_power_consumption_microwatts{{pid=~"{pid_str}"}}[{time_span}]))'
-        print(query)
-        power_usage = execute_query(PROMETHEUS_QUERY_RANGE_URL, {
-            'query': (query),
-            'start': start_time,
-            'end': end_time,
-            'step': '10s'
-        }, True)
+        if scaphandre == True:
+            pid_list = [str(k) + '|' for k in function_pids[function_name]]
+            pid_str = ''.join(pid_list)
+            query = f'sum(avg_over_time(scaph_process_power_consumption_microwatts{{pid=~"{pid_str}"}}[{time_span}]))'
+            print(query)
+            power_usage = execute_query(PROMETHEUS_QUERY_RANGE_URL, {
+                'query': (query),
+                'start': start_time,
+                'end': end_time,
+                'step': '10s'
+            }, True)
+        else:
+            power_usage = float('nan')
     else:
         ram_usage = 0
         cpu_usage = 0
-        power_usage = 0
+        if scaphandre == True:
+            power_usage = 0
+        else:
+            power_usage = float('nan')
     return cpu_usage, ram_usage, power_usage
 
 # It permorfs a http request to the Prometheus API
@@ -342,10 +363,19 @@ def execute_query(url, query_params, range_query=False):
             continue
         if(range_query):
             result = get_avg_value_from_response(response.json()["data"], 0)
+            print(result)
         else:
             result = get_value_from_response(response.json()["data"])
+            print(result)
         break
     return result
+
+def safe_execute_query(url, query, default_value=0):
+    try:
+        return execute_query(url, query)
+    except Exception as e:
+        print(f"Failed to execute query {query}: {e}")
+        return default_value
 
 def get_value_from_response(data):
     return float(data["result"][0]["value"][1])
@@ -403,21 +433,52 @@ def generate_skipped_config_csv_header(function_names):
         csv_header.append(f'rate_function_{function_name}')
     return csv_header 
 
-# Execute the find-pid.py script into minikube to obtain the PIDs of the functions
 def get_functions_pids(functions_names):
-    #print(len(functions_replicas.keys()), *[str(k) for k in functions_replicas.keys()], *[str(v) for v in functions_replicas.values()])
-    temp = subprocess.Popen(['docker', 'exec', '-ti', 'minikube', 'python3', 'etc/find-pid.py', *functions_names], stdout = subprocess.PIPE)
-    data = str(temp.communicate())
-    data = data.split('\\n')
-    if (data[1].__contains__('List of PIDs for the requested functions')):
-        output = data[1].split('\\r')
+    # Execute the bash script and capture its output
+    temp = execute_bash_script(functions_names)
+    
+    # Split the output by newlines
+    data = temp.split('\n')
+
+    # Check if the output contains the expected PID information
+    if len(data) > 1 and 'List of PIDs for the requested functions' in data[1]:
+        output = data[1].split('\r')
+        # Extract PIDs from the string and convert it into a Python dictionary
         functions_pids = ast.literal_eval(output[0][43:])
     else:
         print("Log of finding PIDs function:", data)
         raise Exception('Something went wrong in finding PIDs for the functions')
+    
+    # Create a dictionary to store the count of replicas for each function
     functions_replicas = {}
     for name in functions_names:
-        functions_replicas[name] = len(functions_pids[name])
+        # Ensure the function name exists in the PID dictionary and count the replicas
+        functions_replicas[name] = len(functions_pids.get(name, []))
+    
+    # Print the results for debugging purposes
     print("Replicas of functions:", functions_replicas)
-    print("List of PIDs for the requested functions: ", functions_pids)
+    print("List of PIDs for the requested functions:", functions_pids)
+    
     return functions_pids, functions_replicas
+
+
+def execute_bash_script(functions_names):
+    # Prepare the bash script command with functions names as arguments
+    script_command = ['./remote_docker_cmd.sh', *functions_names]
+
+    # Run the bash script using subprocess
+    process = subprocess.Popen(script_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
+    
+    # Capture the output and error
+    stdout, stderr = process.communicate()
+
+    # Convert the output to a string
+    output = stdout.decode('utf-8')
+    error = stderr.decode('utf-8')
+
+    # Check if there is an error
+    if process.returncode != 0:
+        print(f"Error: {error}")
+        raise Exception("Something went wrong while executing the script.")
+
+    return output

@@ -1,2 +1,2 @@
-shasum,curl,cavecal/eat-memory
+figlet,shasum,nmap
 0,0,0

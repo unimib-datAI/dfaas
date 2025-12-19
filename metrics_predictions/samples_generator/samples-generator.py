@@ -17,13 +17,18 @@ from utils import *
 FUNCTION_NAMES = ['figlet', 'shasum', 'nmap', 'env', 'curl', 'cavecal/eat-memory']
 MAX_ITERATION_PER_CONFIG = 3
 MAX_RATE = 200
-OPENFAAS_SERVICE_IP = "http://192.168.49.2:31112"   
+OPENFAAS_SERVICE_IP = "http://10.99.217.210:31112"   
 
 def main():
+    scaphandre = True
     print('Argument List:', str(sys.argv))
     max_rate = int(sys.argv[1])
     duration = sys.argv[2]
-    num_physical_cpus = multiprocessing.cpu_count()
+    if "--no-scaphandre" in sys.argv:
+        scaphandre = False
+    #num_physical_cpus = multiprocessing.cpu_count() # Could use kubectl get node -o jsonpath="{.items[0].status.capacity.cpu}" instead
+    num_physical_cpus_cmd = ['kubectl','--context=midnode-minikube-context', 'get', 'node', '-o', 'jsonpath={.items[0].status.capacity.cpu}']
+    num_physical_cpus = int(subprocess.check_output(num_physical_cpus_cmd, text=True).strip())
     print(f"Numero di CPU fisiche: {num_physical_cpus}")
     max_cpu_percentage = num_physical_cpus * 100
     cpu_overload_percentage = (max_cpu_percentage * 80) / 100
@@ -73,7 +78,7 @@ def main():
         time.sleep(30)
 
         # Use kubectl to get the OpenFaaS basic-auth secret and decode the password from Base64
-        password_cmd = 'kubectl get secret -n openfaas basic-auth -o jsonpath="{.data.basic-auth-password}" | base64 --decode'
+        password_cmd = 'kubectl --context=midnode-minikube-context get secret -n openfaas basic-auth -o jsonpath="{.data.basic-auth-password}" | base64 --decode'
         password = subprocess.check_output(password_cmd, shell=True, text=True).strip()
 
         # Construct the faas-cli login command using the obtained password and OpenFaaS service IP
@@ -110,9 +115,9 @@ def main():
         
         # Retrieve metrics in idle state.
         if(batch_iterator == 0):
-            base_cpu_usage_node_idle, base_ram_usage_node_idle, base_ram_usage_node_p_idle, base_power_usage_node_idle = retrieve_node_resources_usage(duration, None, None)
+            base_cpu_usage_node_idle, base_ram_usage_node_idle, base_ram_usage_node_p_idle, base_power_usage_node_idle = retrieve_node_resources_usage(duration, None, None, scaphandre)
         else:
-            base_cpu_usage_node_idle, base_ram_usage_node_idle, base_ram_usage_node_p_idle, base_power_usage_node_idle, rest_seconds = rest(base_cpu_usage_node_idle, base_ram_usage_node_idle, base_power_usage_node_idle, duration)
+            base_cpu_usage_node_idle, base_ram_usage_node_idle, base_ram_usage_node_p_idle, base_power_usage_node_idle, rest_seconds = rest(base_cpu_usage_node_idle, base_ram_usage_node_idle, base_power_usage_node_idle, duration, scaphandre)
             
         print('\nCPU, RAM and POWER usage in idle state')
         print({ 'cpu_node': base_cpu_usage_node_idle, 'ram_usage': base_ram_usage_node_idle, 'ram_usage_percentage': base_ram_usage_node_p_idle, 'power_usage': base_power_usage_node_idle})
@@ -139,16 +144,28 @@ def main():
         
         actual_dominant_config = None
         overload_counter = 0
-        config_combinations_total = list(itertools.product(*function_with_rate_combinations))
+        config_combinations_total = itertools.product(*function_with_rate_combinations)
+        config_combinations_suport = itertools.product(*function_with_rate_combinations)
+        previous_config = -1
 
-        config_combinations = []
-        if (len(functions) != 0 and batch_iterator == 0):
+        for config in config_combinations_suport:
+            if config == loaded_config:
+                break
+            previous_config = config
+
+        if previous_config != -1:
+            for config in config_combinations_total:
+                if config == previous_config:
+                    break
+
+        """  if (len(functions) != 0 and batch_iterator == 0):
             for x in range(config_combinations_total.index(loaded_config), len(config_combinations_total)):
                 config_combinations.append(config_combinations_total[x])
         else:
-            config_combinations = config_combinations_total
+            config_combinations = config_combinations_total """
+    
         batch_iterator = batch_iterator + 1  
-        for config in config_combinations:
+        for config in config_combinations_total:
             current_functions = []
             attack_configs = []
             print('\n----------------------------------------')
@@ -182,7 +199,7 @@ def main():
                 j = 0
                 for j in range(0, MAX_ITERATION_PER_CONFIG):
                     # Resting
-                    cpu_usage_node_idle, ram_usage_node_idle, ram_usage_node_p_idle, power_usage_node_idle, rest_seconds = rest(base_cpu_usage_node_idle, base_ram_usage_node_idle, base_power_usage_node_idle, duration)
+                    cpu_usage_node_idle, ram_usage_node_idle, ram_usage_node_p_idle, power_usage_node_idle, rest_seconds = rest(base_cpu_usage_node_idle, base_ram_usage_node_idle, base_power_usage_node_idle, duration, scaphandre)
                     start_time = datetime.now().timestamp()
                     # Execute vegeta attacks in parallel
                     processes = [subprocess.Popen(attack, shell=True) for attack in attack_configs]
@@ -195,12 +212,12 @@ def main():
                     
                     # Retrieve metrics
                     if(end_time - start_time > int(duration[:-1])):
-                        cpu_usage_node, ram_usage_node, ram_usage_p_node, power_usage_node= retrieve_node_resources_usage(duration, start_time, end_time)
-                        cpu_usage_per_functions, ram_usage_per_functions, power_usage_per_functions = retrieve_functions_resource_usage(function_tuple_config, functions_pids, duration, start_time, end_time)
+                        cpu_usage_node, ram_usage_node, ram_usage_p_node, power_usage_node= retrieve_node_resources_usage(duration, start_time, end_time, scaphandre)
+                        cpu_usage_per_functions, ram_usage_per_functions, power_usage_per_functions = retrieve_functions_resource_usage(function_tuple_config, functions_pids, duration, start_time, end_time, scaphandre)
                         print("METRICS USING START TIME END TIME")
                     else:
-                        cpu_usage_node, ram_usage_node, ram_usage_p_node, power_usage_node = retrieve_node_resources_usage(duration, None, None)
-                        cpu_usage_per_functions, ram_usage_per_functions, power_usage_per_functions = retrieve_functions_resource_usage(function_tuple_config, functions_pids, duration, None, None)
+                        cpu_usage_node, ram_usage_node, ram_usage_p_node, power_usage_node = retrieve_node_resources_usage(duration, None, None, scaphandre)
+                        cpu_usage_per_functions, ram_usage_per_functions, power_usage_per_functions = retrieve_functions_resource_usage(function_tuple_config, functions_pids, duration, None, None, scaphandre)
                         print("METRICS USING DURATION")
 
                     
