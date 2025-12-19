@@ -11,6 +11,7 @@ import itertools
 from datetime import datetime
 from pathlib import Path
 import multiprocessing
+import argparse
 
 from utils import *
 
@@ -22,14 +23,21 @@ MAX_RATE = 200
 OPENFAAS_SERVICE_IP = "http://10.12.38.4:31112"   
 
 def main():
-    scaphandre = True
-    print('Argument List:', str(sys.argv))
-    max_rate = int(sys.argv[1])
-    duration = sys.argv[2]
-    if "--no-scaphandre" in sys.argv:
-        scaphandre = False
-    #num_physical_cpus = multiprocessing.cpu_count() # Could use kubectl get node -o jsonpath="{.items[0].status.capacity.cpu}" instead
-    num_physical_cpus_cmd = ['kubectl','--context=mid', 'get', 'node', '-o', 'jsonpath={.items[0].status.capacity.cpu}']
+    # Parse command-line arguments
+    parser = argparse.ArgumentParser(description='Samples generator script')
+    parser.add_argument('max_rate', type=int, help='Maximum rate for function invocation')
+    parser.add_argument('duration', type=str, help='Duration of the attack')
+    parser.add_argument('context', type=str, help='Kubernetes context name')
+    parser.add_argument('--scaphandre', action='store_true', default=False, help='Enable scaphandre (default: False)')
+    
+    args = parser.parse_args()
+    
+    max_rate = args.max_rate
+    duration = args.duration
+    context = args.context
+    scaphandre = args.scaphandre
+    
+    num_physical_cpus_cmd = ['kubectl',f'--context={context}', 'get', 'node', '-o', 'jsonpath={.items[0].status.capacity.cpu}']
     num_physical_cpus = int(subprocess.check_output(num_physical_cpus_cmd, text=True).strip())
     print(f"Numero di CPU fisiche: {num_physical_cpus}")
     max_cpu_percentage = num_physical_cpus * 100
@@ -89,7 +97,7 @@ def main():
         time.sleep(30)
 
         # Use kubectl to get the OpenFaaS basic-auth secret and decode the password from Base64
-        password_cmd = 'kubectl --context=mid get secret -n openfaas basic-auth -o jsonpath="{.data.basic-auth-password}" | base64 --decode'
+        password_cmd = f'kubectl --context={context} get secret -n openfaas basic-auth -o jsonpath="{{.data.basic-auth-password}}" | base64 --decode'
         password = subprocess.check_output(password_cmd, shell=True, text=True).strip()
 
         # Construct the faas-cli login command using the obtained password and OpenFaaS service IP
