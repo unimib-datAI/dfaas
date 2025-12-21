@@ -12,6 +12,7 @@ from datetime import datetime
 from pathlib import Path
 import multiprocessing
 import argparse
+import pandas as pd
 
 from utils import *
 
@@ -66,12 +67,33 @@ def main():
     # function_combinations = generate_functions_combinations(FUNCTION_NAMES, 2, 3)
     print(f"Nr. of func. combinations (without rate): {len(function_combinations)}")
 
-    # Create some directories that will be used later.
-    output_dir, reports_dir = Path("../output").absolute(), Path("reports").absolute()
+    # Where the CSV files will be saved.
+    output_dir = Path("../output").resolve().absolute()
     output_dir.mkdir(exist_ok=True)
-    reports_dir.mkdir(exist_ok=True)
     print(f"\nOutput directory created: {output_dir.as_posix()!r}")
-    print(f"Reports directory created: {reports_dir.as_posix()!r}\n")
+
+    # Where vegeta reports will be saved.
+    reports_dir = Path("reports").absolute()
+    reports_dir.mkdir(exist_ok=True)
+    print(f"Reports directory created: {reports_dir.as_posix()!r}")
+
+    # Create the special index.csv file under output directory.
+    index_path = output_dir / "index.csv"
+    index_csv_cols = ["functions", "rates", "results_file"]
+    if index_path.is_file():
+        # Just try to open the file to check if is valid.
+        try:
+            pd.read_csv(file_path)
+            print(f"Index CSV found: {index_path.as_posix()!r}")
+        except pd.errors.EmptyDataError:
+            print(
+                "Index CSV file contains wrong data/header: {index_path.as_posix()!r}"
+            )
+    else:
+        # Initialize the file with only header row.
+        df = pd.DataFrame(columns=index_csv_cols)
+        df.to_csv(index_path, index=False)
+        print(f"Index CSV file created: {index_path.as_posix()!r}")
 
     function_tuple_configs = []
 
@@ -110,6 +132,8 @@ def main():
 
     batch_iterator = 0
     for function_tuple_config in function_tuple_configs:
+        print(f"Selected configuration (without rates): {function_tuple_config}")
+
         # File location where we will be saving our attack results.
         RESULT_FILE_NAME = (
             f"../output/results-{current_datetime}-{batch_iterator}-{duration}.csv"
@@ -118,7 +142,9 @@ def main():
             f"../output/skipped-{current_datetime}-{batch_iterator}-{duration}.csv"
         )
 
-        # Wait until the attacks are successfully terminated.
+        # TODO: Check if this configuration (without rate) is already done in
+        # index.csv.
+
         time.sleep(30)
 
         # Use kubectl to get the OpenFaaS basic-auth secret and decode the password from Base64
@@ -265,6 +291,8 @@ def main():
             print("----------------------------------------\n")
             current_functions = []
             attack_configs = []
+
+            pd.read_csv(index_path)
 
             for attack_data in config:
                 # Setup vegeta attack
@@ -460,6 +488,14 @@ def main():
 
                     if overload_counter > MAX_ITERATION_PER_CONFIG / 2:
                         actual_dominant_config = config
+
+                    # Save the configuration (+ rates) to index.csv
+                    config_csv = sorted(b, key=lambda x: x[0])
+                    fn_names, rates = zip(*config_csv)
+                    with index_path.open("a") as index_file:
+                        writer = csv.writer(index_file)
+                        writer.writerow([str(fn_names), str(rates), RESULT_FILE_NAME])
+
                     print("\n----------------------------------------")
             except Exception as e:
                 print(e)
