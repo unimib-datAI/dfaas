@@ -56,20 +56,22 @@ def main():
     num_physical_cpus = int(
         subprocess.check_output(num_physical_cpus_cmd, text=True).strip()
     )
-    print(f"Numero di CPU fisiche: {num_physical_cpus}")
+    print(f"Detected CPUs: {num_physical_cpus}")
     max_cpu_percentage = num_physical_cpus * 100
     cpu_overload_percentage = (max_cpu_percentage * 80) / 100
+
+    print(f"\nProfiled functions: {FUNCTION_NAMES}")
+    function_combinations = generate_functions_combinations(FUNCTION_NAMES, 1, 2)
     # function_combinations = generate_functions_combinations(FUNCTION_NAMES, 3, 4)
-    function_combinations = generate_functions_combinations(FUNCTION_NAMES, 2, 3)
+    # function_combinations = generate_functions_combinations(FUNCTION_NAMES, 2, 3)
+    print(f"Nr. of func. combinations (without rate): {len(function_combinations)}")
 
     # Create some directories that will be used later.
-    output_dir, reports_dir = Path("../output"), Path("reports")
+    output_dir, reports_dir = Path("../output").absolute(), Path("reports").absolute()
     output_dir.mkdir(exist_ok=True)
     reports_dir.mkdir(exist_ok=True)
-    print(f"Output directory created: {output_dir.as_posix()!r}")
-    print(f"Reports directory created: {reports_dir.as_posix()!r}")
-
-    print(function_combinations)
+    print(f"\nOutput directory created: {output_dir.as_posix()!r}")
+    print(f"Reports directory created: {reports_dir.as_posix()!r}\n")
 
     function_tuple_configs = []
 
