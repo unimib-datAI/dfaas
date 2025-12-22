@@ -29,6 +29,8 @@ FUNCTION_NAMES = [
     "face-detect-pigo",
     "face-blur",
     "coherent-line-drawing",
+    "certinfo",
+    "markdown",
 ]
 MAX_RATE = 200
 OPENFAAS_SERVICE_IP = "http://10.12.38.4:31112"

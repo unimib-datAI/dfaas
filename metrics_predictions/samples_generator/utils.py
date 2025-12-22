@@ -64,6 +64,8 @@ FUNCTION_BODIES = {
     "qrcode-go": "http://www.google.com",
     "eat-memory": "",
     "sentimentanalysis": textBlob,
+    "certinfo": "https://google.com",
+    "markdown": "# Title\n**Hello** world!",
     # See: https://github.com/esimov/pigo-openfaas
     "face-detect-pigo": "https://raw.githubusercontent.com/esimov/pigo-openfaas/refs/heads/master/pigo-openfaas/samples/nasa.jpg",
     # See: https://github.com/esimov/pigo-openfaas-faceblur
