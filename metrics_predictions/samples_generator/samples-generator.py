@@ -12,7 +12,6 @@ from datetime import datetime
 from pathlib import Path
 import multiprocessing
 import argparse
-import pandas as pd
 
 from utils import *
 
@@ -57,7 +56,7 @@ def main():
     num_physical_cpus = int(
         subprocess.check_output(num_physical_cpus_cmd, text=True).strip()
     )
-    print(f"Detected CPUs: {num_physical_cpus}")
+    print(f"Detected CPUs on the node: {num_physical_cpus}")
     max_cpu_percentage = num_physical_cpus * 100
     cpu_overload_percentage = (max_cpu_percentage * 80) / 100
 
@@ -77,23 +76,7 @@ def main():
     reports_dir.mkdir(exist_ok=True)
     print(f"Reports directory created: {reports_dir.as_posix()!r}")
 
-    # Create the special index.csv file under output directory.
-    index_path = output_dir / "index.csv"
-    index_csv_cols = ["functions", "rates", "results_file"]
-    if index_path.is_file():
-        # Just try to open the file to check if is valid.
-        try:
-            pd.read_csv(file_path)
-            print(f"Index CSV found: {index_path.as_posix()!r}")
-        except pd.errors.EmptyDataError:
-            print(
-                "Index CSV file contains wrong data/header: {index_path.as_posix()!r}"
-            )
-    else:
-        # Initialize the file with only header row.
-        df = pd.DataFrame(columns=index_csv_cols)
-        df.to_csv(index_path, index=False)
-        print(f"Index CSV file created: {index_path.as_posix()!r}")
+    index_csv_init(output_dir)
 
     function_tuple_configs = []
 
@@ -292,8 +275,6 @@ def main():
             current_functions = []
             attack_configs = []
 
-            pd.read_csv(index_path)
-
             for attack_data in config:
                 # Setup vegeta attack
                 function_name = attack_data[0]
@@ -489,12 +470,8 @@ def main():
                     if overload_counter > MAX_ITERATION_PER_CONFIG / 2:
                         actual_dominant_config = config
 
-                    # Save the configuration (+ rates) to index.csv
-                    config_csv = sorted(b, key=lambda x: x[0])
-                    fn_names, rates = zip(*config_csv)
-                    with index_path.open("a") as index_file:
-                        writer = csv.writer(index_file)
-                        writer.writerow([str(fn_names), str(rates), RESULT_FILE_NAME])
+                    # Save the executed configuration (+ rates) to index.csv
+                    index_csv_add_config(output_dir, config, RESULT_FILE_NAME)
 
                     print("\n----------------------------------------")
             except Exception as e:

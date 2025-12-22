@@ -10,6 +10,9 @@ import itertools
 import subprocess
 import ast
 import sys
+import csv
+from pathlib import Path
+import pandas as pd
 
 
 # Retrieve Prometheus service port
@@ -642,3 +645,54 @@ def execute_bash_script(functions_names):
         raise Exception("Something went wrong while executing the script.")
 
     return output
+
+
+def index_csv_init(output_dir):
+    """Checks whether index.csv exists in the given output_dir and whether it is
+    valid. If it does not exist, initializes a new index.csv file."""
+    index_path = Path(output_dir) / "index.csv"
+    index_csv_cols = ["functions", "rates", "results_file"]
+    # Required since we save lists as columns that use ",".
+    index_csv_separator = ";"
+
+    if index_path.is_file():
+        # Just try to open the file to check if is valid.
+        try:
+            pd.read_csv(index_path, sep=";")
+            print(f"Index CSV found: {index_path.as_posix()!r}")
+        except pd.errors.EmptyDataError as e:
+            print(
+                f"Index CSV file contains wrong data/header: {index_path.as_posix()!r}: {str(e)}"
+            )
+            exit(0)
+    else:
+        # Initialize the file with only header row.
+        with index_path.open("w") as index_file:
+            writer = csv.writer(index_file, delimiter=index_csv_separator)
+            writer.writerow(index_csv_cols)
+        print(f"Index CSV file created: {index_path.as_posix()!r}")
+
+
+def index_csv_add_config(output_dir, config, result_filename):
+    """Add the given config to index.csv in the specified output_dir. The
+    result_filename string is attached to the config."""
+    # Chain .absolute().resolve() needed to get relative paths.
+    index_path = Path(output_dir).absolute().resolve() / "index.csv"
+    result_filename = Path(result_filename).absolute().resolve()
+    result_filename = result_filename.relative_to(index_path.parent)
+
+    index_csv_separator = ";"
+
+    # The config should already be sorted. In any case, we need to split
+    # function names and rates, as each is stored in a separate column.
+    config = sorted(config, key=lambda x: x[0])
+    fn_names, rates = zip(*config)
+
+    # Original values are tuples, but we want to encode lists.
+    fn_names, rates = list(fn_names), list(rates)
+
+    # Close the index.csv file immediately to flush buffers and allow other
+    # processes to read the file while this program is running.
+    with index_path.open("a") as index_file:
+        writer = csv.writer(index_file, delimiter=index_csv_separator)
+        writer.writerow([fn_names, rates, result_filename])
