@@ -6,6 +6,7 @@
 import time
 import sys
 import subprocess
+import traceback
 import csv
 import itertools
 from datetime import datetime
@@ -17,8 +18,7 @@ from utils import *
 
 ### CONSTANTS ###
 # FUNCTION_NAMES = ['figlet', 'shasum', 'nmap', 'env', 'curl', 'cavecal/eat-memory']
-FUNCTION_NAMES = ["figlet", "shasum", "nmap"]
-MAX_ITERATION_PER_CONFIG = 3
+FUNCTION_NAMES = ["figlet", "shasum", "nmap", "env", "curl", "qrcode-go"]
 MAX_RATE = 200
 OPENFAAS_SERVICE_IP = "http://10.12.38.4:31112"
 
@@ -32,6 +32,12 @@ def main():
     parser.add_argument("duration", type=str, help="Duration of the attack")
     parser.add_argument("context", type=str, help="Kubernetes context name")
     parser.add_argument(
+        "--iterations",
+        type=int,
+        default=3,
+        help="Number of iterations to repeat form the same configuration (default: 3)",
+    )
+    parser.add_argument(
         "--scaphandre",
         action="store_true",
         default=False,
@@ -44,6 +50,7 @@ def main():
     duration = args.duration
     context = args.context
     scaphandre = args.scaphandre
+    iterations_per_config = args.iterations
 
     num_physical_cpus_cmd = [
         "kubectl",
@@ -309,7 +316,7 @@ def main():
 
             try:
                 j = 0
-                for j in range(0, MAX_ITERATION_PER_CONFIG):
+                for j in range(0, iterations_per_config):
                     # Resting
                     (
                         cpu_usage_node_idle,
@@ -467,7 +474,7 @@ def main():
                         )
                         writer.writerow(result)
 
-                    if overload_counter > MAX_ITERATION_PER_CONFIG / 2:
+                    if overload_counter > iterations_per_config / 2:
                         actual_dominant_config = config
 
                     # Save the executed configuration (+ rates) to index.csv
@@ -475,6 +482,7 @@ def main():
 
                     print("\n----------------------------------------")
             except Exception as e:
+                traceback.print_exc()
                 print(e)
                 print("An error occured, the attack is skipped!")
                 print("Configuration skipped:")
