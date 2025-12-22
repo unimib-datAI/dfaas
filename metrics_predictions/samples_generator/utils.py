@@ -67,9 +67,10 @@ FUNCTION_BODIES = {
 def generate_functions_combinations(
     function_list, min_number_of_functions, max_number_of_functions
 ):
+    sorted_fn_list = sorted(function_list)
     function_tuple_configurations = []
     for i in range(min_number_of_functions, max_number_of_functions):
-        combinations = itertools.combinations(function_list, i)
+        combinations = itertools.combinations(sorted_fn_list, i)
         function_tuple_configurations.extend(list(combinations))
     return function_tuple_configurations
 
