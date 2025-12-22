@@ -18,7 +18,18 @@ from utils import *
 
 ### CONSTANTS ###
 # FUNCTION_NAMES = ['figlet', 'shasum', 'nmap', 'env', 'curl', 'cavecal/eat-memory']
-FUNCTION_NAMES = ["figlet", "shasum", "nmap", "env", "curl", "qrcode-go"]
+FUNCTION_NAMES = [
+    "figlet",
+    "shasum",
+    "nmap",
+    "env",
+    "curl",
+    "qrcode-go",
+    "sentimentanalysis",
+    "face-detect-pigo",
+    "face-blur",
+    "coherent-line-drawing",
+]
 MAX_RATE = 200
 OPENFAAS_SERVICE_IP = "http://10.12.38.4:31112"
 

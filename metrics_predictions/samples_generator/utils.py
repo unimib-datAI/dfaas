@@ -53,6 +53,7 @@ PROMETHEUS_QUERY_RANGE_URL = (
 )
 
 FUNCTION_BODIES = {
+    # See: https://github.com/openfaas/store-functions
     "figlet": "Hello DFaas!",
     "nodeinfo": "",
     "shasum": "abcde",
@@ -62,7 +63,26 @@ FUNCTION_BODIES = {
     "curl": "http://www.google.com",
     "qrcode-go": "http://www.google.com",
     "eat-memory": "",
+    "sentimentanalysis": textBlob,
+    # See: https://github.com/esimov/pigo-openfaas
+    "face-detect-pigo": "https://raw.githubusercontent.com/esimov/pigo-openfaas/refs/heads/master/pigo-openfaas/samples/nasa.jpg",
+    # See: https://github.com/esimov/pigo-openfaas-faceblur
+    "face-blur": "https://raw.githubusercontent.com/esimov/pigo-openfaas/refs/heads/master/pigo-openfaas/samples/nasa.jpg",
+    # See: https://github.com/esimov/openfaas-coherent-line-drawing
+    "coherent-line-drawing": "https://raw.githubusercontent.com/unimib-datAI/dfaas/refs/heads/main/images/Scenario-crop.png",
 }
+
+textBlob = """Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
+eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim
+veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
+consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum
+dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident,
+sunt in culpa qui officia deserunt mollit anim id est laborum.
+
+Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius,
+turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis
+sollicitudin mauris. Integer in mauris eu nibh euismod gravida. Duis ac tellus
+et risus vulputate vehicula. Donec lobortis risus a elit. Etiam tempor."""
 
 
 # It generates an array of tuple with every combination of function names.
