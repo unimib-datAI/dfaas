@@ -29,6 +29,8 @@ for function in "${functions[@]}"
 do
     if [[ "$function" == "openfaas-youtube-dl" ]]; then
         faas-cli deploy --image ghcr.io/ema-pe/openfaas-youtube-dl --name openfaas-youtube-dl --gateway "${OPENFAAS_SERVICE_IP}"
+    elif [[ "$function" == "openfaas-text-to-speech" ]]; then
+        faas-cli deploy --image ghcr.io/ema-pe/openfaas-text-to-speech --name openfaas-text-to-speech --gateway "${OPENFAAS_SERVICE_IP}"
     else
         faas-cli store deploy "$function" --gateway "${OPENFAAS_SERVICE_IP}"
     fi

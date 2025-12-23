@@ -32,6 +32,7 @@ FUNCTION_NAMES = [
     "certinfo",
     "markdown",
     "openfaas-youtube-dl",
+    "openfaas-text-to-speech",
 ]
 MAX_RATE = 200
 OPENFAAS_SERVICE_IP = "http://10.12.38.4:31112"

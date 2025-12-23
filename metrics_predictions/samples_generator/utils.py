@@ -75,6 +75,9 @@ FUNCTION_BODIES = {
     # See: https://github.com/openfaas/store-functions
     # Some original functions does not work, so I updated them.
     "openfaas-youtube-dl": "https://www.youtube.com/watch?v=AjwzRdm8jlY",
+    # See: https://github.com/ema-pe/openfaas-text-to-speech
+    # This is a forked version of rorpage/openfaas-text-to-speech.
+    "openfaas-text-to-speech": "Hello World from a virtual machine!",
 }
 
 textBlob = """Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
