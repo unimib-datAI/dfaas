@@ -12,6 +12,7 @@ import ast
 import sys
 import csv
 from pathlib import Path
+
 import pandas as pd
 
 
@@ -52,6 +53,19 @@ PROMETHEUS_QUERY_RANGE_URL = (
     f"http://{PROMETHEUS_SERVICE_IP}:{PROMETHEUS_PORT}/api/v1/query_range"
 )
 
+textBlob = """Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
+eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim
+veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
+consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum
+dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident,
+sunt in culpa qui officia deserunt mollit anim id est laborum.
+
+Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius,
+turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis
+sollicitudin mauris. Integer in mauris eu nibh euismod gravida. Duis ac tellus
+et risus vulputate vehicula. Donec lobortis risus a elit. Etiam tempor."""
+
+
 FUNCTION_BODIES = {
     # See: https://github.com/openfaas/store-functions
     "figlet": "Hello DFaas!",
@@ -79,18 +93,6 @@ FUNCTION_BODIES = {
     # This is a forked version of rorpage/openfaas-text-to-speech.
     "openfaas-text-to-speech": "Hello World from a virtual machine!",
 }
-
-textBlob = """Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
-eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim
-veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo
-consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum
-dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident,
-sunt in culpa qui officia deserunt mollit anim id est laborum.
-
-Curabitur pretium tincidunt lacus. Nulla gravida orci a odio. Nullam varius,
-turpis et commodo pharetra, est eros bibendum elit, nec luctus magna felis
-sollicitudin mauris. Integer in mauris eu nibh euismod gravida. Duis ac tellus
-et risus vulputate vehicula. Donec lobortis risus a elit. Etiam tempor."""
 
 
 # It generates an array of tuple with every combination of function names.
@@ -724,3 +726,37 @@ def index_csv_add_config(output_dir, config, result_filename):
     with index_path.open("a") as index_file:
         writer = csv.writer(index_file, delimiter=index_csv_separator)
         writer.writerow([fn_names, rates, result_filename])
+
+
+def index_csv_check_config(output_dir, config):
+    """Return True if the given config already exists in the index.csv file
+    store in the given output_dir, otherwise return False."""
+    # The config should already be sorted. In any case, we need to split
+    # function names and rates, as each is stored in a separate column.
+    config = sorted(config, key=lambda x: x[0])
+    fn_names, rates = zip(*config)
+
+    # Original values are tuples, but we want to encode lists.
+    fn_names, rates = list(fn_names), list(rates)
+
+    # Read the index.csv file.
+    #
+    # Example:
+    # functions;rates;results_file
+    # ['curl'];[0];results-2025-12-22_16-55-34-0-30s.csv
+    # ['curl'];[10];results-2025-12-22_16-55-34-0-30s.csv
+    index_path = Path(output_dir).absolute().resolve() / "index.csv"
+    df = pd.read_csv(index_path, sep=";")
+
+    # Convert string representations of lists to actual lists
+    df["functions"] = df["functions"].apply(ast.literal_eval)
+    df["rates"] = df["rates"].apply(ast.literal_eval)
+
+    # Check if there is a row with the same fn_names and rates.
+    exists = (
+        # Must use apply() because we compare lists, not single elems.
+        df["functions"].apply(lambda x: x == fn_names)
+        & df["rates"].apply(lambda x: x == rates)
+    ).any()
+
+    return exists

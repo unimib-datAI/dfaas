@@ -329,6 +329,12 @@ def main():
             actual_dominant_config = None
             overload_counter = 0
 
+            # Check if the configuration already exists in the index.csv.
+            if index_csv_check_config(output_dir, config):
+                print("Configuration already exist in index.csv, skipping attack")
+                print("-------------Skip attack---------------")
+                continue
+
             try:
                 j = 0
                 for j in range(0, iterations_per_config):
