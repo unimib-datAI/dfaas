@@ -22,17 +22,17 @@ password_command="kubectl --context=mid get secret -n openfaas basic-auth -o jso
 password=$(eval $password_command)
 
 # Use the obtained password to log in using faas-cli
-faas_cli_command="echo -n $password | faas-cli login --username admin --password-stdin --gateway $OPENFAAS_SERVICE_IP"
+faas_cli_command="echo -n $password | faas-cli login --username admin --password-stdin --gateway $OPENFAAS_SERVICE_IP --tls-no-verify"
 eval $faas_cli_command
 
 for function in "${functions[@]}"
 do
     if [[ "$function" == "openfaas-youtube-dl" ]]; then
-        faas-cli deploy --image ghcr.io/ema-pe/openfaas-youtube-dl --name openfaas-youtube-dl --gateway "${OPENFAAS_SERVICE_IP}"
+        faas-cli deploy --image ghcr.io/ema-pe/openfaas-youtube-dl --name openfaas-youtube-dl --gateway "${OPENFAAS_SERVICE_IP}" --tls-no-verify
     elif [[ "$function" == "openfaas-text-to-speech" ]]; then
-        faas-cli deploy --image ghcr.io/ema-pe/openfaas-text-to-speech --name openfaas-text-to-speech --gateway "${OPENFAAS_SERVICE_IP}"
+        faas-cli deploy --image ghcr.io/ema-pe/openfaas-text-to-speech --name openfaas-text-to-speech --gateway "${OPENFAAS_SERVICE_IP}" --tls-no-verify
     else
-        faas-cli store deploy "$function" --gateway "${OPENFAAS_SERVICE_IP}"
+        faas-cli store deploy "$function" --gateway "${OPENFAAS_SERVICE_IP}" --tls-no-verify
     fi
 done
 

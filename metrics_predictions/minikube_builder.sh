@@ -65,7 +65,7 @@ if [ $? -eq 0 ]; then
   echo "OpenFaaS gateway is available at http://127.0.0.1:8080"
 
   PASSWORD=$(kubectl -n openfaas get secret basic-auth -o jsonpath="{.data.basic-auth-password}" | base64 --decode; echo)
-  echo -n $PASSWORD | faas-cli login --username admin --password-stdin
+  echo -n $PASSWORD | faas-cli login --username admin --password-stdin --tls-no-verify
 
   if [ $? -eq 0 ]; then
     echo openfaas configured

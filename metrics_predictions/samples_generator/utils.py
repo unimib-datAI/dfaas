@@ -177,7 +177,9 @@ def retrieve_function_medium_latency(function_name, rate):
 
 # Retrieve the number of replicas of the functions deployed.
 def retrieve_function_replicas():
-    temp = subprocess.Popen(["faas-cli", "list"], stdout=subprocess.PIPE)
+    temp = subprocess.Popen(
+        ["faas-cli", "list", "--tls-no-verify"], stdout=subprocess.PIPE
+    )
     data = str(temp.communicate())
     rows = data.split("\\n")
     replicas = {}

@@ -1,6 +1,6 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright 2021-2025 The DFaaS Authors. All rights reserved.
-# This file is licensed under the AGPL v3.0 or later license. See LICENSE and
+# This file is licensed under the AGPL v3.0-or-later license. See LICENSE and
 # AUTHORS file for more information.
 
 import time
@@ -147,9 +147,6 @@ def main():
             f"../output/skipped-{current_datetime}-{batch_iterator}-{duration}.csv"
         )
 
-        # TODO: Check if this configuration (without rate) is already done in
-        # index.csv.
-
         time.sleep(30)
 
         # Use kubectl to get the OpenFaaS basic-auth secret and decode the password from Base64
@@ -157,7 +154,7 @@ def main():
         password = subprocess.check_output(password_cmd, shell=True, text=True).strip()
 
         # Construct the faas-cli login command using the obtained password and OpenFaaS service IP
-        faas_login_cmd = f"echo -n {password} | faas-cli login --username admin --password-stdin --gateway {OPENFAAS_SERVICE_IP}"
+        faas_login_cmd = f"echo -n {password} | faas-cli login --username admin --password-stdin --gateway {OPENFAAS_SERVICE_IP} --tls-no-verify"
         # Execute the constructed faas-cli login command
         subprocess.call(faas_login_cmd, shell=True)
 
@@ -171,12 +168,20 @@ def main():
                         function.split("/")[1],
                         "--gateway",
                         OPENFAAS_SERVICE_IP,
+                        "--tls-no-verify",
                     ],
                     shell=False,
                 )
             else:
                 subprocess.call(
-                    ["faas-cli", "remove", function, "--gateway", OPENFAAS_SERVICE_IP],
+                    [
+                        "faas-cli",
+                        "remove",
+                        function,
+                        "--gateway",
+                        OPENFAAS_SERVICE_IP,
+                        "--tls-no-verify",
+                    ],
                     shell=False,
                 )
 
