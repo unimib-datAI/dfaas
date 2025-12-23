@@ -158,32 +158,10 @@ def main():
         # Execute the constructed faas-cli login command
         subprocess.call(faas_login_cmd, shell=True)
 
-        # Remove unused deployed functions.
-        for function in FUNCTION_NAMES:
-            if function.__contains__("/"):
-                subprocess.call(
-                    [
-                        "faas-cli",
-                        "remove",
-                        function.split("/")[1],
-                        "--gateway",
-                        OPENFAAS_SERVICE_IP,
-                        "--tls-no-verify",
-                    ],
-                    shell=False,
-                )
-            else:
-                subprocess.call(
-                    [
-                        "faas-cli",
-                        "remove",
-                        function,
-                        "--gateway",
-                        OPENFAAS_SERVICE_IP,
-                        "--tls-no-verify",
-                    ],
-                    shell=False,
-                )
+        # Remove all deployed functions.
+        faas_cli_delete_functions(OPENFAAS_SERVICE_IP)
+        for fn in functions:
+            subprocess.run(["faas-cli", "remove", fn], check=True)
 
         # Wait until the functions are successfully removed.
         time.sleep(40)
@@ -195,6 +173,7 @@ def main():
             + [str(s) for s in function_tuple_config],
             shell=False,
         )
+
         print("Functions deployed")
 
         function_list_config = list(function_tuple_config)
@@ -205,9 +184,6 @@ def main():
         function_tuple_config = tuple(function_list_config)
 
         print(function_tuple_config)
-
-        # Wait until the functions are successfully deployed.
-        time.sleep(30)
 
         # Retrieve metrics in idle state.
         if batch_iterator == 0:

@@ -762,3 +762,40 @@ def index_csv_check_config(output_dir, config):
     ).any()
 
     return exists
+
+
+def faas_cli_delete_functions(openfaas_gateway):
+    """
+    Remove all deployed functions on the given OpenFaaS instance.
+
+    Note: it assumes the login is already done.
+    """
+    # Get the list of deployed functions.
+    result = subprocess.run(
+        [
+            "faas-cli",
+            "list",
+            "--quiet",
+            "--gateway",
+            openfaas_gateway,
+            "--tls-no-verify",
+        ],
+        capture_output=True,
+        text=True,
+        check=True,
+    )
+    functions = result.stdout.strip().splitlines()
+
+    # Remove all deployed functions.
+    for function in functions:
+        cmd = [
+            "faas-cli",
+            "remove",
+            function,
+            "--gateway",
+            openfaas_gateway,
+            "--tls-no-verify",
+        ]
+        print("\nRunning command:", " ".join(cmd))
+        subprocess.run(cmd, check=True)
+        print()

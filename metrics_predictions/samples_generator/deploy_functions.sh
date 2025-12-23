@@ -34,6 +34,13 @@ do
     else
         faas-cli store deploy "$function" --gateway "${OPENFAAS_SERVICE_IP}" --tls-no-verify
     fi
+
+    # Wait until the function has been deployed.
+    faas-cli ready "${function}" --gateway "${OPENFAAS_SERVICE_IP}" --tls-no-verify
+    if [[ $? -ne 0 ]]; then
+        echo "Failed to deploy function '${function}'" >&2
+        exit 1
+    fi
 done
 
 exit 0;
