@@ -25,14 +25,13 @@ password=$(eval $password_command)
 faas_cli_command="echo -n $password | faas-cli login --username admin --password-stdin --gateway $OPENFAAS_SERVICE_IP"
 eval $faas_cli_command
 
-for function in ${functions[@]}
+for function in "${functions[@]}"
 do
-if [[ "$function" == *"/"* ]]; then
-    faas-cli deploy --image $function --name ${function##*/} --gateway ${OPENFAAS_SERVICE_IP}
-else
-    faas-cli store deploy $function --gateway ${OPENFAAS_SERVICE_IP}
-fi
+    if [[ "$function" == "openfaas-youtube-dl" ]]; then
+        faas-cli deploy --image ghcr.io/ema-pe/openfaas-youtube-dl --name openfaas-youtube-dl --gateway "${OPENFAAS_SERVICE_IP}"
+    else
+        faas-cli store deploy "$function" --gateway "${OPENFAAS_SERVICE_IP}"
+    fi
 done
-
 
 exit 0;

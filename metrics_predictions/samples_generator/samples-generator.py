@@ -31,6 +31,7 @@ FUNCTION_NAMES = [
     "coherent-line-drawing",
     "certinfo",
     "markdown",
+    "openfaas-youtube-dl",
 ]
 MAX_RATE = 200
 OPENFAAS_SERVICE_IP = "http://10.12.38.4:31112"

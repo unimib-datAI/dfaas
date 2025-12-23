@@ -72,6 +72,9 @@ FUNCTION_BODIES = {
     "face-blur": "https://raw.githubusercontent.com/esimov/pigo-openfaas/refs/heads/master/pigo-openfaas/samples/nasa.jpg",
     # See: https://github.com/esimov/openfaas-coherent-line-drawing
     "coherent-line-drawing": "https://raw.githubusercontent.com/unimib-datAI/dfaas/refs/heads/main/images/Scenario-crop.png",
+    # See: https://github.com/openfaas/store-functions
+    # Some original functions does not work, so I updated them.
+    "openfaas-youtube-dl": "https://www.youtube.com/watch?v=AjwzRdm8jlY",
 }
 
 textBlob = """Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
