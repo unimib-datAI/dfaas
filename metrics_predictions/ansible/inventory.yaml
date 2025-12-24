@@ -1,0 +1,32 @@
+all:
+  vars:
+      # Create a new user with sudo privileges and SSH access. The public SSH
+      # key belongs to Emanuele Petriglia.
+      new_username: ema-pe
+      new_user_password: "HASHED PASSWORD HERE!"
+      ssh_pubkey: "ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIAWi2PR2474hKI8a+lxxH1SN1qWV+5BD/Pg9JTV8vb8L ema-pe"
+
+      # Do not display warnings about the discovered Python interpreter.
+      # 
+      # See: https://docs.ansible.com/ansible-core/2.18/reference_appendices/interpreter_discovery.html
+      ansible_python_interpreter: auto_silent
+
+  hosts:
+    traffic-dfaas-mid:
+      ansible_host: 10.12.38.4
+      ansible_user: user
+      ansible_password: "PLAIN PASSWORD HERE!"
+      ansible_become_password: "{{ ansible_password }}"
+      new_hostname: traffic-dfaas-mid
+
+    traffic-dfaas-operator:
+      ansible_host: 10.12.38.3
+      ansible_user: user
+      ansible_password: "PLAIN PASSWORD HERE!"
+      ansible_become_password: "{{ ansible_password }}"
+      new_hostname: traffic-dfaas-operator
+
+# Hosts that should have the FaaS platform installed.
+dfaas:
+  hosts:
+    traffic-dfaas-mid:

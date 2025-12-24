@@ -1,0 +1,42 @@
+---
+- name: Install kubectl from Kubernetes APT repository
+  hosts: all
+  become: yes
+  vars:
+    kubernetes_version: "v1.34"
+
+  # See: https://kubernetes.io/docs/tasks/tools/install-kubectl-linux/#install-using-native-package-management
+  tasks:
+    - name: Install required packages
+      ansible.builtin.apt:
+        name:
+          - apt-transport-https
+          - ca-certificates
+          - gnupg
+        update_cache: yes
+
+    - name: Download Kubernetes key
+      ansible.builtin.get_url:
+        url: "https://pkgs.k8s.io/core:/stable:/{{ kubernetes_version }}/deb/Release.key"
+        dest: /tmp/kubernetes-release.key
+
+    - name: Convert Kubernetes key to GPG keyring format
+      ansible.builtin.command: >
+        gpg --dearmor -o /etc/apt/keyrings/kubernetes-apt-keyring.gpg /tmp/kubernetes-release.key
+      args:
+        creates: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+
+    - name: Set correct permissions for Kubernetes key
+      ansible.builtin.file:
+        path: /etc/apt/keyrings/kubernetes-apt-keyring.gpg
+        mode: '0644'
+
+    - name: Add Kubernetes apt repository
+      ansible.builtin.apt_repository:
+        repo: "deb [signed-by=/etc/apt/keyrings/kubernetes-apt-keyring.gpg] https://pkgs.k8s.io/core:/stable:/{{ kubernetes_version }}/deb/ /"
+        filename: kubernetes
+        update_cache: yes
+
+    - name: Install kubectl
+      ansible.builtin.apt:
+        name: kubectl

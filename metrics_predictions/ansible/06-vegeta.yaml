@@ -1,0 +1,26 @@
+---
+- name: Install vegeta
+  hosts: traffic-dfaas-operator
+  become: yes
+
+  vars:
+    # See: https://github.com/tsenart/vegeta/releases
+    vegeta_version:  "v12.13.0"
+    # Trim the initial "v" for the archive name.
+    vegeta_archive: "vegeta_{{ vegeta_version[1:] }}_linux_amd64.tar.gz"
+
+  tasks:
+    - name:  Download vegeta archive
+      ansible.builtin.get_url:
+        url: "https://github.com/tsenart/vegeta/releases/download/{{ vegeta_version }}/{{ vegeta_archive }}"
+        dest: "/tmp/{{ vegeta_archive }}"
+        mode: '0644'
+
+    - name: Extract and install vegeta
+      ansible.builtin.unarchive:
+        src: "/tmp/{{ vegeta_archive }}"
+        dest: "/usr/local/bin"
+        remote_src:  yes
+        mode: '0755'
+        include:
+          - vegeta

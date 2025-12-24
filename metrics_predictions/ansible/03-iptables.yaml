@@ -1,0 +1,102 @@
+---
+- name: Configure iptables on FaaS hosts
+  hosts: dfaas
+  become: true
+
+  vars:
+    ports:
+      - [31112, "OpenFaaS Gateway"]
+      - [30411, "Prometheus"]
+      - [8443, "Kubernetes API"]
+
+  pre_tasks:
+    # Get the Minikube node IP address and set as fact, since we cannot know it
+    # beforehand.
+    - name: Get Minikube node IP
+      ansible.builtin.command: minikube ip
+      register: minikube_ip_result
+      # Must be run as user since the Minikube node is run as user, not root!
+      become: false
+      remote_user: user
+
+    - name: Set Minikube IP fact
+      ansible.builtin.set_fact:
+        minikube_ip: "{{ minikube_ip_result.stdout | trim }}"
+
+    # We extract the interface name with awk (after "dev" key).
+    - name: Get network interface for Minikube node
+      shell: ip route get "{{ minikube_ip }}" | awk '{for(i=1;i<=NF;i++){if($i=="dev"){print $(i+1); exit}}}'
+      register: minikube_iface_result
+
+    - name: Set Minikube IP's network interface fact
+      ansible.builtin.set_fact:
+        minikube_iface: "{{ minikube_iface_result.stdout | trim }}"
+
+    - name: Print detected Minikube IP and network interface
+      debug:
+        msg: "Detected Minikube IP: {{ minikube_ip }} with network interface {{ minikube_iface }}"
+
+  tasks:
+    # Redirects external packets to the Minikube instance.
+    - name: DNAT rule for incoming packets to Minikube instance
+      ansible.builtin.iptables:
+        table: nat
+        chain: PREROUTING
+        jump: DNAT
+        protocol: tcp
+        destination: "{{ ansible_host }}"
+        destination_port: "{{ item.0 }}"
+        to_destination: "{{ minikube_ip }}:{{ item.0 }}"
+      loop: "{{ ports }}"
+      loop_control:
+        label: "{{ item.0 }} {{ item.1 }}"
+
+    # Redirects packets from the Minikube instance to the outside.
+    - name: SNAT rule for packets from Minikube instance to external world
+      ansible.builtin.iptables:
+        table: nat
+        chain: POSTROUTING
+        jump: SNAT
+        protocol: tcp
+        destination: "{{ minikube_ip }}"
+        destination_port: "{{ item.0 }}"
+        to_source: "{{ ansible_host }}"
+      loop: "{{ ports }}"
+      loop_control:
+        label: "{{ item.0 }} {{ item.1 }}"
+
+    # Ensure packets to the Minikube instance are accepted. 
+    - name: Ensure to accept packets forwarded to the Minikube instance
+      ansible.builtin.iptables:
+        chain: FORWARD
+        # Make sure that is the first rule the packets will run into!
+        rule_num: 1
+        jump: ACCEPT
+        protocol: tcp
+        destination: "{{ minikube_ip }}"
+        destination_port: "{{ item.0 }}"
+      loop: "{{ ports }}"
+      loop_control:
+        label: "{{ item.0 }} {{ item.1 }}"
+
+    # Accept all connections to/from Minikube on the Docker bridge.
+    #
+    # The Minikube node is a Docker container with a dedicated Docker bridge.
+    # These rules are required so all services on the host and containers can
+    # access the Minikube node's services on any port.
+    #
+    # Warning: if the Minikube node is recreated the network interface changes
+    # and this playbook must be re-executed!
+    - name: Accept all outgoing connections on DOCKER-USER to Minikube
+      ansible.builtin.iptables:
+        chain: DOCKER-USER
+        jump: ACCEPT
+        out_interface: "{{ minikube_iface }}"
+        destination: "{{ minikube_ip }}"
+
+    - name: Accept all incoming connections on DOCKER-USER from Minikube
+      ansible.builtin.iptables:
+        chain: DOCKER-USER
+        jump: ACCEPT
+        in_interface: "{{ minikube_iface }}"
+        source: "{{ minikube_ip }}"

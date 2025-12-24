@@ -1,0 +1,66 @@
+---
+- name: Initialize VM with a new hostname, a new user, and the user's SSH key
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Hostname setup and user creation
+      block:
+        - name: Set the hostname
+          ansible.builtin.hostname:
+            name: "{{ new_hostname }}"
+
+        - name: Ensure new user exists and is in sudo group
+          ansible.builtin.user:
+            name: "{{ new_username }}"
+            password: "{{ new_user_password }}"
+            groups: sudo
+            shell: /bin/bash
+            state: present
+            create_home: yes
+
+        - name: Allow passwordless sudo for 'sudo' group
+          ansible.builtin.lineinfile:
+            path: /etc/sudoers
+            regexp: '^%sudo\s+ALL=\(ALL:ALL\)\s+NOPASSWD:ALL'
+            line: '%sudo   ALL=(ALL:ALL) NOPASSWD:ALL'
+            state: present
+            validate: 'visudo -cf %s'
+            insertafter: EOF
+
+    - name: New user setup
+      remote_user: "{{ new_username }}"
+      block:
+        - name: Ensure .ssh directory exists
+          ansible.builtin.file:
+            path: "/home/{{ new_username }}/.ssh"
+            state: directory
+            owner: "{{ new_username }}"
+            group: "{{ new_username }}"
+            mode: '0700'
+
+        - name: Add SSH public key for new user
+          ansible.posix.authorized_key:
+            user: "{{ new_username }}"
+            key: "{{ ssh_pubkey }}"
+            state: present
+
+        - name: Disable password authentication for the new user
+          ansible.builtin.blockinfile:
+            path: /etc/ssh/sshd_config
+            marker: "# {mark} ANSIBLE MANAGED BLOCK for {{ new_username }}"
+            block: |
+              Match User {{ new_username }}
+                PasswordAuthentication no
+                ChallengeResponseAuthentication no
+
+        - name: Reload SSH service
+          ansible.builtin.service:
+            name: ssh
+            state: reloaded
+
+    - name: Update packages
+      apt:
+        update_cache: yes
+        upgrade: dist
+      when: update_packages | default(false)

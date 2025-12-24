@@ -1,0 +1,25 @@
+---
+- name: Install Arkade and faas-cli
+  hosts: all
+  vars:
+    # See: https://github.com/alexellis/arkade/releases
+    arkade_version: "0.11.60"
+
+  tasks:
+    - name: Install Arkade
+      become: yes
+      ansible.builtin.get_url:
+        url: "https://github.com/alexellis/arkade/releases/download/{{ arkade_version }}/arkade"
+        dest: /usr/local/bin/arkade
+        mode: '0755'
+
+    - name: Add ~/.arkade/bin to PATH in user ~/.bashrc
+      ansible.builtin.blockinfile:
+        path: "{{ ansible_env.HOME }}/.bashrc"
+        marker: "# {mark} ANSIBLE MANAGED BLOCK: Arkade bin to PATH"
+        block: export PATH=$PATH:$HOME/.arkade/bin/
+
+    - name: Install faas-cli using Arkade
+      ansible.builtin.shell: /usr/local/bin/arkade get faas-cli
+      args:
+        creates: "{{ ansible_env.HOME }}/.arkade/bin/faas-cli"

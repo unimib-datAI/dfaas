@@ -1,0 +1,64 @@
+---
+- name: Install Minikube on FaaS hosts
+  hosts: dfaas
+  become: yes
+
+  tasks:
+    # See: https://docs.docker.com/engine/install/ubuntu/#install-using-the-repository
+    - name: Install Docker as Minikube driver
+      block:
+        - name: Install required dependencies
+          ansible.builtin.apt:
+            name:
+              - ca-certificates
+            update_cache: true
+
+        - name: Get Docker official GPG key
+          ansible.builtin.get_url:
+            url: https://download.docker.com/linux/ubuntu/gpg
+            dest: /etc/apt/keyrings/docker.asc
+            mode: '0644'
+
+        - name: Add Docker APT repository
+          ansible.builtin.copy:
+            dest: /etc/apt/sources.list.d/docker.sources
+            content: |
+              Types: deb
+              URIs: https://download.docker.com/linux/ubuntu
+              Suites: {{ ansible_facts.lsb.codename }}
+              Components: stable
+              Signed-By: /etc/apt/keyrings/docker.asc
+            mode: '0644'
+
+        - name: Install Docker packages
+          ansible.builtin.apt:
+            name:
+              - docker-ce
+              - docker-ce-cli
+              - containerd.io
+              - docker-buildx-plugin
+              - docker-compose-plugin
+            update_cache: true
+
+        - name: Start Docker service
+          ansible.builtin.service:
+            name: docker
+            state: started
+
+        - name: Ensure user is part of docker group
+          ansible.builtin.user:
+            name: user
+            groups: docker
+            append: yes
+
+    # See: https://minikube.sigs.k8s.io/docs/start/?arch=%2Flinux%2Fx86-64%2Fstable%2Fdebian+package
+    - name: Download latest Minikube .deb package
+      ansible.builtin.get_url:
+        url: https://storage.googleapis.com/minikube/releases/latest/minikube_latest_amd64.deb
+        dest: /tmp/minikube_latest_amd64.deb
+        mode: '0644'
+
+    - name: Install Minikube .deb package
+      ansible.builtin.apt:
+        deb: /tmp/minikube_latest_amd64.deb
+        state: present
