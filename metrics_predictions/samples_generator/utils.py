@@ -1,19 +1,22 @@
 # SPDX-License-Identifier: AGPL-3.0-or-later
+#
 # Copyright 2021-2025 The DFaaS Authors. All rights reserved.
+#
 # This file is licensed under the AGPL v3.0 or later license. See LICENSE and
 # AUTHORS file for more information.
 
-import json
-import time
-import requests
-import itertools
-import subprocess
 import ast
-import sys
 import csv
+import itertools
+import json
+import logging
+import subprocess
+import sys
+import time
 from pathlib import Path
 
 import pandas as pd
+import requests
 
 
 # Retrieve Prometheus service port
@@ -626,57 +629,54 @@ def generate_skipped_config_csv_header(function_names):
     return csv_header
 
 
-def get_functions_pids(functions_names):
-    # Execute the bash script and capture its output
-    temp = execute_bash_script(functions_names)
+def get_functions_pids(function_names, remote_host):
+    """
+    Return two dictionaries: one that maps each function (by name) to a list of
+    PIDs, and one that maps each function to the number of PIDs (replica count).
 
-    # Split the output by newlines
-    data = temp.split("\n")
-
-    # Check if the output contains the expected PID information
-    if len(data) > 1 and "List of PIDs for the requested functions" in data[1]:
-        output = data[1].split("\r")
-        # Extract PIDs from the string and convert it into a Python dictionary
-        functions_pids = ast.literal_eval(output[0][43:])
-    else:
-        print("Log of finding PIDs function:", data)
-        raise Exception("Something went wrong in finding PIDs for the functions")
-
-    # Create a dictionary to store the count of replicas for each function
+    The remote_host argument is required and must be the IP address of the
+    remote host where the Minikube instance is deployed.
+    """
+    functions_pids = {}
     functions_replicas = {}
-    for name in functions_names:
-        # Ensure the function name exists in the PID dictionary and count the replicas
-        functions_replicas[name] = len(functions_pids.get(name, []))
 
-    # Print the results for debugging purposes
-    print("Replicas of functions:", functions_replicas)
-    print("List of PIDs for the requested functions:", functions_pids)
+    # We need to connect to the remove VM and then inside the Minikube instance.
+    #
+    # The custom /etc/find-pid.py script is expected to be added when building
+    # the Minikube node!
+    cmd = [
+        "ssh",
+        "user@10.12.38.4",
+        "minikube",
+        "ssh",
+        "python3",
+        "/etc/find-pid.py",
+    ] + function_names
+
+    logging.info(f"Running command: {' '.join(cmd)}")
+
+    try:
+        result = subprocess.run(cmd, capture_output=True, text=True)
+    except subprocess.CalledProcessError as e:
+        logging.error(
+            f"Failed to get PIDs of {function_names} functions. Return code: {e.returncode}"
+        )
+        if e.stdout:
+            logging.error(f"stdout: {e.stdout.strip()}")
+        if e.stderr:
+            logging.error(f"stderr: {e.stderr.strip()}")
+        raise
+
+    # The output is JSON like this:
+    # {"env": [4033341], "coherent-line-drawing": [3752040]}
+    cmd_output = json.loads(result.stdout.strip())
+
+    for function_name in function_names:
+        pids = cmd_output.get(function_name, [])
+        functions_pids[function_name] = pids
+        functions_replicas[function_name] = len(pids)
 
     return functions_pids, functions_replicas
-
-
-def execute_bash_script(functions_names):
-    # Prepare the bash script command with functions names as arguments
-    script_command = ["./remote_docker_cmd.sh", *functions_names]
-
-    # Run the bash script using subprocess
-    process = subprocess.Popen(
-        script_command, stdout=subprocess.PIPE, stderr=subprocess.PIPE
-    )
-
-    # Capture the output and error
-    stdout, stderr = process.communicate()
-
-    # Convert the output to a string
-    output = stdout.decode("utf-8")
-    error = stderr.decode("utf-8")
-
-    # Check if there is an error
-    if process.returncode != 0:
-        print(f"Error: {error}")
-        raise Exception("Something went wrong while executing the script.")
-
-    return output
 
 
 def index_csv_init(output_dir):
@@ -771,19 +771,27 @@ def faas_cli_delete_functions(openfaas_gateway):
     Note: it assumes the login is already done.
     """
     # Get the list of deployed functions.
-    result = subprocess.run(
-        [
+    try:
+        cmd = [
             "faas-cli",
             "list",
             "--quiet",
             "--gateway",
             openfaas_gateway,
             "--tls-no-verify",
-        ],
-        capture_output=True,
-        text=True,
-        check=True,
-    )
+        ]
+        logging.info(f"Running command: {' '.join(cmd)}")
+        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+    except subprocess.CalledProcessError as e:
+        logging.error(
+            f"Failed to list OpenFaaS functions (faas-cli list). Return code: {e.returncode}"
+        )
+        if e.stdout:
+            logging.error(f"stdout: {e.stdout.strip()}")
+        if e.stderr:
+            logging.error(f"stderr: {e.stderr.strip()}")
+        raise
+
     functions = result.stdout.strip().splitlines()
 
     # Remove all deployed functions.
@@ -796,6 +804,15 @@ def faas_cli_delete_functions(openfaas_gateway):
             openfaas_gateway,
             "--tls-no-verify",
         ]
-        print("\nRunning command:", " ".join(cmd))
-        subprocess.run(cmd, check=True)
-        print()
+        logging.info(f"Running command: {' '.join(cmd)}")
+        try:
+            subprocess.run(cmd, check=True, capture_output=True, text=True)
+        except subprocess.CalledProcessError as e:
+            logging.error(
+                f"Failed to remove function {function}. Return code {e.returncode}"
+            )
+            if e.stdout:
+                logging.error(f"stdout: {e.stdout.strip()}")
+            if e.stderr:
+                logging.error(f"stderr: {e.stderr.strip()}")
+            raise

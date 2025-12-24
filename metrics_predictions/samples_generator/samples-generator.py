@@ -3,18 +3,24 @@
 # This file is licensed under the AGPL v3.0-or-later license. See LICENSE and
 # AUTHORS file for more information.
 
-import time
-import sys
-import subprocess
-import traceback
+import argparse
 import csv
 import itertools
+import logging
+import subprocess
+import time
+import traceback
 from datetime import datetime
 from pathlib import Path
-import multiprocessing
-import argparse
 
-from utils import *
+import utils
+
+# Set logger configuration.
+logging.basicConfig(
+    level=logging.INFO,
+    format="[%(asctime)s %(filename)s:%(lineno)d %(levelname)s] %(message)s",
+    datefmt="%Y-%m-%d %H:%M:%S",
+)
 
 ### CONSTANTS ###
 # FUNCTION_NAMES = ['figlet', 'shasum', 'nmap', 'env', 'curl', 'cavecal/eat-memory']
@@ -35,7 +41,10 @@ FUNCTION_NAMES = [
     "openfaas-text-to-speech",
 ]
 MAX_RATE = 200
-OPENFAAS_SERVICE_IP = "http://10.12.38.4:31112"
+
+# FIXME: Make configurable!
+REMOTE_VM_IP = "10.12.38.4"
+OPENFAAS_SERVICE_IP = f"http://{REMOTE_VM_IP}:31112"
 
 
 def main():
@@ -83,7 +92,7 @@ def main():
     cpu_overload_percentage = (max_cpu_percentage * 80) / 100
 
     print(f"\nProfiled functions: {FUNCTION_NAMES}")
-    function_combinations = generate_functions_combinations(FUNCTION_NAMES, 1, 2)
+    function_combinations = utils.generate_functions_combinations(FUNCTION_NAMES, 1, 2)
     # function_combinations = generate_functions_combinations(FUNCTION_NAMES, 3, 4)
     # function_combinations = generate_functions_combinations(FUNCTION_NAMES, 2, 3)
     print(f"Nr. of func. combinations (without rate): {len(function_combinations)}")
@@ -98,7 +107,7 @@ def main():
     reports_dir.mkdir(exist_ok=True)
     print(f"Reports directory created: {reports_dir.as_posix()!r}")
 
-    index_csv_init(output_dir)
+    utils.index_csv_init(output_dir)
 
     function_tuple_configs = []
 
@@ -130,7 +139,7 @@ def main():
     else:
         function_tuple_configs = function_combinations
 
-    rates = generate_rates_list(max_rate)
+    rates = utils.generate_rates_list(max_rate)
 
     # Obtain current date and current time as string
     current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -159,7 +168,7 @@ def main():
         subprocess.call(faas_login_cmd, shell=True)
 
         # Remove all deployed functions.
-        faas_cli_delete_functions(OPENFAAS_SERVICE_IP)
+        utils.faas_cli_delete_functions(OPENFAAS_SERVICE_IP)
         for fn in functions:
             subprocess.run(["faas-cli", "remove", fn], check=True)
 
@@ -192,7 +201,7 @@ def main():
                 base_ram_usage_node_idle,
                 base_ram_usage_node_p_idle,
                 base_power_usage_node_idle,
-            ) = retrieve_node_resources_usage(duration, None, None, scaphandre)
+            ) = utils.retrieve_node_resources_usage(duration, None, None, scaphandre)
         else:
             (
                 base_cpu_usage_node_idle,
@@ -200,7 +209,7 @@ def main():
                 base_ram_usage_node_p_idle,
                 base_power_usage_node_idle,
                 rest_seconds,
-            ) = rest(
+            ) = utils.rest(
                 base_cpu_usage_node_idle,
                 base_ram_usage_node_idle,
                 base_power_usage_node_idle,
@@ -233,14 +242,17 @@ def main():
         print("Creation of", RESULT_FILE_NAME)
         with open(RESULT_FILE_NAME, "a") as f:
             writer = csv.DictWriter(
-                f, fieldnames=generate_csv_header(function_tuple_config)
+                f, fieldnames=utils.generate_csv_header(function_tuple_config)
             )
             writer.writeheader()
 
         print("Creation of", SKIPPED_RESULT_FILE_NAME)
         with open(SKIPPED_RESULT_FILE_NAME, "a") as f:
             writer = csv.DictWriter(
-                f, fieldnames=generate_skipped_config_csv_header(function_tuple_config)
+                f,
+                fieldnames=utils.generate_skipped_config_csv_header(
+                    function_tuple_config
+                ),
             )
             writer.writeheader()
 
@@ -283,12 +295,12 @@ def main():
                 function_name = attack_data[0]
                 invocation_rate = attack_data[1]
                 current_functions.append(function_name)
-                attack = vegeta_attack(function_name, invocation_rate, duration)
+                attack = utils.vegeta_attack(function_name, invocation_rate, duration)
                 attack_configs.append(attack)
                 print(f"Function {function_name} with {invocation_rate} req/s")
 
             # Check if a configuration is dominant
-            if is_candidate_config_dominanat(actual_dominant_config, config):
+            if utils.is_candidate_config_dominanat(actual_dominant_config, config):
                 skipped_config = {}
                 for attack_data in config:
                     function_name = attack_data[0]
@@ -299,7 +311,7 @@ def main():
                     with open(SKIPPED_RESULT_FILE_NAME, "a") as f:
                         writer = csv.DictWriter(
                             f,
-                            fieldnames=generate_skipped_config_csv_header(
+                            fieldnames=utils.generate_skipped_config_csv_header(
                                 function_tuple_config
                             ),
                         )
@@ -311,7 +323,7 @@ def main():
             overload_counter = 0
 
             # Check if the configuration already exists in the index.csv.
-            if index_csv_check_config(output_dir, config):
+            if utils.index_csv_check_config(output_dir, config):
                 print("Configuration already exist in index.csv, skipping attack")
                 print("-------------Skip attack---------------")
                 continue
@@ -326,7 +338,7 @@ def main():
                         ram_usage_node_p_idle,
                         power_usage_node_idle,
                         rest_seconds,
-                    ) = rest(
+                    ) = utils.rest(
                         base_cpu_usage_node_idle,
                         base_ram_usage_node_idle,
                         base_power_usage_node_idle,
@@ -344,8 +356,8 @@ def main():
                     print(f"\nAttack number {j + 1} completed")
 
                     # Retrieve PIDs of the functions
-                    functions_pids, function_replicas = get_functions_pids(
-                        current_functions
+                    functions_pids, function_replicas = utils.get_functions_pids(
+                        current_functions, REMOTE_VM_IP
                     )
 
                     # Retrieve metrics
@@ -355,14 +367,14 @@ def main():
                             ram_usage_node,
                             ram_usage_p_node,
                             power_usage_node,
-                        ) = retrieve_node_resources_usage(
+                        ) = utils.retrieve_node_resources_usage(
                             duration, start_time, end_time, scaphandre
                         )
                         (
                             cpu_usage_per_functions,
                             ram_usage_per_functions,
                             power_usage_per_functions,
-                        ) = retrieve_functions_resource_usage(
+                        ) = utils.retrieve_functions_resource_usage(
                             function_tuple_config,
                             functions_pids,
                             duration,
@@ -377,14 +389,14 @@ def main():
                             ram_usage_node,
                             ram_usage_p_node,
                             power_usage_node,
-                        ) = retrieve_node_resources_usage(
+                        ) = utils.retrieve_node_resources_usage(
                             duration, None, None, scaphandre
                         )
                         (
                             cpu_usage_per_functions,
                             ram_usage_per_functions,
                             power_usage_per_functions,
-                        ) = retrieve_functions_resource_usage(
+                        ) = utils.retrieve_functions_resource_usage(
                             function_tuple_config,
                             functions_pids,
                             duration,
@@ -401,10 +413,10 @@ def main():
                     for attack_data in config:
                         function_name = attack_data[0]
                         invocation_rate = attack_data[1]
-                        success_rate = retrieve_function_success_rate(
+                        success_rate = utils.retrieve_function_success_rate(
                             function_name, invocation_rate
                         )
-                        medium_latency = retrieve_function_medium_latency(
+                        medium_latency = utils.retrieve_function_medium_latency(
                             function_name, invocation_rate
                         )
 
@@ -472,7 +484,8 @@ def main():
                     # Save configuration result
                     with open(RESULT_FILE_NAME, "a") as f:
                         writer = csv.DictWriter(
-                            f, fieldnames=generate_csv_header(function_tuple_config)
+                            f,
+                            fieldnames=utils.generate_csv_header(function_tuple_config),
                         )
                         writer.writerow(result)
 
@@ -480,7 +493,7 @@ def main():
                         actual_dominant_config = config
 
                     # Save the executed configuration (+ rates) to index.csv
-                    index_csv_add_config(output_dir, config, RESULT_FILE_NAME)
+                    utils.index_csv_add_config(output_dir, config, RESULT_FILE_NAME)
 
                     print("\n----------------------------------------")
             except Exception as e:
