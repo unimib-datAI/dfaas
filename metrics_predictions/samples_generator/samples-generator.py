@@ -172,20 +172,12 @@ def main():
 
         # Remove all deployed functions.
         utils.faas_cli_delete_functions(openfaas_gateway)
-        for fn in functions:
-            subprocess.run(["faas-cli", "remove", fn], check=True)
+        logging.info("All functions deleted!")
 
-        # Wait until the functions are successfully removed.
-        time.sleep(40)
-
-        # Deploy the functions in function_tuple_config.
-        subprocess.call(
-            ["./deploy_functions.sh"]
-            + [str(MAX_RATE)]
-            + [str(s) for s in function_tuple_config],
-            shell=False,
-        )
-        logging.info(f"Functions deployed: {[str(s) for s in function_tuple_config]}")
+        # Deploy the functions of this configuration.
+        functions = [str(s) for s in function_tuple_config]
+        utils.faas_cli_deploy_functions(functions, openfaas_gateway)
+        logging.info(f"Functions deployed: {functions}")
 
         function_list_config = list(function_tuple_config)
         for i in range(0, len(function_list_config)):

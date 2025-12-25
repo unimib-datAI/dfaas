@@ -731,21 +731,16 @@ def faas_cli_delete_functions(openfaas_gateway):
 
     Note: it assumes the login is already done.
     """
+    cmd_list = f"faas-cli list --quiet --gateway {openfaas_gateway} --tls-no-verify"
     # Get the list of deployed functions.
     try:
-        cmd = [
-            "faas-cli",
-            "list",
-            "--quiet",
-            "--gateway",
-            openfaas_gateway,
-            "--tls-no-verify",
-        ]
-        logging.info(f"Running command: {' '.join(cmd)}")
-        result = subprocess.run(cmd, capture_output=True, text=True, check=True)
+        logging.info(f"Running command: {cmd_list}")
+        result = subprocess.run(
+            cmd_list.split(), capture_output=True, text=True, check=True
+        )
     except subprocess.CalledProcessError as e:
         logging.error(
-            f"Failed to list OpenFaaS functions (faas-cli list). Return code: {e.returncode}"
+            f"Failed to list OpenFaaS functions (on {openfaas_gateway}). Return code: {e.returncode}"
         )
         if e.stdout:
             logging.error(f"stdout: {e.stdout.strip()}")
@@ -754,6 +749,9 @@ def faas_cli_delete_functions(openfaas_gateway):
         raise
 
     functions = result.stdout.strip().splitlines()
+
+    if len(functions) == 0:
+        return
 
     # Remove all deployed functions.
     for function in functions:
@@ -776,6 +774,51 @@ def faas_cli_delete_functions(openfaas_gateway):
                 logging.error(f"stdout: {e.stdout.strip()}")
             if e.stderr:
                 logging.error(f"stderr: {e.stderr.strip()}")
+            raise
+
+    # Wait that they're really deleted. It may take times, we have a timeout of
+    # 2 minutes.
+    max = 60
+    for i in range(max):
+        logging.info(f"Running command [{i + 1}/{max}]: {cmd_list}")
+        result = subprocess.run(
+            cmd_list.split(), capture_output=True, check=True, text=True
+        )
+        if not result.stdout.strip():
+            break  # No output: all functions have been deleted.
+        time.sleep(2)
+
+
+def faas_cli_deploy_functions(functions, openfaas_gateway):
+    """Deploy given OpenFaaS functions to given OpenFaaS Gateway instance (URL)."""
+    # Must deploy one by one.
+    for function in functions:
+        match function:
+            case "openfaas-youtube-dl":
+                cmd = f"faas-cli deploy --image ghcr.io/ema-pe/openfaas-youtube-dl --name openfaas-youtube-dl --gateway {openfaas_gateway} --tls-no-verify"
+            case "openfaas-text-to-speech":
+                cmd = f"faas-cli deploy --image ghcr.io/ema-pe/openfaas-text-to-speech --name openfaas-text-to-speech --gateway {openfaas_gateway} --tls-no-verify"
+            case _:
+                cmd = f"faas-cli store deploy {function} --gateway {openfaas_gateway} --tls-no-verify"
+
+        try:
+            logging.info(f"Running command: {cmd}")
+            subprocess.run(cmd.split(), check=True)
+        except subprocess.CalledProcessError:
+            logging.error(f"Failed to deploy function {function!r}")
+            raise
+
+    # Then we need to wait the deployments.
+    for function in functions:
+        ready_cmd = (
+            f"faas-cli ready {function} --gateway {openfaas_gateway} --tls-no-verify"
+        )
+        try:
+            logging.info(f"Running command: {ready_cmd}")
+            # Blocks until the function has been deployed.
+            subprocess.run(ready_cmd.split(), check=True)
+        except subprocess.CalledProcessError:
+            logging.error(f"Failed readiness check for function {function!r}")
             raise
 
 
