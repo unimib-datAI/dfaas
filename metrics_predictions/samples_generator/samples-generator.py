@@ -73,7 +73,15 @@ def main():
     iterations_per_config = args.iterations
 
     node_ip = utils.get_node_ip(context)
+
     openfaas_gateway = f"http://{node_ip}:31112"
+    # We need to get the OpenFaaS Gateway password to use faas-cli tool. We
+    # assume also it does not change during the execution of this script.
+    openfaas_password_cmd = f'kubectl --context={context} get secret -n openfaas basic-auth -o jsonpath="{{.data.basic-auth-password}}" | base64 --decode'
+    logging.info(f"Running command: {openfaas_password_cmd}")
+    openfaas_password = subprocess.check_output(
+        openfaas_password_cmd, shell=True, text=True
+    ).strip()
 
     num_physical_cpus_cmd = [
         "kubectl",
@@ -152,16 +160,15 @@ def main():
         RESULT_FILE_NAME = f"../output/{context}/results-{current_datetime}-{batch_iterator}-{duration}.csv"
         SKIPPED_RESULT_FILE_NAME = f"../output/{context}/skipped-{current_datetime}-{batch_iterator}-{duration}.csv"
 
+        # TODO: Remove?
         time.sleep(30)
 
-        # Use kubectl to get the OpenFaaS basic-auth secret and decode the password from Base64
-        password_cmd = f'kubectl --context={context} get secret -n openfaas basic-auth -o jsonpath="{{.data.basic-auth-password}}" | base64 --decode'
-        password = subprocess.check_output(password_cmd, shell=True, text=True).strip()
-
-        # Construct the faas-cli login command using the obtained password and OpenFaaS service IP
-        faas_login_cmd = f"echo -n {password} | faas-cli login --username admin --password-stdin --gateway {openfaas_gateway} --tls-no-verify"
-        # Execute the constructed faas-cli login command
-        subprocess.call(faas_login_cmd, shell=True)
+        # We need to login with faas-cli tool to interact with the remote
+        # OpenFaaS Gateway instance. We also need to periodically login because
+        # the auth token expires.
+        openfaas_login_cmd = f"faas-cli login --password {openfaas_password} --gateway {openfaas_gateway} --tls-no-verify --timeout 60s"
+        logging.info(f"Running command: {openfaas_login_cmd}")
+        subprocess.run(openfaas_login_cmd.split(), check=True)
 
         # Remove all deployed functions.
         utils.faas_cli_delete_functions(openfaas_gateway)
@@ -265,12 +272,6 @@ def main():
             for config in config_combinations_total:
                 if config == previous_config:
                     break
-
-        """  if (len(functions) != 0 and batch_iterator == 0):
-            for x in range(config_combinations_total.index(loaded_config), len(config_combinations_total)):
-                config_combinations.append(config_combinations_total[x])
-        else:
-            config_combinations = config_combinations_total """
 
         batch_iterator = batch_iterator + 1
         for config in config_combinations_total:
