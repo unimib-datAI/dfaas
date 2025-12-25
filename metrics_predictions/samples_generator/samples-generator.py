@@ -42,10 +42,6 @@ FUNCTION_NAMES = [
 ]
 MAX_RATE = 200
 
-# FIXME: Make configurable!
-REMOTE_VM_IP = "10.12.38.4"
-OPENFAAS_SERVICE_IP = f"http://{REMOTE_VM_IP}:31112"
-
 
 def main():
     # Parse command-line arguments
@@ -76,6 +72,9 @@ def main():
     scaphandre = args.scaphandre
     iterations_per_config = args.iterations
 
+    node_ip = utils.get_node_ip(context)
+    openfaas_gateway = f"http://{node_ip}:31112"
+
     num_physical_cpus_cmd = [
         "kubectl",
         f"--context={context}",
@@ -98,8 +97,8 @@ def main():
     print(f"Nr. of func. combinations (without rate): {len(function_combinations)}")
 
     # Where the CSV files will be saved.
-    output_dir = Path("../output").resolve().absolute()
-    output_dir.mkdir(exist_ok=True)
+    output_dir = (Path("../output") / context).resolve().absolute()
+    output_dir.mkdir(exist_ok=True, parents=True)
     print(f"\nOutput directory created: {output_dir.as_posix()!r}")
 
     # Where vegeta reports will be saved.
@@ -149,12 +148,8 @@ def main():
         print(f"Selected configuration (without rates): {function_tuple_config}")
 
         # File location where we will be saving our attack results.
-        RESULT_FILE_NAME = (
-            f"../output/results-{current_datetime}-{batch_iterator}-{duration}.csv"
-        )
-        SKIPPED_RESULT_FILE_NAME = (
-            f"../output/skipped-{current_datetime}-{batch_iterator}-{duration}.csv"
-        )
+        RESULT_FILE_NAME = f"../output/{context}/results-{current_datetime}-{batch_iterator}-{duration}.csv"
+        SKIPPED_RESULT_FILE_NAME = f"../output/{context}/skipped-{current_datetime}-{batch_iterator}-{duration}.csv"
 
         time.sleep(30)
 
@@ -163,12 +158,12 @@ def main():
         password = subprocess.check_output(password_cmd, shell=True, text=True).strip()
 
         # Construct the faas-cli login command using the obtained password and OpenFaaS service IP
-        faas_login_cmd = f"echo -n {password} | faas-cli login --username admin --password-stdin --gateway {OPENFAAS_SERVICE_IP} --tls-no-verify"
+        faas_login_cmd = f"echo -n {password} | faas-cli login --username admin --password-stdin --gateway {openfaas_gateway} --tls-no-verify"
         # Execute the constructed faas-cli login command
         subprocess.call(faas_login_cmd, shell=True)
 
         # Remove all deployed functions.
-        utils.faas_cli_delete_functions(OPENFAAS_SERVICE_IP)
+        utils.faas_cli_delete_functions(openfaas_gateway)
         for fn in functions:
             subprocess.run(["faas-cli", "remove", fn], check=True)
 
@@ -182,8 +177,7 @@ def main():
             + [str(s) for s in function_tuple_config],
             shell=False,
         )
-
-        print("Functions deployed")
+        print(f"Functions deployed: {[str(s) for s in function_tuple_config]}")
 
         function_list_config = list(function_tuple_config)
         for i in range(0, len(function_list_config)):
@@ -201,7 +195,9 @@ def main():
                 base_ram_usage_node_idle,
                 base_ram_usage_node_p_idle,
                 base_power_usage_node_idle,
-            ) = utils.retrieve_node_resources_usage(duration, None, None, scaphandre)
+            ) = utils.retrieve_node_resources_usage(
+                duration, None, None, scaphandre, node_ip
+            )
         else:
             (
                 base_cpu_usage_node_idle,
@@ -215,6 +211,7 @@ def main():
                 base_power_usage_node_idle,
                 duration,
                 scaphandre,
+                node_ip,
             )
 
         print("\nCPU, RAM and POWER usage in idle state")
@@ -295,7 +292,9 @@ def main():
                 function_name = attack_data[0]
                 invocation_rate = attack_data[1]
                 current_functions.append(function_name)
-                attack = utils.vegeta_attack(function_name, invocation_rate, duration)
+                attack = utils.vegeta_attack(
+                    function_name, invocation_rate, node_ip, duration
+                )
                 attack_configs.append(attack)
                 print(f"Function {function_name} with {invocation_rate} req/s")
 
@@ -344,6 +343,7 @@ def main():
                         base_power_usage_node_idle,
                         duration,
                         scaphandre,
+                        node_ip,
                     )
                     start_time = datetime.now().timestamp()
                     # Execute vegeta attacks in parallel
@@ -357,7 +357,7 @@ def main():
 
                     # Retrieve PIDs of the functions
                     functions_pids, function_replicas = utils.get_functions_pids(
-                        current_functions, REMOTE_VM_IP
+                        current_functions, node_ip
                     )
 
                     # Retrieve metrics
@@ -368,7 +368,7 @@ def main():
                             ram_usage_p_node,
                             power_usage_node,
                         ) = utils.retrieve_node_resources_usage(
-                            duration, start_time, end_time, scaphandre
+                            duration, start_time, end_time, scaphandre, node_ip
                         )
                         (
                             cpu_usage_per_functions,
@@ -381,6 +381,7 @@ def main():
                             start_time,
                             end_time,
                             scaphandre,
+                            node_ip,
                         )
                         print("METRICS USING START TIME END TIME")
                     else:
@@ -390,7 +391,7 @@ def main():
                             ram_usage_p_node,
                             power_usage_node,
                         ) = utils.retrieve_node_resources_usage(
-                            duration, None, None, scaphandre
+                            duration, None, None, scaphandre, node_ip
                         )
                         (
                             cpu_usage_per_functions,
@@ -403,6 +404,7 @@ def main():
                             None,
                             None,
                             scaphandre,
+                            node_ip,
                         )
                         print("METRICS USING DURATION")
 

@@ -14,47 +14,11 @@ import subprocess
 import sys
 import time
 from pathlib import Path
+from urllib.parse import urlparse
 
 import pandas as pd
 import requests
-
-
-# Retrieve Prometheus service port
-def get_prometheus_service_port():
-    service_name = "prometheus"
-
-    # Run the kubectl command to get the information about the service
-    command = f"kubectl --context=mid get svc -n openfaas {service_name} -o json"
-    result = subprocess.run(command, shell=True, capture_output=True, text=True)
-
-    if result.returncode != 0:
-        print(f"Error while running kubectl: {result.stderr}")
-        return None
-
-    # Analyze JSON information
-    service_info = json.loads(result.stdout)
-
-    # Extract NodePort
-    prometheus_port = next(
-        (
-            port_info.get("nodePort")
-            for port_info in service_info.get("spec", {}).get("ports", [])
-            if port_info.get("name") == "web" or port_info.get("name") == "http"
-        ),
-        None,
-    )
-    return prometheus_port
-
-
-# Get the Prometheus NodePort
-PROMETHEUS_PORT = 30411
-### CONSTANTS ###
-PROMETHEUS_SERVICE_IP = "10.12.38.4"
-
-PROMETHEUS_QUERY_URL = f"http://{PROMETHEUS_SERVICE_IP}:{PROMETHEUS_PORT}/api/v1/query"
-PROMETHEUS_QUERY_RANGE_URL = (
-    f"http://{PROMETHEUS_SERVICE_IP}:{PROMETHEUS_PORT}/api/v1/query_range"
-)
+import yaml
 
 textBlob = """Lorem ipsum dolor sit amet, consectetur adipiscing elit. Sed do
 eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim
@@ -132,10 +96,10 @@ def generate_rates_list_profiler(max_rate):
 
 
 # It returns the string command to perform a vegeta attack given a function name and a req/s rate.
-def vegeta_attack(function_name, rate, duration="30s", format="json"):
+def vegeta_attack(function_name, rate, node_ip, duration="30s", format="json"):
     if rate != 0:
         body = FUNCTION_BODIES[function_name]
-        target = f'\'{{method: "GET", url: "http://10.12.38.4:31112/function/{function_name}", body: "{body}" | @base64, header: {{"Content-Type": ["text/plain"]}}}}\''
+        target = f'\'{{method: "GET", url: "http://{node_ip}:31112/function/{function_name}", body: "{body}" | @base64, header: {{"Content-Type": ["text/plain"]}}}}\''
         attack = f"vegeta attack -duration={duration} -rate={rate} -format={format} -timeout=30s | vegeta report --type=json > reports/report-{function_name}-{rate}.json"
         return "jq -ncM " + target + " | " + attack
     return ""
@@ -145,7 +109,7 @@ def vegeta_attack(function_name, rate, duration="30s", format="json"):
 # To check if a configuration is dominant it is performed a check on the req/s rate of the functions in the configuration.
 # The configuration who has the overall number of req/s rate bigger is the dominant config.
 def is_candidate_config_dominanat(actual_dominant_config, candidate_dominant_config):
-    if actual_dominant_config == None:
+    if actual_dominant_config is None:
         return False
     actual_config_rate = 0
     for tuple in actual_dominant_config:
@@ -199,12 +163,13 @@ def rest(
     base_power_usage_node_idle,
     duration,
     scaphandre,
+    node_ip,
 ):
     time.sleep(10)
     sleep_time_count = 10
 
     cpu_usage, ram_usage, ram_usage_p, power_usage = retrieve_node_resources_usage(
-        duration, None, None, scaphandre
+        duration, None, None, scaphandre, node_ip
     )
     while (
         cpu_usage > (base_cpu_usage_idle + (base_cpu_usage_idle * 15 / 100))
@@ -215,7 +180,7 @@ def rest(
         time.sleep(5)
         sleep_time_count += 5
         cpu_usage, ram_usage, ram_usage_p, power_usage = retrieve_node_resources_usage(
-            duration, None, None, scaphandre
+            duration, None, None, scaphandre, node_ip
         )
         if sleep_time_count > 180:
             sys.exit(
@@ -250,12 +215,13 @@ def rest_for_profiler(
     base_power_usage_node_idle,
     duration,
     scaphandre,
+    node_ip,
 ):
     time.sleep(30)
     sleep_time_count = 10
 
     cpu_usage, ram_usage, ram_usage_p, power_usage = retrieve_node_resources_usage(
-        duration, None, None, scaphandre
+        duration, None, None, scaphandre, node_ip
     )
     while (
         cpu_usage > (base_cpu_usage_idle + (base_cpu_usage_idle * 15 / 100))
@@ -266,7 +232,7 @@ def rest_for_profiler(
         time.sleep(10)
         sleep_time_count += 5
         cpu_usage, ram_usage, ram_usage_p, power_usage = retrieve_node_resources_usage(
-            duration, None, None, scaphandre
+            duration, None, None, scaphandre, node_ip
         )
     wait = True
     while wait:
@@ -291,11 +257,14 @@ def rest_for_profiler(
 
 
 # It interrogates Prometheus to retrieve the node CPU and RAM usage in a given time span.
-def retrieve_node_resources_usage(time_span, start_time, end_time, scaphandre):
+def retrieve_node_resources_usage(time_span, start_time, end_time, scaphandre, node_ip):
+    prometheus_query_range_url = f"http://{node_ip}:30411/api/v1/query_range"
+    prometheus_query_url = f"http://{node_ip}:30411/api/v1/query"
+
     if start_time and end_time:
         # CPU USAGE NODE 0% - 800% (8 CORE) https://www.robustperception.io/understanding-machine-cpu-usage/
         cpu_usage = execute_query(
-            PROMETHEUS_QUERY_RANGE_URL,
+            prometheus_query_range_url,
             {
                 "query": (
                     '100 * sum(1 - rate(node_cpu_seconds_total{mode="idle"}[%s]))'
@@ -310,7 +279,7 @@ def retrieve_node_resources_usage(time_span, start_time, end_time, scaphandre):
 
         # RAM USAGE NODE IN BYTES
         ram_usage = execute_query(
-            PROMETHEUS_QUERY_RANGE_URL,
+            prometheus_query_range_url,
             {
                 "query": (
                     "avg(avg_over_time(node_memory_MemTotal_bytes[%s]) - avg_over_time(node_memory_MemAvailable_bytes[%s]))"
@@ -325,7 +294,7 @@ def retrieve_node_resources_usage(time_span, start_time, end_time, scaphandre):
 
         # RAM USAGE NODE IN BYTES
         ram_usage_p = execute_query(
-            PROMETHEUS_QUERY_RANGE_URL,
+            prometheus_query_range_url,
             {
                 "query": (
                     "100 * avg(1 - ((avg_over_time(node_memory_MemFree_bytes[%s]) + avg_over_time(node_memory_Cached_bytes[%s]) + avg_over_time(node_memory_Buffers_bytes[%s])) / avg_over_time(node_memory_MemTotal_bytes[%s])))"
@@ -337,10 +306,10 @@ def retrieve_node_resources_usage(time_span, start_time, end_time, scaphandre):
             },
             True,
         )
-        if scaphandre == True:
+        if scaphandre:
             # POWER USAGE NODE
             power_usage = execute_query(
-                PROMETHEUS_QUERY_RANGE_URL,
+                prometheus_query_range_url,
                 {
                     "query": (
                         "avg_over_time(scaph_host_power_microwatts[%s])" % (time_span)
@@ -357,7 +326,7 @@ def retrieve_node_resources_usage(time_span, start_time, end_time, scaphandre):
     else:
         # CPU USAGE NODE 0% - 800% (8 CORE) https://www.robustperception.io/understanding-machine-cpu-usage/
         cpu_usage = execute_query(
-            PROMETHEUS_QUERY_URL,
+            prometheus_query_url,
             {
                 "query": (
                     '100 * sum(1 - rate(node_cpu_seconds_total{mode="idle"}[%s]))'
@@ -368,7 +337,7 @@ def retrieve_node_resources_usage(time_span, start_time, end_time, scaphandre):
 
         # RAM USAGE NODE IN BYTES
         ram_usage = execute_query(
-            PROMETHEUS_QUERY_URL,
+            prometheus_query_url,
             {
                 "query": (
                     "avg(avg_over_time(node_memory_MemTotal_bytes[%s]) - avg_over_time(node_memory_MemAvailable_bytes[%s]))"
@@ -379,7 +348,7 @@ def retrieve_node_resources_usage(time_span, start_time, end_time, scaphandre):
 
         # RAM USAGE NODE 0% - 100% https://gist.github.com/payam-int/edf977c6af603fee0ce1b05da7792fe7
         ram_usage_p = execute_query(
-            PROMETHEUS_QUERY_URL,
+            prometheus_query_url,
             {
                 "query": (
                     "100 * avg(1 - ((avg_over_time(node_memory_MemFree_bytes[%s]) + avg_over_time(node_memory_Cached_bytes[%s]) + avg_over_time(node_memory_Buffers_bytes[%s])) / avg_over_time(node_memory_MemTotal_bytes[%s])))"
@@ -387,10 +356,10 @@ def retrieve_node_resources_usage(time_span, start_time, end_time, scaphandre):
                 )
             },
         )
-        if scaphandre == True:
+        if scaphandre:
             # POWER USAGE NODE IN MICROWATTS
             power_usage = execute_query(
-                PROMETHEUS_QUERY_URL, {"query": ("scaph_host_power_microwatts")}
+                prometheus_query_url, {"query": ("scaph_host_power_microwatts")}
             )
         else:
             power_usage = float("nan")
@@ -400,15 +369,17 @@ def retrieve_node_resources_usage(time_span, start_time, end_time, scaphandre):
 
 # It interrogates Prometheus to retrieve CPU and RAM usage for each functions in a given time span.
 def retrieve_functions_resource_usage(
-    function_names, functions_pids, time_span, start_time, end_time, scaphandre
+    function_names, functions_pids, time_span, start_time, end_time, scaphandre, node_ip
 ):
+    prometheus_query_range_url = f"http://{node_ip}:30411/api/v1/query_range"
+
     if start_time and end_time:
         # RAM USAGE FUNCTIONS IN BYTES
         ram_usage_per_functions = []
         for function_name in function_names:
             ram_usage_per_functions.append(
                 execute_query(
-                    PROMETHEUS_QUERY_RANGE_URL,
+                    prometheus_query_range_url,
                     {
                         "query": (
                             'avg_over_time(container_memory_usage_bytes{id=~"^/kubepods.*", container_label_io_kubernetes_container_name="%s"}[%s])'
@@ -427,7 +398,7 @@ def retrieve_functions_resource_usage(
         for function_name in function_names:
             cpu_usage_per_functions.append(
                 execute_query(
-                    PROMETHEUS_QUERY_RANGE_URL,
+                    prometheus_query_range_url,
                     {
                         "query": (
                             '100 * sum(rate(container_cpu_usage_seconds_total{id=~"^/kubepods.*",container_label_io_kubernetes_container_name="%s"}[%s]))'
@@ -444,14 +415,14 @@ def retrieve_functions_resource_usage(
         # POWER USAGE PER FUNCTION
         power_usage_per_functions = []
         for function_name in function_names:
-            if scaphandre == True:
+            if scaphandre:
                 pid_list = [str(k) + "|" for k in functions_pids[function_name]]
                 pid_str = "".join(pid_list)
                 query = f'sum(avg_over_time(scaph_process_power_consumption_microwatts{{pid=~"{pid_str}"}}[{time_span}]))'
                 print(query)
                 power_usage_per_functions.append(
                     execute_query(
-                        PROMETHEUS_QUERY_RANGE_URL,
+                        prometheus_query_range_url,
                         {
                             "query": (query),
                             "start": start_time,
@@ -474,7 +445,7 @@ def retrieve_functions_resource_usage(
 
         power_usage_per_functions = []
         for function_name in function_names:
-            if scaphandre == True:
+            if scaphandre:
                 power_usage_per_functions.append(0)
             else:
                 power_usage_per_functions.append(float("nan"))
@@ -483,12 +454,14 @@ def retrieve_functions_resource_usage(
 
 # It interrogates Prometheus to retrieve CPU and RAM usage for a given function in a given time span.
 def retrieve_function_resource_usage_for_profile(
-    function_name, function_pids, time_span, start_time, end_time, scaphandre
+    function_name, function_pids, time_span, start_time, end_time, scaphandre, node_ip
 ):
+    prometheus_query_range_url = f"http://{node_ip}:30411/api/v1/query_range"
+
     if start_time and end_time:
         # RAM USAGE FUNCTION IN BYTES
         ram_usage = execute_query(
-            PROMETHEUS_QUERY_RANGE_URL,
+            prometheus_query_range_url,
             {
                 "query": (
                     'avg_over_time(container_memory_usage_bytes{id=~"^/kubepods.*", container_label_io_kubernetes_container_name="%s"}[%s])'
@@ -503,7 +476,7 @@ def retrieve_function_resource_usage_for_profile(
 
         # CPU USAGE FOR FUNCTION (0% - 800%)
         cpu_usage = execute_query(
-            PROMETHEUS_QUERY_RANGE_URL,
+            prometheus_query_range_url,
             {
                 "query": (
                     '100 * sum(rate(container_cpu_usage_seconds_total{id=~"^/kubepods.*",container_label_io_kubernetes_container_name="%s"}[%s]))'
@@ -517,13 +490,13 @@ def retrieve_function_resource_usage_for_profile(
         )
 
         # POWER USAGE FOR FUNCTION
-        if scaphandre == True:
+        if scaphandre:
             pid_list = [str(k) + "|" for k in function_pids[function_name]]
             pid_str = "".join(pid_list)
             query = f'sum(avg_over_time(scaph_process_power_consumption_microwatts{{pid=~"{pid_str}"}}[{time_span}]))'
             print(query)
             power_usage = execute_query(
-                PROMETHEUS_QUERY_RANGE_URL,
+                prometheus_query_range_url,
                 {"query": (query), "start": start_time, "end": end_time, "step": "10s"},
                 True,
             )
@@ -532,7 +505,7 @@ def retrieve_function_resource_usage_for_profile(
     else:
         ram_usage = 0
         cpu_usage = 0
-        if scaphandre == True:
+        if scaphandre:
             power_usage = 0
         else:
             power_usage = float("nan")
@@ -629,13 +602,13 @@ def generate_skipped_config_csv_header(function_names):
     return csv_header
 
 
-def get_functions_pids(function_names, remote_host):
+def get_functions_pids(function_names, node_ip):
     """
     Return two dictionaries: one that maps each function (by name) to a list of
     PIDs, and one that maps each function to the number of PIDs (replica count).
 
-    The remote_host argument is required and must be the IP address of the
-    remote host where the Minikube instance is deployed.
+    The node_ip argument is required and must be the IP address of the remote
+    host where the Minikube instance is deployed.
     """
     functions_pids = {}
     functions_replicas = {}
@@ -646,7 +619,7 @@ def get_functions_pids(function_names, remote_host):
     # the Minikube node!
     cmd = [
         "ssh",
-        "user@10.12.38.4",
+        f"user@{node_ip}",
         "minikube",
         "ssh",
         "python3",
@@ -816,3 +789,26 @@ def faas_cli_delete_functions(openfaas_gateway):
             if e.stderr:
                 logging.error(f"stderr: {e.stderr.strip()}")
             raise
+
+
+def get_node_ip(kubectl_context):
+    """Return the IP address associated with the given kubectl context name.
+
+    The kubectl context must be present in the ~/.kube/config file, or a
+    ValueError exception will be raised.
+    """
+    # Read and parse YAML config.
+    kube_config_path = Path.home() / ".kube" / "config"
+    with kube_config_path.open("r") as file:
+        config = yaml.safe_load(file)
+
+    # If the given kubectl context exists there must be an entry in the clusters
+    # list.
+    for cluster in config.get("clusters"):
+        if cluster["name"] == kubectl_context:
+            url = urlparse(cluster["cluster"]["server"])
+            return url.hostname  # Return only the IP address.
+
+    raise ValueError(
+        f"Context {kubectl_context!r} not found in {kube_config_path.as_posix()!r}."
+    )
