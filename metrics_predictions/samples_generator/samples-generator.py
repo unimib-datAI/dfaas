@@ -86,25 +86,27 @@ def main():
     num_physical_cpus = int(
         subprocess.check_output(num_physical_cpus_cmd, text=True).strip()
     )
-    print(f"Detected CPUs on the node: {num_physical_cpus}")
+    logging.info(f"Detected CPUs on the node: {num_physical_cpus}")
     max_cpu_percentage = num_physical_cpus * 100
     cpu_overload_percentage = (max_cpu_percentage * 80) / 100
 
-    print(f"\nProfiled functions: {FUNCTION_NAMES}")
+    logging.info(f"Profiled functions: {FUNCTION_NAMES}")
     function_combinations = utils.generate_functions_combinations(FUNCTION_NAMES, 1, 2)
     # function_combinations = generate_functions_combinations(FUNCTION_NAMES, 3, 4)
     # function_combinations = generate_functions_combinations(FUNCTION_NAMES, 2, 3)
-    print(f"Nr. of func. combinations (without rate): {len(function_combinations)}")
+    logging.info(
+        f"Nr. of func. combinations (without rate): {len(function_combinations)}"
+    )
 
     # Where the CSV files will be saved.
     output_dir = (Path("../output") / context).resolve().absolute()
     output_dir.mkdir(exist_ok=True, parents=True)
-    print(f"\nOutput directory created: {output_dir.as_posix()!r}")
+    logging.info(f"Output directory created: {output_dir.as_posix()!r}")
 
     # Where vegeta reports will be saved.
     reports_dir = Path("reports").absolute()
     reports_dir.mkdir(exist_ok=True)
-    print(f"Reports directory created: {reports_dir.as_posix()!r}")
+    logging.info(f"Reports directory created: {reports_dir.as_posix()!r}")
 
     utils.index_csv_init(output_dir)
 
@@ -133,8 +135,7 @@ def main():
             y = (functions_list[x], int(loads[x]))
             loaded_config.append(y)
         loaded_config = tuple(loaded_config)
-        print("Configuration found.")
-        print("Starting program from: ", loaded_config)
+        logging.info(f"Starting program from: {loaded_config}")
     else:
         function_tuple_configs = function_combinations
 
@@ -145,7 +146,7 @@ def main():
 
     batch_iterator = 0
     for function_tuple_config in function_tuple_configs:
-        print(f"Selected configuration (without rates): {function_tuple_config}")
+        logging.info(f"Selected configuration (without rates): {function_tuple_config}")
 
         # File location where we will be saving our attack results.
         RESULT_FILE_NAME = f"../output/{context}/results-{current_datetime}-{batch_iterator}-{duration}.csv"
@@ -177,7 +178,7 @@ def main():
             + [str(s) for s in function_tuple_config],
             shell=False,
         )
-        print(f"Functions deployed: {[str(s) for s in function_tuple_config]}")
+        logging.info(f"Functions deployed: {[str(s) for s in function_tuple_config]}")
 
         function_list_config = list(function_tuple_config)
         for i in range(0, len(function_list_config)):
@@ -186,7 +187,7 @@ def main():
 
         function_tuple_config = tuple(function_list_config)
 
-        print(function_tuple_config)
+        logging.info(function_tuple_config)
 
         # Retrieve metrics in idle state.
         if batch_iterator == 0:
@@ -214,36 +215,28 @@ def main():
                 node_ip,
             )
 
-        print("\nCPU, RAM and POWER usage in idle state")
-        print(
-            {
-                "cpu_node": base_cpu_usage_node_idle,
-                "ram_usage": base_ram_usage_node_idle,
-                "ram_usage_percentage": base_ram_usage_node_p_idle,
-                "power_usage": base_power_usage_node_idle,
-            }
+        logging.info(
+            "CPU, RAM and POWER usage in idle state: {base_cpu_usage_node_idle} {base_ram_usage_node_idle} {base_ram_usage_node_p_idle}% {base_power_usage_node_idle}"
         )
-        print()
 
         function_with_rate_combinations = []
-        print("Function, Combinations")
+        logging.info("Function, Combinations")
         for function_name in function_tuple_config:
             temp = []
-            print(function_name, rates)
+            logging.info(f"Function {function_name!r} with rates {rates}")
             for element in itertools.product([function_name], rates):
                 temp.append(element)
             function_with_rate_combinations.append(temp)
-        print()
 
         # Creation of output files
-        print("Creation of", RESULT_FILE_NAME)
+        logging.info(f"Creation of: {RESULT_FILE_NAME!r}")
         with open(RESULT_FILE_NAME, "a") as f:
             writer = csv.DictWriter(
                 f, fieldnames=utils.generate_csv_header(function_tuple_config)
             )
             writer.writeheader()
 
-        print("Creation of", SKIPPED_RESULT_FILE_NAME)
+        logging.info(f"Creation of: {SKIPPED_RESULT_FILE_NAME!r}")
         with open(SKIPPED_RESULT_FILE_NAME, "a") as f:
             writer = csv.DictWriter(
                 f,
@@ -281,9 +274,9 @@ def main():
 
         batch_iterator = batch_iterator + 1
         for config in config_combinations_total:
-            print("\n----------------------------------------")
-            print("Current executed configuration:", config)
-            print("----------------------------------------\n")
+            logging.info("----------------------------------------")
+            logging.info(f"Current executed configuration: {config}")
+            logging.info("----------------------------------------\n")
             current_functions = []
             attack_configs = []
 
@@ -296,7 +289,7 @@ def main():
                     function_name, invocation_rate, node_ip, duration
                 )
                 attack_configs.append(attack)
-                print(f"Function {function_name} with {invocation_rate} req/s")
+                logging.info(f"Function {function_name} with {invocation_rate} req/s")
 
             # Check if a configuration is dominant
             if utils.is_candidate_config_dominanat(actual_dominant_config, config):
@@ -316,15 +309,17 @@ def main():
                         )
                         writer.writerow(skipped_config)
 
-                print("-------------Skip attack---------------")
+                logging.info("-------------Skip attack---------------")
                 continue
             actual_dominant_config = None
             overload_counter = 0
 
             # Check if the configuration already exists in the index.csv.
             if utils.index_csv_check_config(output_dir, config):
-                print("Configuration already exist in index.csv, skipping attack")
-                print("-------------Skip attack---------------")
+                logging.info(
+                    "Configuration already exist in index.csv, skipping attack"
+                )
+                logging.info("-------------Skip attack---------------")
                 continue
 
             try:
@@ -353,7 +348,7 @@ def main():
                     ]
                     [process.wait() for process in processes]
                     end_time = datetime.now().timestamp()
-                    print(f"\nAttack number {j + 1} completed")
+                    logging.info(f"Attack number {j + 1} completed")
 
                     # Retrieve PIDs of the functions
                     functions_pids, function_replicas = utils.get_functions_pids(
@@ -383,7 +378,7 @@ def main():
                             scaphandre,
                             node_ip,
                         )
-                        print("METRICS USING START TIME END TIME")
+                        logging.info("METRICS USING START TIME END TIME")
                     else:
                         (
                             cpu_usage_node,
@@ -406,7 +401,7 @@ def main():
                             scaphandre,
                             node_ip,
                         )
-                        print("METRICS USING DURATION")
+                        logging.info("METRICS USING DURATION")
 
                     result = {}
                     i = 0
@@ -482,7 +477,7 @@ def main():
                         result["overloaded_node"] = 1
                         overload_counter = overload_counter + 1
 
-                    print(result)
+                    logging.info(result)
                     # Save configuration result
                     with open(RESULT_FILE_NAME, "a") as f:
                         writer = csv.DictWriter(
@@ -497,17 +492,17 @@ def main():
                     # Save the executed configuration (+ rates) to index.csv
                     utils.index_csv_add_config(output_dir, config, RESULT_FILE_NAME)
 
-                    print("\n----------------------------------------")
+                    logging.info("----------------------------------------")
             except Exception as e:
                 traceback.print_exc()
                 print(e)
-                print("An error occured, the attack is skipped!")
-                print("Configuration skipped:")
+                logging.info("An error occured, the attack is skipped!")
+                logging.info("Configuration skipped:")
                 for attack_data in config:
                     function_name = attack_data[0]
                     invocation_rate = attack_data[1]
-                    print("%s %s" % (function_name, invocation_rate))
-                print("\n----------------------------------------")
+                    logging.info("%s %s" % (function_name, invocation_rate))
+                logging.info("----------------------------------------")
 
 
 if __name__ == "__main__":

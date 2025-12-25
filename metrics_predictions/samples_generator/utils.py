@@ -196,14 +196,8 @@ def rest(
                 sleep_time_count += 3
                 wait = True
 
-    print(f"Rest time: {sleep_time_count}s")
-    print(
-        {
-            "cpu_node": cpu_usage,
-            "ram_usage": ram_usage,
-            "ram_usage_percentage": ram_usage_p,
-            "power_usage": power_usage,
-        }
+    logging.info(
+        f"Rest time: {sleep_time_count}s -> {cpu_usage} CPU, {ram_usage} ({ram_usage_p}) RAM, {power_usage} power"
     )
     return cpu_usage, ram_usage, ram_usage_p, power_usage, sleep_time_count
 
@@ -244,14 +238,8 @@ def rest_for_profiler(
                 sleep_time_count += 3
                 wait = True
 
-    print(f"Rest time: {sleep_time_count}s")
-    print(
-        {
-            "cpu_node": cpu_usage,
-            "ram_usage": ram_usage,
-            "ram_usage_percentage": ram_usage_p,
-            "power_usage": power_usage,
-        }
+    logging.info(
+        f"Rest time: {sleep_time_count}s -> {cpu_usage} CPU, {ram_usage} ({ram_usage_p}) RAM, {power_usage} power"
     )
     return cpu_usage, ram_usage, ram_usage_p, power_usage, sleep_time_count
 
@@ -419,7 +407,7 @@ def retrieve_functions_resource_usage(
                 pid_list = [str(k) + "|" for k in functions_pids[function_name]]
                 pid_str = "".join(pid_list)
                 query = f'sum(avg_over_time(scaph_process_power_consumption_microwatts{{pid=~"{pid_str}"}}[{time_span}]))'
-                print(query)
+                logging.info(query)
                 power_usage_per_functions.append(
                     execute_query(
                         prometheus_query_range_url,
@@ -494,7 +482,7 @@ def retrieve_function_resource_usage_for_profile(
             pid_list = [str(k) + "|" for k in function_pids[function_name]]
             pid_str = "".join(pid_list)
             query = f'sum(avg_over_time(scaph_process_power_consumption_microwatts{{pid=~"{pid_str}"}}[{time_span}]))'
-            print(query)
+            logging.info(query)
             power_usage = execute_query(
                 prometheus_query_range_url,
                 {"query": (query), "start": start_time, "end": end_time, "step": "10s"},
@@ -525,10 +513,10 @@ def execute_query(url, query_params, range_query=False):
             continue
         if range_query:
             result = get_avg_value_from_response(response.json()["data"], 0)
-            print(result)
+            logging.info(result)
         else:
             result = get_value_from_response(response.json()["data"])
-            print(result)
+            logging.info(result)
         break
     return result
 
@@ -537,7 +525,7 @@ def safe_execute_query(url, query, default_value=0):
     try:
         return execute_query(url, query)
     except Exception as e:
-        print(f"Failed to execute query {query}: {e}")
+        logging.error(f"Failed to execute query {query}: {e}")
         return default_value
 
 
@@ -664,9 +652,9 @@ def index_csv_init(output_dir):
         # Just try to open the file to check if is valid.
         try:
             pd.read_csv(index_path, sep=";")
-            print(f"Index CSV found: {index_path.as_posix()!r}")
+            logging.info(f"Index CSV found: {index_path.as_posix()!r}")
         except pd.errors.EmptyDataError as e:
-            print(
+            logging.error(
                 f"Index CSV file contains wrong data/header: {index_path.as_posix()!r}: {str(e)}"
             )
             exit(0)
@@ -675,7 +663,7 @@ def index_csv_init(output_dir):
         with index_path.open("w") as index_file:
             writer = csv.writer(index_file, delimiter=index_csv_separator)
             writer.writerow(index_csv_cols)
-        print(f"Index CSV file created: {index_path.as_posix()!r}")
+        logging.info(f"Index CSV file created: {index_path.as_posix()!r}")
 
 
 def index_csv_add_config(output_dir, config, result_filename):
