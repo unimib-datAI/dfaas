@@ -644,7 +644,7 @@ def index_csv_init(output_dir):
     """Checks whether index.csv exists in the given output_dir and whether it is
     valid. If it does not exist, initializes a new index.csv file."""
     index_path = Path(output_dir) / "index.csv"
-    index_csv_cols = ["functions", "rates", "results_file"]
+    index_csv_cols = ["functions", "rates", "overloaded", "results_file"]
     # Required since we save lists as columns that use ",".
     index_csv_separator = ";"
 
@@ -666,9 +666,11 @@ def index_csv_init(output_dir):
         logging.info(f"Index CSV file created: {index_path.as_posix()!r}")
 
 
-def index_csv_add_config(output_dir, config, result_filename):
-    """Add the given config to index.csv in the specified output_dir. The
-    result_filename string is attached to the config."""
+def index_csv_add_config(output_dir, config, overloaded, result_filename):
+    """Add a new row with the given config to index.csv found in output_dir.
+
+    The row will have also the result_filename string and the overloaded flag
+    columns."""
     # Chain .absolute().resolve() needed to get relative paths.
     index_path = Path(output_dir).absolute().resolve() / "index.csv"
     result_filename = Path(result_filename).absolute().resolve()
@@ -688,7 +690,7 @@ def index_csv_add_config(output_dir, config, result_filename):
     # processes to read the file while this program is running.
     with index_path.open("a") as index_file:
         writer = csv.writer(index_file, delimiter=index_csv_separator)
-        writer.writerow([fn_names, rates, result_filename])
+        writer.writerow([fn_names, rates, bool(overloaded), result_filename])
 
 
 def index_csv_check_config(output_dir, config):
