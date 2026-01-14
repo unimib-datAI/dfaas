@@ -764,6 +764,54 @@ def index_csv_config_is_dominant(output_dir, config):
     return overloaded_count > iterations_per_config / 2
 
 
+def index_csv_get_dominant_config(output_dir, config):
+    """Return the dominant config if it exists, otherwise return None.
+
+    A config is dominant if the number of True overloaded flags is greater
+    than iterations_per_config/2, where iterations_per_config is determined
+    by counting the matching rows in the CSV file.
+
+    Only function names from the config are considered, rates are ignored."""
+    # The config should already be sorted. Extract function names only.
+    config = sorted(config, key=lambda x: x[0])
+    fn_names, _ = zip(*config)
+    fn_names = list(fn_names)
+
+    # Read the index.csv file.
+    index_path = Path(output_dir).absolute().resolve() / "index.csv"
+    df = pd.read_csv(index_path, sep=";")
+
+    # Convert string representations of lists to actual lists.
+    df["functions"] = df["functions"].apply(ast.literal_eval)
+    df["rates"] = df["rates"].apply(ast.literal_eval)
+
+    # Filter matching configurations (ignoring rates).
+    config_rows = df[df["functions"].apply(lambda x: x == fn_names)]
+    if len(config_rows) == 0:
+        return None
+
+    # Group by rates and check if there is a dominant config
+    unique_rates = config_rows["rates"].apply(lambda x: tuple(x)).unique()
+    for rate_config in unique_rates:
+        rates = list(rate_config)
+
+        # Filter rows with given rates.
+        rate_specific_rows = config_rows[
+            config_rows["rates"].apply(lambda x: x == rates)
+        ]
+
+        iterations_per_config = len(rate_specific_rows)
+        overloaded_count = rate_specific_rows["overloaded"].sum()
+
+        # Check if this rate config is dominant.
+        if overloaded_count > iterations_per_config / 2:
+            # Return the config as original given config (list of tuples
+            # [(fn_name, rate), ...]).
+            return list(zip(fn_names, rates))
+
+    return None
+
+
 def faas_cli_delete_functions(openfaas_gateway):
     """
     Remove all deployed functions on the given OpenFaaS instance.

@@ -302,9 +302,38 @@ def main():
                         )
                         writer.writerow(skipped_config)
 
-                logging.info("Configuration skipped due to existing dominant config.")
+                logging.info(
+                    f"Configuration skipped due to existing dominant config: {actual_dominant_config}"
+                )
                 logging.info("-------------Skip attack---------------")
                 continue
+
+            # The previous configuration is not dominant, but the existing check
+            # is not precise. We need to retrieve the dominant configuration
+            # (if one exists) for the given configuration (ignoring rates) and
+            # then manually verify the rates.
+            if dmt_cfg := utils.index_csv_get_dominant_config(output_dir, config):
+                # Convert both lists to dictionaries: {fn_name: rate}.
+                cfg_dict = dict(config)
+                dmt_cfg_dict = dict(dmt_cfg)
+
+                # Should be always true by index_csv_get_dominant_config.
+                assert set(cfg_dict.keys()) == set(dmt_cfg_dict.keys())
+
+                # If config rates are all higher it means we can skip this
+                # configuration since there is a dominant config.
+                skip = False
+                for fn_name in cfg_dict.keys():
+                    if dmt_cfg_dict[fn_name] <= cfg_dict[fn_name]:
+                        skip = True
+                        break
+
+                if skip:
+                    logging.info(
+                        f"Configuration skipped due to existing dominant config: {dmt_cfg}"
+                    )
+                    logging.info("-------------Skip attack---------------")
+                    continue
 
             # Check if the configuration already exists in the index.csv.
             if utils.index_csv_check_config(output_dir, config):
