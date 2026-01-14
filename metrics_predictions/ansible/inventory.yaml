@@ -1,3 +1,4 @@
+---
 all:
   vars:
       # Create a new user with sudo privileges and SSH access. The public SSH
@@ -26,7 +27,15 @@ all:
       ansible_become_password: "{{ ansible_password }}"
       new_hostname: traffic-dfaas-operator
 
+    traffic-dfaas-heavy:
+      ansible_host: 10.12.38.2
+      ansible_user: user
+      ansible_password: "PLAIN PASSWORD HERE!"
+      ansible_become_password: "{{ ansible_password }}"
+      new_hostname: traffic-dfaas-heavy
+
 # Hosts that should have the FaaS platform installed.
 dfaas:
   hosts:
     traffic-dfaas-mid:
+    traffic-dfaas-heavy:
