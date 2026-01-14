@@ -707,9 +707,9 @@ def index_csv_check_config(output_dir, config):
     # Read the index.csv file.
     #
     # Example:
-    # functions;rates;results_file
-    # ['curl'];[0];results-2025-12-22_16-55-34-0-30s.csv
-    # ['curl'];[10];results-2025-12-22_16-55-34-0-30s.csv
+    # functions;rates;overloaded;results_file
+    # ['curl'];[0];False;results-2025-12-22_16-55-34-0-30s.csv
+    # ['curl'];[10];False;results-2025-12-22_16-55-34-0-30s.csv
     index_path = Path(output_dir).absolute().resolve() / "index.csv"
     df = pd.read_csv(index_path, sep=";")
 
@@ -725,6 +725,43 @@ def index_csv_check_config(output_dir, config):
     ).any()
 
     return exists
+
+
+def index_csv_config_is_dominant(output_dir, config):
+    """Return True if the given config is dominant in the index.csv file
+    stored in the given output_dir, otherwise return False.
+
+    A config is dominant if the number of True overloaded flags is greater
+    than iterations_per_config/2, where iterations_per_config is determined
+    by counting the matching rows in the CSV file."""
+    # The config should already be sorted. In any case, we need to split
+    # function names and rates, as each is stored in a separate column.
+    config = sorted(config, key=lambda x: x[0])
+    fn_names, rates = zip(*config)
+
+    # Original values are tuples, but we want to encode lists.
+    fn_names, rates = list(fn_names), list(rates)
+
+    # Read the index.csv file.
+    index_path = Path(output_dir).absolute().resolve() / "index.csv"
+    df = pd.read_csv(index_path, sep=";")
+
+    # Convert string representations of lists to actual lists.
+    df["functions"] = df["functions"].apply(ast.literal_eval)
+    df["rates"] = df["rates"].apply(ast.literal_eval)
+
+    # Filter rows that match the given config.
+    config_rows = df[
+        # Must use apply() because we compare lists, not single elems.
+        df["functions"].apply(lambda x: x == fn_names)
+        & df["rates"].apply(lambda x: x == rates)
+    ]
+
+    iterations_per_config = len(config_rows)
+
+    overloaded_count = config_rows["overloaded"].sum()
+
+    return overloaded_count > iterations_per_config / 2
 
 
 def faas_cli_delete_functions(openfaas_gateway):

@@ -302,18 +302,27 @@ def main():
                         )
                         writer.writerow(skipped_config)
 
+                logging.info("Configuration skipped due to existing dominant config.")
                 logging.info("-------------Skip attack---------------")
                 continue
-            actual_dominant_config = None
-            overload_counter = 0
 
             # Check if the configuration already exists in the index.csv.
             if utils.index_csv_check_config(output_dir, config):
+                # Before continuing, we need to check whether the existing
+                # configuration is a dominant one (the node is overloaded). If
+                # so, we must set the actual_dominant_config variable to ensure
+                # that subsequent configurations are not executed.
+                if utils.index_csv_config_is_dominant(output_dir, config):
+                    actual_dominant_config = config
+
                 logging.info(
                     "Configuration already exist in index.csv, skipping attack"
                 )
                 logging.info("-------------Skip attack---------------")
                 continue
+
+            actual_dominant_config = None
+            overload_counter = 0
 
             try:
                 j = 0
@@ -482,8 +491,11 @@ def main():
                     if overload_counter > iterations_per_config / 2:
                         actual_dominant_config = config
 
-                    # Save the executed configuration (+ rates) to index.csv
-                    utils.index_csv_add_config(output_dir, config, RESULT_FILE_NAME)
+                    # Save the executed configuration (with rates) to index.csv.
+                    # Save also the overloaded flag for that configuration.
+                    utils.index_csv_add_config(
+                        output_dir, config, result["overloaded_node"], RESULT_FILE_NAME
+                    )
 
                     logging.info("----------------------------------------")
             except Exception as e:
