@@ -76,11 +76,11 @@ def generate_functions_combinations(
 
 
 # It generate a list containing all the possible instances of req/s rates used in the vegeta attack
-def generate_rates_list(max_rate):
+def generate_rates_list(max_rate, min_rate=0, rate_step=10):
     rates = []
-    while max_rate >= 0:
+    while max_rate >= min_rate:
         rates.append(max_rate)
-        max_rate -= 10
+        max_rate -= rate_step
     rates.sort()
     return rates
 

@@ -100,8 +100,8 @@ def main():
 
     logging.info(f"Profiled functions: {FUNCTION_NAMES}")
     function_combinations = utils.generate_functions_combinations(FUNCTION_NAMES, 1, 2)
-    # function_combinations = generate_functions_combinations(FUNCTION_NAMES, 3, 4)
-    # function_combinations = generate_functions_combinations(FUNCTION_NAMES, 2, 3)
+    # function_combinations = utils.generate_functions_combinations(FUNCTION_NAMES, 3, 4)
+    # function_combinations = utils.generate_functions_combinations(FUNCTION_NAMES, 2, 4)
     logging.info(
         f"Nr. of func. combinations (without rate): {len(function_combinations)}"
     )
@@ -147,7 +147,7 @@ def main():
     else:
         function_tuple_configs = function_combinations
 
-    rates = utils.generate_rates_list(max_rate)
+    rates = utils.generate_rates_list(max_rate, min_rate=1, rate_step=1)
 
     # Obtain current date and current time as string
     current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
