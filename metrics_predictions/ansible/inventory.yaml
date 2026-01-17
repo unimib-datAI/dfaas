@@ -13,13 +13,6 @@ all:
       ansible_python_interpreter: auto_silent
 
   hosts:
-    traffic-dfaas-mid:
-      ansible_host: 10.12.38.4
-      ansible_user: user
-      ansible_password: "PLAIN PASSWORD HERE!"
-      ansible_become_password: "{{ ansible_password }}"
-      new_hostname: traffic-dfaas-mid
-
     traffic-dfaas-operator:
       ansible_host: 10.12.38.3
       ansible_user: user
@@ -27,15 +20,33 @@ all:
       ansible_become_password: "{{ ansible_password }}"
       new_hostname: traffic-dfaas-operator
 
+    traffic-dfaas-mid:
+      ansible_host: 10.12.38.4
+      ansible_user: user
+      ansible_password: "PLAIN PASSWORD HERE!"
+      ansible_become_password: "{{ ansible_password }}"
+      new_hostname: traffic-dfaas-mid
+      minikube_profile: mid
+
     traffic-dfaas-heavy:
       ansible_host: 10.12.38.2
       ansible_user: user
       ansible_password: "PLAIN PASSWORD HERE!"
       ansible_become_password: "{{ ansible_password }}"
       new_hostname: traffic-dfaas-heavy
+      minikube_profile: heavy
+
+    traffic-dfaas-light:
+      ansible_host: 10.12.38.9
+      ansible_user: user
+      ansible_password: "PLAIN PASSWORD HERE!"
+      ansible_become_password: "{{ ansible_password }}"
+      new_hostname: traffic-dfaas-light
+      minikube_profile: light
 
 # Hosts that should have the FaaS platform installed.
 dfaas:
   hosts:
-    traffic-dfaas-mid:
     traffic-dfaas-heavy:
+    traffic-dfaas-mid:
+    traffic-dfaas-light:

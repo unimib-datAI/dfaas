@@ -62,3 +62,7 @@
       ansible.builtin.apt:
         deb: /tmp/minikube_latest_amd64.deb
         state: present
+
+    - name: Warn user to reboot the VM
+      ansible.builtin.debug:
+        msg: WARNING: You must reboot the VM to let the user to run Docker commands.

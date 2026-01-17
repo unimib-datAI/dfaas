@@ -45,7 +45,7 @@ USER="user" # Replace with username used on the VM
 HOST="10.12.38.4" # Replace with IP of the remote VM
 
 # Remote command you want to run on the VM
-REMOTE_COMMAND="~/dfaas/metrics_predictions/minikube_builder.sh"
+REMOTE_COMMAND="~/dfaas/metrics_predictions/minikube_builder.sh 10.12.38.4"
 
 # Run the SSH command
 ssh "${USER}@${HOST}" "$REMOTE_COMMAND"

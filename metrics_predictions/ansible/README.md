@@ -1,7 +1,61 @@
-# Data Collection
+# Ansible playbooks for VMs configuration
+
+This folder contains a set of Ansible playbooks that can be used to speed up the
+configuration of the four VMs used for data collection. Unfortunately, the
+playbooks are not complete and some manual intervention is required to configure
+the VMs correctly.
+
+The VMs are listed below (you will almost certainly need to change the IP
+addresses):
+
+| VM name                | IP         |
+|------------------------|------------|
+| traffic-dfaas-mid      | 10.12.38.4 |
+| traffic-dfaas-operator | 10.12.38.3 |
+| traffic-dfaas-light    | 10.12.38.9 |
+| traffic-dfaas-heavy    | 10.12.38.2 |
+
+Run the provided Ansible playbooks in the correct order to first set up all FaaS
+nodes:
+
+```console
+$ ansible-playbook --inventory inventory.yaml 01-init.yaml
+$ ansible-playbook --inventory inventory.yaml 02-minikube.yaml
+...
+```
+
+Make sure to configure the nodes (IP addresses, passwords, etc.) in the
+dedicated YAML files under the `host_vars` and `group_vars` directories, or
+overwrite the [`inventory.yaml`](inventory.yaml) file. Make sure also to update
+the IP in the [`kubeconfig`](kubeconfig) file!
+
+If Ansible is not installed, you can install it using `pip` or refer to the
+[official
+documentation](https://docs.ansible.com/projects/ansible/latest/installation_guide/installation_distros.html)
+for instructions on specific operating system. We assume Ubuntu 24.04 is used.
+
+> [!WARNING]
+> After execuring the `02-minikube.yaml` playbook make sure to reboot the VM to
+> let user `user` run Docker commands without root permissions. See [Docker
+> official
+> docs](https://docs.docker.com/engine/install/linux-postinstall/#manage-docker-as-a-non-root-user)
+> for more information.
 
 > [!IMPORTANT]
-> Work in progress section!
+> The Minikube instance is not automatically started by the playbooks. You must
+> manually run the [`minikube_builder.sh`](../minikube_builder.sh) Bash script
+> on the remote machines. It is recommended to copy the entire repository to
+> each machine before running the script. The long-term goal is to remove this
+> script, but for now it is still required.
+
+After running the `minikube_builder.sh` script, you can execute the final
+playbook (`06-iptables.yaml`) to properly configure the iptables rules and allow
+the Kubernetes cluster to be reached from the operator VM.
+
+From this point onward, this document contains original notes created by the
+thesis student who developed the Bash script and performed the initial VM setup.
+
+## Original document
 
 Author: Thomas Howard-Grubb
 Edited by: Emanuele Petriglia

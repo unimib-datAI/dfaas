@@ -1,5 +1,13 @@
 #!/usr/bin/env bash
 
+# Check for required argument
+if [ $# -ne 1 ]; then
+  echo "Usage: $0 <SERVER_IP>"
+  exit 1
+fi
+
+SERVER_IP="$1"
+
 echo "Checking if Minikube is running..."
 STATUS=$(minikube status --format='{{.Host}}')
 if [ "$STATUS" = "Running" ]; then
@@ -18,7 +26,7 @@ fi
 
 echo Building Minikube instance...
 
-minikube start --memory=max --cpus=max  --apiserver-ips=10.12.38.4
+minikube start --memory=max --cpus=max --apiserver-ips="$SERVER_IP"
 
 if [ $? -eq 0 ]; then
   echo Minikube is up and running
@@ -113,3 +121,4 @@ fi
 
 echo The node is up and running!
 exit 0
+
