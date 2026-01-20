@@ -1,0 +1,39 @@
+---
+- name: Ensure SSH keypair exists on traffic-dfaas-operator
+  hosts: traffic-dfaas-operator
+  vars:
+    ssh_key_file: "{{ ansible_env.HOME }}/.ssh/id_ed25519"
+    ssh_key_comment: "{{ ansible_user }}@{{ ansible_hostname }}"
+
+  tasks:
+    - name: Check if SSH keypair exists
+      ansible.builtin.shell: |
+        grep -w '{{ ssh_key_comment }}' {{ ssh_key_file }}.pub
+      register: check_pubkey
+      ignore_errors: true
+      changed_when: false # Task is read-only!
+
+    - name: Generate SSH ed25519 keypair
+      ansible.builtin. user:
+        name: "{{ ansible_user }}"
+        generate_ssh_key: true
+        ssh_key_type: ed25519
+        ssh_key_comment: "{{ ssh_key_comment }}"
+        ssh_key_file: "{{ ssh_key_file }}"
+      when: check_pubkey.rc != 0
+
+    - name: Fetch public key to controller
+      ansible.builtin.fetch:
+        src: "{{ ssh_key_file }}.pub"
+        dest: /tmp/traffic_operator_key.pub
+        flat: yes
+
+- name: Install traffic-dfaas-operator's public key on all DFaaS hosts
+  hosts: dfaas
+
+  tasks: 
+    - name: Add SSH public key from traffic-dfaas-operator to authorized keys
+      ansible.posix.authorized_key:
+        user: "{{ ansible_user }}"
+        key: "{{ lookup('file', '/tmp/traffic_operator_key.pub') }}"
+        state: present
