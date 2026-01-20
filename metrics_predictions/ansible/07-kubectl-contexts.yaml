@@ -1,0 +1,41 @@
+---
+- name: Copy Minikube certificates from DFaaS hosts to traffic-dfaas-operator
+  hosts: dfaas
+
+  vars:
+    minikube_cert_files:
+      - { src: "/home/user/.minikube/profiles/minikube/client.crt", dest: "client.crt" }
+      - { src: "/home/user/.minikube/profiles/minikube/client.key", dest: "client.key" }
+      - { src: "/home/user/.minikube/ca.crt", dest: "ca.crt" }
+
+  tasks:
+    - name: Ensure .minikube profile directory exists on traffic-dfaas-operator
+      ansible.builtin.file:
+        path: ".minikube/profiles/{{ minikube_profile }}"
+        state: directory
+        mode: "0755"
+      delegate_to: traffic-dfaas-operator
+
+    - name: Fetch Minikube certificate files to traffic-dfaas-operator
+      ansible.builtin.fetch:
+        src: "{{ item.src }}"
+        # Must be relative to host's home directory!
+        dest: "{{ lookup('env', 'HOME') }}/.minikube/profiles/{{ minikube_profile }}/"
+        flat: yes # Required since we want to control the destination path.
+      loop: "{{ minikube_cert_files }}"
+
+    - name: Ensure ~/.kube directory exists on traffic-dfaas-operator
+      ansible.builtin.file:
+        path: "{{ lookup('env', 'HOME') }}/.kube"
+        state: directory
+        mode: "0700"
+      delegate_to: traffic-dfaas-operator
+      run_once: true
+
+    - name: Copy default kubeconfig to ~/.kube/config on traffic-dfaas-operator
+      ansible.builtin.copy:
+        src: kubeconfig
+        dest: "{{ lookup('env', 'HOME') }}/.kube/config"
+        mode: "0600"
+      delegate_to: traffic-dfaas-operator
+      run_once: true

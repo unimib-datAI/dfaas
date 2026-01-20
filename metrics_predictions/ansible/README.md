@@ -10,8 +10,8 @@ addresses):
 
 | VM name                | IP         |
 |------------------------|------------|
-| traffic-dfaas-mid      | 10.12.38.4 |
 | traffic-dfaas-operator | 10.12.38.3 |
+| traffic-dfaas-mid      | 10.12.38.4 |
 | traffic-dfaas-light    | 10.12.38.9 |
 | traffic-dfaas-heavy    | 10.12.38.2 |
 
@@ -51,6 +51,11 @@ for instructions on specific operating system. We assume Ubuntu 24.04 is used.
 After running the `minikube_builder.sh` script, you can execute the final
 playbook (`06-iptables.yaml`) to properly configure the iptables rules and allow
 the Kubernetes cluster to be reached from the operator VM.
+
+> [!TIP]
+> You can run the Ansible playbooks from any machine that has Ansible installed
+> and network connectivity to the four VMs. We recommend running them directly
+> from `traffic-dfaas-operator`, although this is not required.
 
 From this point onward, this document contains original notes created by the
 thesis student who developed the Bash script and performed the initial VM setup.
