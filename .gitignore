@@ -54,3 +54,6 @@ k6/plots
 # metrics_predictions/samples_generator/samples-generator.py and
 # samples-generator-profiler.py Python scripts.
 metrics_predictions/output*/**
+
+# It is a binary.
+k8s/scripts/libp2p-peer-id/libp2p-peer-id
