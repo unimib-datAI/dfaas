@@ -2,7 +2,7 @@
 # DFaaS Agent running with Static strategy.
 
 # See k8s/charts/values-haproxy.yaml for more information about global,
-# userlist, defaults and program sections.
+# userlist, defaults, and prometheus frontend sections.
 global
   master-worker no-exit-on-failure
   stats socket /var/run/haproxy.sock mode 660 level admin expose-fd listeners
@@ -20,6 +20,12 @@ defaults
   timeout client 60s
   timeout connect 60s
   timeout server 60s
+
+frontend prometheus
+  bind :8405
+  mode http
+  http-request use-service prometheus-exporter
+  no log
 
 # The configuration is generated and changed by the DFaaS agent from this point
 # on.

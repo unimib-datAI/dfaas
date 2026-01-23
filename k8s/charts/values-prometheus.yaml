@@ -13,7 +13,7 @@ server:
 
   # Default metrics retention time is 15 days, but it is too large for the DFaaS
   # Agent's needs.
-  retention: "5d"
+  retention: "3d"
 
 serverFiles:
   alerting_rules.yml:

@@ -7,7 +7,7 @@
 # API process to run. This means that we run multiple processes in a single
 # container. While this is not ideal for Kubernetes, DFaaS is a prototype.
 #
-# Copyright 2025 The DFaaS Authors. All rights reserved.
+# Copyright 2025-2026 The DFaaS Authors. All rights reserved.
 # This file is licensed under the AGPL v3.0 or later license. See LICENSE and
 # AUTHORS file for more information.
 
@@ -36,6 +36,14 @@ config: |
     timeout client 60s
     timeout connect 60s
     timeout server 60s
+
+  # Allow Prometheus to scrape metrics.
+  # See: https://www.haproxy.com/documentation/haproxy-configuration-tutorials/alerts-and-monitoring/prometheus/
+  frontend prometheus
+    bind :8405
+    mode http
+    http-request use-service prometheus-exporter
+    no log
 
   frontend fe_main
     bind :80
@@ -111,13 +119,26 @@ args:
 
 service:
   type: NodePort
+
+  # Let Prometheus to automatically scrape HAProxy metrics.
+  # See: https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus#scraping-pod-metrics-via-annotations
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/port: "8405"
+
+  # Map each container port to a specific node port for external access (from
+  # outside the cluster). We do not intend to expose the Prometheus port, but
+  # Kubernetes will still map it to a random node port regardless.
   nodePorts:
     http: 30080
     dataplane: 30555
     stat: 31024
 
+# These ports will be automatically included in the service object and exposed
+# for external access (because we selected NodePort service type).
 containerPorts:
   http: 80
   https: 443
   stat: 1024
   dataplane: 5555
+  prometheus: 8405
