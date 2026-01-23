@@ -10,12 +10,12 @@ preliminary, our results confirm the feasibility of the approach, showing that
 the system can transparently redistribute the load across edge nodes when they
 become overloaded.
 
-Our prototype is based on OpenFaaS and implements the control logic within Go
+Our prototype is based on OpenFaaS CE and implements the control logic within Go
 P2P agents.
 
 This research is conducted by the DatAI (formerly Insid&s) and
 [REDS](https://redslab.altervista.org/) laboratories of the University of
-Milan-Bicocca.
+Milano-Bicocca.
 
 If you wish to reuse this source code, please consider citing our article
 describing the first prototype:
@@ -56,24 +56,22 @@ For more information about the architecture, see
 
 ## How to run DFaaS
 
-**DFaaS is currently in a prototypal stage.** It uses
-[HAProxy](https://www.haproxy.org/) for the proxy component and
-[OpenFaaS](https://www.openfaas.com/) as the FaaS platform. The only supported
-deployment method is on Kubernetes.
+**DFaaS is currently at a prototype stage.** It relies on
+[HAProxy](https://www.haproxy.org/) for the proxy component, [OpenFaaS
+CE](https://www.openfaas.com/) as the Function-as-a-Service platform, and
+[Prometheus](https://prometheus.io/) for metrics collection. Kubernetes is the
+only supported deployment environment.
 
-You can install and deploy the DFaaS prototype on a single node using Ansible.
-This can be done either on the machine running Ansible or on a remote machine.
-See the dedicated section.
+The DFaaS prototype has been tested with [Ubuntu 24.04.3
+LTS](https://releases.ubuntu.com/noble/) and [K3S](https://k3s.io/) as the
+Kubernetes distribution.
 
-Or you can do a manual deployment: follow what the given Ansible playbook does
-and execute each required command step-by-step.
+We recommend starting with fresh virtual machines (VMs) running Ubuntu. You can
+deploy one DFaaS platform per VM. To assist with setup, a collection of Ansible
+playbooks is available.
 
-Regardless of which of the options you choose, the deployment of the DFaaS
-prototype has been tested with [Ubuntu 24.04.2
-LTS](https://releases.ubuntu.com/noble/).
-
-We suggest to spin up a virtual machine from scratch with Ubuntu, with a user
-with a password and sudo enabled.
+For more information about DFaaS, refer to the documentation in the
+[`docs`](docs) directory.
 
 ### Automated deployment with Ansible
 
@@ -189,7 +187,7 @@ For more information read associated [README](simulation/README.md) file.
 
 ## License
 
-Copyright © 2021-2025 The DFaaS Authors.
+Copyright © 2021-2026 The DFaaS Authors.
 
 The source code in this repository is licensed under the GNU Affero General
 Public License (AGPL), version 2.0 or later. See the [LICENSE](LICENSE) file for

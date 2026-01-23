@@ -1,5 +1,38 @@
 # Agent Startup
 
+The DFaaS agent is implemented as a Go binary, and its source code can be found
+in the [`dfaasagent`](../dfaasagent) directory. While you can run the agent
+directly as a standalone binary on a server, doing so is not straightforward
+since it requires careful configuration and ensuring that other components (such
+as the proxy and FaaS platform) are properly deployed and running. In practice,
+the recommended way to run the agent is within a Kubernetes environment.
+Deployment involves several Kubernetes resources (a Deployment, a Service, and
+more), so we provide a Helm chart located at
+[`k8s/charts/agent/`](../k8s/charts/agent/) to speed up this process.
+
+Additionally, there is the *forecaster* component: a small Python program that
+provides an HTTP API to the main agent. The forecaster is mandatory only if you
+use the *Node Margin Strategy*, otherwise it is optional. Like the agent, it
+also comes with a dedicated Helm chart at
+[`k8s/charts/forecaster`](../k8s/charts/forecaster).
+
+## How to configure the agent
+
+You can configure the agent using environment variables. A complete list of
+supported variables is available in the [agent's source
+code](https://github.com/unimib-datAI/dfaas/blob/main/dfaasagent/agent/config/config.go).
+If you are deploying the agent via the Helm chart, it's recommended to configure
+it by creating a custom `values.yaml` file that overrides the [default
+values](https://github.com/unimib-datAI/dfaas/blob/main/k8s/charts/agent/values.yaml).
+Throughout this document, examples refer to modifying the `values.yaml` file.
+
+> [!IMPORTANT]
+> Configuration changes are not applied dynamically at runtime. If you modify
+> the configuration (for example, by updating the ConfigMap object), you must
+> restart the agent for the new settings to take effect.
+
+## Agent identity
+
 Each agent is assigned a unique Peer Identity (Peer ID), which is an important
 component for connecting other agents within the network. The Peer ID is derived
 from an ed25519 keypair. Specifically it is a multihash of the public key (with
@@ -15,7 +48,7 @@ To persist the same Peer ID across restarts, set the `AGENT_PRIVATE_KEY_FILE`
 environment variable to the file path containing your private key in PEM format
 when starting the agent.
 
-## Manual Key Creation
+### Manual key creation
 
 To manually create an ed25519 keypair, you can use OpenSSL to save the key as a
 PEM file:
@@ -48,17 +81,7 @@ For additional information on key derivation and Peer IDs, refer to the
 [official libp2p
 specification](https://github.com/libp2p/specs/blob/master/peer-ids/peer-ids.md#peer-ids).
 
-## How to Configure the Agent
-
-You can configure the agent using environment variables. A complete list of
-supported variables is available in the [agent's source
-code](https://github.com/unimib-datAI/dfaas/blob/main/dfaasagent/agent/config/config.go).
-If you are deploying the agent via the Helm chart, it's recommended to configure
-it by creating a custom `values.yaml` file that overrides the [default
-values](https://github.com/unimib-datAI/dfaas/blob/main/k8s/charts/agent/values.yaml).
-Throughout this document, examples refer to modifying the `values.yaml` file.
-
-## Agent Connection
+## Agent connection
 
 DFaaS agents can be connected in several ways. The most straightforward approach
 is to provide the multiaddr of one agent to others. A multiaddr contains all
