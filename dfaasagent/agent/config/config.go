@@ -73,8 +73,6 @@ type Configuration struct {
 
 	OpenFaaSHost string `mapstructure:"AGENT_OPENFAAS_HOST"`
 	OpenFaaSPort uint   `mapstructure:"AGENT_OPENFAAS_PORT"`
-	OpenFaaSUser string `mapstructure:"AGENT_OPENFAAS_USER"`
-	OpenFaaSPass string `mapstructure:"AGENT_OPENFAAS_PASS"`
 
 	Strategy string `mapstructure:"AGENT_STRATEGY"`
 

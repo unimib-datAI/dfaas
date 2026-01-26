@@ -33,8 +33,8 @@ var StrategySuccessIterations = promauto.NewCounter(prometheus.CounterOpts{
 })
 
 var StrategyIterationDuration = prometheus.NewGauge(prometheus.GaugeOpts{
-    Name: "dfaas_agent_strategy_iteration_duration_seconds",
-    Help: "Execution duration of a successfully strategy iteration in seconds",
+	Name: "dfaas_agent_strategy_iteration_duration_seconds",
+	Help: "Execution duration of a successfully strategy iteration in seconds",
 })
 
 // Initialize initializes this package (sets some vars, etc...)

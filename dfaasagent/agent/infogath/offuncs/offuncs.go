@@ -121,25 +121,17 @@ type funcsNamesResponse []struct {
 type Client struct {
 	hostname string
 	port     uint
-	username string
-	password string
 }
 
 // NewClient returns a new Client.
-func NewClient(hostname string, port uint, username, password string) *Client {
-	return &Client{
-		hostname: hostname,
-		port:     port,
-		username: username,
-		password: password,
-	}
+func NewClient(hostname string, port uint) *Client {
+	return &Client{hostname: hostname, port: port}
 }
 
 // doFuncsRequest gets info about functions from "/system/functions" endpoint.
 func (c *Client) doFuncsRequest() ([]byte, error) {
 	u := &url.URL{
 		Scheme: "http",
-		User:   url.UserPassword(c.username, c.password),
 		Host:   fmt.Sprintf("%s:%d", c.hostname, c.port),
 		Path:   "/system/functions",
 	}

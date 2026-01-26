@@ -61,10 +61,8 @@ config:
   AGENT_HAPROXY_HOST: "haproxy.default.svc.cluster.local"
   AGENT_HAPROXY_PORT: 80
 
-  AGENT_OPENFAAS_HOST: "gateway-external.default.svc.cluster.local"
+  AGENT_OPENFAAS_HOST: "gateway.default.svc.cluster.local"
   AGENT_OPENFAAS_PORT: 8080
-  AGENT_OPENFAAS_USER: admin
-  #AGENT_OPENFAAS_PASS=aN4ClxntpBev
 
   AGENT_STRATEGY: "nodemarginstrategy"
 

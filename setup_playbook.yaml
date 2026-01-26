@@ -141,23 +141,11 @@
 
     - name: Configure OpenFaaS
       block:
-        - name: Get OpenFaaS password
-          ansible.builtin.command: kubectl get secret basic-auth -o jsonpath={.data.basic-auth-password} | base64 --decode
-          register: openfaas_pwd
-          environment:
-            KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-          become: true
-
         - name: Add OPENFAAS_URL to .bashrc
           ansible.builtin.lineinfile:
             path: "{{ user_home }}/.bashrc"
             line: 'export OPENFAAS_URL={{ openfaas_url }}'
             state: present
-
-        - name: Login to OpenFaaS
-          ansible.builtin.shell: "{{ user_home }}/.local/bin/faas-cli login --password '{{ openfaas_pwd.stdout }}'"
-          environment:
-            OPENFAAS_URL: "{{ openfaas_url }}"
 
         - name: Deploy OpenFaaS functions
           ansible.builtin.shell: ./k8s/scripts/deploy_functions.sh

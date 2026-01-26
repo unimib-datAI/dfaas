@@ -30,14 +30,6 @@ else
     FUNCTIONS=("$@")
 fi
 
-# Read credentials from the 'basic-auth' Kubernetes secret.
-PASSWORD=$(sudo kubectl get secret basic-auth -o jsonpath="{.data.basic-auth-password}" | base64 --decode)
-
-# Login using faas-cli.
-echo "faas-cli login --password $PASSWORD"
-faas-cli login --password "$PASSWORD"
-echo
-
 # Iterate over the default functions.
 for func in "${FUNCTIONS[@]}"; do
     # Check if it is already deployed.

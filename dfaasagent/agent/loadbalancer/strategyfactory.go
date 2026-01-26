@@ -56,10 +56,7 @@ func (strategyFactory *recalcStrategyFactory) createStrategy() (Strategy, error)
 		return nil, fmt.Errorf("loading HAProxy config. template: %w", err)
 	}
 
-	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost,
-		_config.OpenFaaSPort,
-		_config.OpenFaaSUser,
-		_config.OpenFaaSPass)
+	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
 
 	strategy.it = 0
 
@@ -85,10 +82,7 @@ func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, er
 		return nil, err
 	}
 
-	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost,
-		_config.OpenFaaSPort,
-		_config.OpenFaaSUser,
-		_config.OpenFaaSPass)
+	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
 
 	strategy.forecasterClient = forecaster.Client{
 		Hostname: constants.ForecasterHost,
@@ -122,10 +116,7 @@ func (strategyFactory *staticStrategyFactory) createStrategy() (Strategy, error)
 		return nil, fmt.Errorf("loading HAProxy config. template: %w", err)
 	}
 
-	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost,
-		_config.OpenFaaSPort,
-		_config.OpenFaaSUser,
-		_config.OpenFaaSPass)
+	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
 
 	strategy.nodeInfo = nodeInfoStatic{}
 	strategy.targetNodes = make(map[string][]string)
