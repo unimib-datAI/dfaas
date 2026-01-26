@@ -4,6 +4,13 @@ alertmanager:
 prometheus:
   create: false
 
+# We disable asynchronous function invocation in OpenFaaS. This feature is
+# fairly limited in the Community Edition, and doing so avoids the creation and
+# instantiation of services (such as NATS) that we would not use anyway.
+#
+# More info here: https://docs.openfaas.com/reference/async/
+async: false
+
 functionNamespace: default
 
 gatewayExternal:
