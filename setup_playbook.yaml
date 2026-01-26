@@ -169,16 +169,9 @@
             PATH: "{{ ansible_env.PATH }}:{{ user_home }}/.local/bin"
       become: false
 
-    - name: Install DFaaS Forecaster and extra-setup charts
-      block:
-        - name: Install Forecaster in K3S
-          ansible.builtin.command: helm install forecaster ./k8s/charts/forecaster
-          args:
-            chdir: "{{ playbook_dir }}"
-
-        - name: Install DFaaS extra setup
-          ansible.builtin.command: helm install dfaas-extra-setup ./k8s/charts/extra-setup/
-          args:
-            chdir: "{{ playbook_dir }}"
+    - name: Install DFaaS Forecaster
+      ansible.builtin.command: helm install forecaster ./k8s/charts/forecaster
+        args:
+          chdir: "{{ playbook_dir }}"
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml

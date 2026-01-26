@@ -1,5 +1,0 @@
-apiVersion: v2
-name: extra-setup
-description: A Helm chart for extra resources required to run DFaaS.
-type: application
-version: 0.1.0

@@ -15,6 +15,17 @@ server:
   # Agent's needs.
   retention: "3d"
 
+  # Make sure the service is named "prometheus", as this DNS name is hardcoded
+  # in the OpenFaaS CE Gateway and cannot be changed.
+  fullnameOverride: "prometheus"
+
+  service:
+    # This additional port is required because port 9090 is hardcoded in the
+    # OpenFaaS CE Gateway. By default there is port 80.
+    additionalPorts:
+      - name: openfaas
+        port: 9090
+
 serverFiles:
   alerting_rules.yml:
     # Copied from official OpenFaaS Helm chart.
