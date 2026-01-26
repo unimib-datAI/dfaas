@@ -63,7 +63,6 @@ frontend fe_main
     http-request capture str(hdrID:),concat(,req.hdrcnt_nodeid,) len 10 {{- /* e.g. "hdrID:5" */}}
 
     {{/* Path ACLs */ -}}
-    acl is_path_root path /
     acl is_path_healthz path /healthz
     acl is_path_haproxy path_beg /haproxy
     acl is_path_system_funcs path /system/functions
@@ -81,7 +80,7 @@ frontend fe_main
     {{/* Deny requests which are not directed to a function or / (root) or the
     stats page (note: the root path is needed for health checks by
     other nodes) or to /healthz */ -}}
-    http-request deny unless is_path_root or is_path_healthz or is_path_haproxy or is_path_system_funcs or is_path_function
+    http-request deny unless is_path_healthz or is_path_haproxy or is_path_system_funcs or is_path_function
 
     {{/* If a hdr DFaaS-Node-ID is present AND is not known deny request. 
         * Returned message is 403 "Forbidden": The access to the resource is forbidden by this client.
@@ -90,7 +89,6 @@ frontend fe_main
     
     {{/* ########## BACKEND SELECTION ########## */ -}}
 
-    use_backend be_ok if is_path_root
     use_backend be_healthz if is_path_healthz
     use_backend be_system_funcs if is_path_system_funcs
 
@@ -107,10 +105,6 @@ frontend fe_main
     {{range $funcName, $_ := .Functions -}}
     http-request track-sc1 dst_port table st_users_func_{{$funcName}} if is_func_{{$funcName}} !has_nodeid_hdr {{- /* Using Sticky-Counter #1 */}}
     {{end}}
-
-# Backend for simple 200 OK responses.
-backend be_ok
-    http-request return status 200 content-type "text/plain" string "This is a DFaaS node. Call a function with /function/<funcname>\n"
 
 # Backend for health check.
 backend be_healthz

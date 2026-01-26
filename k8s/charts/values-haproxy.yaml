@@ -41,16 +41,14 @@ config: |
   # See: https://www.haproxy.com/documentation/haproxy-configuration-tutorials/alerts-and-monitoring/prometheus/
   frontend prometheus
     bind :8405
-    mode http
     http-request use-service prometheus-exporter
     no log
 
-  frontend fe_main
+  # This section will be overwritten by the DFaaS Agent with content that
+  # depends on the selected offloading strategy.
+  frontend main
     bind :80
-    default_backend be_ok
-
-  backend be_ok
-    http-request return status 200 content-type "text/plain" string "This is a DFaaS node. The DFaaS agent is not running!\n"
+    http-request return status 503 content-type "text/plain" string "This is a DFaaS node. Proxy is running, but the DFaaS agent is not!\n"
 
   # This section is required only at the start of HAProxy, then the DFaaS Agent
   # does not need to add this section anymore.
