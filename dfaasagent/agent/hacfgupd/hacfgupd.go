@@ -14,6 +14,8 @@ import (
 	"fmt"
 	"io/ioutil"
 	"net/http"
+	"os"
+	"path/filepath"
 	"text/template"
 
 	"github.com/Masterminds/sprig"
@@ -60,6 +62,21 @@ func (updater *Updater) UpdateHAConfig(content interface{}) error {
 		return fmt.Errorf("applying the HAProxy configuration template to the data: %w", err)
 	}
 	configData := buf.Bytes()
+
+	// Save the rendered template to haproxy.cfg in the working directory for
+	// debug purposes.
+	if logging.GetDebugMode() {
+		cfgFile := "haproxy.cfg"
+		if err := os.WriteFile(cfgFile, configData, 0644); err != nil {
+			logger.Warnf("could not write rendered HAProxy config: %v", err)
+		} else {
+			abs, err := filepath.Abs(cfgFile)
+			if err != nil {
+				abs = cfgFile
+			}
+			logger.Debugf("rendered HAProxy config written to %s", abs)
+		}
+	}
 
 	// Create POST request.
 	url := fmt.Sprintf("%s/v3/services/haproxy/configuration/raw?skip_version=true", constants.HAProxyDataPlaneAPIOrigin)
