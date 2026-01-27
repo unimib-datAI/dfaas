@@ -1,0 +1,48 @@
+# HAProxy configuration file updated by DFaaS Agent on {{.Now}}
+# DFaaS Agent running with "All Local" strategy.
+
+# See k8s/charts/values-haproxy.yaml for more information about global,
+# userlist, defaults, and prometheus frontend sections.
+global
+  master-worker no-exit-on-failure
+  stats socket /var/run/haproxy.sock mode 660 level admin expose-fd listeners
+  insecure-fork-wanted
+  expose-deprecated-directives
+  log stdout format raw local0
+
+userlist dataplaneapi
+  user admin insecure-password admin
+
+defaults
+  mode http
+  option httplog
+  option forwardfor
+  option http-server-close
+  log global
+  timeout client 60s
+  timeout connect 60s
+  timeout server 60s
+
+frontend prometheus
+  bind :8405
+  http-request use-service prometheus-exporter
+  no log
+
+# The configuration is generated and changed by the DFaaS agent from this point
+# on.
+
+frontend main
+    bind :80
+
+    {{/* Create an ACL and use to select the backend if positive. */}}
+    {{range $funcName := .Functions -}}
+    # Forward /function/{{$funcName}} to the respective backend
+    acl is_{{$funcName}} path_beg /function/{{$funcName}}
+    use_backend function_{{$funcName}} if is_{{$funcName}}
+    {{end}}
+
+{{range $funcName := .Functions -}}
+backend function_{{$funcName}}
+    http-response set-header dfaaS-node-id {{$.DFaaSNodeID}}
+    server openfaas-local {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}}
+{{end}}

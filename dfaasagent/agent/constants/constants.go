@@ -11,6 +11,7 @@ const (
 	RecalcStrategy     = "recalcstrategy"
 	NodeMarginStrategy = "nodemarginstrategy"
 	StaticStrategy     = "staticstrategy"
+	AllLocalStrategy   = "alllocalstrategy"
 
 	// HAProxyMaxWeight is the maximum possible weight value that should be used
 	// in the HAProxy configuration file

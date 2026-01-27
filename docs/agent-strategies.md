@@ -4,11 +4,12 @@ The DFaaS agent can handle incoming requests using different strategies. These
 strategies determine how to configure the HAProxy weights, allowing the agent to
 forward requests to other agents, process them locally, or reject them.
 
-Currently, there are three strategies:
+Currently, there are the following strategies:
 
 1. Recalc (`recalcstrategy`),
 2. Node Margin (`nodemarginstrategy`),
-3. Static (`staticstrategy`).
+3. Static (`staticstrategy`),
+4. All Local (`alllocalstrategy`).
 
 > [!TIP]
 > For implementation details, refer to the code comments in the
@@ -103,3 +104,13 @@ The exact logic for weights is as follows:
 * 60% of incoming requests are processed locally by the node.
 * 40% of requests are forwarded to neighbors and divided evenly among them.
 * If there are no neighbors, all requests are processed locally.
+
+### All Local
+
+This is a simple, baseline strategy that always forwards requests to the local
+node, the local OpenFaaS Gateway instance. It supports only the
+`AGENT_RECALC_PERIOD` option.
+
+Tthis strategy updates the proxy configuration (and reloads the proxy) only when
+there are changes to the deployed functions, such as when a new function is
+added or an existing one is removed.

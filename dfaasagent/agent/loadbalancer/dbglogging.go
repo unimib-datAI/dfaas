@@ -467,3 +467,60 @@ func debugWeightsNMS(weights map[string]map[string]uint) {
 	}
 	logging.Logger().Debug(buf.String())
 }
+
+// debugFuncsDiff prints the difference between the current and previous
+// function names list.
+//
+// Example output:
+//
+//	Detected deployed functions: (total 3) shasum +figlet mlimage -curl
+func debugFuncsDiff(current, previous []string) {
+	if !logging.GetDebugMode() {
+		return
+	}
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "Detected deployed functions: (total %d) ", len(current))
+
+	i, j := 0, 0
+	// Compare index by index.
+	for i < len(current) && j < len(previous) {
+		if current[i] == previous[j] {
+			b.WriteString(" ")
+			b.WriteString(current[i])
+			i++
+			j++
+		} else if current[i] < previous[j] {
+			b.WriteString("+")
+			b.WriteString(current[i])
+			i++
+		} else {
+			b.WriteString("-")
+			b.WriteString(previous[j])
+			j++
+		}
+		if i < len(current) || j < len(previous) {
+			b.WriteString(" ")
+		}
+	}
+
+	// Handle the cases where one slice is longer than the other.
+	for i < len(current) {
+		b.WriteString("+")
+		b.WriteString(current[i])
+		i++
+		if i < len(current) {
+			b.WriteString(" ")
+		}
+	}
+	for j < len(previous) {
+		b.WriteString("-")
+		b.WriteString(previous[j])
+		j++
+		if j < len(previous) {
+			b.WriteString(" ")
+		}
+	}
+
+	logging.Logger().Debug(b.String())
+}

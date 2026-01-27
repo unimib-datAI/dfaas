@@ -124,3 +124,24 @@ func (strategyFactory *staticStrategyFactory) createStrategy() (Strategy, error)
 
 	return strategy, nil
 }
+
+// allLocalStrategyFactory is the strategy factory for the All Local strategy.
+type allLocalStrategyFactory struct{}
+
+//go:embed haproxycfgalllocal.tmpl
+var haproxycfgAllLocalTemplate string
+
+// createStrategy creates and returns a new All Local instance.
+func (strategyFactory *allLocalStrategyFactory) createStrategy() (Strategy, error) {
+	strategy := &AllLocalStrategy{}
+
+	strategy.hacfgupdater = hacfgupd.Updater{}
+
+	if err := strategy.hacfgupdater.LoadTemplate(haproxycfgAllLocalTemplate); err != nil {
+		return nil, fmt.Errorf("loading HAProxy config. template: %w", err)
+	}
+
+	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+
+	return strategy, nil
+}

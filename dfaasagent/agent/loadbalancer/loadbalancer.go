@@ -58,6 +58,8 @@ func Initialize(p2pHost host.Host, config config.Configuration) {
 		_strategyFactory = &nodeMarginStrategyFactory{}
 	case constants.StaticStrategy:
 		_strategyFactory = &staticStrategyFactory{}
+	case constants.AllLocalStrategy:
+		_strategyFactory = &allLocalStrategyFactory{}
 	}
 }
 

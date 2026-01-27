@@ -11,7 +11,6 @@ toolchain go1.24.6
 
 require (
 	github.com/Masterminds/sprig v2.22.0+incompatible
-	github.com/bcicen/go-haproxy v0.0.0-20180203142132-ff5824fe38be
 	github.com/libp2p/go-libp2p v0.43.0
 	github.com/libp2p/go-libp2p-kad-dht v0.34.0
 	github.com/libp2p/go-libp2p-pubsub v0.14.2
@@ -39,7 +38,6 @@ require (
 	github.com/go-logr/logr v1.4.3 // indirect
 	github.com/go-logr/stdr v1.2.2 // indirect
 	github.com/go-viper/mapstructure/v2 v2.2.1 // indirect
-	github.com/gocarina/gocsv v0.0.0-20200925213129-04be9ee2e1a2 // indirect
 	github.com/gogo/protobuf v1.3.2 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/google/uuid v1.6.0 // indirect
