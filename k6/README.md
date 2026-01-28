@@ -13,7 +13,7 @@ documentation](https://grafana.com/docs/k6/latest/).
 To execute a test, run k6 as follows:
 
 ```console
-$ k6 run single_node_test.js --out json=result.json.gz
+$ k6 run single_node_test.js --out csv=result.csv.gz
 ```
 
 You may need to manually edit the JavaScript file to specify the IP addresses of
@@ -23,47 +23,15 @@ We assume k6 is installed locally. For other installation or execution options
 (via Podman or Docker), see the [official k6
 documentation](https://grafana.com/docs/k6/latest/set-up/install-k6/).
 
-After execution, k6 produces a summary on standard output and a JSON file
-containing real-time metrics (see the [k6
+After execution, k6 produces a summary on standard output and a compressed CSV
+file containing real-time metrics (see the [k6
 documentation](https://grafana.com/docs/k6/latest/results-output/real-time/json/)
-for details). You can analyze this JSON file using tools like
-[jq](https://jqlang.org/) or [fx](https://fx.wtf/), or generate plots using the
-provided Python script.
+for details). You can analyze this CSV file using Python with
+[pandas](https://pandas.pydata.org/).
 
-Note: we recommend producing a Gzipped version of the JSON file. More
-specifically, it is a JSONL file, with one entry per line. The Python scripts
-support the `json.gz` file format, whereas jq and fx do not. To use these tools,
-first decompress the file with gunzip, for example:
+Note: we recommend to output the Gzipped version of the CSV file. To get the
+original CSV file, use `zcat`. Note that pandas supports compressed CSV files.
 
-```console
-$ gunzip -c result.json.gz | jq -c 'select(.type == "Point")' | wc -l
-$ gunzip -c result.json.gz | fx
-```
-
-To run the Python script:
-
-```console
-$ python single_node_plots.py result.json.gz
-WARNING: This script is tailored for the single node test!
-Duration: 0:02:59.986858
-Total seconds: 179.986858
-Saved figure: plots/responses_per_second.pdf
-Saved figure: plots/responses_status_per_second.pdf
-Saved figure: plots/responses_cumulative.pdf
-Saved figure: plots/responses_status_cumulative.pdf
-Saved figure: plots/response_duration.pdf
-```
-
-As with the test definition, the Python script is tailored for a specific test.
-You may need to modify it for your use case. Before running it, set up a virtual
-environment as follows:
-
-```console
-$ sudo apt install python3-venv # On Ubuntu
-$ python3 -m venv .env
-$ source .env/bin/activate
-$ pip install --requirement requirements.txt
-```
 
 ## Predefined tests
 
@@ -78,6 +46,15 @@ $ pip install --requirement requirements.txt
   are executed on three DFaaS nodes, each with a different request-per-second
   rate, start delay, and duration. The figlet function is the target of these
   tests. These tests were originally used with the old Operator component.
+
+## Advanced k6 run
+
+You can enable the live Web dashboard and HTML report by settings the respective
+environment veriables when running k6:
+
+```console
+$ K6_WEB_DASHBOARD=true K6_WEB_DASHBOARD_PORT=30665 K6_WEB_DASHBOARD_EXPORT=html-report.html k6 run single_trace.js --out csv=test.csv.gz
+```
 
 ## Old operator
 
