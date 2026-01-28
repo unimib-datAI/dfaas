@@ -925,3 +925,15 @@ def get_node_ip(kubectl_context):
     raise ValueError(
         f"Context {kubectl_context!r} not found in {kube_config_path.as_posix()!r}."
     )
+
+
+def extract_invoc_rate(invoc_rate):
+    """Rounds the invocation rate to the nearest integer if it is a float."""
+    if isinstance(invoc_rate, float):
+        rounded = round(invoc_rate)
+        logging.warning(
+            f"Invocation rate rounded from float to int: {invoc_rate} -> {rounded}"
+        )
+        return rounded
+
+    return invoc_rate

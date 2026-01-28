@@ -276,7 +276,7 @@ def main():
             for attack_data in config:
                 # Setup vegeta attack
                 function_name = attack_data[0]
-                invocation_rate = attack_data[1]
+                invocation_rate = utils.extract_invoc_rate(attack_data[1])
                 current_functions.append(function_name)
                 attack = utils.vegeta_attack(
                     function_name, invocation_rate, node_ip, duration
@@ -289,7 +289,7 @@ def main():
                 skipped_config = {}
                 for attack_data in config:
                     function_name = attack_data[0]
-                    invocation_rate = attack_data[1]
+                    invocation_rate = utils.extract_invoc_rate(attack_data[1])
                     skipped_config[f"function_{function_name}"] = function_name
                     skipped_config[f"rate_function_{function_name}"] = invocation_rate
 
@@ -440,7 +440,7 @@ def main():
                     are_there_functions_overloaded = False
                     for attack_data in config:
                         function_name = attack_data[0]
-                        invocation_rate = attack_data[1]
+                        invocation_rate = utils.extract_invoc_rate(attack_data[1])
                         success_rate = utils.retrieve_function_success_rate(
                             function_name, invocation_rate
                         )
@@ -534,7 +534,7 @@ def main():
                 logging.info("Configuration skipped:")
                 for attack_data in config:
                     function_name = attack_data[0]
-                    invocation_rate = attack_data[1]
+                    invocation_rate = utils.extract_invoc_rate(attack_data[1])
                     logging.info("%s %s" % (function_name, invocation_rate))
                 logging.info("----------------------------------------")
 
