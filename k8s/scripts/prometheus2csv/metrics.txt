@@ -1,0 +1,13 @@
+dfaas_agent_strategy_iteration_duration_seconds
+dfaas_agent_strategy_iterations
+container_memory_usage_bytes{container="figlet"}
+container_cpu_usage_seconds_total{container="figlet"}
+node_cpu_seconds_total
+node_memory_MemAvailable_bytes
+node_memory_MemTotal_bytes
+haproxy_backend_http_responses_total{proxy="function_figlet"}
+haproxy_backend_http_requests_total{proxy="function_figlet"}
+gateway_function_invocation_started
+gateway_function_invocation_total
+gateway_functions_seconds_bucket
+gateway_service_count

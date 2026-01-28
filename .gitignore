@@ -57,3 +57,7 @@ metrics_predictions/output*/**
 
 # It is a binary.
 k8s/scripts/libp2p-peer-id/libp2p-peer-id
+
+# Ignore data.
+*.csv
+*.gz
