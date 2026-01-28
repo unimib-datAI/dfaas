@@ -26,8 +26,8 @@ fi
 
 echo Building Minikube instance...
 
-MAX_MEM_MB="$(free -m | awk '/^Mem:/ {avail=$7 ? $7 : $4} END {printf("%dm", avail-200)}')"
-echo "Allocating $MAX_MEM_MB MB RAM to Minikube (reserving 200 MB for host)"
+MAX_MEM_MB="$(free -m | awk '/^Mem:/ {avail=$7 ? $7 : $4} END {printf("%dmb", avail-400)}')"
+echo "Allocating $MAX_MEM_MB MB RAM to Minikube (reserving 400 MB for host)"
 
 minikube start --memory="${MAX_MEM_MB}" --cpus=max --apiserver-ips="$SERVER_IP"
 
