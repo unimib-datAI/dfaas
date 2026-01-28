@@ -500,33 +500,28 @@ def retrieve_function_resource_usage_for_profile(
     return cpu_usage, ram_usage, power_usage
 
 
-# It permorfs a http request to the Prometheus API
 def execute_query(url, query_params, range_query=False):
-    timeout = 0
-    while True:
-        response = requests.get(url, query_params, verify=False)
-        if response.json()["data"]["result"] == []:
-            time.sleep(1)
-            timeout += 1
-            if timeout > 30:
-                raise Exception("timeout")
-            continue
-        if range_query:
-            result = get_avg_value_from_response(response.json()["data"], 0)
-            logging.info(result)
-        else:
-            result = get_value_from_response(response.json()["data"])
-            logging.info(result)
-        break
-    return result
-
-
-def safe_execute_query(url, query, default_value=0):
+    """Executes a single Prometheus query to the given URL. Query parameters are
+    passed to requests.get."""
+    logging.info(f"Executing Prometheus query: {url} params: {query_params}")
     try:
-        return execute_query(url, query)
+        response = requests.get(url, params=query_params, verify=False, timeout=10)
+        response.raise_for_status()
+
+        data = response.json().get("data", {})
+        if not data.get("result"):
+            raise Exception("No data received from Prometheus.")
+
+        if range_query:
+            result = get_avg_value_from_response(data, 0)
+        else:
+            result = get_value_from_response(data)
+
+        logging.info(f"Prometheus query completed successfully. Result: {result}")
+        return result
     except Exception as e:
-        logging.error(f"Failed to execute query {query}: {e}")
-        return default_value
+        logging.error(f"Prometheus query failed: {e}")
+        raise
 
 
 def get_value_from_response(data):
