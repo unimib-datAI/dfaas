@@ -13,12 +13,16 @@ const nodeTrace = traceData["0"]["0"].slice(0, 10);
 
 console.log('Loaded trace for function "0", node "0":', nodeTrace);
 
-// Build stages for ramping based on the trace
+// Build stages with 5s transitions and 55s constant rate.
 let stages = [];
 for (let i = 0; i < nodeTrace.length; i++) {
   stages.push({
-    duration: '1m',
-    target: Math.round(nodeTrace[i]), // RPS target for this minute
+    duration: '5s',  // 5-second transition to new rate.
+    target: Math.round(nodeTrace[i]),
+  });
+  stages.push({
+    duration: '55s',  // Keep the same rate for remainder of minute.
+    target: Math.round(nodeTrace[i]),
   });
 }
 
