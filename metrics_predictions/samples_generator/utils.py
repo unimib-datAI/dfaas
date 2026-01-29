@@ -11,7 +11,6 @@ import itertools
 import json
 import logging
 import subprocess
-import sys
 import time
 from pathlib import Path
 from urllib.parse import urlparse
@@ -156,7 +155,6 @@ def retrieve_function_replicas():
     return replicas
 
 
-# This function let the system rest for Sampler Generator
 def rest(
     base_cpu_usage_idle,
     base_ram_usage_idle,
@@ -164,42 +162,66 @@ def rest(
     duration,
     scaphandre,
     node_ip,
+    timeout_s=300,
+    interval_s=5,
 ):
-    time.sleep(10)
-    sleep_time_count = 10
+    """This function let the system rest for Sampler Generator."""
+    logging.info(f"Waiting max {timeout_s}s to let the node rest")
 
     cpu_usage, ram_usage, ram_usage_p, power_usage = retrieve_node_resources_usage(
         duration, None, None, scaphandre, node_ip
     )
-    while (
-        cpu_usage > (base_cpu_usage_idle + (base_cpu_usage_idle * 15 / 100))
-        or ram_usage > (base_ram_usage_idle + (base_ram_usage_idle * 15 / 100))
-        or power_usage
-        > (base_power_usage_node_idle + (base_power_usage_node_idle * 15 / 100))
-    ):
-        time.sleep(5)
-        sleep_time_count += 5
+
+    # Wait for resources usage to come back to idle values.
+    start_time = time.time()
+    while time.time() - start_time < timeout_s:
+        time.sleep(interval_s)
         cpu_usage, ram_usage, ram_usage_p, power_usage = retrieve_node_resources_usage(
             duration, None, None, scaphandre, node_ip
         )
-        if sleep_time_count > 180:
-            sys.exit(
-                1
-            )  # Exit the script with a non-zero status to indicate an abnormal termination
-    wait = True
-    while wait:
-        wait = False
+
+        if (
+            cpu_usage > (base_cpu_usage_idle + (base_cpu_usage_idle * 15 / 100))
+            or ram_usage > (base_ram_usage_idle + (base_ram_usage_idle * 15 / 100))
+            or power_usage
+            > (base_power_usage_node_idle + (base_power_usage_node_idle * 15 / 100))
+        ):
+            logging.info(
+                f"At least one resource usage (CPU, RAM, or power) is more than 15% above its respective base idle value. Retrying after {interval_s}s"
+            )
+        else:
+            logging.info("Resources usage back to base idle values")
+            break
+    else:
+        logging.error(
+            f"Resource usage did not return to idle within {timeout_s}s: CPU: {cpu_usage}, RAM: {ram_usage}, Power: {power_usage}"
+        )
+        raise TimeoutError(f"Resource usage did not return to idle within {timeout_s}s")
+
+    # Wait also the function replicas to scale down to 1.
+    while time.time() - start_time < timeout_s:
+        scaled_down = True
         function_replicas = retrieve_function_replicas()
         for replica in function_replicas.values():
             if int(replica) >= 2:
-                time.sleep(3)
-                sleep_time_count += 3
-                wait = True
+                scaled_down = False
 
-    logging.info(
-        f"Rest time: {sleep_time_count}s -> {cpu_usage} CPU, {ram_usage} ({ram_usage_p}) RAM, {power_usage} power"
-    )
-    return cpu_usage, ram_usage, ram_usage_p, power_usage, sleep_time_count
+        if scaled_down:
+            logging.info("All functions scaled down to 1")
+            break
+
+        logging.info(
+            f"At least one function did not scaled back to 1. Retrying after {interval_s}s"
+        )
+        time.sleep(interval_s)
+    else:
+        logging.error("Function replicas did not return to 1")
+        raise TimeoutError(f"Function replicas did not return to 1 within {timeout_s}s")
+
+    elapsed_s = time.time() - start_time
+    logging.info(f"Rest time: {round(elapsed_s)}s")
+
+    return cpu_usage, ram_usage, ram_usage_p, power_usage, elapsed_s
 
 
 # This function let the system rest for Sampler Generator Profiler
