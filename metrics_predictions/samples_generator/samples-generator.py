@@ -215,7 +215,7 @@ def main():
             )
 
         logging.info(
-            "CPU, RAM and POWER usage in idle state: {base_cpu_usage_node_idle} {base_ram_usage_node_idle} {base_ram_usage_node_p_idle}% {base_power_usage_node_idle}"
+            f"CPU, RAM and POWER usage in idle state: {base_cpu_usage_node_idle} {base_ram_usage_node_idle} {base_ram_usage_node_p_idle}% {base_power_usage_node_idle}"
         )
 
         function_with_rate_combinations = []
