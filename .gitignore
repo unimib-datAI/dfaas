@@ -55,9 +55,13 @@ k6/plots
 # samples-generator-profiler.py Python scripts.
 metrics_predictions/output*/**
 
-# It is a binary.
+# This is a binary.
 k8s/scripts/libp2p-peer-id/libp2p-peer-id
 
 # Ignore data.
 *.csv
 *.gz
+
+# Ignore generated output.
+*.html
+*.pdf
