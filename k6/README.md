@@ -13,7 +13,7 @@ documentation](https://grafana.com/docs/k6/latest/).
 To execute a test, run k6 as follows:
 
 ```console
-$ k6 run single_node_test.js --out csv=result.csv.gz
+$ k6 run single_node_test.js --out csv=results.csv.gz
 ```
 
 You may need to manually edit the JavaScript file to specify the IP addresses of
@@ -31,7 +31,6 @@ for details). You can analyze this CSV file using Python with
 
 Note: we recommend to output the Gzipped version of the CSV file. To get the
 original CSV file, use `zcat`. Note that pandas supports compressed CSV files.
-
 
 ## Predefined tests
 
@@ -53,7 +52,7 @@ You can enable the live Web dashboard and HTML report by settings the respective
 environment veriables when running k6:
 
 ```console
-$ K6_WEB_DASHBOARD=true K6_WEB_DASHBOARD_PORT=30665 K6_WEB_DASHBOARD_EXPORT=html-report.html k6 run single_trace.js --out csv=test.csv.gz
+$ K6_WEB_DASHBOARD=true K6_WEB_DASHBOARD_PORT=30665 K6_WEB_DASHBOARD_EXPORT=k6_report.html k6 run single_trace.js --out csv=k6_results.csv.gz
 ```
 
 ## Old operator
