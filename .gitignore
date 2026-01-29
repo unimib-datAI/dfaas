@@ -11,6 +11,9 @@
 # Output of the go coverage tool, specifically when used with LiteIDE
 *.out
 
+# Python coverage data
+.coverage
+
 # VIM temporary files.
 *.swp
 
