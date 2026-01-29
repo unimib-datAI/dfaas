@@ -527,12 +527,23 @@ def execute_query(url, query_params, range_query=False):
     passed to requests.get."""
     logging.info(f"Executing Prometheus query: {url} params: {query_params}")
     try:
-        response = requests.get(url, params=query_params, verify=False, timeout=10)
+        response = requests.get(url, params=query_params, verify=False, timeout=20)
         response.raise_for_status()
 
-        data = response.json().get("data", {})
+        response_json = response.json()
+        if response_json.get("status") != "success":
+            logging.error(
+                f"Prometheus query returned error status: {response_json.get('error', 'Unknown error')} Full response: {response_json}"
+            )
+            raise Exception(
+                f"Prometheus query failed with status {response_json.get('status')}"
+            )
+
+        data = response_json.get("data", {})
         if not data.get("result"):
-            raise Exception("No data received from Prometheus.")
+            raise Exception(
+                "no data received from Prometheus. Full response: {response_json}"
+            )
 
         if range_query:
             result = get_avg_value_from_response(data, 0)
