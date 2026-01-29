@@ -672,7 +672,13 @@ def index_csv_init(output_dir):
     """Checks whether index.csv exists in the given output_dir and whether it is
     valid. If it does not exist, initializes a new index.csv file."""
     index_path = Path(output_dir) / "index.csv"
-    index_csv_cols = ["functions", "rates", "overloaded", "results_file"]
+    index_csv_cols = [
+        "functions",
+        "rates",
+        "overloaded",
+        "overload_predicted",
+        "results_file",
+    ]
     # Required since we save lists as columns that use ",".
     index_csv_separator = ";"
 
@@ -694,11 +700,13 @@ def index_csv_init(output_dir):
         logging.info(f"Index CSV file created: {index_path.as_posix()!r}")
 
 
-def index_csv_add_config(output_dir, config, overloaded, result_filename):
+def index_csv_add_config(
+    output_dir, config, overloaded, result_filename, overload_predicted=False
+):
     """Add a new row with the given config to index.csv found in output_dir.
 
-    The row will have also the result_filename string and the overloaded flag
-    columns."""
+    The row will have also the result_filename string, the overloaded flag,
+    and the overload_predicted flag columns."""
     # Chain .absolute().resolve() needed to get relative paths.
     index_path = Path(output_dir).absolute().resolve() / "index.csv"
     result_filename = Path(result_filename).absolute().resolve()
@@ -718,7 +726,15 @@ def index_csv_add_config(output_dir, config, overloaded, result_filename):
     # processes to read the file while this program is running.
     with index_path.open("a") as index_file:
         writer = csv.writer(index_file, delimiter=index_csv_separator)
-        writer.writerow([fn_names, rates, bool(overloaded), result_filename])
+        writer.writerow(
+            [
+                fn_names,
+                rates,
+                bool(overloaded),
+                bool(overload_predicted),
+                result_filename,
+            ]
+        )
 
 
 def index_csv_check_config(output_dir, config):
@@ -838,6 +854,56 @@ def index_csv_get_dominant_config(output_dir, config):
             return list(zip(fn_names, rates))
 
     return None
+
+
+def index_csv_config_will_overload(output_dir, config):
+    """Return True if the given config will certainly overload based on single
+    function profiles in the index.csv file.
+
+    A config will overload if any function in the config has a rate that is
+    greater than or equal to a rate that caused overload when that function
+    was tested alone (single function config).
+    """
+    # Read the index.csv file.
+    index_path = Path(output_dir).absolute().resolve() / "index.csv"
+
+    if not index_path.is_file():
+        return False
+
+    df = pd.read_csv(index_path, sep=";")
+
+    # Convert string representations of lists to actual lists.
+    df["functions"] = df["functions"].apply(ast.literal_eval)
+    df["rates"] = df["rates"].apply(ast.literal_eval)
+
+    # Check each function in the given config.
+    for fn_name, rate in config:
+        # Filter rows with single function only (length of functions list == 1)
+        # and matching the current function name.
+        single_fn_rows = df[
+            (df["functions"].apply(len) == 1)
+            & (df["functions"].apply(lambda x: x[0] == fn_name))
+        ]
+
+        if len(single_fn_rows) == 0:
+            # No data available.
+            continue
+
+        # Check if there exists an overloaded config with rate <= current rate.
+        for _, row in single_fn_rows.iterrows():
+            # We have only one function -> one rate.
+            single_fn_rate = row["rates"][0]
+            is_overloaded = row["overloaded"]
+
+            # If we found an overloaded config with rate <= current rate,
+            # the given config will certainly overload
+            if is_overloaded and single_fn_rate <= rate:
+                logging.info(
+                    f"Config will overload: function {fn_name!r} at rate {rate} will overload (found overloaded single-function config at rate {single_fn_rate})"
+                )
+                return True
+
+    return False
 
 
 def faas_cli_delete_functions(openfaas_gateway):

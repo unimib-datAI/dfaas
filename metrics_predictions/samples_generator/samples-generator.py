@@ -350,6 +350,17 @@ def main():
                 logging.info("-------------Skip attack---------------")
                 continue
 
+            # Check if the configuration will overload.
+            if utils.index_csv_config_will_overload(output_dir, config):
+                actual_dominant_config = config
+                utils.index_csv_add_config(
+                    output_dir, config, True, "", overload_predicted=True
+                )
+
+                logging.info("Configuration will overload, skipping attack")
+                logging.info("-------------Skip attack---------------")
+                continue
+
             actual_dominant_config = None
             overload_counter = 0
 
