@@ -705,12 +705,18 @@ def index_csv_add_config(
 ):
     """Add a new row with the given config to index.csv found in output_dir.
 
+    result_filename may be an empty string.
+
     The row will have also the result_filename string, the overloaded flag,
     and the overload_predicted flag columns."""
     # Chain .absolute().resolve() needed to get relative paths.
     index_path = Path(output_dir).absolute().resolve() / "index.csv"
-    result_filename = Path(result_filename).absolute().resolve()
-    result_filename = result_filename.relative_to(index_path.parent)
+
+    # The result filename may be empty (the config is saved but no experiments
+    # are node, maybe because it is overload by prediction).
+    if result_filename != "":
+        result_filename = Path(result_filename).absolute().resolve()
+        result_filename = result_filename.relative_to(index_path.parent)
 
     index_csv_separator = ";"
 
