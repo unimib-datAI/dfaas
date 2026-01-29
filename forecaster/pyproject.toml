@@ -1,0 +1,27 @@
+[project]
+name = "dfaas-forecaster"
+version = "0.1.0"
+description = "DFaaS forecaster service."
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi[all]",
+    "joblib",
+    "lightgbm",
+    "numpy",
+    "pandas",
+    "scikit-learn",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "ruff",
+]
+
+[tool.uv]
+python-preference = "only-managed"
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"

@@ -17,6 +17,9 @@ class ModelProxy:
     def set_model_type(self, model_type):
         self._model_type = model_type
 
+    def get_model_type(self):
+        return self._model_type
+
     def create_model(self, metric):
         model = Model(metric, self._model_type)
         self._models.append(model)
@@ -53,3 +56,6 @@ class ModelProxy:
     def _df_to_json_predictions(self, predictions):
         predictions_json = predictions.to_dict(orient="records")
         return predictions_json
+
+    def models_loaded_count(self):
+        return len(self._models)

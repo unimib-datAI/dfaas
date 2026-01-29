@@ -27,7 +27,27 @@ async def root():
     return "DFaaS Forecaster ready."
 
 
+@app.get("/health")
+async def health_check():
+    models_expected = len(config_constants.METRICS)
+    models_loaded = model_proxy.models_loaded_count()
+    return {
+        "status": "ok",
+        "ready": models_loaded >= models_expected,
+        "models_loaded": models_loaded,
+        "models_expected": models_expected,
+    }
+
+
+@app.get("/ready")
+async def readiness_check():
+    models_expected = len(config_constants.METRICS)
+    models_loaded = model_proxy.models_loaded_count()
+    return {"ready": models_loaded >= models_expected}
+
+
 @app.get("/cpu_usage_node")
+@app.post("/cpu_usage_node")
 async def cpu_usage_node_prediction(request: Request):
     input_data_json = await request.json()
     return model_proxy.get_predictions(input_data_json,
@@ -35,6 +55,7 @@ async def cpu_usage_node_prediction(request: Request):
 
 
 @app.get("/ram_usage_node")
+@app.post("/ram_usage_node")
 async def ram_usage_node_prediction(request: Request):
     input_data_json = await request.json()
     return model_proxy.get_predictions(input_data_json,
@@ -42,6 +63,7 @@ async def ram_usage_node_prediction(request: Request):
 
 
 @app.get("/power_usage_node")
+@app.post("/power_usage_node")
 async def power_usage_node_prediction(request: Request):
     input_data_json = await request.json()
     return model_proxy.get_predictions(input_data_json,
@@ -49,16 +71,18 @@ async def power_usage_node_prediction(request: Request):
 
 
 @app.get("/node_usage")
+@app.post("/node_usage")
 async def node_usage_prediction(request: Request):
     input_data_json = await request.json()
     return model_proxy.get_node_predictions(input_data_json)
 
 
 def load_models():
+    if not model_proxy.get_model_type():
+        raise RuntimeError("MODELS_TYPE is not set. Aborting model load.")
     for metric in config_constants.METRICS:
         model_proxy.create_model(metric)
 
 
 if __name__ == "__main__":
     uvicorn.run(app)
-
