@@ -1,0 +1,8 @@
+{
+  "models_base_dir": ".",
+  "models_type": "regression",
+  "manifest_filename": "manifest.json",
+  "reload_mode": "none",
+  "reload_interval_seconds": 30,
+  "reload_token": null
+}

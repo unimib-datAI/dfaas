@@ -1,0 +1,14 @@
+{
+  "model_version": "2026-01-29T075753Z",
+  "models_type": "regression",
+  "created_at": "2026-01-29T07:57:53Z",
+  "sha256": {
+    "scalers/scaler_x/features.joblib": "b671b2fb5f6fbf700075d8e39e0c9ffec3a2076010e758793efea92391a13556",
+    "scalers/scaler_y/cpu_usage_node.joblib": "1a8fca5ac181e026129dd772ab191b34923c173138f2ca9508949208effd4ea2",
+    "models/cpu_usage_node/regression/model.joblib": "6f341f09bd6bc7e77d85ef5c1fdca0fdfb1f2a0f381a937c3c39dc722af5f5f1",
+    "scalers/scaler_y/ram_usage_node.joblib": "8bb8a10de5dc1f2770e0d89d2b7df364da1e370af4945ca3e5edd629071c3081",
+    "models/ram_usage_node/regression/model.joblib": "079aaa209189a73760b3e4d603fe76d08e15285b254b5bb7b7a7b5ba8211df42",
+    "scalers/scaler_y/power_usage_node.joblib": "419e30a794f037f0fcd6e1247fc0eec9631784741f1717577bf3d49fad89cd70",
+    "models/power_usage_node/regression/model.joblib": "b22972c142658035e54bd5015b8739791f22a72710ca285b31b44e8567ddf99c"
+  }
+}
