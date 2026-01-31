@@ -11,13 +11,13 @@ from model import config_constants
 
 
 class Model:
-    def __init__(self, metric, model_type):
+    def __init__(self, metric, model_type, base_dir):
         self.metric = metric
         self.model_type = model_type
 
         # Load model
         model_path = os.path.join(
-            config_constants.MODELS_BASE_PATH, metric, model_type, "model.joblib"
+            base_dir, "models", metric, model_type, "model.joblib"
         )
         if not os.path.isfile(model_path):
             raise FileNotFoundError(f"Model file not found: {model_path}")
@@ -25,7 +25,7 @@ class Model:
 
         # Load features and target scalers
         features_scaler_path = os.path.join(
-            config_constants.SCALERS_BASE_PATH, "scaler_x", "features.joblib"
+            base_dir, "scalers", "scaler_x", "features.joblib"
         )
         if not os.path.isfile(features_scaler_path):
             raise FileNotFoundError(
@@ -34,7 +34,7 @@ class Model:
         self.features_scaler = joblib.load(features_scaler_path)
 
         target_scaler_path = os.path.join(
-            config_constants.SCALERS_BASE_PATH, "scaler_y", metric + ".joblib"
+            base_dir, "scalers", "scaler_y", metric + ".joblib"
         )
         if not os.path.isfile(target_scaler_path):
             raise FileNotFoundError(f"Target scaler not found: {target_scaler_path}")
@@ -50,7 +50,6 @@ class Model:
         scaled_predictions = self.model.predict(input_data_scaled)
         original_predictions = self.target_scaler.inverse_transform(scaled_predictions.reshape(-1, 1))
         return np.round(original_predictions, 2)
-
 
 
 

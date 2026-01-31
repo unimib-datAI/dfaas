@@ -39,9 +39,10 @@ def test_model_predict_rounding_and_columns(monkeypatch):
             return _FakeFeatureScaler()
         return _FakeTargetScaler()
 
+    monkeypatch.setattr("model.model.os.path.isfile", lambda _path: True)
     monkeypatch.setattr("model.model.joblib.load", _fake_joblib_load)
 
-    model = Model(config_constants.CPU_USAGE_METRIC, "regression")
+    model = Model(config_constants.CPU_USAGE_METRIC, "regression", "/tmp/models")
     input_data = pd.DataFrame(
         [[1, 2, 3, "edge"]],
         columns=[*config_constants.GROUPS_COLUMNS_NAMES, "node_type"],
@@ -61,7 +62,7 @@ def test_model_missing_files_raise(monkeypatch):
     monkeypatch.setattr("model.model.os.path.isfile", _fake_isfile)
 
     try:
-        Model(config_constants.CPU_USAGE_METRIC, "regression")
+        Model(config_constants.CPU_USAGE_METRIC, "regression", "/tmp/models")
         assert False, "Expected FileNotFoundError for missing model files."
     except FileNotFoundError as exc:
         assert "not found" in str(exc)

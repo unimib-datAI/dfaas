@@ -10,12 +10,14 @@ dependencies = [
     "numpy",
     "pandas",
     "scikit-learn",
+    "uvicorn",
 ]
 
 [dependency-groups]
 dev = [
     "pytest",
     "pytest-cov",
+    "httpx",
     "ruff",
 ]
 
@@ -25,3 +27,9 @@ python-preference = "only-managed"
 [tool.ruff]
 line-length = 88
 target-version = "py312"
+
+[tool.pytest.ini_options]
+markers = [
+    "e2e: end-to-end tests that require apple/container",
+    "e2e_k3s: full VM-based k3s end-to-end tests",
+]
