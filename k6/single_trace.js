@@ -1,5 +1,9 @@
+// SPDX-License-Identifier: AGPL-3.0-or-later
+// Copyright 2026 The DFaaS Authors. All rights reserved.
+// This file is licensed under the AGPL v3.0 or later license. See LICENSE and
+// AUTHORS file for more information.
 import http from 'k6/http';
-import { check } from 'k6';
+import { tagWithCurrentStageIndex } from 'https://jslib.k6.io/k6-utils/1.6.0/index.js';
 
 const FUNCTION_URL = 'http://10.0.2.38:30080/function/figlet';
 const BODY_CONTENT = 'Ciao';
@@ -17,18 +21,18 @@ console.log('Loaded trace for function "0", node "0":', nodeTrace);
 let stages = [];
 for (let i = 0; i < nodeTrace.length; i++) {
   stages.push({
-    duration: '5s',  // 5-second transition to new rate.
+    duration: '5s', // 5-second transition to new rate.
     target: Math.round(nodeTrace[i]),
   });
   stages.push({
-    duration: '55s',  // Keep the same rate for remainder of minute.
+    duration: '55s', // Keep a constant rate for the remainder of the minute.
     target: Math.round(nodeTrace[i]),
   });
 }
 
 export let options = {
   scenarios: {
-    trace_based_load: {
+    trace_node_0: {
       executor: 'ramping-arrival-rate',
       startRate: Math.round(nodeTrace[0]),
       timeUnit: '1s',
@@ -40,6 +44,14 @@ export let options = {
 };
 
 export default function () {
+  // Tag each request with its corresponding stage index (e.g., stage 0, 1, 2,
+  // ...). This makes it possible to map each request to its stage and, in turn,
+  // to the trace iteration. Note that each trace iteration consists of two
+  // stages, so the stage index must be divided by two.
+  //
+  // See: https://grafana.com/docs/k6/latest/using-k6/tags-and-groups/
+  tagWithCurrentStageIndex();
+
   const params = {
     headers: {
       'Content-Type': 'text/plain',
@@ -47,9 +59,4 @@ export default function () {
   };
   
   const response = http.post(FUNCTION_URL, BODY_CONTENT, params);
-  
-  check(response, {
-    'status is 200': (r) => r.status === 200,
-    'response time < 500ms': (r) => r.timings.duration < 500,
-  });
 }
