@@ -1,0 +1,18 @@
+type;query;metric_name;comment
+metric;dfaas_agent_strategy_iteration_duration_seconds;;
+metric;dfaas_agent_strategy_iterations;;
+metric;container_memory_usage_bytes;;
+metric;container_cpu_usage_seconds_total;;
+metric;node_cpu_seconds_total;;
+metric;node_memory_MemTotal_bytes;;
+metric;node_memory_MemAvailable_bytes;;
+metric;node_memory_MemFree_bytes;;
+metric;node_memory_Cached_bytes;;
+metric;node_memory_Buffers_bytes;;
+metric;haproxy_backend_http_responses_total;;
+metric;haproxy_backend_http_requests_total;;
+metric;gateway_function_invocation_started;;
+metric;gateway_function_invocation_total;;
+metric;gateway_functions_seconds_bucket;;
+metric;gateway_service_count;;
+query;100 * irate(container_cpu_usage_seconds_total{namespace="default", container!=""}[1m]) / on(instance) group_left machine_cpu_cores;cpu_usage_percent;CPU usage percentage for containers in default namespace
