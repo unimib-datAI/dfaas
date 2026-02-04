@@ -23,3 +23,21 @@ Plane API:
 ```console
 $ curl -X POST -u admin:admin -H "Content-Type: text/plain" --data-binary @LOCAL_CONFIG.cfg 'http://localhost:30555/v3/services/haproxy/configuration/raw?skip_version=true&force_reload=true'
 ```
+
+Deploy a FaaS function with custom timeout:
+
+```console
+$ faas-cli store deploy figlet --env exec_timeout=8s
+```
+
+Note here we only set `exec_timeout`, while `read_timeout` and `write_timeout`
+use the default gateway values.
+
+How to set the upstream timeout in OpenFaaS CE Gateway:
+
+```console
+$ sudo kubectl edit deployment gateway
+...modify "upstream_timeout" to X seconds, then save and quit
+$ sudo kubectl get pods
+...see that the gateway pod has restarted with the new timeout
+```

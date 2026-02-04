@@ -65,3 +65,10 @@ Docker images for the old operator are no longer built or published. While the
 legacy images [remain
 available](https://github.com/unimib-datAI/dfaas/pkgs/container/dfaas-operator),
 they are no longer supported.
+
+## Operating system and hardware limits
+
+To avoid the "Too Many Open Files" error when running a large number of virtual
+users (VUs), make sure you have read and applied all the recommendations in the
+official k6 documentation for [fine-tuning operating system
+settings](https://grafana.com/docs/k6/latest/set-up/fine-tune-os/).
