@@ -1,0 +1,51 @@
+---
+- name: Increase system limits for a DFaaS node (server)
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Set up a sysctl tuning file in /etc/sysctl.d
+      ansible.builtin.copy:
+        dest: /etc/sysctl.d/20-k3s-custom.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          # Maximum number of connections that can be queued for acceptance by
+          # the kernel.
+          net.core.somaxconn = 8192
+
+          # Maximum number of half-open (SYN_RECV state) connections in the TCP
+          # backlog queue.
+          net.ipv4.tcp_max_syn_backlog = 8192
+
+          # Ephemeral (short-lived) port range available for outbound
+          # connections. Used also for communication between pods in the same
+          # node.
+          net.ipv4.ip_local_port_range = 5024 65535
+
+          # Allow reuse of sockets in TIME_WAIT state for new outgoing
+          # connections.
+          net.ipv4.tcp_tw_reuse = 1
+
+          # Time in seconds sockets stay in FIN_WAIT2 state.
+          net.ipv4.tcp_fin_timeout = 5
+
+          # Maximum number of packets allowed to queue on the network interface
+          # receive buffer.
+          net.core.netdev_max_backlog = 16384
+
+          # Maximum number of tracked connections by the network connection
+          # tracking (used by Kubernetes for service NAT/routing).
+          net.netfilter.nf_conntrack_max = 262144
+
+    - name: Increase system-wide open files limit in /etc/security/limits.d
+      ansible.builtin.copy:
+        dest: /etc/security/limits.d/90-nofile.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          # Set very high system-wide soft and hard limits for number of open files (including sockets)
+          * soft nofile 1048576
+          * hard nofile 1048576

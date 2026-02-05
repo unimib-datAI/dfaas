@@ -65,15 +65,19 @@ documentation](https://grafana.com/docs/k6/latest/set-up/fine-tune-os/) and
 increase the available CPU and RAM resources.
 
 You can apply the recommended settings by using the custom Ansible playbook
-located in this directory ([`fine-tune.yaml`](fine-tune.yaml)). We assume that
-Ansible is executed on the same host where k6 is running:
+located in this directory ([`fine-tune-client.yaml`](fine-tune-client.yaml)). We
+assume that Ansible is executed on the same host where k6 is running:
 
-    $ ansible-playbook --inventory localhost, --connection local fine-tune.yaml
+    $ ansible-playbook --inventory localhost, --connection local fine-tune-client.yaml
 
 After running the playbook, reboot the host to ensure that all changes take
 effect. If k6 is running on a different node, you will need to create an
 `inventory.yaml` file that includes the target host information, the user, and
 the root password, and then provide this file to Ansible.
+
+An Ansible playbook is also available for fine-tuning a DFaaS node, named
+[`fine-tune-server.yaml`](fine-tune-server.yaml). You will need to reboot the
+node after the playbook.
 
 ## Old operator
 
