@@ -25,3 +25,6 @@
           # For more info: https://grafana.com/docs/k6/latest/set-up/fine-tune-os/
           net.ipv4.ip_local_port_range="7000 65000"
           net.ipv4.tcp_tw_reuse=1
+
+          # Decrease also the FIN_WAIT2 wait state to speed up socket closing.
+          net.ipv4.tcp_fin_timeout=5
