@@ -1,0 +1,27 @@
+---
+- name: Adjust system limits and IPv4 port range
+  hosts: all
+
+  tasks:
+    - name: Increase ulimit soft limit for open files in .bashrc
+      ansible.builtin.blockinfile:
+        path: ~/.bashrc
+        block: |
+          # Increase soft limit for open files (sockets).
+          ulimit -n 50000
+        marker: "# {mark} ANSIBLE ULIMIT BLOCK"
+        create: yes
+
+    - name: Increase IPv4 port range and immediately reuse ports
+      become: true
+      ansible.builtin.copy:
+        dest: /etc/sysctl.d/10-ipv4-port-range.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          # Increase port range for IPv4 connections and reuse
+          # reuse connections in TIME_WAIT state.
+          # For more info: https://grafana.com/docs/k6/latest/set-up/fine-tune-os/
+          net.ipv4.ip_local_port_range="7000 65000"
+          net.ipv4.tcp_tw_reuse=1

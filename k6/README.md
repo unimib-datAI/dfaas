@@ -55,6 +55,26 @@ environment veriables when running k6:
 $ K6_WEB_DASHBOARD=true K6_WEB_DASHBOARD_PORT=30665 K6_WEB_DASHBOARD_EXPORT=k6_report.html k6 run single_trace.js --out csv=k6_results.csv.gz
 ```
 
+## Operating system and hardware limits
+
+When running k6 with a high number of requests per second, the tool can consume
+a large number of virtual users (VUs). In this situation, k6 may report the
+error "Too Many Open Files". To resolve this, you may need to fine-tune Linux
+system settings according to the [official k6
+documentation](https://grafana.com/docs/k6/latest/set-up/fine-tune-os/) and
+increase the available CPU and RAM resources.
+
+You can apply the recommended settings by using the custom Ansible playbook
+located in this directory ([`fine-tune.yaml`](fine-tune.yaml)). We assume that
+Ansible is executed on the same host where k6 is running:
+
+    $ ansible-playbook --inventory localhost, --connection local fine-tune.yaml
+
+After running the playbook, reboot the host to ensure that all changes take
+effect. If k6 is running on a different node, you will need to create an
+`inventory.yaml` file that includes the target host information, the user, and
+the root password, and then provide this file to Ansible.
+
 ## Old operator
 
 An older, unsupported version of the Operator component used
@@ -65,10 +85,3 @@ Docker images for the old operator are no longer built or published. While the
 legacy images [remain
 available](https://github.com/unimib-datAI/dfaas/pkgs/container/dfaas-operator),
 they are no longer supported.
-
-## Operating system and hardware limits
-
-To avoid the "Too Many Open Files" error when running a large number of virtual
-users (VUs), make sure you have read and applied all the recommendations in the
-official k6 documentation for [fine-tuning operating system
-settings](https://grafana.com/docs/k6/latest/set-up/fine-tune-os/).
