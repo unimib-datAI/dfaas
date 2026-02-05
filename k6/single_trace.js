@@ -56,6 +56,7 @@ export default function () {
     headers: {
       'Content-Type': 'text/plain',
     },
+    timeout: "15s",
   };
   
   const response = http.post(FUNCTION_URL, BODY_CONTENT, params);
