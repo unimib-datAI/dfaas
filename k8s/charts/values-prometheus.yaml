@@ -47,19 +47,6 @@ serverFiles:
 alertmanager:
   enabled: true
 
-  # Volume with OpenFaaS password required to connect to OpenFaaS Gateway.
-  # Copied from official OpenFaaS Helm chart.
-  # See: https://github.com/openfaas/faas-netes/blob/87eca610c2c0cd4ed7b7aa37df716a6f98fb2851/chart/openfaas/templates/alertmanager-dep.yaml#L79-L99
-  extraVolumeMounts:
-    - name: auth
-      readOnly: true
-      mountPath: "/var/secrets"
-  extraVolumes:
-    - name: auth
-      secret:
-        secretName: basic-auth
-
-
   config:
     # The whole config is copied from the official OpenFaaS Helm chart.
     # See: https://github.com/openfaas/faas-netes/blob/87eca610c2c0cd4ed7b7aa37df716a6f98fb2851/chart/openfaas/templates/alertmanager-cfg.yaml#L17-L49
@@ -87,7 +74,3 @@ alertmanager:
         webhook_configs:
           - url: http://gateway.default.svc.cluster.local:8080/system/alert
             send_resolved: true
-            http_config:
-              basic_auth:
-                username: admin
-                password_file: /var/secrets/basic-auth-password
