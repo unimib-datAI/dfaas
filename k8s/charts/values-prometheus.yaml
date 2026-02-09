@@ -30,11 +30,13 @@ serverFiles:
   alerting_rules.yml:
     # Copied from official OpenFaaS Helm chart.
     # See: https://github.com/openfaas/faas-netes/blob/87eca610c2c0cd4ed7b7aa37df716a6f98fb2851/chart/openfaas/templates/prometheus-cfg.yaml#L66
+    #
+    # I have removed the filter {code="200"} from the query.
     groups:
       - name: openfaas
         rules:
         - alert: APIHighInvocationRate
-          expr: sum(rate(gateway_function_invocation_total{code="200"}[10s])) BY (function_name) > 5
+          expr: sum(rate(gateway_function_invocation_total[10s])) BY (function_name) > 5
           for: 5s
           labels:
             service: gateway
