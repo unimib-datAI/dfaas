@@ -1,3 +1,4 @@
+{{- if .Values.forecaster.enabled }}
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -14,7 +15,8 @@ spec:
     spec:
       containers:
         - name: dfaas-forecaster
-          image: {{ .Values.image }}
-          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          image: {{ .Values.forecaster.image }}
+          imagePullPolicy: {{ .Values.forecaster.imagePullPolicy }}
           ports:
             - containerPort: 8080
+{{- end }}

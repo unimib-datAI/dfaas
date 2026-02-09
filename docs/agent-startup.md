@@ -12,9 +12,9 @@ more), so we provide a Helm chart located at
 
 Additionally, there is the *forecaster* component: a small Python program that
 provides an HTTP API to the main agent. The forecaster is mandatory only if you
-use the *Node Margin Strategy*, otherwise it is optional. Like the agent, it
-also comes with a dedicated Helm chart at
-[`k8s/charts/forecaster`](../k8s/charts/forecaster).
+use the *Node Margin Strategy*, otherwise it is optional. It is installed and
+started by default as part of the agent Helm chart, but it can be disabled if
+needed.
 
 ## How to configure the agent
 
@@ -30,6 +30,22 @@ Throughout this document, examples refer to modifying the `values.yaml` file.
 > Configuration changes are not applied dynamically at runtime. If you modify
 > the configuration (for example, by updating the ConfigMap object), you must
 > restart the agent for the new settings to take effect.
+
+## Image pulling
+
+There are two main ways to allow Kubernetes to pull the correct image for the
+agent and forecaster components:
+
+1. Pulling the public image published on ghcr.io/unimib-datai (see
+   [github.com/orgs/unimib-datAI/packages](https://github.com/orgs/unimib-datAI/packages))
+2. Pulling a locally imported image.
+
+By default, the Helm chart is configured to use the first option. You can switch
+to the second option by setting `image` to `localhost/agent:dev` and
+`imagePullPolicy` to `Never` in the `values.yaml` file. After that, you must
+manually push the image to the cluster. You can use the utility script
+[`build-image.sh`](k8s/scripts/build-image.sh), which builds the image locally
+and pushes it to the local k3s cluster.
 
 ## Agent identity
 
@@ -122,3 +138,17 @@ privateKey: |
 
 In this example, the agent will attempt to connect at startup to two peer agents
 and will keep retrying until both connections are successfully established.
+
+## Forecaster
+
+The forecaster component is installed and started automatically with the agent
+when using the provided Helm chart. If it is not required, it can be disabled by
+setting `enabled` to false in the `forecaster` section of the values.yaml file.
+
+```yaml
+forecaster:
+  enabled: false
+```
+
+The image pulling rules that apply to the forecaster are the same as those for
+the agent.

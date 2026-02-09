@@ -85,3 +85,12 @@ privateKey: ""
 #  -----BEGIN PRIVATE KEY-----
 #  ...your key here...
 #  -----END PRIVATE KEY-----
+
+forecaster:
+  enabled: true
+
+  # Same as the dfaas-agent image.
+  image: localhost/forecaster:dev
+  imagePullPolicy: Never
+  #image: ghcr.io/unimib-datai/forecaster:dev
+  #imagePullPolicy: Always # Since the dev tag is overwritten with newer versions.

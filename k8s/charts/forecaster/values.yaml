@@ -1,6 +1,0 @@
-# Default is the locally built image, manually imported into K3s.
-image: localhost/forecaster:dev
-imagePullPolicy: Never # The forecaster image is manually imported.
-# Alternative is the latest dev version from GitHub Container Registry.
-#image: ghcr.io/unimib-datai/forecaster:dev
-#imagePullPolicy: Always # Since the dev tag is overwritten with newer versions.
