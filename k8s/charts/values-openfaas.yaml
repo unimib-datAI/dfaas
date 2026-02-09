@@ -34,5 +34,5 @@ gateway:
     timeoutSeconds: 10
 
   livenessProbe:
-    periodSeconds: 15
-    timeoutSeconds: 10
+    periodSeconds: 60
+    timeoutSeconds: 55
