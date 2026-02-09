@@ -25,3 +25,14 @@ gatewayExternal:
     prometheus.io/scrape: "true"
     prometheus.io/path: /metrics
     prometheus.io/port: "8081"
+
+gateway:
+  # Increase timeout of liveness and readiness probes to avoid premature crash
+  # of the gateway.
+  readinessProbe:
+    periodSeconds: 15
+    timeoutSeconds: 10
+
+  livenessProbe:
+    periodSeconds: 15
+    timeoutSeconds: 10
