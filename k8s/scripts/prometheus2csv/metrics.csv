@@ -11,10 +11,10 @@ metric;node_memory_Cached_bytes;;
 metric;node_memory_Buffers_bytes;;
 metric;haproxy_backend_http_responses_total;;
 metric;haproxy_backend_http_requests_total;;
+metric;haproxy_backend_response_time_average_seconds;;
+query;irate(haproxy_backend_http_requests_total{proxy="function_figlet"}[1m]);custom_haproxy_requests_rate;Number of requests per second over the last minute
 metric;gateway_function_invocation_started;;
 metric;gateway_function_invocation_total;;
 metric;gateway_functions_seconds_bucket;;
 metric;gateway_service_count;;
 query;100 * irate(container_cpu_usage_seconds_total{namespace="default", container!=""}[1m]) / on(instance) group_left machine_cpu_cores;cpu_usage_percent;CPU usage percentage for containers in default namespace
-metric;haproxy_server_current_queue;;
-metric;haproxy_backend_queue_time_average_seconds;;

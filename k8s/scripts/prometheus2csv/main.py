@@ -236,7 +236,7 @@ Output CSV Format:
         "--host", default="localhost", help="Prometheus host (default: localhost)."
     )
     parser.add_argument(
-        "--port", type=int, default=9090, help="Prometheus port (default: 9090)."
+        "--port", type=int, default=30909, help="Prometheus port (default: 30909)."
     )
 
     # Metrics and time range.
@@ -283,8 +283,8 @@ Output CSV Format:
     )
     parser.add_argument(
         "--step",
-        default="15s",
-        help="Query resolution step (default: 15s). Examples: 1s, 30s, 1m, 5m, 1h.",
+        default="5s",
+        help="Query resolution step (default: 5s). Examples: 1s, 30s, 1m, 5m, 1h.",
     )
 
     # Output options.
