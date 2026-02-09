@@ -102,8 +102,9 @@ import (
 	]
 */
 
-// funcsMaxRatesResponse is the structure of a response from "/system/functions". This
-// contains only the relevant attributes (it is incomplete). It is used for "recalc" algorithm
+// funcsTimeoutResponse is a subset of the structure in a response from
+// /system/functions. It contains only relevant attributes used by the
+// "recalc" strategy.
 type funcsMaxRatesResponse []struct {
 	Name   string `json:"name"`
 	Labels struct {
@@ -111,8 +112,22 @@ type funcsMaxRatesResponse []struct {
 	} `json:"labels"`
 }
 
-// funcsNamesResponse is the structure of a response from "/system/functions". This
-// contains only the function names (it is incomplete)
+// funcsTimeoutResponse is a subset of the structure in a response from
+// /system/functions. It contains only relevant attributes used by the
+// "alllocal" strategy.
+type funcsTimeoutResponse []struct {
+	Name   string `json:"name"`
+	Labels struct {
+		// Execution timeout for this function. This value is optional. When
+		// provided, the HAProxy backend is configured accordingly, with a small
+		// amount added to prevent premature rejection.
+		Timeout *string `json:"dfaas.timeout_ms,omitempty"`
+	} `json:"labels"`
+}
+
+// funcsTimeoutResponse is a subset of the structure in a response from
+// /system/functions. It contains only relevant attributes used by a generic
+// strategy.
 type funcsNamesResponse []struct {
 	Name string `json:"name"`
 }
@@ -193,7 +208,7 @@ func (c *Client) GetFuncsNames() ([]string, error) {
 	var respObj funcsNamesResponse
 	err = json.Unmarshal(body, &respObj)
 	if err != nil {
-		logging.Logger().Debug("Body response that fails JSON decoding", zap.String("body", string(body)))
+		logging.Logger().Debugf("Body response that fails JSON decoding: \n%s", string(body))
 		return nil, fmt.Errorf("deserializing JSON functions info: %w", err)
 	}
 
@@ -202,5 +217,41 @@ func (c *Client) GetFuncsNames() ([]string, error) {
 		result = append(result, item.Name)
 	}
 
+	return result, nil
+}
+
+// GetFuncsWithTimeout returns the functions list as a map[string]uint of
+// function names and dfaas.timeout_ms values in milliseconds. If
+// "dfaas.timeout" is not present, nil is set by default.
+func (c *Client) GetFuncsWithTimeout() (map[string]*uint, error) {
+	// Make the HTTP request to get function's metadata.
+	body, err := c.doFuncsRequest()
+	if err != nil {
+		return nil, fmt.Errorf("get functions info: %w", err)
+	}
+
+	// Parse only relevant attributes.
+	var respObj funcsTimeoutResponse
+	err = json.Unmarshal(body, &respObj)
+	if err != nil {
+		logging.Logger().Debugf("Body response that fails JSON decoding: \n%s", string(body))
+		return nil, fmt.Errorf("deserializing JSON functions info: %w", err)
+	}
+
+	// Prepare output.
+	result := map[string]*uint{}
+	for _, item := range respObj {
+		if item.Labels.Timeout == nil {
+			result[item.Name] = nil
+			continue
+		}
+
+		num, err := strconv.ParseUint(*item.Labels.Timeout, 10, 32)
+		if err != nil {
+			return nil, fmt.Errorf("parsing timeout for function %q: %v", item.Name, err)
+		}
+		val := uint(num)
+		result[item.Name] = &val
+	}
 	return result, nil
 }

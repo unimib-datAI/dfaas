@@ -7,8 +7,6 @@ package loadbalancer
 
 import (
 	"fmt"
-	"slices"
-	"sort"
 	"time"
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -37,7 +35,7 @@ func (strategy *AllLocalStrategy) RunStrategy() error {
 	var millisNow, millisSleep int64
 
 	// Functions deployed in OpenFaaS at the previous cycle. At start is empty.
-	prevFuncs := []string{}
+	prevFuncs := make(map[string]*uint)
 
 	millisInterval := int64(_config.RecalcPeriod / time.Millisecond)
 
@@ -46,21 +44,23 @@ func (strategy *AllLocalStrategy) RunStrategy() error {
 	for {
 		start := time.Now()
 
-		funcs, err := strategy.offuncsClient.GetFuncsNames()
+		funcs, err := strategy.offuncsClient.GetFuncsWithTimeout()
 		if err != nil {
-			return fmt.Errorf("get function names: %w", err)
+			return fmt.Errorf("get function metadata: %w", err)
 		}
 
-		// The slice must be sorted to ensure element order is ignored during
-		// comparison.
-		sort.Strings(funcs)
+		// Add 1 seconds to base timeout (if given) to all functions.
+		for _, timeout := range funcs {
+			if timeout != nil {
+				*timeout += 1000
+			}
+		}
 
-		// Update the configuration and reload HAProxy only if changes are
-		// detected.
-		equal := slices.Equal(funcs, prevFuncs)
+		// Update the configuration and reload HAProxy if changes are detected.
+		equal := funcsMetadataEqual(funcs, prevFuncs) && funcsMetadataEqual(prevFuncs, funcs)
 		if !equal {
 			debugFuncsDiff(funcs, prevFuncs)
-			logger.Info("Updating proxy due to new/deleted functions")
+			logger.Info("Updating proxy due to new/deleted functions or changed timeouts")
 			if err = strategy.updateProxyConfiguration(funcs); err != nil {
 				return fmt.Errorf("updating proxy config: %w", err)
 			}
@@ -84,13 +84,13 @@ func (strategy *AllLocalStrategy) RunStrategy() error {
 
 // updateProxyConfiguration updates the HAProxy configuration with the provided
 // list of deployed functions. HAProxy will always be reloaded after the update.
-func (strategy *AllLocalStrategy) updateProxyConfiguration(funcs []string) error {
+func (strategy *AllLocalStrategy) updateProxyConfiguration(funcs map[string]*uint) error {
 	// Define and populate this anonymous struct to pass data to the Go
 	// template.
 	data := struct {
 		Now          string
 		DFaaSNodeID  string
-		Functions    []string
+		Functions    map[string]*uint
 		OpenFaaSHost string
 		OpenFaaSPort uint
 	}{
@@ -108,4 +108,31 @@ func (strategy *AllLocalStrategy) updateProxyConfiguration(funcs []string) error
 // strategy we simply ignore all messages.
 func (strategy *AllLocalStrategy) OnReceived(msg *pubsub.Message) error {
 	return nil
+}
+
+// funcsMetadataEqual returns true if the given a and b maps are equal.
+func funcsMetadataEqual(a, b map[string]*uint) bool {
+	if len(a) != len(b) {
+		return false
+	}
+
+	for k, av := range a {
+		bv, ok := b[k]
+		if !ok {
+			return false
+		}
+
+		if av == nil && bv == nil {
+			continue
+		}
+
+		if av == nil || bv == nil {
+			return false
+		}
+
+		if *av != *bv {
+			return false
+		}
+	}
+	return true
 }

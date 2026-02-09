@@ -111,6 +111,11 @@ This is a simple, baseline strategy that always forwards requests to the local
 node, the local OpenFaaS Gateway instance. It supports only the
 `AGENT_RECALC_PERIOD` option.
 
-Tthis strategy updates the proxy configuration (and reloads the proxy) only when
+If you set the `dfaas.timeout_ms` label for a function (via `faas-cli` during
+deployment), this strategy overrides the default HAProxy timeouts (connect and
+server) with `dfaas.timeout_ms + 1s`. If the label is not provided, the default
+timeouts are used (60 seconds).
+
+This strategy updates the proxy configuration (and reloads the proxy) only when
 there are changes to the deployed functions, such as when a new function is
 added or an existing one is removed.

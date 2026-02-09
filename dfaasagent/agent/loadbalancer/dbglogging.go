@@ -469,12 +469,14 @@ func debugWeightsNMS(weights map[string]map[string]uint) {
 }
 
 // debugFuncsDiff prints the difference between the current and previous
-// function names list.
+// function names map, where the key is the function name and the value is a
+// pointer to uint. It also checks if the pointer values differ (including nil
+// vs non-nil and value differences).
 //
 // Example output:
 //
-//	Detected deployed functions: (total 3) shasum +figlet mlimage -curl
-func debugFuncsDiff(current, previous []string) {
+//	Detected deployed functions: (total 4) shasum +figlet mlimage -curl !foo=1->nil !bar=nil->3 !baz=5->8
+func debugFuncsDiff(current, previous map[string]*uint) {
 	if !logging.GetDebugMode() {
 		return
 	}
@@ -482,42 +484,67 @@ func debugFuncsDiff(current, previous []string) {
 	var b strings.Builder
 	fmt.Fprintf(&b, "Detected deployed functions: (total %d) ", len(current))
 
-	i, j := 0, 0
-	// Compare index by index.
-	for i < len(current) && j < len(previous) {
-		if current[i] == previous[j] {
-			b.WriteString(" ")
-			b.WriteString(current[i])
-			i++
-			j++
-		} else if current[i] < previous[j] {
-			b.WriteString("+")
-			b.WriteString(current[i])
-			i++
-		} else {
-			b.WriteString("-")
-			b.WriteString(previous[j])
-			j++
-		}
-		if i < len(current) || j < len(previous) {
-			b.WriteString(" ")
-		}
+	// Collect all unique function names from both maps
+	keysSet := make(map[string]struct{})
+	for k := range current {
+		keysSet[k] = struct{}{}
+	}
+	for k := range previous {
+		keysSet[k] = struct{}{}
 	}
 
-	// Handle the cases where one slice is longer than the other.
-	for i < len(current) {
-		b.WriteString("+")
-		b.WriteString(current[i])
-		i++
-		if i < len(current) {
-			b.WriteString(" ")
-		}
+	// Collect and sort all keys
+	keys := make([]string, 0, len(keysSet))
+	for k := range keysSet {
+		keys = append(keys, k)
 	}
-	for j < len(previous) {
-		b.WriteString("-")
-		b.WriteString(previous[j])
-		j++
-		if j < len(previous) {
+	sort.Strings(keys)
+
+	// Check values and keys.
+	for idx, k := range keys {
+		cv, inCurrent := current[k]
+		pv, inPrevious := previous[k]
+
+		switch {
+
+		case inCurrent && !inPrevious:
+			// New function.
+			b.WriteString("+")
+			b.WriteString(k)
+		case !inCurrent && inPrevious:
+			// Removed function.
+			b.WriteString("-")
+			b.WriteString(k)
+
+		case inCurrent && inPrevious:
+			// Check values.
+			if (cv == nil && pv != nil) || (cv != nil && pv == nil) ||
+				(cv != nil && pv != nil && *cv != *pv) {
+				// Value changed!
+				b.WriteString("!")
+				b.WriteString(k)
+				b.WriteString("=")
+				var prevStr, currStr string
+				if pv == nil {
+					prevStr = "nil"
+				} else {
+					prevStr = fmt.Sprintf("%d", *pv)
+				}
+				if cv == nil {
+					currStr = "nil"
+				} else {
+					currStr = fmt.Sprintf("%d", *cv)
+				}
+				b.WriteString(prevStr)
+				b.WriteString("->")
+				b.WriteString(currStr)
+			} else {
+				// Not changed.
+				b.WriteString(" ")
+				b.WriteString(k)
+			}
+		}
+		if idx < len(keys)-1 {
 			b.WriteString(" ")
 		}
 	}

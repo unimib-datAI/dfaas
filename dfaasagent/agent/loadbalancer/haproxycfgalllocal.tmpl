@@ -35,14 +35,21 @@ frontend main
     bind :80
 
     {{/* Create an ACL and use to select the backend if positive. */}}
-    {{range $funcName := .Functions -}}
+    {{range $funcName, $_ := .Functions -}}
     # Forward /function/{{$funcName}} to the respective backend
     acl is_{{$funcName}} path_beg /function/{{$funcName}}
     use_backend function_{{$funcName}} if is_{{$funcName}}
     {{end}}
 
-{{range $funcName := .Functions -}}
+{{range $funcName, $timeout := .Functions -}}
 backend function_{{$funcName}}
     http-response set-header dfaaS-node-id {{$.DFaaSNodeID}}
     server openfaas-local {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}}
+    {{- if $timeout}}
+    # If the function's metadata contains dfaas.timeout_ms label, we se in the
+    # HAProxy backend a timeout of dfaas.timeout_ms+1s. Note that in the
+    # OpenFaaS Gateway we have a timeout of dfaas.timeout_ms.
+    timeout connect {{$timeout}}ms
+    timeout server {{$timeout}}ms
+    {{- end}}
 {{end}}
