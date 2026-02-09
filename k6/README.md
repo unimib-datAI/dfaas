@@ -55,6 +55,16 @@ environment veriables when running k6:
 $ K6_WEB_DASHBOARD=true K6_WEB_DASHBOARD_PORT=30665 K6_WEB_DASHBOARD_EXPORT=k6_report.html k6 run single_trace.js --out csv=k6_results.csv.gz
 ```
 
+For `single_trace.js`, you can also set the `TRACE_PATH` environment variable to
+point to a trace JSON file. If this variable is not set, it defaults to
+`input_requests_traces.json` in the directory where k6 is executed. 
+
+Since there are many environment variables, we recommend using **direnv** to
+automatically load them from a file when running k6. All variables shown above
+are already written and populated in the `.envrc` file in this directory. For
+installation and configuration, refer to the [official direnv
+documentation](https://direnv.net/).
+
 ## Operating system and hardware limits
 
 When running k6 with a high number of requests per second, the tool can consume

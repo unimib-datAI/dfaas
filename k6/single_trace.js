@@ -5,11 +5,15 @@
 import http from 'k6/http';
 import { tagWithCurrentStageIndex } from 'https://jslib.k6.io/k6-utils/1.6.0/index.js';
 
-const FUNCTION_URL = 'http://10.0.2.38:30080/function/figlet';
+const FUNCTION_URL = 'http://10.0.2.40:30080/function/figlet';
 const BODY_CONTENT = 'Ciao';
 
+// Read the trace path from the TRACE_PATH env variable, or use the default one
+// if not provided.
+const TRACE_PATH = __ENV.TRACE_PATH || './input_requests_traces.json';
+
 // Read JSON trace file from disk.
-const traceFile = open('./input_requests_traces.json');
+const traceFile = open(TRACE_PATH)
 const traceData = JSON.parse(traceFile);
 
 // Extract first 10 values for function "0" and node "0".
