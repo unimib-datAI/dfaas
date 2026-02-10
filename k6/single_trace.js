@@ -17,7 +17,8 @@ const traceFile = open(TRACE_PATH);
 const traceData = JSON.parse(traceFile);
 
 // Extract first 10 values for function "0" and node "0".
-const nodeTrace = traceData["0"]["0"].slice(0, 10);
+//const nodeTrace = traceData["0"]["0"].slice(0, 10);
+const nodeTrace = traceData["0"]["0"]; // Load all values.
 
 console.log('Loaded trace for function "0", node "0":', nodeTrace);
 
