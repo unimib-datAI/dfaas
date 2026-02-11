@@ -10,6 +10,7 @@ metric;node_memory_MemFree_bytes;;
 metric;node_memory_Cached_bytes;;
 metric;node_memory_Buffers_bytes;;
 metric;haproxy_backend_http_responses_total;;
+query;increase(haproxy_backend_http_responses_total[10s]);custom_haproxy_responses_total;Number of HTTP responses returned by each HAProxy backend over the last 10 seconds
 metric;haproxy_backend_http_requests_total;;
 metric;haproxy_backend_response_time_average_seconds;;
 query;irate(haproxy_backend_http_requests_total{proxy="function_figlet"}[1m]);custom_haproxy_requests_rate;Number of requests per second over the last minute
