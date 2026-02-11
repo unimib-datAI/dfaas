@@ -27,12 +27,19 @@ gatewayExternal:
     prometheus.io/port: "8081"
 
 gateway:
+  # WIP   readTimeout: "1m05s"
+  #writeTimeout: "1m05s"
+  #upstreamTimeout: "1m"  # Must be smaller than read/write_timeout
   # Increase timeout of liveness and readiness probes to avoid premature crash
   # of the gateway.
   readinessProbe:
-    periodSeconds: 15
+    periodSeconds: 10
     timeoutSeconds: 10
+    successThreshold: 1
+    failureThreshold: 3
 
   livenessProbe:
-    periodSeconds: 60
-    timeoutSeconds: 55
+    periodSeconds: 30
+    timeoutSeconds: 30
+    successThreshold: 1
+    failureThreshold: 3
