@@ -30,7 +30,11 @@ def find_min_max(obj, cur_min=None, cur_max=None):
 
 
 def scale_numbers(obj, old_min, old_max, new_min=0, new_max=800, power=1.0):
-    """Recursively scale all numbers in a nested structure with power transformation."""
+    """Recursively scale all numbers with a min-max normalization (linear) and
+    optional power transformation.
+
+    If power=1 we have a linear scaling, power>1 compresses low values while
+    0<power<1 expands low values."""
     if isinstance(obj, dict):
         return {
             k: scale_numbers(v, old_min, old_max, new_min, new_max, power)
