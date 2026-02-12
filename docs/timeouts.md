@@ -37,9 +37,10 @@ setting, especially when CPU or RAM usage is growing or when handling high
 concurrency. The max inflight setting relates closely to exec timeout by
 controlling concurrent requests.
 
-We recommend disabling readiness and liveness probes for OpenFaaS functions, and
-using only `max_inflight` to control the number of concurrent requests per
-function replica.
+We recommend to disable readiness and liveness probes for OpenFaaS functions,
+and using only `max_inflight` to control the number of concurrent requests per
+function replica. If you use or custom `values.yaml` for OpenFaaS Helm chart, it
+will disable these probes.
 
 See additional environment variables in the watchdog's
 [README](https://github.com/openfaas/classic-watchdog?tab=readme-ov-file#environment-variable-overrides)
@@ -74,6 +75,9 @@ environment variables:
 These timeouts apply to all deployed functions; it is not possible to specify
 custom timeouts for individual functions. To set these environment variables,
 use the same approaches as described for OpenFaaS Functions.
+
+We use the OpenFaaS' defaults. But make sure to tune `upstream_timeout` to avoid
+overload in the gateway!
 
 The gateway exports metrics to Prometheus, with scraping enabled by default.
 
