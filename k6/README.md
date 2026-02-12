@@ -16,8 +16,9 @@ To execute a test, run k6 as follows:
 $ k6 run single_node_test.js --out csv=results.csv.gz
 ```
 
-You may need to manually edit the JavaScript file to specify the IP addresses of
-the DFaaS nodes and the function endpoint(s).
+You must check the test script to see which custom environment variables it
+supports. You may also need to modify the script to adjust it to your needs (for
+example, setting
 
 We assume k6 is installed locally. For other installation or execution options
 (via Podman or Docker), see the [official k6
@@ -48,21 +49,31 @@ original CSV file, use `zcat`. Note that pandas supports compressed CSV files.
 
 ## Advanced k6 run
 
-You can enable the live Web dashboard and HTML report by settings the respective
-environment veriables when running k6:
+You can enable the live web dashboard and generate an HTML report by setting the
+respective environment variables when running k6:
 
-```console
-$ K6_WEB_DASHBOARD=true K6_WEB_DASHBOARD_PORT=30665 K6_WEB_DASHBOARD_EXPORT=k6_report.html k6 run single_trace.js --out csv=k6_results.csv.gz
-```
+    $ K6_WEB_DASHBOARD=true K6_WEB_DASHBOARD_PORT=30665 K6_WEB_DASHBOARD_EXPORT=k6_report.html k6 run single_trace.js --out csv=k6_results.csv.gz
 
-For `single_trace.js`, you can also set the `TRACE_PATH` environment variable to
-point to a trace JSON file. If this variable is not set, it defaults to
-`input_requests_traces.json` in the directory where k6 is executed. 
+The `single_trace.js` test script supports the following additional environment
+variables:
 
-Since there are many environment variables, we recommend using **direnv** to
-automatically load them from a file when running k6. All variables shown above
-are already written and populated in the `.envrc` file in this directory. For
-installation and configuration, refer to the [official direnv
+* `TRACE_PATH`: Path to the traces in JSON format.
+* `FUNCTION`: Function ID to filter from the traces.
+* `NODE`: Node ID to filter from the traces.
+* `LIMIT`: Number of initial steps to consider. Use `0` to disable the limit
+  (process the full trace).
+
+The combination of `FUNCTION` and `NODE` allows you to select a specific trace.
+Only the `TRACE_PATH` variable is mandatory.
+
+You can also pass environment variables directly via k6:
+
+    $ k6 run single_trace.js --env TRACE_PATH=input_requests_scaled_traces.json
+
+Since there are multiple environment variables, we recommend using **direnv** to
+automatically load them from a file when running k6. All variables listed above
+are already defined and populated in the `.envrc` file in this directory. For
+installation and configuration instructions, refer to the [official direnv
 documentation](https://direnv.net/).
 
 ## Operating system and hardware limits

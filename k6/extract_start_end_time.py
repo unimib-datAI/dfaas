@@ -1,3 +1,14 @@
+#!/usr/bin/env python3
+# SPDX-License-Identifier: AGPL-3.0-or-later.
+# Copyright 2026 The DFaaS Authors. All rights reserved.
+# This file is licensed under the AGPL v3.0 or later license. See LICENSE and
+# AUTHORS file for more information.
+#
+# A small CLI utility to extract and print the start and end date of a k6
+# experiments, used to later extract Prometheus metrics from DFaaS nodes.
+#
+# Run the script with the --help flag for more details.
+
 import argparse
 import sys
 from pathlib import Path
