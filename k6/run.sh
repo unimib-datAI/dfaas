@@ -22,7 +22,6 @@
 # string (SSH_SERVER) in this script to match your own username and server IP
 # address.
 
-
 # Exit on error.
 set -euo pipefail
 
@@ -36,7 +35,15 @@ export K6_WEB_DASHBOARD_PORT=30665
 export K6_WEB_DASHBOARD_EXPORT=k6_report.html
 export K6_WEB_DASHBOARD_PERIOD=10s
 
-export TRACE_PATH=input_requests_scaled_traces.json
+# The trace as JSON format. The JSON has the following structure: {"0":
+# {"node0": ..., "node1": ...}, "1": ...}, where the first level is the ID of
+# the function and the second level is the ID of each node. The values are an
+# array with one element (integer) for each iteration, that is the number of
+# requests per second for that iteration.
+export TRACE_PATH="${TRACE_PATH:-input_requests_traces.json}"
+
+# Optionally the trace can be limited to the fist X steps and not to the full
+# length.
 #export LIMIT=2
 
 # The DFaaS server.
@@ -47,18 +54,17 @@ readonly DATE="$(date +%Y%m%d)"
 readonly -a RESULT_FILES=(k6_results.csv.gz k6_report.html "$TRACE_PATH")
 
 # Extract nodes from function "0" in the trace JSON.
-# The JSON has structure: {"0": {"node0": ..., "node1": ...}, "1": ...}
 readarray -t NODES < <(jq -r '.["0"] | keys[]' "$TRACE_PATH")
 readonly -a NODES
 if [ ${#NODES[@]} -eq 0 ]; then
     echo "Error: No nodes found in function '0' of $TRACE_PATH" >&2
     exit 1
 fi
-echo "Discovered ${#NODES[@]} node(s) from trace: ${NODES[*]}"
+echo "Discovered ${#NODES[@]} node(s) from trace $TRACE_PATH: ${NODES[*]}"
 
 # Loop over all nodes extracted from the trace.
 for NODE in "${NODES[@]}"; do
-    DIRNAME="${DATE}_auto_test_node_${NODE}"
+    DIRNAME="${DATE}_auto_test_power_1_node_${NODE}"
     UPLOAD_PATH="gdrive:archive/dfaas/load_tests/$DIRNAME"
 
     echo "Running k6 load test on node $NODE..."
