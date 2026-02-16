@@ -109,7 +109,7 @@ for NODE in "${NODES[@]}"; do
     # We suppose rclone is installed and configured like in the local host.
     echo "Uploading Prometheus metrics to remote storage..."
     ssh -i ~/.ssh/id_ed25519 "$SSH_SERVER" \
-        .local/bin/rclone copy dfaas/k8s/scripts/prometheus2csv/prometheus_metrics.csv.gz "$UPLOAD_PATH"
+        .local/bin/rclone copy prometheus_metrics.csv.gz "$UPLOAD_PATH"
     ssh -i ~/.ssh/id_ed25519 "$SSH_SERVER" \
         .local/bin/rclone copy dfaas/k8s/scripts/prometheus2csv/metrics.csv "$UPLOAD_PATH"
     echo "Prometheus metrics uploaded."
