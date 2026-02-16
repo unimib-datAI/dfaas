@@ -5,7 +5,7 @@
 import http from 'k6/http';
 
 // Requires to track the stage of a request in CSV output.
-import { tagWithCurrentStageIndex } from 'https://jslib.k6.io/k6-utils/1.6.0/index.js';
+import { tagWithCurrentStageIndex, getCurrentStageIndex } from 'https://jslib.k6.io/k6-utils/1.6.0/index.js';
 
 const FUNCTION_URL = 'http://10.0.2.38:30080/function/figlet';
 const BODY_CONTENT = 'Ciao';
@@ -78,9 +78,13 @@ export default function () {
   // See: https://grafana.com/docs/k6/latest/using-k6/tags-and-groups/
   tagWithCurrentStageIndex();
 
+  // Add to each requests its current stage index.
+  const stage = getCurrentStageIndex();
+
   const params = {
     headers: {
-      'Content-Type': 'text/plain',
+      "Content-Type": "text/plain",
+      "DFaaS-K6-Stage": stage,
     },
     timeout: "8s",
   };
