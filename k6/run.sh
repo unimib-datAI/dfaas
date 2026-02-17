@@ -46,6 +46,18 @@ export TRACE_PATH="${TRACE_PATH:-input_requests_traces.json}"
 # length.
 #export LIMIT=2
 
+# For each k6 run, results are stored in a directory named:
+#
+#   ${DATE}_${EXP_NAME}_${NODE}
+#
+# Where: DATE is launch date of the k6 job, NODE is the ID of the evaluated
+# node, and EXP_NAME is a custom string. You can control only DIRNAME_STR, and
+# it must always be provided.
+if ! [[ -v EXP_NAME ]]; then
+  echo "Error: EXP_NAME is not set"
+  exit 1
+fi
+
 # The DFaaS server.
 readonly SSH_SERVER="emanuele@10.0.2.38"
 
@@ -64,8 +76,9 @@ echo "Discovered ${#NODES[@]} node(s) from trace $TRACE_PATH: ${NODES[*]}"
 
 # Loop over all nodes extracted from the trace.
 for NODE in "${NODES[@]}"; do
-    DIRNAME="${DATE}_auto_test_power_1_node_${NODE}"
+    DIRNAME="${DATE}_${EXP_NAME}_node_${NODE}"
     UPLOAD_PATH="gdrive:archive/dfaas/load_tests/$DIRNAME"
+    echo "Upload path (at the end): $UPLOAD_PATH"
 
     echo "Running k6 load test on node $NODE..."
     k6 run single_trace.js --out csv=k6_results.csv.gz --env NODE=$NODE
@@ -118,6 +131,7 @@ for NODE in "${NODES[@]}"; do
     echo "Waiting 120 seconds for DFaaS node to return to normal operations..."
     sleep 120s
     echo "Done. Test for node $NODE completed successfully."
+    echo
 done
 
 echo "All tests completed successfully."
