@@ -65,3 +65,6 @@ k8s/scripts/libp2p-peer-id/libp2p-peer-id
 # Ignore generated output.
 *.html
 *.pdf
+
+# Ignore HAProxy configs in the root directory.
+/*.cfg

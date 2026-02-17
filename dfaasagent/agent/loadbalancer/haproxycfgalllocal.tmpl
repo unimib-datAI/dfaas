@@ -34,6 +34,30 @@ frontend prometheus
 frontend main
     bind :80
 
+    # Use a stick table with only 1 global value, we will track the latest
+    # DFaaS-K6-Stage header value for incoming requests.
+    #
+    # We use type string for the key ("global") and gpt0 integer field to write
+    # the stage.
+    #
+    # Reminder: the name of this stick table is the section's name: "main".
+    #
+    # Ignore requests without the header.
+    #
+    # Warning: this stick table is used only for debugging purposes.
+    stick-table type string size 1 expire 5s store gpt0
+  
+    # Map stick counter 0 (sc0) with the key "global". Reminder: it is mandatory
+    # to first select the key and then write the value.
+    http-request track-sc0 str(global)
+  
+    # ACL to check if header exists and it is numeric.
+    acl has_stage_hdr req.hdr(DFaaS-K6-Stage) -m reg ^[0-9]+$
+  
+    # Store latest stage to gpc0 as integer for the stick counter sc0 (we know it
+    # is mapped to the "global" key).
+    http-request sc-set-gpt0(0) req.hdr(DFaaS-K6-Stage) if has_stage_hdr
+
     {{/* Create an ACL and use to select the backend if positive. */}}
     {{range $funcName, $_ := .Functions -}}
     # Forward /function/{{$funcName}} to the respective backend
