@@ -59,7 +59,8 @@ if ! [[ -v EXP_NAME ]]; then
 fi
 
 # The DFaaS server.
-readonly SSH_SERVER="emanuele@10.0.2.38"
+readonly IP_SERVER="10.0.2.38"
+readonly SSH_SERVER="emanuele@$IP_SERVER"
 
 readonly DATE="$(date +%Y%m%d)"
 
@@ -119,13 +120,27 @@ for NODE in "${NODES[@]}"; do
         --end "$end"
     echo "Prometheus metrics export completed."
 
+    # We can directly call the HTTP Web server because it is exposed as NodePort
+    # service at 30808 port. This is the stick-table-exporter service, see
+    # k8s/scripts/stick-table-exporter for more information.
+    #
+    # This service only accepts UNIX timestamps!
+    start_unix=$(date -d "$start" +%s)
+    end_unix=$(date -d "$end" +%s)
+    echo "Extract k6 stages on remote server..."
+    curl --silent --show-error --header "Accept: text/csv" \
+        --output dfaas_node_k6_stages.csv \
+        "http://$IP_SERVER:30808/table?start=$start_unix&end=$end_unix"
+    echo "k6 stages on remote server extracted"
+
     # We suppose rclone is installed and configured like in the local host.
-    echo "Uploading Prometheus metrics to remote storage..."
+    echo "Uploading Prometheus metrics and k6 stages to remote storage..."
     ssh -i ~/.ssh/id_ed25519 "$SSH_SERVER" \
         .local/bin/rclone copy prometheus_metrics.csv.gz "$UPLOAD_PATH"
     ssh -i ~/.ssh/id_ed25519 "$SSH_SERVER" \
         .local/bin/rclone copy dfaas/k8s/scripts/prometheus2csv/metrics.csv "$UPLOAD_PATH"
-    echo "Prometheus metrics uploaded."
+    rclone copy dfaas_node_k6_stages.csv "$UPLOAD_PATH"
+    echo "Prometheus metrics and k6 stages uploaded."
 
     # Let DFaaS node go back to normal operations.
     echo "Waiting 120 seconds for DFaaS node to return to normal operations..."
