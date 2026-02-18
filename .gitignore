@@ -68,3 +68,6 @@ k8s/scripts/libp2p-peer-id/libp2p-peer-id
 
 # Ignore HAProxy configs in the root directory.
 /*.cfg
+
+# Ignore generated binary.
+/k8s/scripts/stick-table-exporter/stick-table-exporter

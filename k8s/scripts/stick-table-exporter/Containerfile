@@ -1,0 +1,40 @@
+# Container to build the stick-table-exporter.
+#
+# Based on the official Go image: https://hub.docker.com/_/golang
+
+# Stage 1: Build the Go app.
+FROM docker.io/library/golang:1.24 AS builder
+
+# See: https://docs.github.com/en/packages/learn-github-packages/connecting-a-repository-to-a-package#connecting-a-repository-to-a-container-image-using-the-command-line
+LABEL org.opencontainers.image.source="https://github.com/unimib-datAI/dfaas"
+LABEL org.opencontainers.image.description="stick-table-exporter"
+LABEL org.opencontainers.image.licenses="AGPL-3.0"
+
+# CGO_ENABLED=0 is required to use Alpine Linux as base image!
+ENV CGO_ENABLED=0
+
+WORKDIR /opt/
+
+COPY k8s/scripts/stick-table-exporter/go.mod k8s/scripts/stick-table-exporter/go.sum ./
+RUN go mod download
+
+COPY k8s/scripts/stick-table-exporter/main.go .
+
+# Cache Go modules and intermediate build files to speed up subsequent
+# compilations.
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    go build -v .
+
+# Stage 2: Create a minimal image using Alpine Linux.
+FROM docker.io/library/alpine:3.23
+
+WORKDIR /opt/
+
+# Copy the binary from the builder stage
+COPY --from=builder /opt/stick-table-exporter .
+
+# The stick-table-exporter exposes an HTTP Web server to port 8080.
+EXPOSE 8080
+
+ENTRYPOINT ["/opt/stick-table-exporter"]
