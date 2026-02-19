@@ -26,7 +26,10 @@ fi
 
 echo Building Minikube instance...
 
-minikube start --memory=max --cpus=max --apiserver-ips="$SERVER_IP"
+MAX_MEM_MB="$(free -m | awk '/^Mem:/ {avail=$7 ? $7 : $4} END {printf("%dmb", avail-400)}')"
+echo "Allocating $MAX_MEM_MB MB RAM to Minikube (reserving 400 MB for host)"
+
+minikube start --memory="${MAX_MEM_MB}" --cpus=max --apiserver-ips="$SERVER_IP"
 
 if [ $? -eq 0 ]; then
   echo Minikube is up and running
@@ -34,28 +37,6 @@ else
   echo Unable to start Minikube
   exit 1
 fi
-
-# Loading pre pulled docker images
-#
-# TODO: Skip this for now.
-
-# Folder containing the .tar files from pull-and-save-images.sh
-#IMAGE_DIR=~/openfaas-image-cache
-
-# Check the directory exists
-#if [ ! -d "$IMAGE_DIR" ]; then
-#  echo " Error: $IMAGE_DIR does not exist. Run the pull script first."
-#  exit 1
-#fi
-
-#echo "[*] Loading saved images into Minikube from $IMAGE_DIR..."
-
-#for TAR in "$IMAGE_DIR"/*.tar; do
-#  echo "-> Loading $TAR into Minikube"
-#  minikube image load "$TAR"
-#done
-
-#echo "All .tar images successfully loaded into Minikube"
 
 echo Installing openfaas on the Minikube instance...
 arkade install openfaas-ce

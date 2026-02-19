@@ -27,7 +27,7 @@ logging.basicConfig(
 FUNCTION_NAMES = [
     "figlet",
     "shasum",
-    "nmap",
+    #"nmap",
     "env",
     "curl",
     "qrcode-go",
@@ -35,7 +35,7 @@ FUNCTION_NAMES = [
     "face-detect-pigo",
     "face-blur",
     "coherent-line-drawing",
-    "certinfo",
+    #"certinfo",
     "markdown",
     "openfaas-youtube-dl",
     "openfaas-text-to-speech",
@@ -99,9 +99,9 @@ def main():
     cpu_overload_percentage = (max_cpu_percentage * 80) / 100
 
     logging.info(f"Profiled functions: {FUNCTION_NAMES}")
-    function_combinations = utils.generate_functions_combinations(FUNCTION_NAMES, 1, 2)
-    # function_combinations = utils.generate_functions_combinations(FUNCTION_NAMES, 3, 4)
-    # function_combinations = utils.generate_functions_combinations(FUNCTION_NAMES, 2, 4)
+    #function_combinations = utils.generate_functions_combinations(FUNCTION_NAMES, 1, 2)
+    #function_combinations = utils.generate_functions_combinations(FUNCTION_NAMES, 3, 4)
+    function_combinations = utils.generate_functions_combinations(FUNCTION_NAMES, 2, 3)
     logging.info(
         f"Nr. of func. combinations (without rate): {len(function_combinations)}"
     )
@@ -147,7 +147,7 @@ def main():
     else:
         function_tuple_configs = function_combinations
 
-    rates = utils.generate_rates_list(max_rate, min_rate=1, rate_step=1)
+    rates = utils.generate_rates_list(max_rate, min_rate=10, rate_step=10)
 
     # Obtain current date and current time as string
     current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
@@ -215,7 +215,7 @@ def main():
             )
 
         logging.info(
-            "CPU, RAM and POWER usage in idle state: {base_cpu_usage_node_idle} {base_ram_usage_node_idle} {base_ram_usage_node_p_idle}% {base_power_usage_node_idle}"
+            f"CPU, RAM and POWER usage in idle state: {base_cpu_usage_node_idle} {base_ram_usage_node_idle} {base_ram_usage_node_p_idle}% {base_power_usage_node_idle}"
         )
 
         function_with_rate_combinations = []
@@ -276,7 +276,7 @@ def main():
             for attack_data in config:
                 # Setup vegeta attack
                 function_name = attack_data[0]
-                invocation_rate = attack_data[1]
+                invocation_rate = utils.extract_invoc_rate(attack_data[1])
                 current_functions.append(function_name)
                 attack = utils.vegeta_attack(
                     function_name, invocation_rate, node_ip, duration
@@ -289,7 +289,7 @@ def main():
                 skipped_config = {}
                 for attack_data in config:
                     function_name = attack_data[0]
-                    invocation_rate = attack_data[1]
+                    invocation_rate = utils.extract_invoc_rate(attack_data[1])
                     skipped_config[f"function_{function_name}"] = function_name
                     skipped_config[f"rate_function_{function_name}"] = invocation_rate
 
@@ -347,6 +347,17 @@ def main():
                 logging.info(
                     "Configuration already exist in index.csv, skipping attack"
                 )
+                logging.info("-------------Skip attack---------------")
+                continue
+
+            # Check if the configuration will overload.
+            if utils.index_csv_config_will_overload(output_dir, config):
+                actual_dominant_config = config
+                utils.index_csv_add_config(
+                    output_dir, config, True, "", overload_predicted=True
+                )
+
+                logging.info("Configuration will overload, skipping attack")
                 logging.info("-------------Skip attack---------------")
                 continue
 
@@ -440,7 +451,7 @@ def main():
                     are_there_functions_overloaded = False
                     for attack_data in config:
                         function_name = attack_data[0]
-                        invocation_rate = attack_data[1]
+                        invocation_rate = utils.extract_invoc_rate(attack_data[1])
                         success_rate = utils.retrieve_function_success_rate(
                             function_name, invocation_rate
                         )
@@ -534,7 +545,7 @@ def main():
                 logging.info("Configuration skipped:")
                 for attack_data in config:
                     function_name = attack_data[0]
-                    invocation_rate = attack_data[1]
+                    invocation_rate = utils.extract_invoc_rate(attack_data[1])
                     logging.info("%s %s" % (function_name, invocation_rate))
                 logging.info("----------------------------------------")
 

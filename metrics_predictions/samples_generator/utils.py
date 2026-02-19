@@ -11,7 +11,6 @@ import itertools
 import json
 import logging
 import subprocess
-import sys
 import time
 from pathlib import Path
 from urllib.parse import urlparse
@@ -156,7 +155,6 @@ def retrieve_function_replicas():
     return replicas
 
 
-# This function let the system rest for Sampler Generator
 def rest(
     base_cpu_usage_idle,
     base_ram_usage_idle,
@@ -164,42 +162,66 @@ def rest(
     duration,
     scaphandre,
     node_ip,
+    timeout_s=300,
+    interval_s=5,
 ):
-    time.sleep(10)
-    sleep_time_count = 10
+    """This function let the system rest for Sampler Generator."""
+    logging.info(f"Waiting max {timeout_s}s to let the node rest")
 
     cpu_usage, ram_usage, ram_usage_p, power_usage = retrieve_node_resources_usage(
         duration, None, None, scaphandre, node_ip
     )
-    while (
-        cpu_usage > (base_cpu_usage_idle + (base_cpu_usage_idle * 15 / 100))
-        or ram_usage > (base_ram_usage_idle + (base_ram_usage_idle * 15 / 100))
-        or power_usage
-        > (base_power_usage_node_idle + (base_power_usage_node_idle * 15 / 100))
-    ):
-        time.sleep(5)
-        sleep_time_count += 5
+
+    # Wait for resources usage to come back to idle values.
+    start_time = time.time()
+    while time.time() - start_time < timeout_s:
+        time.sleep(interval_s)
         cpu_usage, ram_usage, ram_usage_p, power_usage = retrieve_node_resources_usage(
             duration, None, None, scaphandre, node_ip
         )
-        if sleep_time_count > 180:
-            sys.exit(
-                1
-            )  # Exit the script with a non-zero status to indicate an abnormal termination
-    wait = True
-    while wait:
-        wait = False
+
+        if (
+            cpu_usage > (base_cpu_usage_idle + (base_cpu_usage_idle * 15 / 100))
+            or ram_usage > (base_ram_usage_idle + (base_ram_usage_idle * 15 / 100))
+            or power_usage
+            > (base_power_usage_node_idle + (base_power_usage_node_idle * 15 / 100))
+        ):
+            logging.info(
+                f"At least one resource usage (CPU, RAM, or power) is more than 15% above its respective base idle value. Retrying after {interval_s}s"
+            )
+        else:
+            logging.info("Resources usage back to base idle values")
+            break
+    else:
+        logging.error(
+            f"Resource usage did not return to idle within {timeout_s}s: CPU: {cpu_usage}, RAM: {ram_usage}, Power: {power_usage}"
+        )
+        raise TimeoutError(f"Resource usage did not return to idle within {timeout_s}s")
+
+    # Wait also the function replicas to scale down to 1.
+    while time.time() - start_time < timeout_s:
+        scaled_down = True
         function_replicas = retrieve_function_replicas()
         for replica in function_replicas.values():
             if int(replica) >= 2:
-                time.sleep(3)
-                sleep_time_count += 3
-                wait = True
+                scaled_down = False
 
-    logging.info(
-        f"Rest time: {sleep_time_count}s -> {cpu_usage} CPU, {ram_usage} ({ram_usage_p}) RAM, {power_usage} power"
-    )
-    return cpu_usage, ram_usage, ram_usage_p, power_usage, sleep_time_count
+        if scaled_down:
+            logging.info("All functions scaled down to 1")
+            break
+
+        logging.info(
+            f"At least one function did not scaled back to 1. Retrying after {interval_s}s"
+        )
+        time.sleep(interval_s)
+    else:
+        logging.error("Function replicas did not return to 1")
+        raise TimeoutError(f"Function replicas did not return to 1 within {timeout_s}s")
+
+    elapsed_s = time.time() - start_time
+    logging.info(f"Rest time: {round(elapsed_s)}s")
+
+    return cpu_usage, ram_usage, ram_usage_p, power_usage, elapsed_s
 
 
 # This function let the system rest for Sampler Generator Profiler
@@ -500,33 +522,39 @@ def retrieve_function_resource_usage_for_profile(
     return cpu_usage, ram_usage, power_usage
 
 
-# It permorfs a http request to the Prometheus API
 def execute_query(url, query_params, range_query=False):
-    timeout = 0
-    while True:
-        response = requests.get(url, query_params, verify=False)
-        if response.json()["data"]["result"] == []:
-            time.sleep(1)
-            timeout += 1
-            if timeout > 30:
-                raise Exception("timeout")
-            continue
-        if range_query:
-            result = get_avg_value_from_response(response.json()["data"], 0)
-            logging.info(result)
-        else:
-            result = get_value_from_response(response.json()["data"])
-            logging.info(result)
-        break
-    return result
-
-
-def safe_execute_query(url, query, default_value=0):
+    """Executes a single Prometheus query to the given URL. Query parameters are
+    passed to requests.get."""
+    logging.info(f"Executing Prometheus query: {url} params: {query_params}")
     try:
-        return execute_query(url, query)
+        response = requests.get(url, params=query_params, verify=False, timeout=20)
+        response.raise_for_status()
+
+        response_json = response.json()
+        if response_json.get("status") != "success":
+            logging.error(
+                f"Prometheus query returned error status: {response_json.get('error', 'Unknown error')} Full response: {response_json}"
+            )
+            raise Exception(
+                f"Prometheus query failed with status {response_json.get('status')}"
+            )
+
+        data = response_json.get("data", {})
+        if not data.get("result"):
+            raise Exception(
+                "no data received from Prometheus. Full response: {response_json}"
+            )
+
+        if range_query:
+            result = get_avg_value_from_response(data, 0)
+        else:
+            result = get_value_from_response(data)
+
+        logging.info(f"Prometheus query completed successfully. Result: {result}")
+        return result
     except Exception as e:
-        logging.error(f"Failed to execute query {query}: {e}")
-        return default_value
+        logging.error(f"Prometheus query failed: {e}")
+        raise
 
 
 def get_value_from_response(data):
@@ -644,7 +672,13 @@ def index_csv_init(output_dir):
     """Checks whether index.csv exists in the given output_dir and whether it is
     valid. If it does not exist, initializes a new index.csv file."""
     index_path = Path(output_dir) / "index.csv"
-    index_csv_cols = ["functions", "rates", "overloaded", "results_file"]
+    index_csv_cols = [
+        "functions",
+        "rates",
+        "overloaded",
+        "overload_predicted",
+        "results_file",
+    ]
     # Required since we save lists as columns that use ",".
     index_csv_separator = ";"
 
@@ -666,15 +700,23 @@ def index_csv_init(output_dir):
         logging.info(f"Index CSV file created: {index_path.as_posix()!r}")
 
 
-def index_csv_add_config(output_dir, config, overloaded, result_filename):
+def index_csv_add_config(
+    output_dir, config, overloaded, result_filename, overload_predicted=False
+):
     """Add a new row with the given config to index.csv found in output_dir.
 
-    The row will have also the result_filename string and the overloaded flag
-    columns."""
+    result_filename may be an empty string.
+
+    The row will have also the result_filename string, the overloaded flag,
+    and the overload_predicted flag columns."""
     # Chain .absolute().resolve() needed to get relative paths.
     index_path = Path(output_dir).absolute().resolve() / "index.csv"
-    result_filename = Path(result_filename).absolute().resolve()
-    result_filename = result_filename.relative_to(index_path.parent)
+
+    # The result filename may be empty (the config is saved but no experiments
+    # are node, maybe because it is overload by prediction).
+    if result_filename != "":
+        result_filename = Path(result_filename).absolute().resolve()
+        result_filename = result_filename.relative_to(index_path.parent)
 
     index_csv_separator = ";"
 
@@ -690,7 +732,15 @@ def index_csv_add_config(output_dir, config, overloaded, result_filename):
     # processes to read the file while this program is running.
     with index_path.open("a") as index_file:
         writer = csv.writer(index_file, delimiter=index_csv_separator)
-        writer.writerow([fn_names, rates, bool(overloaded), result_filename])
+        writer.writerow(
+            [
+                fn_names,
+                rates,
+                bool(overloaded),
+                bool(overload_predicted),
+                result_filename,
+            ]
+        )
 
 
 def index_csv_check_config(output_dir, config):
@@ -812,6 +862,56 @@ def index_csv_get_dominant_config(output_dir, config):
     return None
 
 
+def index_csv_config_will_overload(output_dir, config):
+    """Return True if the given config will certainly overload based on single
+    function profiles in the index.csv file.
+
+    A config will overload if any function in the config has a rate that is
+    greater than or equal to a rate that caused overload when that function
+    was tested alone (single function config).
+    """
+    # Read the index.csv file.
+    index_path = Path(output_dir).absolute().resolve() / "index.csv"
+
+    if not index_path.is_file():
+        return False
+
+    df = pd.read_csv(index_path, sep=";")
+
+    # Convert string representations of lists to actual lists.
+    df["functions"] = df["functions"].apply(ast.literal_eval)
+    df["rates"] = df["rates"].apply(ast.literal_eval)
+
+    # Check each function in the given config.
+    for fn_name, rate in config:
+        # Filter rows with single function only (length of functions list == 1)
+        # and matching the current function name.
+        single_fn_rows = df[
+            (df["functions"].apply(len) == 1)
+            & (df["functions"].apply(lambda x: x[0] == fn_name))
+        ]
+
+        if len(single_fn_rows) == 0:
+            # No data available.
+            continue
+
+        # Check if there exists an overloaded config with rate <= current rate.
+        for _, row in single_fn_rows.iterrows():
+            # We have only one function -> one rate.
+            single_fn_rate = row["rates"][0]
+            is_overloaded = row["overloaded"]
+
+            # If we found an overloaded config with rate <= current rate,
+            # the given config will certainly overload
+            if is_overloaded and single_fn_rate <= rate:
+                logging.info(
+                    f"Config will overload: function {fn_name!r} at rate {rate} will overload (found overloaded single-function config at rate {single_fn_rate})"
+                )
+                return True
+
+    return False
+
+
 def faas_cli_delete_functions(openfaas_gateway):
     """
     Remove all deployed functions on the given OpenFaaS instance.
@@ -930,3 +1030,15 @@ def get_node_ip(kubectl_context):
     raise ValueError(
         f"Context {kubectl_context!r} not found in {kube_config_path.as_posix()!r}."
     )
+
+
+def extract_invoc_rate(invoc_rate):
+    """Rounds the invocation rate to the nearest integer if it is a float."""
+    if isinstance(invoc_rate, float):
+        rounded = round(invoc_rate)
+        logging.warning(
+            f"Invocation rate rounded from float to int: {invoc_rate} -> {rounded}"
+        )
+        return rounded
+
+    return invoc_rate
