@@ -27,7 +27,7 @@ logging.basicConfig(
 FUNCTION_NAMES = [
     "figlet",
     "shasum",
-    "nmap",
+    #"nmap",
     "env",
     "curl",
     "qrcode-go",
@@ -35,7 +35,7 @@ FUNCTION_NAMES = [
     "face-detect-pigo",
     "face-blur",
     "coherent-line-drawing",
-    "certinfo",
+    #"certinfo",
     "markdown",
     "openfaas-youtube-dl",
     "openfaas-text-to-speech",
@@ -99,9 +99,9 @@ def main():
     cpu_overload_percentage = (max_cpu_percentage * 80) / 100
 
     logging.info(f"Profiled functions: {FUNCTION_NAMES}")
-    function_combinations = utils.generate_functions_combinations(FUNCTION_NAMES, 1, 2)
-    # function_combinations = utils.generate_functions_combinations(FUNCTION_NAMES, 3, 4)
-    # function_combinations = utils.generate_functions_combinations(FUNCTION_NAMES, 2, 4)
+    #function_combinations = utils.generate_functions_combinations(FUNCTION_NAMES, 1, 2)
+    #function_combinations = utils.generate_functions_combinations(FUNCTION_NAMES, 3, 4)
+    function_combinations = utils.generate_functions_combinations(FUNCTION_NAMES, 2, 3)
     logging.info(
         f"Nr. of func. combinations (without rate): {len(function_combinations)}"
     )
@@ -147,7 +147,7 @@ def main():
     else:
         function_tuple_configs = function_combinations
 
-    rates = utils.generate_rates_list(max_rate, min_rate=1, rate_step=1)
+    rates = utils.generate_rates_list(max_rate, min_rate=10, rate_step=10)
 
     # Obtain current date and current time as string
     current_datetime = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
