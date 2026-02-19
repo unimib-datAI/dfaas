@@ -11,19 +11,34 @@ from model import config_constants
 
 
 class Model:
-    def __init__(self, metric, model_type):
+    def __init__(self, metric, model_type, base_dir):
         self.metric = metric
         self.model_type = model_type
 
         # Load model
-        self.model = joblib.load(os.path.join(config_constants.MODELS_BASE_PATH,
-                                              metric, model_type, "model.joblib"))
+        model_path = os.path.join(
+            base_dir, "models", metric, model_type, "model.joblib"
+        )
+        if not os.path.isfile(model_path):
+            raise FileNotFoundError(f"Model file not found: {model_path}")
+        self.model = joblib.load(model_path)
 
         # Load features and target scalers
-        self.features_scaler = joblib.load(os.path.join(config_constants.SCALERS_BASE_PATH,
-                                                        "scaler_x", "features.joblib"))
-        self.target_scaler = joblib.load(os.path.join(config_constants.SCALERS_BASE_PATH,
-                                                      "scaler_y", metric + ".joblib"))
+        features_scaler_path = os.path.join(
+            base_dir, "scalers", "scaler_x", "features.joblib"
+        )
+        if not os.path.isfile(features_scaler_path):
+            raise FileNotFoundError(
+                f"Features scaler not found: {features_scaler_path}"
+            )
+        self.features_scaler = joblib.load(features_scaler_path)
+
+        target_scaler_path = os.path.join(
+            base_dir, "scalers", "scaler_y", metric + ".joblib"
+        )
+        if not os.path.isfile(target_scaler_path):
+            raise FileNotFoundError(f"Target scaler not found: {target_scaler_path}")
+        self.target_scaler = joblib.load(target_scaler_path)
 
     def predict(self, input_data):
         # Scale input dataset
@@ -35,8 +50,6 @@ class Model:
         scaled_predictions = self.model.predict(input_data_scaled)
         original_predictions = self.target_scaler.inverse_transform(scaled_predictions.reshape(-1, 1))
         return np.round(original_predictions, 2)
-
-
 
 
 
