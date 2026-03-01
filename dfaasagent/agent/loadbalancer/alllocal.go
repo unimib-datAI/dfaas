@@ -11,9 +11,9 @@ import (
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/faasprovider"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/offuncs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 )
 
@@ -23,8 +23,8 @@ type AllLocalStrategy struct {
 	// HAProxy client to update configuration.
 	hacfgupdater hacfgupd.Updater
 
-	// OpenFaaS Gateway client to retrive deployed functions.
-	offuncsClient *offuncs.Client
+	// FaaS provider client to retrieve deployed functions.
+	faasProvider  faasprovider.FaaSProvider
 }
 
 // RunStrategy handles the periodic execution of the recalculation function. It
@@ -44,7 +44,7 @@ func (strategy *AllLocalStrategy) RunStrategy() error {
 	for {
 		start := time.Now()
 
-		funcs, err := strategy.offuncsClient.GetFuncsWithTimeout()
+		funcs, err := strategy.faasProvider.GetFuncsWithTimeout()
 		if err != nil {
 			return fmt.Errorf("get function metadata: %w", err)
 		}
