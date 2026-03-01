@@ -538,11 +538,12 @@ func (strategy *RecalcStrategy) createHACfgObject(
 ) *HACfgRecalc {
 	hacfg := &HACfgRecalc{
 		HACfg: HACfg{
-			MyNodeID:     myNodeID,
-			NodeIP:       _config.NodeIP,
-			HAProxyHost:  _config.HAProxyHost,
-			FaaSHost: openFaaSHost,
-			FaaSPort: openFaaSPort,
+			MyNodeID:        myNodeID,
+			NodeIP:          _config.NodeIP,
+			HAProxyHost:     _config.HAProxyHost,
+			FaaSHost:        openFaaSHost,
+			FaaSPort:        openFaaSPort,
+			FaaSBackendPath: faasprovider.BackendPathPrefix(_config.FaaSPlatform, _config.OpenWhiskNamespace),
 		},
 
 		StrRecalc:  recalcPeriod.String(),
