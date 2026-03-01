@@ -11,6 +11,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"strconv"
 	"strings"
@@ -246,8 +247,16 @@ func (c *Client) QueryAFET(timeSpan time.Duration) (map[string]float64, error) {
 		if len(item.Value) < 2 {
 			continue
 		}
-		val, _ := strconv.ParseFloat(item.Value[1].(string), 64)
-		result[item.Metric.Action] = val
+		str, ok := item.Value[1].(string)
+		if !ok {
+			result[item.Metric.Action] = math.NaN()
+			continue
+		}
+		num, err := strconv.ParseFloat(str, 64)
+		if err != nil {
+			num = math.NaN()
+		}
+		result[item.Metric.Action] = num
 	}
 	return result, nil
 }
@@ -276,8 +285,16 @@ func (c *Client) QueryInvoc(timeSpan time.Duration) (map[string]map[string]float
 			result[action] = map[string]float64{}
 		}
 		code := owStatusToCode(item.Metric.Status)
-		val, _ := strconv.ParseFloat(item.Value[1].(string), 64)
-		result[action][code] = val
+		str, ok := item.Value[1].(string)
+		if !ok {
+			result[action][code] = math.NaN()
+			continue
+		}
+		num, err := strconv.ParseFloat(str, 64)
+		if err != nil {
+			num = math.NaN()
+		}
+		result[action][code] = num
 	}
 	return result, nil
 }
@@ -309,7 +326,11 @@ func (c *Client) QueryServiceCount() (map[string]int, error) {
 		if len(item.Value) < 2 {
 			continue
 		}
-		val, _ := strconv.Atoi(item.Value[1].(string))
+		str, ok := item.Value[1].(string)
+		if !ok {
+			continue
+		}
+		val, _ := strconv.Atoi(str)
 		result[item.Metric.Deployment] = val
 	}
 	return result, nil
@@ -335,8 +356,16 @@ func (c *Client) QueryCPUusage(timeSpan time.Duration) (map[string]float64, erro
 			continue
 		}
 		instance := item.Metric["instance"]
-		val, _ := strconv.ParseFloat(item.Value[1].(string), 64)
-		result[instance] = val
+		str, ok := item.Value[1].(string)
+		if !ok {
+			result[instance] = math.NaN()
+			continue
+		}
+		num, err := strconv.ParseFloat(str, 64)
+		if err != nil {
+			num = math.NaN()
+		}
+		result[instance] = num
 	}
 	return result, nil
 }
@@ -362,8 +391,16 @@ func (c *Client) QueryRAMusage(timeSpan time.Duration) (map[string]float64, erro
 			continue
 		}
 		instance := item.Metric["instance"]
-		val, _ := strconv.ParseFloat(item.Value[1].(string), 64)
-		result[instance] = val
+		str, ok := item.Value[1].(string)
+		if !ok {
+			result[instance] = math.NaN()
+			continue
+		}
+		num, err := strconv.ParseFloat(str, 64)
+		if err != nil {
+			num = math.NaN()
+		}
+		result[instance] = num
 	}
 	return result, nil
 }
@@ -392,8 +429,16 @@ func (c *Client) QueryCPUusagePerFunction(timeSpan time.Duration, funcName []str
 		if len(item.Value) < 2 {
 			continue
 		}
-		val, _ := strconv.ParseFloat(item.Value[1].(string), 64)
-		result[item.Metric.Container] = val
+		str, ok := item.Value[1].(string)
+		if !ok {
+			result[item.Metric.Container] = math.NaN()
+			continue
+		}
+		num, err := strconv.ParseFloat(str, 64)
+		if err != nil {
+			num = math.NaN()
+		}
+		result[item.Metric.Container] = num
 	}
 	return result, nil
 }
@@ -422,8 +467,16 @@ func (c *Client) QueryRAMusagePerFunction(timeSpan time.Duration, funcName []str
 		if len(item.Value) < 2 {
 			continue
 		}
-		val, _ := strconv.ParseFloat(item.Value[1].(string), 64)
-		result[item.Metric.Container] = val
+		str, ok := item.Value[1].(string)
+		if !ok {
+			result[item.Metric.Container] = math.NaN()
+			continue
+		}
+		num, err := strconv.ParseFloat(str, 64)
+		if err != nil {
+			num = math.NaN()
+		}
+		result[item.Metric.Container] = num
 	}
 	return result, nil
 }
