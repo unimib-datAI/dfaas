@@ -19,6 +19,20 @@ const (
 	PlatformOpenWhisk = "openwhisk"
 )
 
+// BackendPathPrefix returns the URL path prefix used to invoke a function
+// for the given platform and namespace.
+// For OpenFaaS (default): "/function"
+// For OpenWhisk: "/api/v1/namespaces/<namespace>/actions"
+func BackendPathPrefix(platform, namespace string) string {
+	if platform == PlatformOpenWhisk {
+		if namespace == "" {
+			namespace = "guest"
+		}
+		return fmt.Sprintf("/api/v1/namespaces/%s/actions", namespace)
+	}
+	return "/function"
+}
+
 // NewFaaSProvider returns the FaaSProvider for the given platform.
 // host and port are the FaaS gateway coordinates (used for both platforms).
 // namespace and apiKey are only used for OpenWhisk.

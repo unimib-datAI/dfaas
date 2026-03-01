@@ -259,11 +259,12 @@ func (strategy *StaticStrategy) createHACfgObject(
 ) *HACfgStatic {
 	hacfg := &HACfgStatic{
 		HACfg: HACfg{
-			MyNodeID:     myNodeID,
-			NodeIP:       _config.NodeIP,
-			HAProxyHost:  _config.HAProxyHost,
-			FaaSHost: openFaaSHost,
-			FaaSPort: openFaaSPort,
+			MyNodeID:        myNodeID,
+			NodeIP:          _config.NodeIP,
+			HAProxyHost:     _config.HAProxyHost,
+			FaaSHost:        openFaaSHost,
+			FaaSPort:        openFaaSPort,
+			FaaSBackendPath: faasprovider.BackendPathPrefix(_config.FaaSPlatform, _config.OpenWhiskNamespace),
 		},
 
 		Nodes:     map[string]*HACfgNodeStatic{},

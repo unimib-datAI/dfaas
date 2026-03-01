@@ -234,6 +234,11 @@ backend be_myself
     http-response set-header X-Server %s
     http-response set-header DFaaS-Node-ID {{$.MyNodeID}}
 
+    # Rewrite /function/<name> to the platform-specific backend path.
+    # For OpenFaaS this is a no-op; for OpenWhisk it rewrites to
+    # /api/v1/namespaces/<ns>/actions/<name>.
+    http-request replace-path ^/function/(.+)$ {{$.FaaSBackendPath}}/\1
+
     server {{$.NodeIP}} {{.FaaSHost}}:{{.FaaSPort}} check
 
 {{range $funcName, $func := .Functions -}}

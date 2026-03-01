@@ -88,17 +88,19 @@ func (strategy *AllLocalStrategy) updateProxyConfiguration(funcs map[string]*uin
 	// Define and populate this anonymous struct to pass data to the Go
 	// template.
 	data := struct {
-		Now          string
-		DFaaSNodeID  string
-		Functions    map[string]*uint
-		FaaSHost string
-		FaaSPort uint
+		Now             string
+		DFaaSNodeID     string
+		Functions       map[string]*uint
+		FaaSHost        string
+		FaaSPort        uint
+		FaaSBackendPath string
 	}{
-		Now:          time.Now().Format("2006-01-02 15:04:05"),
-		DFaaSNodeID:  _p2pHost.ID().String(),
-		Functions:    funcs,
-		FaaSHost: _config.OpenFaaSHost,
-		FaaSPort: _config.OpenFaaSPort,
+		Now:             time.Now().Format("2006-01-02 15:04:05"),
+		DFaaSNodeID:     _p2pHost.ID().String(),
+		Functions:       funcs,
+		FaaSHost:        _config.OpenFaaSHost,
+		FaaSPort:        _config.OpenFaaSPort,
+		FaaSBackendPath: faasprovider.BackendPathPrefix(_config.FaaSPlatform, _config.OpenWhiskNamespace),
 	}
 
 	return strategy.hacfgupdater.UpdateHAConfig(data)

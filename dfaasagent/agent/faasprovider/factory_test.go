@@ -31,3 +31,13 @@ func TestNewFaaSProvider_Unknown(t *testing.T) {
 	require.Error(t, err)
 	assert.Contains(t, err.Error(), "unknown AGENT_FAAS_PLATFORM")
 }
+
+func TestBackendPathPrefix_OpenFaaS(t *testing.T) {
+	assert.Equal(t, "/function", faasprovider.BackendPathPrefix("openfaas", ""))
+	assert.Equal(t, "/function", faasprovider.BackendPathPrefix("", ""))
+}
+
+func TestBackendPathPrefix_OpenWhisk(t *testing.T) {
+	assert.Equal(t, "/api/v1/namespaces/guest/actions", faasprovider.BackendPathPrefix("openwhisk", ""))
+	assert.Equal(t, "/api/v1/namespaces/mynamespace/actions", faasprovider.BackendPathPrefix("openwhisk", "mynamespace"))
+}
