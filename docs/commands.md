@@ -15,6 +15,29 @@ $ sudo helm install agent ./k8s/charts/agent/ --values values-test.yaml
 Note that each chart has a fixed version and the `agent` chart requires a
 `values-test.yaml` file for custom configuration.
 
+## Deploy with OpenWhisk instead of OpenFaaS
+
+```console
+$ sudo helm install owdev owdev/openwhisk --values k8s/charts/values-openwhisk.yaml
+$ sudo helm install haproxy haproxytech/haproxy --values k8s/charts/values-haproxy.yaml --version 1.26.1
+$ sudo helm install prometheus prometheus-community/prometheus \
+    --values k8s/charts/values-prometheus.yaml \
+    --values k8s/charts/values-prometheus-openwhisk.yaml \
+    --version 27.37.0
+$ sudo helm install agent ./k8s/charts/agent/ --values values-test.yaml \
+    --set config.AGENT_FAAS_PLATFORM=openwhisk \
+    --set config.AGENT_OPENFAAS_HOST=owdev-nginx.openwhisk \
+    --set config.AGENT_OPENFAAS_PORT=80 \
+    --set config.AGENT_OPENWHISK_NAMESPACE=guest \
+    --set config.AGENT_OPENWHISK_API_KEY="<uuid>:<key>"
+```
+
+To retrieve the OpenWhisk API key after deployment:
+
+```console
+$ kubectl -n openwhisk exec deploy/owdev-wskadmin -- wskadmin user get guest
+```
+
 ## Lint an HAProxy config
 
 ```console
