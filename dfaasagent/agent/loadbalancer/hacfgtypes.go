@@ -22,8 +22,8 @@ type HACfg struct {
 	MyNodeID     string
 	NodeIP       string
 	HAProxyHost  string
-	OpenFaaSHost string
-	OpenFaaSPort uint
+	FaaSHost string
+	FaaSPort uint
 }
 
 /////////////////// HACFG TYPES FOR RECALC STRATEGY ///////////////////

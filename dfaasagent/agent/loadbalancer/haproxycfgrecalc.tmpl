@@ -188,7 +188,7 @@ backend be_healthz
 backend be_system_funcs
     option httpchk GET /
     option http-server-close
-    server system_funcs {{.OpenFaaSHost}}:{{.OpenFaaSPort}} check
+    server system_funcs {{.FaaSHost}}:{{.FaaSPort}} check
 
 # Backend for the local OpenFaaS instance. Requests (functions) arriving here
 # will be handled locally.
@@ -234,7 +234,7 @@ backend be_myself
     http-response set-header X-Server %s
     http-response set-header DFaaS-Node-ID {{$.MyNodeID}}
 
-    server {{$.NodeIP}} {{.OpenFaaSHost}}:{{.OpenFaaSPort}} check
+    server {{$.NodeIP}} {{.FaaSHost}}:{{.FaaSPort}} check
 
 {{range $funcName, $func := .Functions -}}
 # Backend responsible for forwarding incoming user requests to other DFaaS

@@ -91,14 +91,14 @@ func (strategy *AllLocalStrategy) updateProxyConfiguration(funcs map[string]*uin
 		Now          string
 		DFaaSNodeID  string
 		Functions    map[string]*uint
-		OpenFaaSHost string
-		OpenFaaSPort uint
+		FaaSHost string
+		FaaSPort uint
 	}{
 		Now:          time.Now().Format("2006-01-02 15:04:05"),
 		DFaaSNodeID:  _p2pHost.ID().String(),
 		Functions:    funcs,
-		OpenFaaSHost: _config.OpenFaaSHost,
-		OpenFaaSPort: _config.OpenFaaSPort,
+		FaaSHost: _config.OpenFaaSHost,
+		FaaSPort: _config.OpenFaaSPort,
 	}
 
 	return strategy.hacfgupdater.UpdateHAConfig(data)
