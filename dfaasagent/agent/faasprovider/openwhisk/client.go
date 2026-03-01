@@ -182,7 +182,10 @@ func (c *Client) HealthCheck() (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("openwhisk health check: %w", err)
 	}
-	defer resp.Body.Close()
+	defer func() {
+		io.Copy(io.Discard, resp.Body)
+		resp.Body.Close()
+	}()
 	return resp.Status, nil
 }
 
