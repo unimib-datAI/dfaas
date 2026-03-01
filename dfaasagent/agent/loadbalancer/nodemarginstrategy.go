@@ -16,12 +16,11 @@ import (
 	"github.com/pkg/errors"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/communication"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/constants"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/faasprovider"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/forecaster"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/hasock"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/offuncs"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/ofpromq"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
 )
@@ -40,7 +39,7 @@ const powerUsageNodeMetric = "power_usage_node"
 type NodeMarginStrategy struct {
 	hacfgupdater     hacfgupd.Updater
 	nodestbl         *nodestbl.TableNMS
-	offuncsClient    *offuncs.Client
+	faasProvider     faasprovider.FaaSProvider
 	forecasterClient forecaster.Client
 	nodeInfo         nodeInfo
 	// Functions groups
@@ -100,7 +99,7 @@ func (strategy *NodeMarginStrategy) RunStrategy() error {
 	for {
 		start := time.Now()
 
-		cpuUsage, err = ofpromq.QueryCPUusage(_config.RecalcPeriod)
+		cpuUsage, err = strategy.faasProvider.QueryCPUusage(_config.RecalcPeriod)
 		if err != nil {
 			logger.Error("Failed to execute Prometheus QueryCPUusage query, skipping RunStrategy iteration ", err)
 			logger.Warn("Waiting 5 second before retrying RunStrategy after Prometheus error")
@@ -109,7 +108,7 @@ func (strategy *NodeMarginStrategy) RunStrategy() error {
 		}
 		debugPromCPUusage(_config.RecalcPeriod, cpuUsage)
 
-		ramUsage, err = ofpromq.QueryRAMusage(_config.RecalcPeriod)
+		ramUsage, err = strategy.faasProvider.QueryRAMusage(_config.RecalcPeriod)
 		if err != nil {
 			logger.Error("Failed to execute Prometheus QueryRAMusage query, skipping RunStrategy iteration ", err)
 			logger.Warn("Waiting 5 second before retrying RunStrategy after Prometheus error")
@@ -216,7 +215,7 @@ func (strategy *NodeMarginStrategy) publishNodeInfo() error {
 	var err error
 
 	// Obtain our function names list
-	strategy.nodeInfo.funcs, err = strategy.offuncsClient.GetFuncsNames()
+	strategy.nodeInfo.funcs, err = strategy.faasProvider.GetFuncsNames()
 	if err != nil {
 		return fmt.Errorf("getting functions info from OpenFaaS: %w", err)
 	}

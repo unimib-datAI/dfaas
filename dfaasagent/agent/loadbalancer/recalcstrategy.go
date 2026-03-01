@@ -16,10 +16,10 @@ import (
 
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/communication"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/constants"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/faasprovider"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/hasock"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/offuncs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/utils/p2phostutils"
@@ -38,7 +38,7 @@ import (
 type RecalcStrategy struct {
 	hacfgupdater  hacfgupd.Updater
 	nodestbl      *nodestbl.TableRecalc
-	offuncsClient *offuncs.Client
+	faasProvider faasprovider.FaaSProvider
 
 	// The following variables are specific to the Recalc algorithm.
 	nodeIDs   []peer.ID          // IDs of the connected p2p nodes
@@ -151,7 +151,7 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 	debugConnectedNodes(strategy.nodeIDs)
 
 	// Get stats about OpenFaaS functions.
-	strategy.funcs, err = strategy.offuncsClient.GetFuncsWithMaxRates()
+	strategy.funcs, err = strategy.faasProvider.GetFuncsWithMaxRates()
 	if err != nil {
 		return fmt.Errorf("get functions info from OpenFaaS: %w", err)
 	}
