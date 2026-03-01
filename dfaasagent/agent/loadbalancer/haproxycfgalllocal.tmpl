@@ -68,7 +68,7 @@ frontend main
 {{range $funcName, $timeout := .Functions -}}
 backend function_{{$funcName}}
     http-response set-header dfaaS-node-id {{$.DFaaSNodeID}}
-    server openfaas-local {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}}
+    server openfaas-local {{$.FaaSHost}}:{{$.FaaSPort}}
     {{- if $timeout}}
     # If the function's metadata contains dfaas.timeout_ms label, we se in the
     # HAProxy backend a timeout of dfaas.timeout_ms+1s. Note that in the
