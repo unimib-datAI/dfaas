@@ -9,6 +9,7 @@ import (
 	"fmt"
 
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/faasprovider/openfaas"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/faasprovider/openwhisk"
 )
 
 const (
@@ -26,7 +27,11 @@ func NewFaaSProvider(platform, host string, port uint, namespace, apiKey string)
 	case "", PlatformOpenFaaS:
 		return openfaas.New(host, port), nil
 	case PlatformOpenWhisk:
-		return nil, fmt.Errorf("OpenWhisk provider not yet implemented; set AGENT_FAAS_PLATFORM=openfaas")
+		return openwhisk.New(
+			fmt.Sprintf("%s:%d", host, port),
+			namespace,
+			apiKey,
+		), nil
 	default:
 		return nil, fmt.Errorf("unknown AGENT_FAAS_PLATFORM %q; valid values: %q, %q",
 			platform, PlatformOpenFaaS, PlatformOpenWhisk)
