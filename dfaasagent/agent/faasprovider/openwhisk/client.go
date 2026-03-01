@@ -13,7 +13,10 @@ import (
 	"io"
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
+
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/constants"
 )
 
 // owAnnotation represents a single OpenWhisk action annotation.
@@ -52,25 +55,34 @@ func (a owAction) annotation(key string) (string, bool) {
 // Client implements faasprovider.FaaSProvider for Apache OpenWhisk.
 type Client struct {
 	// host is "hostname:port" of the OpenWhisk API gateway (no scheme).
-	host       string
-	namespace  string
-	apiKey     string
-	httpClient *http.Client
+	host           string
+	namespace      string
+	apiKey         string
+	prometheusHost string
+	httpClient     *http.Client
 }
 
-// New returns a new OpenWhisk FaaSProvider.
+// New returns a new OpenWhisk FaaSProvider using the default Prometheus origin.
 // host must be in "hostname:port" form (no http:// prefix).
 // namespace defaults to "guest" if empty.
 // apiKey is the OpenWhisk API key ("uuid:key"); may be empty for open deployments.
 func New(host, namespace, apiKey string) *Client {
+	return NewWithPrometheus(host, namespace, apiKey, constants.PrometheusOrigin)
+}
+
+// NewWithPrometheus returns an OpenWhisk FaaSProvider with an explicit Prometheus host.
+// prometheusHost must be in "hostname:port" form (e.g. "prometheus-server:80").
+// namespace defaults to "guest" if empty.
+func NewWithPrometheus(host, namespace, apiKey, prometheusHost string) *Client {
 	if namespace == "" {
 		namespace = "guest"
 	}
 	return &Client{
-		host:       host,
-		namespace:  namespace,
-		apiKey:     apiKey,
-		httpClient: &http.Client{Timeout: 30 * time.Second},
+		host:           host,
+		namespace:      namespace,
+		apiKey:         apiKey,
+		prometheusHost: prometheusHost,
+		httpClient:     &http.Client{Timeout: 30 * time.Second},
 	}
 }
 
@@ -189,37 +201,229 @@ func (c *Client) HealthCheck() (string, error) {
 	return resp.Status, nil
 }
 
-// QueryAFET returns "not yet implemented" — will be added in Task 7.
-func (c *Client) QueryAFET(_ time.Duration) (map[string]float64, error) {
-	return nil, fmt.Errorf("QueryAFET not yet implemented for OpenWhisk")
+// promQuery runs a PromQL instant-query against the configured Prometheus host.
+func (c *Client) promQuery(query string) ([]byte, error) {
+	rawURL := fmt.Sprintf("http://%s/api/v1/query", c.prometheusHost)
+	req, err := http.NewRequest(http.MethodGet, rawURL, nil)
+	if err != nil {
+		return nil, fmt.Errorf("openwhisk promQuery: building request: %w", err)
+	}
+	q := req.URL.Query()
+	q.Add("query", query)
+	req.URL.RawQuery = q.Encode()
+
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return nil, fmt.Errorf("openwhisk promQuery %q: %w", query, err)
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		io.Copy(io.Discard, resp.Body) //nolint:errcheck
+		return nil, fmt.Errorf("openwhisk promQuery %q: unexpected status %s", query, resp.Status)
+	}
+	return io.ReadAll(resp.Body)
 }
 
-// QueryInvoc returns "not yet implemented" — will be added in Task 7.
-func (c *Client) QueryInvoc(_ time.Duration) (map[string]map[string]float64, error) {
-	return nil, fmt.Errorf("QueryInvoc not yet implemented for OpenWhisk")
+// QueryAFET returns, for each OpenWhisk action, the Average Function Execution
+// Time (in seconds) measured over the given time span.
+// It uses openwhisk_action_duration_seconds_sum/count from the OpenWhisk exporter.
+func (c *Client) QueryAFET(timeSpan time.Duration) (map[string]float64, error) {
+	t := fmt.Sprintf("%.0fm", timeSpan.Minutes())
+	query := fmt.Sprintf(
+		`rate(openwhisk_action_duration_seconds_sum[%s]) / rate(openwhisk_action_duration_seconds_count[%s])`,
+		t, t,
+	)
+	body, err := c.promQuery(query)
+	if err != nil {
+		return nil, err
+	}
+	var r owAFETResponse
+	if err := json.Unmarshal(body, &r); err != nil {
+		return nil, fmt.Errorf("openwhisk QueryAFET: parsing response: %w", err)
+	}
+	result := map[string]float64{}
+	for _, item := range r.Data.Result {
+		if len(item.Value) < 2 {
+			continue
+		}
+		val, _ := strconv.ParseFloat(item.Value[1].(string), 64)
+		result[item.Metric.Action] = val
+	}
+	return result, nil
 }
 
-// QueryServiceCount returns "not yet implemented" — will be added in Task 7.
+// QueryInvoc returns, for each OpenWhisk action, the invocation rate keyed by
+// an HTTP-like status code string ("200" for success, "500" otherwise).
+// It uses openwhisk_action_activations_total from the OpenWhisk exporter.
+func (c *Client) QueryInvoc(timeSpan time.Duration) (map[string]map[string]float64, error) {
+	t := fmt.Sprintf("%.0fm", timeSpan.Minutes())
+	query := fmt.Sprintf(`rate(openwhisk_action_activations_total[%s])`, t)
+	body, err := c.promQuery(query)
+	if err != nil {
+		return nil, err
+	}
+	var r owInvocResponse
+	if err := json.Unmarshal(body, &r); err != nil {
+		return nil, fmt.Errorf("openwhisk QueryInvoc: parsing response: %w", err)
+	}
+	result := map[string]map[string]float64{}
+	for _, item := range r.Data.Result {
+		if len(item.Value) < 2 {
+			continue
+		}
+		action := item.Metric.Action
+		if _, ok := result[action]; !ok {
+			result[action] = map[string]float64{}
+		}
+		code := owStatusToCode(item.Metric.Status)
+		val, _ := strconv.ParseFloat(item.Value[1].(string), 64)
+		result[action][code] = val
+	}
+	return result, nil
+}
+
+// owStatusToCode maps an OpenWhisk activation status label to an HTTP-like
+// code string that matches the convention used by the rest of DFaaS.
+func owStatusToCode(status string) string {
+	if status == "success" {
+		return "200"
+	}
+	return "500"
+}
+
+// QueryServiceCount returns, for each OpenWhisk action, the number of
+// currently running Kubernetes deployment replicas in the OpenWhisk namespace.
+// It uses kube_deployment_status_replicas filtered by the client namespace.
 func (c *Client) QueryServiceCount() (map[string]int, error) {
-	return nil, fmt.Errorf("QueryServiceCount not yet implemented for OpenWhisk")
+	query := fmt.Sprintf(`kube_deployment_status_replicas{namespace="%s"}`, c.namespace)
+	body, err := c.promQuery(query)
+	if err != nil {
+		return nil, err
+	}
+	var r owServiceCountResponse
+	if err := json.Unmarshal(body, &r); err != nil {
+		return nil, fmt.Errorf("openwhisk QueryServiceCount: parsing response: %w", err)
+	}
+	result := map[string]int{}
+	for _, item := range r.Data.Result {
+		if len(item.Value) < 2 {
+			continue
+		}
+		val, _ := strconv.Atoi(item.Value[1].(string))
+		result[item.Metric.Deployment] = val
+	}
+	return result, nil
 }
 
-// QueryCPUusage returns "not yet implemented" — will be added in Task 7.
-func (c *Client) QueryCPUusage(_ time.Duration) (map[string]float64, error) {
-	return nil, fmt.Errorf("QueryCPUusage not yet implemented for OpenWhisk")
+// QueryCPUusage returns the CPU usage percentage for each node as reported by
+// Prometheus node-exporter. The map key is the node instance label.
+func (c *Client) QueryCPUusage(timeSpan time.Duration) (map[string]float64, error) {
+	t := fmt.Sprintf("%.0fm", timeSpan.Minutes())
+	rawQuery := `1 - (avg by (instance) (rate(node_cpu_seconds_total{service="prometheus-prometheus-node-exporter", mode="idle"}[%s])))`
+	query := fmt.Sprintf(rawQuery, t)
+	body, err := c.promQuery(query)
+	if err != nil {
+		return nil, err
+	}
+	var r owNodeMetricResponse
+	if err := json.Unmarshal(body, &r); err != nil {
+		return nil, fmt.Errorf("openwhisk QueryCPUusage: parsing response: %w", err)
+	}
+	result := map[string]float64{}
+	for _, item := range r.Data.Result {
+		if len(item.Value) < 2 {
+			continue
+		}
+		instance := item.Metric["instance"]
+		val, _ := strconv.ParseFloat(item.Value[1].(string), 64)
+		result[instance] = val
+	}
+	return result, nil
 }
 
-// QueryRAMusage returns "not yet implemented" — will be added in Task 7.
-func (c *Client) QueryRAMusage(_ time.Duration) (map[string]float64, error) {
-	return nil, fmt.Errorf("QueryRAMusage not yet implemented for OpenWhisk")
+// QueryRAMusage returns the RAM usage percentage for each node as reported by
+// Prometheus node-exporter. The map key is the node instance label.
+func (c *Client) QueryRAMusage(timeSpan time.Duration) (map[string]float64, error) {
+	t := fmt.Sprintf("%.0fm", timeSpan.Minutes())
+	rawQuery := `( 1 - (( avg_over_time(node_memory_MemFree_bytes[%s]) + avg_over_time(node_memory_Cached_bytes[%s]) + avg_over_time(node_memory_Buffers_bytes[%s]) ) / avg_over_time(node_memory_MemTotal_bytes[%s]) ) )`
+	query := fmt.Sprintf(rawQuery, t, t, t, t)
+	query = strings.Join(strings.Fields(query), " ")
+	body, err := c.promQuery(query)
+	if err != nil {
+		return nil, err
+	}
+	var r owNodeMetricResponse
+	if err := json.Unmarshal(body, &r); err != nil {
+		return nil, fmt.Errorf("openwhisk QueryRAMusage: parsing response: %w", err)
+	}
+	result := map[string]float64{}
+	for _, item := range r.Data.Result {
+		if len(item.Value) < 2 {
+			continue
+		}
+		instance := item.Metric["instance"]
+		val, _ := strconv.ParseFloat(item.Value[1].(string), 64)
+		result[instance] = val
+	}
+	return result, nil
 }
 
-// QueryCPUusagePerFunction returns "not yet implemented" — will be added in Task 7.
-func (c *Client) QueryCPUusagePerFunction(_ time.Duration, _ []string) (map[string]float64, error) {
-	return nil, fmt.Errorf("QueryCPUusagePerFunction not yet implemented for OpenWhisk")
+// QueryCPUusagePerFunction returns, for each OpenWhisk action container, the
+// fraction of total CPU it is using. Uses cAdvisor + node-exporter metrics.
+func (c *Client) QueryCPUusagePerFunction(timeSpan time.Duration, funcName []string) (map[string]float64, error) {
+	if len(funcName) == 0 {
+		return map[string]float64{}, nil
+	}
+	t := fmt.Sprintf("%.0fm", timeSpan.Minutes())
+	funcFilter := strings.Join(funcName, "|")
+	rawQuery := `sum by (container) ( irate(container_cpu_usage_seconds_total{container=~"%s"}[%s]) ) / on() group_left() sum by (instance) ( irate(node_cpu_seconds_total{service="prometheus-prometheus-node-exporter"}[%s]) )`
+	query := fmt.Sprintf(rawQuery, funcFilter, t, t)
+	query = strings.Join(strings.Fields(query), " ")
+	body, err := c.promQuery(query)
+	if err != nil {
+		return nil, err
+	}
+	var r owPerFunctionMetricResponse
+	if err := json.Unmarshal(body, &r); err != nil {
+		return nil, fmt.Errorf("openwhisk QueryCPUusagePerFunction: parsing response: %w", err)
+	}
+	result := map[string]float64{}
+	for _, item := range r.Data.Result {
+		if len(item.Value) < 2 {
+			continue
+		}
+		val, _ := strconv.ParseFloat(item.Value[1].(string), 64)
+		result[item.Metric.Container] = val
+	}
+	return result, nil
 }
 
-// QueryRAMusagePerFunction returns "not yet implemented" — will be added in Task 7.
-func (c *Client) QueryRAMusagePerFunction(_ time.Duration, _ []string) (map[string]float64, error) {
-	return nil, fmt.Errorf("QueryRAMusagePerFunction not yet implemented for OpenWhisk")
+// QueryRAMusagePerFunction returns, for each OpenWhisk action container, the
+// fraction of total RAM it is using. Uses cAdvisor + node-exporter metrics.
+func (c *Client) QueryRAMusagePerFunction(timeSpan time.Duration, funcName []string) (map[string]float64, error) {
+	if len(funcName) == 0 {
+		return map[string]float64{}, nil
+	}
+	t := fmt.Sprintf("%.0fm", timeSpan.Minutes())
+	funcFilter := strings.Join(funcName, "|")
+	rawQuery := `( sum ( avg_over_time(container_memory_usage_bytes{container=~"%s"}[%s]) ) by(container) ) / on() group_left() ( avg_over_time(node_memory_MemTotal_bytes[%s]) )`
+	query := fmt.Sprintf(rawQuery, funcFilter, t, t)
+	query = strings.Join(strings.Fields(query), " ")
+	body, err := c.promQuery(query)
+	if err != nil {
+		return nil, err
+	}
+	var r owPerFunctionMetricResponse
+	if err := json.Unmarshal(body, &r); err != nil {
+		return nil, fmt.Errorf("openwhisk QueryRAMusagePerFunction: parsing response: %w", err)
+	}
+	result := map[string]float64{}
+	for _, item := range r.Data.Result {
+		if len(item.Value) < 2 {
+			continue
+		}
+		val, _ := strconv.ParseFloat(item.Value[1].(string), 64)
+		result[item.Metric.Container] = val
+	}
+	return result, nil
 }
