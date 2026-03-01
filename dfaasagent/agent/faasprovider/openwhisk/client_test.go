@@ -7,6 +7,7 @@ import (
 	"net/http/httptest"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
@@ -92,4 +93,172 @@ func TestHealthCheck_OK(t *testing.T) {
 	status, err := client.HealthCheck()
 	require.NoError(t, err)
 	assert.Equal(t, "200 OK", status)
+}
+
+// mockPrometheusServer returns a test HTTP server that responds with a fixed JSON body.
+func mockPrometheusServer(t *testing.T, body string) *httptest.Server {
+	t.Helper()
+	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.Header().Set("Content-Type", "application/json")
+		fmt.Fprint(w, body)
+	}))
+}
+
+func TestQueryAFET_OpenWhisk(t *testing.T) {
+	promBody := `{
+		"status": "success",
+		"data": {
+			"resultType": "vector",
+			"result": [
+				{
+					"metric": {"action": "figlet"},
+					"value": [1700000000, "0.042"]
+				}
+			]
+		}
+	}`
+	promSrv := mockPrometheusServer(t, promBody)
+	defer promSrv.Close()
+
+	client := openwhisk.NewWithPrometheus("localhost:8080", "guest", "", promSrv.Listener.Addr().String())
+	result, err := client.QueryAFET(1 * time.Minute)
+	require.NoError(t, err)
+	assert.InDelta(t, 0.042, result["figlet"], 0.001)
+}
+
+func TestQueryInvoc_OpenWhisk(t *testing.T) {
+	promBody := `{
+		"status": "success",
+		"data": {
+			"resultType": "vector",
+			"result": [
+				{
+					"metric": {"action": "figlet", "status": "success"},
+					"value": [1700000000, "10.5"]
+				},
+				{
+					"metric": {"action": "figlet", "status": "developer_error"},
+					"value": [1700000000, "1.2"]
+				}
+			]
+		}
+	}`
+	promSrv := mockPrometheusServer(t, promBody)
+	defer promSrv.Close()
+
+	client := openwhisk.NewWithPrometheus("localhost:8080", "guest", "", promSrv.Listener.Addr().String())
+	result, err := client.QueryInvoc(1 * time.Minute)
+	require.NoError(t, err)
+	assert.InDelta(t, 10.5, result["figlet"]["200"], 0.01)
+	assert.InDelta(t, 1.2, result["figlet"]["500"], 0.01)
+}
+
+func TestQueryServiceCount_OpenWhisk(t *testing.T) {
+	promBody := `{
+		"status": "success",
+		"data": {
+			"resultType": "vector",
+			"result": [
+				{
+					"metric": {"deployment": "figlet"},
+					"value": [1700000000, "3"]
+				}
+			]
+		}
+	}`
+	promSrv := mockPrometheusServer(t, promBody)
+	defer promSrv.Close()
+
+	client := openwhisk.NewWithPrometheus("localhost:8080", "guest", "", promSrv.Listener.Addr().String())
+	result, err := client.QueryServiceCount()
+	require.NoError(t, err)
+	assert.Equal(t, 3, result["figlet"])
+}
+
+func TestQueryCPUusage_OpenWhisk(t *testing.T) {
+	promBody := `{
+		"status": "success",
+		"data": {
+			"resultType": "vector",
+			"result": [
+				{
+					"metric": {"instance": "node1:9100"},
+					"value": [1700000000, "0.35"]
+				}
+			]
+		}
+	}`
+	promSrv := mockPrometheusServer(t, promBody)
+	defer promSrv.Close()
+
+	client := openwhisk.NewWithPrometheus("localhost:8080", "guest", "", promSrv.Listener.Addr().String())
+	result, err := client.QueryCPUusage(1 * time.Minute)
+	require.NoError(t, err)
+	assert.InDelta(t, 0.35, result["node1:9100"], 0.01)
+}
+
+func TestQueryRAMusage_OpenWhisk(t *testing.T) {
+	promBody := `{
+		"status": "success",
+		"data": {
+			"resultType": "vector",
+			"result": [
+				{
+					"metric": {"instance": "node1:9100"},
+					"value": [1700000000, "0.72"]
+				}
+			]
+		}
+	}`
+	promSrv := mockPrometheusServer(t, promBody)
+	defer promSrv.Close()
+
+	client := openwhisk.NewWithPrometheus("localhost:8080", "guest", "", promSrv.Listener.Addr().String())
+	result, err := client.QueryRAMusage(1 * time.Minute)
+	require.NoError(t, err)
+	assert.InDelta(t, 0.72, result["node1:9100"], 0.01)
+}
+
+func TestQueryCPUusagePerFunction_OpenWhisk(t *testing.T) {
+	promBody := `{
+		"status": "success",
+		"data": {
+			"resultType": "vector",
+			"result": [
+				{
+					"metric": {"container": "figlet"},
+					"value": [1700000000, "0.15"]
+				}
+			]
+		}
+	}`
+	promSrv := mockPrometheusServer(t, promBody)
+	defer promSrv.Close()
+
+	client := openwhisk.NewWithPrometheus("localhost:8080", "guest", "", promSrv.Listener.Addr().String())
+	result, err := client.QueryCPUusagePerFunction(1*time.Minute, []string{"figlet"})
+	require.NoError(t, err)
+	assert.InDelta(t, 0.15, result["figlet"], 0.01)
+}
+
+func TestQueryRAMusagePerFunction_OpenWhisk(t *testing.T) {
+	promBody := `{
+		"status": "success",
+		"data": {
+			"resultType": "vector",
+			"result": [
+				{
+					"metric": {"container": "figlet"},
+					"value": [1700000000, "0.08"]
+				}
+			]
+		}
+	}`
+	promSrv := mockPrometheusServer(t, promBody)
+	defer promSrv.Close()
+
+	client := openwhisk.NewWithPrometheus("localhost:8080", "guest", "", promSrv.Listener.Addr().String())
+	result, err := client.QueryRAMusagePerFunction(1*time.Minute, []string{"figlet"})
+	require.NoError(t, err)
+	assert.InDelta(t, 0.08, result["figlet"], 0.01)
 }
