@@ -10,16 +10,18 @@ import (
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strconv"
 	"time"
 )
 
 // owAnnotation represents a single OpenWhisk action annotation.
+// Value is json.RawMessage because the OpenWhisk API uses arbitrary JSON
+// for annotation values (objects, booleans, numbers, or strings).
 type owAnnotation struct {
-	Key   string `json:"key"`
-	Value string `json:"value"`
+	Key   string          `json:"key"`
+	Value json.RawMessage `json:"value"`
 }
 
 // owAction is the relevant subset of an OpenWhisk action list response entry.
@@ -29,11 +31,19 @@ type owAction struct {
 	Annotations []owAnnotation `json:"annotations"`
 }
 
-// annotation returns the value for the given annotation key, or ("", false) if absent.
+// annotation returns the string representation of the annotation value for key.
+// If the raw value is a JSON string, it is unquoted. Otherwise the raw JSON
+// bytes are returned as-is. Returns "", false if the key is not found.
 func (a owAction) annotation(key string) (string, bool) {
 	for _, ann := range a.Annotations {
 		if ann.Key == key {
-			return ann.Value, true
+			// If it's a JSON string, unquote it.
+			var s string
+			if err := json.Unmarshal(ann.Value, &s); err == nil {
+				return s, true
+			}
+			// Otherwise return raw JSON representation.
+			return string(ann.Value), true
 		}
 	}
 	return "", false
@@ -42,9 +52,10 @@ func (a owAction) annotation(key string) (string, bool) {
 // Client implements faasprovider.FaaSProvider for Apache OpenWhisk.
 type Client struct {
 	// host is "hostname:port" of the OpenWhisk API gateway (no scheme).
-	host      string
-	namespace string
-	apiKey    string
+	host       string
+	namespace  string
+	apiKey     string
+	httpClient *http.Client
 }
 
 // New returns a new OpenWhisk FaaSProvider.
@@ -55,13 +66,18 @@ func New(host, namespace, apiKey string) *Client {
 	if namespace == "" {
 		namespace = "guest"
 	}
-	return &Client{host: host, namespace: namespace, apiKey: apiKey}
+	return &Client{
+		host:       host,
+		namespace:  namespace,
+		apiKey:     apiKey,
+		httpClient: &http.Client{Timeout: 30 * time.Second},
+	}
 }
 
 // doActionsRequest calls the OpenWhisk actions list endpoint and returns parsed actions.
 func (c *Client) doActionsRequest() ([]owAction, error) {
 	url := fmt.Sprintf("http://%s/api/v1/namespaces/%s/actions", c.host, c.namespace)
-	req, err := http.NewRequest("GET", url, nil)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
 		return nil, fmt.Errorf("building OpenWhisk actions request: %w", err)
 	}
@@ -70,7 +86,7 @@ func (c *Client) doActionsRequest() ([]owAction, error) {
 		req.Header.Set("Authorization", "Basic "+encoded)
 	}
 
-	resp, err := http.DefaultClient.Do(req)
+	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("GET OpenWhisk actions: %w", err)
 	}
@@ -80,7 +96,7 @@ func (c *Client) doActionsRequest() ([]owAction, error) {
 		return nil, fmt.Errorf("GET OpenWhisk actions returned %s", resp.Status)
 	}
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("reading OpenWhisk actions response: %w", err)
 	}
@@ -150,12 +166,21 @@ func (c *Client) GetFuncsWithTimeout() (map[string]*uint, error) {
 	return result, nil
 }
 
-// HealthCheck returns "200 OK" if the OpenWhisk controller is reachable.
+// HealthCheck returns the HTTP status (e.g. "200 OK") if the OpenWhisk controller
+// is reachable. The Authorization header is sent when an apiKey is configured.
 func (c *Client) HealthCheck() (string, error) {
 	url := fmt.Sprintf("http://%s/api/v1/namespaces", c.host)
-	resp, err := http.Get(url)
+	req, err := http.NewRequest(http.MethodGet, url, nil)
 	if err != nil {
-		return "", err
+		return "", fmt.Errorf("openwhisk health check: creating request: %w", err)
+	}
+	if c.apiKey != "" {
+		encoded := base64.StdEncoding.EncodeToString([]byte(c.apiKey))
+		req.Header.Set("Authorization", "Basic "+encoded)
+	}
+	resp, err := c.httpClient.Do(req)
+	if err != nil {
+		return "", fmt.Errorf("openwhisk health check: %w", err)
 	}
 	defer resp.Body.Close()
 	return resp.Status, nil

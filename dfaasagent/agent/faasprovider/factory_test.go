@@ -20,6 +20,12 @@ func TestNewFaaSProvider_EmptyDefaultsToOpenFaaS(t *testing.T) {
 	assert.NotNil(t, p)
 }
 
+func TestNewFaaSProvider_OpenWhisk(t *testing.T) {
+	p, err := faasprovider.NewFaaSProvider("openwhisk", "localhost", 3001, "guest", "")
+	require.NoError(t, err)
+	assert.NotNil(t, p)
+}
+
 func TestNewFaaSProvider_Unknown(t *testing.T) {
 	_, err := faasprovider.NewFaaSProvider("fission", "localhost", 8080, "", "")
 	require.Error(t, err)

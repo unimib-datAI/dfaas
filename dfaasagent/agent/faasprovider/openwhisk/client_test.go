@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -14,10 +15,14 @@ import (
 )
 
 // mockOpenWhiskServer returns a test server that responds with a fixed action list
-// at /api/v1/namespaces/guest/actions.
+// at /api/v1/namespaces/<namespace>/actions.
 func mockOpenWhiskServer(t *testing.T) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if !strings.HasPrefix(r.URL.Path, "/api/v1/namespaces/") || !strings.HasSuffix(r.URL.Path, "/actions") {
+			http.Error(w, "unexpected path: "+r.URL.Path, http.StatusNotFound)
+			return
+		}
 		actions := []map[string]interface{}{
 			{
 				"name":      "figlet",
