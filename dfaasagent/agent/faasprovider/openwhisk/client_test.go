@@ -99,6 +99,14 @@ func TestHealthCheck_OK(t *testing.T) {
 func mockPrometheusServer(t *testing.T, body string) *httptest.Server {
 	t.Helper()
 	return httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.URL.Path != "/api/v1/query" {
+			http.Error(w, "unexpected path: "+r.URL.Path, http.StatusNotFound)
+			return
+		}
+		if r.URL.Query().Get("query") == "" {
+			http.Error(w, "missing query parameter", http.StatusBadRequest)
+			return
+		}
 		w.Header().Set("Content-Type", "application/json")
 		fmt.Fprint(w, body)
 	}))
