@@ -1,0 +1,28 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: stick-table-exporter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: stick-table-exporter
+  template:
+    metadata:
+      labels:
+        app: stick-table-exporter
+    spec:
+      containers:
+        - name: stick-table-exporter
+          image: {{ .Values.image }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: ROTATION_PERIOD
+              value: "{{ .Values.config.ROTATION_PERIOD }}"
+            - name: HAPROXY_API_HOST
+              value: "{{ .Values.config.HAPROXY_API_HOST }}"
+            - name: HAPROXY_API_PORT
+              value: "{{ .Values.config.HAPROXY_API_PORT }}"

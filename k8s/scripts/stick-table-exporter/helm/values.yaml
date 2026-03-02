@@ -1,0 +1,11 @@
+# Default is the locally built image, manually imported into K3s.
+image: localhost/stick-table-exporter:dev
+imagePullPolicy: Never # The image is manually imported.
+# Alternative is the latest dev version from GitHub Container Registry.
+#image: ghcr.io/unimib-datai/stick-table-exporter:dev
+#imagePullPolicy: Always # Since the dev tag is overwritten with newer versions.
+
+config:
+  ROTATION_PERIOD: "12h"
+  HAPROXY_API_HOST: "haproxy.default.svc.cluster.local"
+  HAPROXY_API_PORT: "5555"
