@@ -20,15 +20,15 @@
           APT::Periodic::Update-Package-Lists "0";
           APT::Periodic::Unattended-Upgrade "0";
 
-    - name: Configure sudo to preserve all environment variables
+    - name: Configure sudo to preserve some environment variables
       ansible.builtin.copy:
         dest: /etc/sudoers.d/99-preserve-env
         owner: root
         group: root
         mode: "0440"
         content: |
-          Defaults !env_reset
-          Defaults !secure_path
+          Defaults:%sudo env_keep += "KUBECONFIG"
+          Defaults !always_set_home
 
     - name: Install buildah
       ansible.builtin.apt:
@@ -148,19 +148,20 @@
               # Let all users run binaries in /opt/bin.
               export PATH="/opt/bin:$PATH"
 
-    - name: Ensure Helm repositories are installed
-      vars:
-        helm_repos:
-          - name: haproxytech
-            repo_url: https://haproxytech.github.io/helm-charts
-          - name: prometheus-community
-            repo_url: https://prometheus-community.github.io/helm-charts
-          - name: openfaas
-            repo_url: https://openfaas.github.io/faas-netes/
+    - name: Ensure HAProxy's Helm repository is present
       kubernetes.core.helm_repository:
-        name: "{{ item.name }}"
-        repo_url: "{{ item.repo_url }}"
-      loop: "{{ helm_repos }}"
+        name: haproxytech
+        repo_url: https://haproxytech.github.io/helm-charts
+
+    - name: Ensure Prometheus's Helm repository is present
+      kubernetes.core.helm_repository:
+        name: prometheus-community
+        repo_url: https://prometheus-community.github.io/helm-charts
+
+    - name: Ensure OpenFaaS's Helm repository is present
+      kubernetes.core.helm_repository:
+        name: openfaas
+        repo_url: https://openfaas.github.io/faas-netes/
 
 
 - name: Deploy DFaaS on a node
