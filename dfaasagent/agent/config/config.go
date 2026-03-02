@@ -71,8 +71,8 @@ type Configuration struct {
 	HAProxyHost       string `mapstructure:"AGENT_HAPROXY_HOST"`
 	HAProxyPort       uint   `mapstructure:"AGENT_HAPROXY_PORT"`
 
-	OpenFaaSHost string `mapstructure:"AGENT_OPENFAAS_HOST"`
-	OpenFaaSPort uint   `mapstructure:"AGENT_OPENFAAS_PORT"`
+	FaaSHost string `mapstructure:"AGENT_FAAS_HOST"`
+	FaaSPort uint   `mapstructure:"AGENT_FAAS_PORT"`
 
 	Strategy string `mapstructure:"AGENT_STRATEGY"`
 

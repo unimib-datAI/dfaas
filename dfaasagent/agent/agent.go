@@ -246,8 +246,8 @@ func runAgent(config config.Configuration) error {
 	// Create FaaS provider for use by httpserver health check.
 	faasProvider, err := faasprovider.NewFaaSProvider(
 		config.FaaSPlatform,
-		config.OpenFaaSHost,
-		config.OpenFaaSPort,
+		config.FaaSHost,
+		config.FaaSPort,
 		config.OpenWhiskNamespace,
 		config.OpenWhiskAPIKey,
 	)

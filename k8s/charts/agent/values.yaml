@@ -6,8 +6,7 @@ imagePullPolicy: Never # The agent image is manually imported.
 #imagePullPolicy: Always # Since the dev tag is overwritten with newer versions.
 
 # Default DFaaS Agent configuration.
-# Note that AGENT_OPENFAAS_PASS is automatically created by the Deployment
-# object.
+# Note that AGENT_OPENFAAS_PASS is automatically created by the Deployment object.
 config:
   AGENT_DEBUG: true
   AGENT_LOG_DATETIME: true
@@ -63,10 +62,10 @@ config:
   AGENT_HAPROXY_HOST: "haproxy.default.svc.cluster.local"
   AGENT_HAPROXY_PORT: 80
 
-  # DNS name automatically set by Kubernetes to OpenFaaS Gateway service. If not
-  # using Kubernetes, set manually the IP/DNS.
-  AGENT_OPENFAAS_HOST: "gateway"
-  AGENT_OPENFAAS_PORT: 8080
+  # DNS name of the FaaS gateway service. For OpenFaaS this is "gateway:8080";
+  # for OpenWhisk use "owdev-nginx.openwhisk:80".
+  AGENT_FAAS_HOST: "gateway"
+  AGENT_FAAS_PORT: 8080
 
   # FaaS platform selection. Accepted values: "openfaas" (default), "openwhisk".
   AGENT_FAAS_PLATFORM: "openfaas"

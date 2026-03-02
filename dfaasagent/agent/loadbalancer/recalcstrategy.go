@@ -410,8 +410,8 @@ func (strategy *RecalcStrategy) recalcStep2() error {
 	strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryRecalc) error {
 		hacfg = strategy.createHACfgObject(
 			strMyself,
-			_config.OpenFaaSHost,
-			_config.OpenFaaSPort,
+			_config.FaaSHost,
+			_config.FaaSPort,
 			_config.RecalcPeriod,
 			entries,
 			strategy.funcs,

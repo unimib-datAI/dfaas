@@ -175,6 +175,10 @@ backend be_{{$funcName}}
 
     {{range $nodeID, $weight := $func.Weights -}}
     {{if (eq $nodeID $.MyNodeID) -}}
+    # Rewrite /function/<name> to the platform-specific backend path.
+    # For OpenFaaS this is a no-op; for OpenWhisk it rewrites to
+    # /api/v1/namespaces/<ns>/actions/<name>.
+    http-request replace-path ^/function/(.+)$ {{$.FaaSBackendPath}}/\1
     server {{$.NodeIP}} {{$.FaaSHost}}:{{$.FaaSPort}} weight {{$weight}} check
     {{else -}}
     server {{(index $.Nodes $nodeID).HAProxyHost}} {{(index $.Nodes $nodeID).HAProxyHost}}:{{(index $.Nodes $nodeID).HAProxyPort}} weight {{$weight}} check

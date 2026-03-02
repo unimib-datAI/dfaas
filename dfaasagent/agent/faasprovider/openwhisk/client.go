@@ -13,6 +13,7 @@ import (
 	"io"
 	"math"
 	"net/http"
+	"regexp"
 	"strconv"
 	"strings"
 	"time"
@@ -412,7 +413,11 @@ func (c *Client) QueryCPUusagePerFunction(timeSpan time.Duration, funcName []str
 		return map[string]float64{}, nil
 	}
 	t := fmt.Sprintf("%.0fm", timeSpan.Minutes())
-	funcFilter := strings.Join(funcName, "|")
+	escaped := make([]string, len(funcName))
+	for i, n := range funcName {
+		escaped[i] = regexp.QuoteMeta(n)
+	}
+	funcFilter := strings.Join(escaped, "|")
 	rawQuery := `sum by (container) ( irate(container_cpu_usage_seconds_total{container=~"%s"}[%s]) ) / on() group_left() sum by (instance) ( irate(node_cpu_seconds_total{service="prometheus-prometheus-node-exporter"}[%s]) )`
 	query := fmt.Sprintf(rawQuery, funcFilter, t, t)
 	query = strings.Join(strings.Fields(query), " ")
@@ -450,7 +455,11 @@ func (c *Client) QueryRAMusagePerFunction(timeSpan time.Duration, funcName []str
 		return map[string]float64{}, nil
 	}
 	t := fmt.Sprintf("%.0fm", timeSpan.Minutes())
-	funcFilter := strings.Join(funcName, "|")
+	escaped := make([]string, len(funcName))
+	for i, n := range funcName {
+		escaped[i] = regexp.QuoteMeta(n)
+	}
+	funcFilter := strings.Join(escaped, "|")
 	rawQuery := `( sum ( avg_over_time(container_memory_usage_bytes{container=~"%s"}[%s]) ) by(container) ) / on() group_left() ( avg_over_time(node_memory_MemTotal_bytes[%s]) )`
 	query := fmt.Sprintf(rawQuery, funcFilter, t, t)
 	query = strings.Join(strings.Fields(query), " ")

@@ -670,8 +670,8 @@ func (strategy *NodeMarginStrategy) setProxyWeights() error {
 	strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryNMS) error {
 		hacfg = strategy.createHACfgObject(
 			myID,
-			_config.OpenFaaSHost,
-			_config.OpenFaaSPort,
+			_config.FaaSHost,
+			_config.FaaSPort,
 			_config.RecalcPeriod,
 			entries,
 			strategy.weights,
