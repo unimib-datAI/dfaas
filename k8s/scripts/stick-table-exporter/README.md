@@ -20,7 +20,7 @@ $ ./stick-table-exporter
 
 If you want to deploy to a Kubernetes cluster, you can use the given Helm chart:
 
-    $ sudo helm install ./helm/
+    $ sudo helm install stick-table-exporter ./helm/
 
 See the [`values.yaml`](helm/values.yaml) file for more information. In both
 cases, the program assumes that the HAProxy Data Plane API is reachable and the
