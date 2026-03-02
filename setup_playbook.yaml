@@ -20,6 +20,16 @@
           APT::Periodic::Update-Package-Lists "0";
           APT::Periodic::Unattended-Upgrade "0";
 
+    - name: Configure sudo to preserve all environment variables
+      ansible.builtin.copy:
+        dest: /etc/sudoers.d/99-preserve-env
+        owner: root
+        group: root
+        mode: "0440"
+        content: |
+          Defaults !env_reset
+          Defaults !secure_path
+
     - name: Install buildah
       ansible.builtin.apt:
         name: buildah
@@ -101,22 +111,15 @@
         state: present
         update_cache: yes
 
-    - name: Add KUBECONFIG to .bashrc
-      ansible.builtin.lineinfile:
-        path: "{{ user_home }}/.bashrc"
-        line: 'export KUBECONFIG=/etc/rancher/k3s/k3s.yaml'
-        state: present
-        create: true
-        mode: "0644"
-
-    - name: Configure sudo to preserve KUBECONFIG
+    - name: Ensure KUBECONFIG env var exists for all users
       ansible.builtin.copy:
+        dest: /etc/profile.d/kubeconfig.sh
+        owner: root
+        group: root
+        mode: "0644"
         content: |
-          # Preserve KUBECONFIG env variable.
-          Defaults:%sudo env_keep += "KUBECONFIG"
-          Defaults !always_set_home
-        dest: /etc/sudoers.d/50-helm
-        mode: '0440'
+          # Let Helm connect to local k3s instance.
+          export KUBECONFIG=/etc/rancher/k3s/k3s.yaml
 
     - name: Install faas-cli
       block:
