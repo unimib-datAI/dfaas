@@ -100,8 +100,8 @@ If you want to setup and deploy DFaaS on the same node you are running Ansible,
 just run:
 
 ```console
-$ ansible-playbook --inventory localhost, --connection local setup_playbook.yaml --tags setup
-$ ansible-playbook --inventory localhost, --connection local setup_playbook.yaml --tags deploy
+$ ansible-playbook --inventory localhost, --connection local deploy_dfaas.yaml --tags setup
+$ ansible-playbook --inventory localhost, --connection local deploy_dfaas.yaml --tags deploy
 ```
 
 You can make automatic calls to the node with k6. More information
