@@ -361,7 +361,7 @@ e2e_create_vm() {
     local host_pubkey cloud_init
     host_pubkey=$(e2e_get_host_pubkey || true)
     if [[ -n "${host_pubkey}" ]]; then
-        cloud_init=$(e2e_mktemp_file "nanofaas-cloud-init" ".yaml")
+        cloud_init=$(e2e_mktemp_file "e2e-cloud-init" ".yaml")
         cat > "${cloud_init}" <<EOF
 #cloud-config
 ssh_authorized_keys:
@@ -498,8 +498,8 @@ e2e_copy_from_vm() {
 e2e_sync_project_to_vm() {
     local project_root=${1:?project_root is required}
     local vm_name=${2:?vm_name is required}
-    local remote_dir=${3:-/home/ubuntu/nanofaas}
-    local sync_tar=/tmp/nanofaas-e2e-sync.tar
+    local remote_dir=${3:-/home/ubuntu/project}
+    local sync_tar=/tmp/e2e-sync.tar
 
     e2e_log "Syncing project to VM (${remote_dir})..."
     local tmp_tar
@@ -508,7 +508,7 @@ e2e_sync_project_to_vm() {
     if tar --help 2>&1 | grep -q -- '--no-mac-metadata'; then tar_flags+=(--no-mac-metadata); fi
     if tar --help 2>&1 | grep -q -- '--no-xattrs'; then tar_flags+=(--no-xattrs); fi
     if tar --help 2>&1 | grep -q -- '--no-acls'; then tar_flags+=(--no-acls); fi
-    tmp_tar=$(e2e_mktemp_file "nanofaas-e2e-sync" ".tar")
+    tmp_tar=$(e2e_mktemp_file "e2e-sync" ".tar")
     if [[ ${#tar_flags[@]} -gt 0 ]]; then
         COPYFILE_DISABLE=1 tar "${tar_flags[@]}" -C "${project_root}" \
             --exclude='.git' \
