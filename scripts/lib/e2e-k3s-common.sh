@@ -268,11 +268,11 @@ e2e_get_vm_ip() {
 
 # ─── VM auto-detect ──────────────────────────────────────────────────────────
 e2e_auto_detect_vm() {
-    local default_name=${1:-nanofaas-e2e}
+    local default_name=${1:-e2e-vm}
     if [[ -n "${VM_NAME:-}" ]]; then echo "${VM_NAME}"; return; fi
     if command -v multipass &>/dev/null; then
         local detected
-        detected=$(multipass list --format csv 2>/dev/null | tail -n +2 | grep -i "nanofaas" | grep "Running" | head -1 | cut -d, -f1) || true
+        detected=$(multipass list --format csv 2>/dev/null | tail -n +2 | grep "Running" | head -1 | cut -d, -f1) || true
         if [[ -n "${detected}" ]]; then echo "${detected}"; return; fi
     fi
     echo "${default_name}"
