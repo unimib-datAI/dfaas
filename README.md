@@ -78,9 +78,8 @@ For more information about DFaaS, refer to the documentation in the
 Install Ansible on the control node following the [official
 documentation](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html)
 (use the Ansible PPA). Then use the provided playbook
-[`setup_playbook.yaml`](setup_playbook.yaml) to deploy a DFaaS node on a
-specific managed node specified in an inventory file. Note that you can specify
-multiple managed nodes.
+[`deploy_dfaas.yaml`](deploy_dfaas.yaml) to setup a node and deploy DFaaS on it.
+We suggest to create an inventory file if you use more than one node.
 
 An example of `inventory.yaml` file is
 
@@ -95,31 +94,15 @@ all:
 ```
 
 We assume that the managed node has a user with root privileges and can connect
-via SSH with a password. This is for testing purposes only!
+via SSH with a password.
 
-To test the inventory, you can try the [example
-playbook](https://docs.ansible.com/ansible/latest/getting_started/get_started_playbook.html)
-on the official Ansible documentation.
-
-**Important:** on the control node you need to have the DFaaS Git repository and
-to build the DFaaS Agent. This can be done with the following:
+If you want to setup and deploy DFaaS on the same node you are running Ansible,
+just run:
 
 ```console
-$ git clone https://github.com/unimib-datAI/dfaas.git
-$ sudo apt install golang-go
-$ go build -C dfaas/dfaasagent
+$ ansible-playbook --inventory localhost, --connection local setup_playbook.yaml --tags setup
+$ ansible-playbook --inventory localhost, --connection local setup_playbook.yaml --tags deploy
 ```
-
-Then you can run the playbook with ansible-playbook (make sure to be on the
-DFaaS directory!):
-
-```console
-$ ansible-playbook -i inventory.yaml setup_playbook.yaml
-```
-
-This deploys a basic, fully functional DFaaS node using the Node Margin
-Strategy. See [here](docs/agent-strategies.md) for a list of available
-strategies for the agents.
 
 You can make automatic calls to the node with k6. More information
 about it in the [dedicated directory](k6).
