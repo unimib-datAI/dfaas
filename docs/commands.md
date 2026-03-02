@@ -5,15 +5,29 @@ this section is still a work in progress.
 
 ## Deploy the entire DFaaS node
 
+Start by deploying DFaaS dependencies:
+
 ```console
 $ sudo helm install haproxy haproxytech/haproxy --values k8s/charts/values-haproxy.yaml --version 1.26.1
 $ sudo helm install prometheus prometheus-community/prometheus --values k8s/charts/values-prometheus.yaml --version 27.37.0
 $ sudo helm install openfaas openfaas/openfaas --values k8s/charts/values-openfaas.yaml --version 14.2.128
-$ sudo helm install agent ./k8s/charts/agent/ --values values-test.yaml
 ```
 
-Note that each chart has a fixed version and the `agent` chart requires a
-`values-test.yaml` file for custom configuration.
+Next deploy the custom stick-table-exporter service:
+
+```console
+$ ./k8s/scripts/build-image.sh stick-table-exporter k3s --dockerfile k8s/scripts/stick-table-exporter/Containerfile
+$ sudo helm install stick-table-exporter k8s/scripts/stick-table-exporter/helm/
+```
+
+Finally deploy the DFaaS agent with a custom configuration:
+
+```console
+$ ./k8s/scripts/build-image.sh agent k3s
+$ sudo helm install agent ./k8s/charts/agent/ --values CONFIG.yaml
+```
+
+The DFaaS node is now ready, but with no function deployed.
 
 ## Lint an HAProxy config
 
@@ -55,20 +69,28 @@ See entries for stick table called `main`:
 $ curl -i -u admin:admin 'http://localhost:30555/v3/services/haproxy/runtime/stick_tables/main/entries'
 ```
 
-## Deploy a FaaS function with custom timeout
+## Deploy a FaaS function with custom env vars
 
 ```console
-$ faas-cli store deploy figlet --env exec_timeout=8s
+$ faas-cli store deploy figlet --env exec_timeout=4s --env max_inflight=800
 ```
 
-Note here we only set `exec_timeout`, while `read_timeout` and `write_timeout`
-use the default gateway values.
+See [timeouts.md](timeouts.md) file for information about these env vars.
+
+You can also change the env vars with `sudo kubectl edit deployment figlet`. The
+pods will be restarted!
+
+Test the deployed function with `curl`:
+
+```console
+$ curl http://localhost:30080/function/figlet -d "Hello World!" -i
+```
 
 How to set the upstream timeout in OpenFaaS CE Gateway:
 
 ```console
 $ sudo kubectl edit deployment gateway
-...modify "upstream_timeout" to X seconds, then save and quit
+# ...modify "upstream_timeout" to X seconds, then save and quit
 $ sudo kubectl get pods
-...see that the gateway pod has restarted with the new timeout
+# ...see that the gateway pod has restarted with the new timeout
 ```
