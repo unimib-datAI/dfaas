@@ -1352,7 +1352,7 @@ e2e_setup_local_registry() {
     local registry=${1:-localhost:5000}
     local host=${registry%:*}
     local port=${registry##*:}
-    local container_name=${2:-nanofaas-e2e-registry}
+    local container_name=${2:-e2e-registry}
 
     if [[ -z "${host}" || -z "${port}" || "${host}" == "${registry}" ]]; then
         e2e_error "Registry must include host:port (got '${registry}')"
