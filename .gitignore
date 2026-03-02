@@ -23,9 +23,6 @@ dfaasagent/dfaasagent
 # Ignore custom Ansible inventory files.
 **/inventory.yaml
 
-# Claude Code
-CLAUDE.md
-
 # Custom ignores
 __pycache__
 venv

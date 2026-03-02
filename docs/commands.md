@@ -38,7 +38,7 @@ The DFaaS node is now ready, but with no function deployed.
 ## Deploy with OpenWhisk instead of OpenFaaS
 
 ```console
-$ sudo helm install owdev owdev/openwhisk --values k8s/charts/values-openwhisk.yaml
+$ sudo helm install owdev owdev/openwhisk --values k8s/charts/values-openwhisk.yaml --version 1.0.1
 $ sudo helm install haproxy haproxytech/haproxy --values k8s/charts/values-haproxy.yaml --version 1.26.1
 $ sudo helm install prometheus prometheus-community/prometheus \
     --values k8s/charts/values-prometheus.yaml \
@@ -46,8 +46,8 @@ $ sudo helm install prometheus prometheus-community/prometheus \
     --version 27.37.0
 $ sudo helm install agent ./k8s/charts/agent/ --values values-test.yaml \
     --set config.AGENT_FAAS_PLATFORM=openwhisk \
-    --set config.AGENT_OPENFAAS_HOST=owdev-nginx.openwhisk \
-    --set config.AGENT_OPENFAAS_PORT=80 \
+    --set config.AGENT_FAAS_HOST=owdev-nginx.openwhisk \
+    --set config.AGENT_FAAS_PORT=80 \
     --set config.AGENT_OPENWHISK_NAMESPACE=guest \
     --set config.AGENT_OPENWHISK_API_KEY="<uuid>:<key>"
 ```

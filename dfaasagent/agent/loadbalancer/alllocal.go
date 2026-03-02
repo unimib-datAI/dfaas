@@ -98,8 +98,8 @@ func (strategy *AllLocalStrategy) updateProxyConfiguration(funcs map[string]*uin
 		Now:             time.Now().Format("2006-01-02 15:04:05"),
 		DFaaSNodeID:     _p2pHost.ID().String(),
 		Functions:       funcs,
-		FaaSHost:        _config.OpenFaaSHost,
-		FaaSPort:        _config.OpenFaaSPort,
+		FaaSHost:        _config.FaaSHost,
+		FaaSPort:        _config.FaaSPort,
 		FaaSBackendPath: faasprovider.BackendPathPrefix(_config.FaaSPlatform, _config.OpenWhiskNamespace),
 	}
 

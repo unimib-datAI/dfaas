@@ -58,8 +58,8 @@ func (strategyFactory *recalcStrategyFactory) createStrategy() (Strategy, error)
 
 	provider, err := faasprovider.NewFaaSProvider(
 		_config.FaaSPlatform,
-		_config.OpenFaaSHost,
-		_config.OpenFaaSPort,
+		_config.FaaSHost,
+		_config.FaaSPort,
 		_config.OpenWhiskNamespace,
 		_config.OpenWhiskAPIKey,
 	)
@@ -94,8 +94,8 @@ func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, er
 
 	provider, err := faasprovider.NewFaaSProvider(
 		_config.FaaSPlatform,
-		_config.OpenFaaSHost,
-		_config.OpenFaaSPort,
+		_config.FaaSHost,
+		_config.FaaSPort,
 		_config.OpenWhiskNamespace,
 		_config.OpenWhiskAPIKey,
 	)
@@ -138,8 +138,8 @@ func (strategyFactory *staticStrategyFactory) createStrategy() (Strategy, error)
 
 	provider, err := faasprovider.NewFaaSProvider(
 		_config.FaaSPlatform,
-		_config.OpenFaaSHost,
-		_config.OpenFaaSPort,
+		_config.FaaSHost,
+		_config.FaaSPort,
 		_config.OpenWhiskNamespace,
 		_config.OpenWhiskAPIKey,
 	)
@@ -173,8 +173,8 @@ func (strategyFactory *allLocalStrategyFactory) createStrategy() (Strategy, erro
 
 	provider, err := faasprovider.NewFaaSProvider(
 		_config.FaaSPlatform,
-		_config.OpenFaaSHost,
-		_config.OpenFaaSPort,
+		_config.FaaSHost,
+		_config.FaaSPort,
 		_config.OpenWhiskNamespace,
 		_config.OpenWhiskAPIKey,
 	)

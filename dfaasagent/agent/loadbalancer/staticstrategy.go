@@ -177,14 +177,6 @@ func (strategy *StaticStrategy) publishNodeInfo() error {
 	}
 
 	return nil
-
-	// Obtain our function names list
-	strategy.nodeInfo.funcs, err = strategy.faasProvider.GetFuncsNames()
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // Check which neighbour has at least a function in common and update the
@@ -233,8 +225,8 @@ func (strategy *StaticStrategy) setProxyWeights() error {
 	strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryNMS) error {
 		hacfg = strategy.createHACfgObject(
 			myID,
-			_config.OpenFaaSHost,
-			_config.OpenFaaSPort,
+			_config.FaaSHost,
+			_config.FaaSPort,
 			entries,
 			strategy.weights,
 		)
