@@ -15,8 +15,8 @@
 # - The DFaaS repository is located at: ~/dfaas (on the remote host).
 # - A Python virtual environment is already set up on the remote host with
 #   prometheus2csv installed and ready to use.
-# - rclone is installed on the remote host at: ~/.local/bin/rclone and is
-#   properly configured with access to the target Google Drive.
+# - rclone is installed and configured on the local host with access to Google
+#   Drive.
 #
 # IMPORTANT: You will almost certainly need to modify the DFaaS SSH connection
 # string (SSH_SERVER) in this script to match your own username and server IP
@@ -127,18 +127,20 @@ for NODE in "${NODES[@]}"; do
     # This service only accepts UNIX timestamps!
     start_unix=$(date -d "$start" +%s)
     end_unix=$(date -d "$end" +%s)
-    echo "Extract k6 stages on remote server..."
+    echo "Extracting k6 stages on remote server..."
     curl --silent --show-error --header "Accept: text/csv" \
         --output dfaas_node_k6_stages.csv \
         "http://$IP_SERVER:30808/table?start=$start_unix&end=$end_unix"
     echo "k6 stages on remote server extracted"
 
-    # We suppose rclone is installed and configured like in the local host.
+    echo "Downloading Prometheus metrics and k6 stages from remote server..."
+    scp -i ~/.ssh/id_ed25519 "$SSH_SERVER:prometheus_metrics.csv.gz" prometheus_metrics.csv.gz
+    scp -i ~/.ssh/id_ed25519 "$SSH_SERVER:dfaas/k8s/scripts/prometheus2csv/metrics.csv" metrics.csv
+    echo "Prometheus metrics and k6 stages downloaded."
+
     echo "Uploading Prometheus metrics and k6 stages to remote storage..."
-    ssh -i ~/.ssh/id_ed25519 "$SSH_SERVER" \
-        .local/bin/rclone copy prometheus_metrics.csv.gz "$UPLOAD_PATH"
-    ssh -i ~/.ssh/id_ed25519 "$SSH_SERVER" \
-        .local/bin/rclone copy dfaas/k8s/scripts/prometheus2csv/metrics.csv "$UPLOAD_PATH"
+    rclone copy prometheus_metrics.csv.gz "$UPLOAD_PATH"
+    rclone copy metrics.csv "$UPLOAD_PATH"
     rclone copy dfaas_node_k6_stages.csv "$UPLOAD_PATH"
     echo "Prometheus metrics and k6 stages uploaded."
 
