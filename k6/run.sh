@@ -59,7 +59,7 @@ if ! [[ -v EXP_NAME ]]; then
 fi
 
 # The DFaaS server.
-readonly IP_SERVER="10.0.2.38"
+readonly IP_SERVER="10.12.68.9"
 readonly SSH_SERVER="emanuele@$IP_SERVER"
 
 readonly DATE="$(date +%Y%m%d)"
@@ -82,7 +82,7 @@ for NODE in "${NODES[@]}"; do
     echo "Upload path (at the end): $UPLOAD_PATH"
 
     echo "Running k6 load test on node $NODE..."
-    k6 run single_trace.js --out csv=k6_results.csv.gz --env NODE=$NODE
+    k6 run single_trace.js --out csv=k6_results.csv.gz --env NODE=$NODE --env IP_SERVER=$IP_SERVER
     echo "k6 load test completed."
 
     echo "Creating remote upload directory: $UPLOAD_PATH..."

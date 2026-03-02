@@ -7,8 +7,12 @@ import http from 'k6/http';
 // Requires to track the stage of a request in CSV output.
 import { tagWithCurrentStageIndex, getCurrentStageIndex } from 'https://jslib.k6.io/k6-utils/1.6.0/index.js';
 
-const FUNCTION_URL = 'http://10.0.2.38:30080/function/figlet';
-const BODY_CONTENT = 'Ciao';
+const IP_SERVER = __ENV.IP_SERVER || "10.12.68.9"
+
+const FUNCTION_URL = `http://${IP_SERVER}:30080/function/figlet`;
+
+// Body of the HTTP request as string.
+const BODY_CONTENT = 'Hello World!';
 
 // Read the trace path from the TRACE_PATH env variable.
 if (!__ENV.TRACE_PATH) {
