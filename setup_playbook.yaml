@@ -1,19 +1,31 @@
 ---
-- name: DFaaS node setup from scratch
+- name: Setup a DFaaS node
+  tags: [setup]
   hosts: all
   become: true
   vars:
     openfaas_url: "http://127.0.0.1:31112"
-    user_home: "{{ ansible_env.HOME }}"
+    user_home: "{{ ansible_facts['user_dir'] }}"
 
   tasks:
+    - name: Disable APT automatic upgrades
+      ansible.builtin.copy:
+        dest: /etc/apt/apt.conf.d/99-disable-auto-upgrades
+        owner: root
+        group: root
+        mode: "0644"
+        content: |
+          # Custom config by Emanuele Petriglia.
+          APT::Periodic::Enable "0";
+          APT::Periodic::Update-Package-Lists "0";
+          APT::Periodic::Unattended-Upgrade "0";
+
     - name: Install buildah
       ansible.builtin.apt:
         name: buildah
         state: present
-        update_cache: yes
 
-    - name: Disable UFW
+    - name: Disable UFW firewall
       community.general.ufw:
         state: disabled
 
@@ -27,6 +39,41 @@
           * soft nproc unlimited
           * hard nproc unlimited
 
+    - name: Tune IPv4 and TCP settings for kernel
+      ansible.builtin.copy:
+        dest: /etc/sysctl.d/20-k3s-custom.conf
+        owner: root
+        group: root
+        mode: '0644'
+        content: |
+          # Maximum number of connections that can be queued for acceptance by
+          # the kernel.
+          net.core.somaxconn = 8192
+
+          # Maximum number of half-open (SYN_RECV state) connections in the TCP
+          # backlog queue.
+          net.ipv4.tcp_max_syn_backlog = 8192
+
+          # Ephemeral (short-lived) port range available for outbound
+          # connections. Used also for communication between pods in the same
+          # node.
+          net.ipv4.ip_local_port_range = 5024 65535
+
+          # Allow reuse of sockets in TIME_WAIT state for new outgoing
+          # connections.
+          net.ipv4.tcp_tw_reuse = 1
+
+          # Time in seconds sockets stay in FIN_WAIT2 state.
+          net.ipv4.tcp_fin_timeout = 5
+
+          # Maximum number of packets allowed to queue on the network interface
+          # receive buffer.
+          net.core.netdev_max_backlog = 16384
+
+          # Maximum number of tracked connections by the network connection
+          # tracking (used by Kubernetes for service NAT/routing).
+          net.netfilter.nf_conntrack_max = 262144
+
     - name: Install K3S
       ansible.builtin.shell: curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable traefik" sh -
       args:
@@ -39,20 +86,7 @@
         state: started
         enabled: yes
 
-    - name: Build DFaaS agent and forecaster images and push to K3S
-      block:
-        - name: Build agent image
-          ansible.builtin.command: ./k8s/scripts/build-image.sh agent
-          args:
-            chdir: "{{ playbook_dir }}"
-
-        - name: Build forecaster image
-          ansible.builtin.command: ./k8s/scripts/build-image.sh forecaster
-          args:
-            chdir: "{{ playbook_dir }}"
-      become: false  # Run as regular user
-
-    - name: Add Helm apt repository
+    - name: Add Helm APT repository
       ansible.builtin.deb822_repository:
         name: helm-stable-debian
         uris: https://packages.buildkite.com/helm-linux/helm-debian/any/
@@ -72,7 +106,8 @@
         path: "{{ user_home }}/.bashrc"
         line: 'export KUBECONFIG=/etc/rancher/k3s/k3s.yaml'
         state: present
-      become: false
+        create: true
+        mode: "0644"
 
     - name: Configure sudo to preserve KUBECONFIG
       ansible.builtin.copy:
@@ -85,81 +120,87 @@
 
     - name: Install faas-cli
       block:
-        - name: Create ~/.local/bin directory
+        - name: Ensure /opt/bin directory exists
           ansible.builtin.file:
-            path: "{{ user_home }}/.local/bin"
+            path: /opt/bin/
             state: directory
             mode: '0755'
 
         - name: Download faas-cli
           ansible.builtin.get_url:
-            url: https://github.com/openfaas/faas-cli/releases/download/0.17.8/faas-cli
-            dest: "{{ user_home }}/.local/bin/faas-cli"
+            url: https://github.com/openfaas/faas-cli/releases/download/0.18.1/faas-cli
+            dest: "/opt/bin/faas-cli"
             mode: '0755'
 
-        - name: Add ~/.local/bin to PATH in .bashrc
-          ansible.builtin.lineinfile:
-            path: "{{ user_home }}/.bashrc"
-            line: 'export PATH="{{ user_home }}/.local/bin:$PATH"'
-            state: present
-      become: false
+        - name: Ensure OPENFAAS_URL exists and PATH env var is updated for faas-cli
+          ansible.builtin.copy:
+            dest: /etc/profile.d/openfaas-faas-cli.sh
+            owner: root
+            group: root
+            mode: "0644"
+            content: |
+              # Let faas-cli connect to local OpenFaaS gateway.
+              export OPENFAAS_URL={{ openfaas_url }}
 
-    - name: Add Helm repositories
-      block:
-        - name: Add HAProxy Helm repository
-          ansible.builtin.command: helm repo add haproxytech https://haproxytech.github.io/helm-charts
+              # Let all users run binaries in /opt/bin.
+              export PATH="/opt/bin:$PATH"
 
-        - name: Add Prometheus Helm repository
-          ansible.builtin.command: helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+    - name: Ensure Helm repositories are installed
+      vars:
+        helm_repos:
+          - name: haproxytech
+            repo_url: https://haproxytech.github.io/helm-charts
+          - name: prometheus-community
+            repo_url: https://prometheus-community.github.io/helm-charts
+          - name: openfaas
+            repo_url: https://openfaas.github.io/faas-netes/
+      kubernetes.core.helm_repository:
+        name: "{{ item.name }}"
+        repo_url: "{{ item.repo_url }}"
+      loop: "{{ helm_repos }}"
 
-        - name: Add OpenFaaS Helm repository
-          ansible.builtin.command: helm repo add openfaas https://openfaas.github.io/faas-netes/
 
-        - name: Update Helm repositories
-          ansible.builtin.command: helm repo update
-      environment:
-        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+- name: Deploy DFaaS on a node
+  tags: [deploy]
+  hosts: all
+  become: true
+  vars:
+    openfaas_url: "http://127.0.0.1:31112"
+    user_home: "{{ ansible_facts['user_dir'] }}"
 
+  environment:
+    KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+  tasks:
     - name: Install Helm charts
+      vars:
+        helm_charts:
+          - name: haproxy
+            repo: haproxytech/haproxy
+            version: "1.26.1"
+            values: "k8s/charts/values-haproxy.yaml"
+          - name: prometheus
+            repo: prometheus-community/prometheus
+            version: "27.37.0"
+            values: "k8s/charts/values-prometheus.yaml"
+          - name: openfaas
+            repo: openfaas/openfaas
+            version: "14.2.124"
+            values: "k8s/charts/values-openfaas.yaml"
       block:
-        - name: Install HAProxy on K3S
-          ansible.builtin.command: helm install haproxy haproxytech/haproxy --version 1.26.1 --values k8s/charts/values-haproxy.yaml
+        - name: "Install {{ item.name }} on K3S"
+          ansible.builtin.command: >
+            helm install {{ item.name }} {{ item.repo }}
+            --version {{ item.version }}
+            --values {{ item.values }}
+          loop: "{{ helm_charts }}"
           args:
             chdir: "{{ playbook_dir }}"
 
-        - name: Install Prometheus on K3S
-          ansible.builtin.command: helm install prometheus prometheus-community/prometheus --version 27.37.0 --values k8s/charts/values-prometheus.yaml
-          args:
-            chdir: "{{ playbook_dir }}"
-
-        - name: Install OpenFaaS on K3S
-          ansible.builtin.command: helm install openfaas openfaas/openfaas --version 14.2.124 --values ./k8s/charts/values-openfaas.yaml
-          args:
-            chdir: "{{ playbook_dir }}"
+    - name: Deploy OpenFaaS functions
+      ansible.builtin.shell: ./k8s/scripts/deploy_functions.sh
+      args:
+        chdir: "{{ playbook_dir }}"
       environment:
-        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-
-    - name: Configure OpenFaaS
-      block:
-        - name: Add OPENFAAS_URL to .bashrc
-          ansible.builtin.lineinfile:
-            path: "{{ user_home }}/.bashrc"
-            line: 'export OPENFAAS_URL={{ openfaas_url }}'
-            state: present
-
-        - name: Deploy OpenFaaS functions
-          ansible.builtin.shell: ./k8s/scripts/deploy_functions.sh
-          args:
-            chdir: "{{ playbook_dir }}"
-          environment:
-            OPENFAAS_URL: "{{ openfaas_url }}"
-            KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-            PATH: "{{ ansible_env.PATH }}:{{ user_home }}/.local/bin"
-      become: false
-
-    - name: Install DFaaS Forecaster
-      ansible.builtin.command: helm install forecaster ./k8s/charts/forecaster
-        args:
-          chdir: "{{ playbook_dir }}"
-      environment:
-        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+        OPENFAAS_URL: "{{ openfaas_url }}"
+        PATH: "{{ ansible_env.PATH }}:{{ user_home }}/.local/bin"
