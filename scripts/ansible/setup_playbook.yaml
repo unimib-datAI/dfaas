@@ -11,6 +11,10 @@
     # When running via provision.sh this is set to /home/ubuntu/dfaas.
     # When running locally (hosts: localhost) leave as-is.
     project_dir: "{{ playbook_dir }}"
+    # Optional path to a custom agent values file on the target host.
+    # Useful for node-specific settings (bootstrap nodes, node type, etc.).
+    # Example: -e "agent_values_file=/home/ubuntu/my-agent-values.yaml"
+    agent_values_file: ""
 
   tasks:
     - name: Install buildah
@@ -204,19 +208,52 @@
       become: false
       when: faas_platform == "openfaas"
 
+    - name: Wait for OpenWhisk to be ready
+      ansible.builtin.command: >
+        kubectl rollout status deployment/owdev-controller
+        -n openwhisk --timeout=300s
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      when: faas_platform == "openwhisk"
+
     - name: Retrieve OpenWhisk API key
       ansible.builtin.command: >
         kubectl -n openwhisk exec deploy/owdev-wskadmin
         -- wskadmin user get guest
       register: openwhisk_api_key
+      retries: 10
+      delay: 15
+      until: openwhisk_api_key.rc == 0
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
       when: faas_platform == "openwhisk"
 
-    - name: Display OpenWhisk API key
-      ansible.builtin.debug:
-        msg: "OpenWhisk API key (set AGENT_OPENWHISK_API_KEY to this value): {{ openwhisk_api_key.stdout }}"
+    - name: Install DFaaS agent (OpenFaaS)
+      ansible.builtin.command: >
+        helm install dfaas-agent {{ project_dir }}/k8s/charts/agent
+        --values {{ project_dir }}/k8s/charts/agent/values.yaml
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      when: faas_platform == "openfaas"
+
+    - name: Install DFaaS agent (OpenWhisk)
+      ansible.builtin.command: >
+        helm install dfaas-agent {{ project_dir }}/k8s/charts/agent
+        --values {{ project_dir }}/k8s/charts/agent/values.yaml
+        --values {{ project_dir }}/scripts/ansible/charts/values-agent-openwhisk.yaml
+        --set config.AGENT_OPENWHISK_API_KEY={{ openwhisk_api_key.stdout }}
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
       when: faas_platform == "openwhisk"
+
+    - name: Apply custom agent values file
+      ansible.builtin.command: >
+        helm upgrade dfaas-agent {{ project_dir }}/k8s/charts/agent
+        --reuse-values
+        --values {{ agent_values_file }}
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      when: agent_values_file != ""
 
     - name: Install DFaaS Forecaster
       ansible.builtin.command: helm install forecaster ./k8s/charts/forecaster
