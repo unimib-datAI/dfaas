@@ -1,0 +1,226 @@
+---
+- name: DFaaS node setup from scratch
+  hosts: all
+  become: true
+  vars:
+    # FaaS platform to install. Accepted values: "openfaas" (default), "openwhisk".
+    faas_platform: "openfaas"
+    openfaas_url: "http://127.0.0.1:31112"
+    user_home: "{{ ansible_env.HOME }}"
+    # Root directory of the DFaaS project on the target host.
+    # When running via provision.sh this is set to /home/ubuntu/dfaas.
+    # When running locally (hosts: localhost) leave as-is.
+    project_dir: "{{ playbook_dir }}"
+
+  tasks:
+    - name: Install buildah
+      ansible.builtin.apt:
+        name: buildah
+        state: present
+        update_cache: yes
+
+    - name: Disable UFW
+      community.general.ufw:
+        state: disabled
+
+    - name: Increase number of allowed file descriptors and processes (for HAProxy)
+      ansible.builtin.blockinfile:
+        path: /etc/security/limits.conf
+        marker: "# {mark} ANSIBLE MANAGED BLOCK: unlimited nofile/nproc"
+        block: |
+          * soft nofile unlimited
+          * hard nofile unlimited
+          * soft nproc unlimited
+          * hard nproc unlimited
+
+    - name: Install K3S
+      ansible.builtin.shell: curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable traefik" sh -
+      args:
+        executable: /bin/bash
+        creates: /usr/local/bin/k3s
+
+    - name: Ensure k3s service is running
+      ansible.builtin.systemd_service:
+        name: k3s
+        state: started
+        enabled: yes
+
+    - name: Build DFaaS agent and forecaster images and push to K3S
+      block:
+        - name: Build agent image
+          ansible.builtin.command: ./k8s/scripts/build-image.sh agent
+          args:
+            chdir: "{{ project_dir }}"
+
+        - name: Build forecaster image
+          ansible.builtin.command: ./k8s/scripts/build-image.sh forecaster
+          args:
+            chdir: "{{ project_dir }}"
+      become: false
+
+    - name: Add Helm apt repository
+      ansible.builtin.deb822_repository:
+        name: helm-stable-debian
+        uris: https://packages.buildkite.com/helm-linux/helm-debian/any/
+        suites: any
+        components: [main]
+        architectures: [amd64]
+        signed_by: https://packages.buildkite.com/helm-linux/helm-debian/gpgkey
+
+    - name: Install Helm
+      ansible.builtin.apt:
+        name: helm
+        state: present
+        update_cache: yes
+
+    - name: Add KUBECONFIG to .bashrc
+      ansible.builtin.lineinfile:
+        path: "{{ user_home }}/.bashrc"
+        line: 'export KUBECONFIG=/etc/rancher/k3s/k3s.yaml'
+        state: present
+      become: false
+
+    - name: Configure sudo to preserve KUBECONFIG
+      ansible.builtin.copy:
+        content: |
+          # Preserve KUBECONFIG env variable.
+          Defaults:%sudo env_keep += "KUBECONFIG"
+          Defaults !always_set_home
+        dest: /etc/sudoers.d/50-helm
+        mode: '0440'
+
+    - name: Install faas-cli
+      block:
+        - name: Create ~/.local/bin directory
+          ansible.builtin.file:
+            path: "{{ user_home }}/.local/bin"
+            state: directory
+            mode: '0755'
+
+        - name: Download faas-cli
+          ansible.builtin.get_url:
+            url: https://github.com/openfaas/faas-cli/releases/download/0.17.8/faas-cli
+            dest: "{{ user_home }}/.local/bin/faas-cli"
+            mode: '0755'
+
+        - name: Add ~/.local/bin to PATH in .bashrc
+          ansible.builtin.lineinfile:
+            path: "{{ user_home }}/.bashrc"
+            line: 'export PATH="{{ user_home }}/.local/bin:$PATH"'
+            state: present
+      become: false
+      when: faas_platform == "openfaas"
+
+    - name: Add common Helm repositories
+      block:
+        - name: Add HAProxy Helm repository
+          ansible.builtin.command: helm repo add haproxytech https://haproxytech.github.io/helm-charts
+
+        - name: Add Prometheus Helm repository
+          ansible.builtin.command: helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Add OpenFaaS Helm repository
+      ansible.builtin.command: helm repo add openfaas https://openfaas.github.io/faas-netes/
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      when: faas_platform == "openfaas"
+
+    - name: Add OpenWhisk Helm repository
+      ansible.builtin.command: helm repo add owdev https://openwhisk.apache.org/charts
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      when: faas_platform == "openwhisk"
+
+    - name: Update Helm repositories
+      ansible.builtin.command: helm repo update
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Install HAProxy on K3S
+      ansible.builtin.command: >
+        helm install haproxy haproxytech/haproxy
+        --version 1.26.1
+        --values {{ project_dir }}/k8s/charts/values-haproxy.yaml
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+
+    - name: Install Prometheus on K3S (OpenFaaS)
+      ansible.builtin.command: >
+        helm install prometheus prometheus-community/prometheus
+        --version 27.37.0
+        --values {{ project_dir }}/k8s/charts/values-prometheus.yaml
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      when: faas_platform == "openfaas"
+
+    - name: Install Prometheus on K3S (OpenWhisk)
+      ansible.builtin.command: >
+        helm install prometheus prometheus-community/prometheus
+        --version 27.37.0
+        --values {{ project_dir }}/k8s/charts/values-prometheus.yaml
+        --values {{ project_dir }}/k8s/charts/values-prometheus-openwhisk.yaml
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      when: faas_platform == "openwhisk"
+
+    - name: Install OpenFaaS on K3S
+      ansible.builtin.command: >
+        helm install openfaas openfaas/openfaas
+        --version 14.2.124
+        --values {{ project_dir }}/k8s/charts/values-openfaas.yaml
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      when: faas_platform == "openfaas"
+
+    - name: Install OpenWhisk on K3S
+      ansible.builtin.command: >
+        helm install owdev owdev/openwhisk
+        --version 1.0.1
+        --values {{ project_dir }}/k8s/charts/values-openwhisk.yaml
+        --namespace openwhisk
+        --create-namespace
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      when: faas_platform == "openwhisk"
+
+    - name: Configure OpenFaaS
+      block:
+        - name: Add OPENFAAS_URL to .bashrc
+          ansible.builtin.lineinfile:
+            path: "{{ user_home }}/.bashrc"
+            line: 'export OPENFAAS_URL={{ openfaas_url }}'
+            state: present
+
+        - name: Deploy OpenFaaS functions
+          ansible.builtin.shell: ./k8s/scripts/deploy_functions.sh
+          args:
+            chdir: "{{ project_dir }}"
+          environment:
+            OPENFAAS_URL: "{{ openfaas_url }}"
+            KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+            PATH: "{{ ansible_env.PATH }}:{{ user_home }}/.local/bin"
+      become: false
+      when: faas_platform == "openfaas"
+
+    - name: Retrieve OpenWhisk API key
+      ansible.builtin.command: >
+        kubectl -n openwhisk exec deploy/owdev-wskadmin
+        -- wskadmin user get guest
+      register: openwhisk_api_key
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
+      when: faas_platform == "openwhisk"
+
+    - name: Display OpenWhisk API key
+      ansible.builtin.debug:
+        msg: "OpenWhisk API key (set AGENT_OPENWHISK_API_KEY to this value): {{ openwhisk_api_key.stdout }}"
+      when: faas_platform == "openwhisk"
+
+    - name: Install DFaaS Forecaster
+      ansible.builtin.command: helm install forecaster ./k8s/charts/forecaster
+      args:
+        chdir: "{{ project_dir }}"
+      environment:
+        KUBECONFIG: /etc/rancher/k3s/k3s.yaml
