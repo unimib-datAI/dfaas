@@ -6,6 +6,7 @@
 package loadbalancer
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"strings"
@@ -52,65 +53,49 @@ type RecalcStrategy struct {
 	it int // = 0 // Number of agent loop iterations
 }
 
-// RunStrategy handles the periodic execution of the recalculation function. It
-// should run in a goroutine.
-func (strategy *RecalcStrategy) RunStrategy() error {
-	logger := logging.Logger()
-
-	var millisNow, millisSleep int64
-
+// Period returns the recalculation interval. Defaults to 1 minute if not configured.
+func (strategy *RecalcStrategy) Period() time.Duration {
 	if _config.RecalcPeriod == 0 {
-		logger.Warn("Given RecalcPeriod must be a positive time duration, using 1 minute by default")
-		_config.RecalcPeriod = 1 * time.Minute
+		return time.Minute
 	}
+	return _config.RecalcPeriod
+}
 
-	// Set the interval to wait after a failed recalculation attempt. This is
-	// used for both step 1 and step 2 error recovery.
+// Tick runs one full Recalc decision cycle (step 1, inter-phase pause, step 2).
+// The runner handles the outer loop and inter-tick sleep; Tick must not sleep
+// at the end.
+func (strategy *RecalcStrategy) Tick(ctx context.Context) error {
+	logger := logging.Logger()
 	failedInterval := 5 * time.Second
 
-	// Calculate the interval (in milliseconds) at which the recalculation
-	// should occur.
-	millisInterval := int64(_config.RecalcPeriod / time.Millisecond)
-
-	// Calculate half of the interval (in milliseconds). Used for timing the
-	// second recalculation step to occur halfway between intervals.
-	millisIntervalHalf := millisInterval / 2
-
-	// The Recalc strategy code is divided into two steps: the first gathers
-	// data and updates the local state, and the second calculates the new
-	// weights and updates the HAProxy configuration.
-	for {
-		startStep1 := time.Now()
-		if err := strategy.recalcStep1(); err != nil {
-			logger.Error("Failed Recalc step 1, skipping RunStrategy iteration ", err)
-			logger.Warnf("Waiting %v before retrying RunStrategy", failedInterval.Seconds())
-			time.Sleep(failedInterval)
-			continue
-		}
-		durationStep1 := time.Since(startStep1)
-
-		millisNow = time.Now().UnixNano() / 1000000
-		millisSleep = millisInterval - ((millisNow + millisIntervalHalf) % millisInterval)
-		time.Sleep(time.Duration(millisSleep) * time.Millisecond)
-
-		startStep2 := time.Now()
-		if err := strategy.recalcStep2(); err != nil {
-			logger.Error("Failed Recalc step 2, skipping RunStrategy iteration ", err)
-			logger.Warnf("Waiting %v before retrying RunStrategy", failedInterval.Seconds())
-			time.Sleep(failedInterval)
-			continue
-		}
-		durationStep2 := time.Since(startStep2)
-
-		totalDuration := durationStep1 + durationStep2
-
-		httpserver.StrategySuccessIterations.Inc()
-		httpserver.StrategyIterationDuration.Set(totalDuration.Seconds())
-
-		millisNow = time.Now().UnixNano() / 1000000
-		millisSleep = millisInterval - (millisNow % millisInterval)
-		time.Sleep(time.Duration(millisSleep) * time.Millisecond)
+	// Step 1: gather data and update local state.
+	startStep1 := time.Now()
+	if err := strategy.recalcStep1(); err != nil {
+		logger.Errorf("Recalc step 1 failed: %v", err)
+		time.Sleep(failedInterval)
+		return nil // non-fatal; runner retries at next tick
 	}
+	durationStep1 := time.Since(startStep1)
+
+	// Wait half the period before step 2, respecting context cancellation.
+	select {
+	case <-ctx.Done():
+		return ctx.Err()
+	case <-time.After(strategy.Period() / 2):
+	}
+
+	// Step 2: calculate weights and update HAProxy.
+	startStep2 := time.Now()
+	if err := strategy.recalcStep2(); err != nil {
+		logger.Errorf("Recalc step 2 failed: %v", err)
+		time.Sleep(failedInterval)
+		return nil // non-fatal
+	}
+	durationStep2 := time.Since(startStep2)
+
+	httpserver.StrategySuccessIterations.Inc()
+	httpserver.StrategyIterationDuration.Set((durationStep1 + durationStep2).Seconds())
+	return nil
 }
 
 // OnReceived is executed every time a message from a peer is received.
@@ -525,6 +510,8 @@ func (strategy *RecalcStrategy) updateHAProxyConfig(hacfg *HACfgRecalc) error {
 	// See https://golang.org/pkg/text/template/.
 	return strategy.hacfgupdater.UpdateHAConfig(hacfg)
 }
+
+var _ PeriodicStrategy = (*RecalcStrategy)(nil)
 
 // Method which creates and returns the HACfgRecalc object,
 // used from method updateHAProxyConfig to update the HAProxy configuration

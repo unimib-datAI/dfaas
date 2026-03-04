@@ -6,6 +6,7 @@
 package loadbalancer
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -46,46 +47,44 @@ type nodeInfoStatic struct {
 	commonNeighboursNum int      // Number of neighbours with at least a function in common.
 }
 
-// RunStrategy handles the periodic execution of the recalculation function. It
-// should run in a goroutine.
-func (strategy *StaticStrategy) RunStrategy() error {
-	logger := logging.Logger()
-
-	var millisNow, millisSleep int64
-	var err error
-
-	millisInterval := int64(_config.RecalcPeriod / time.Millisecond)
-
-	for {
-		start := time.Now()
-
-		if err := strategy.publishNodeInfo(); err != nil {
-			logger.Error("Failed to publish node info, skipping RunStrategy iteration ", err)
-			logger.Warn("Waiting 5 second before retrying RunStrategy")
-			time.Sleep(5 * time.Second)
-			continue
-		}
-
-		strategy.updateCommonNeighbours()
-
-		strategy.weights, err = strategy.calculateWeights()
-		if err != nil {
-			return fmt.Errorf("calculating new weights: %w", err)
-		}
-
-		if err = strategy.setProxyWeights(); err != nil {
-			return fmt.Errorf("setting new weights: %w", err)
-		}
-		duration := time.Since(start)
-
-		httpserver.StrategySuccessIterations.Inc()
-		httpserver.StrategyIterationDuration.Set(duration.Seconds())
-
-		millisNow = time.Now().UnixNano() / 1000000
-		millisSleep = millisInterval - (millisNow % millisInterval)
-		time.Sleep(time.Duration(millisSleep) * time.Millisecond)
+// Period returns the recalculation interval. Defaults to 1 minute if not configured.
+func (strategy *StaticStrategy) Period() time.Duration {
+	if _config.RecalcPeriod == 0 {
+		return time.Minute
 	}
+	return _config.RecalcPeriod
 }
+
+// Tick runs one full Static strategy decision cycle.
+// The runner handles the outer loop and inter-tick sleep; Tick must not sleep
+// at the end.
+func (strategy *StaticStrategy) Tick(ctx context.Context) error {
+	logger := logging.Logger()
+	start := time.Now()
+
+	if err := strategy.publishNodeInfo(); err != nil {
+		logger.Errorf("StaticStrategy: failed to publish node info: %v", err)
+		return nil // non-fatal; runner retries at next tick
+	}
+
+	strategy.updateCommonNeighbours()
+
+	weights, err := strategy.calculateWeights()
+	if err != nil {
+		return fmt.Errorf("calculating new weights: %w", err)
+	}
+	strategy.weights = weights
+
+	if err := strategy.setProxyWeights(); err != nil {
+		return fmt.Errorf("setting new weights: %w", err)
+	}
+
+	httpserver.StrategySuccessIterations.Inc()
+	httpserver.StrategyIterationDuration.Set(time.Since(start).Seconds())
+	return nil
+}
+
+var _ PeriodicStrategy = (*StaticStrategy)(nil)
 
 // OnReceived is executed every time a message from a peer is received.
 func (strategy *StaticStrategy) OnReceived(msg *pubsub.Message) error {
