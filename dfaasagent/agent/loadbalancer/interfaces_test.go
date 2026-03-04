@@ -7,6 +7,7 @@ package loadbalancer_test
 
 import (
 	"context"
+	"sync/atomic"
 	"time"
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -28,15 +29,16 @@ func (m *mockPeriodic) Tick(_ context.Context) error       { m.tickCalled++; ret
 var _ loadbalancer.PeriodicStrategy = (*mockPeriodic)(nil)
 
 // mockEventDriven is a minimal EventDrivenStrategy used in tests.
+// reactCalled is accessed atomically so the race detector is satisfied.
 type mockEventDriven struct {
-	reactCalled int
+	reactCalled atomic.Int32
 }
 
 func (m *mockEventDriven) OnReceived(_ *pubsub.Message) error { return nil }
 func (m *mockEventDriven) TriggerEvents() []string            { return []string{"test_event"} }
 func (m *mockEventDriven) Debounce() time.Duration            { return 0 }
 func (m *mockEventDriven) React(_ context.Context, ev loadbalancer.StrategyEvent) error {
-	m.reactCalled++
+	m.reactCalled.Add(1)
 	return nil
 }
 
