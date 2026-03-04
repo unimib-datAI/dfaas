@@ -241,7 +241,7 @@
         helm install dfaas-agent {{ project_dir }}/k8s/charts/agent
         --values {{ project_dir }}/k8s/charts/agent/values.yaml
         --values {{ project_dir }}/scripts/ansible/charts/values-agent-openwhisk.yaml
-        --set config.AGENT_OPENWHISK_API_KEY={{ openwhisk_api_key.stdout }}
+        --set config.AGENT_OPENWHISK_API_KEY={{ openwhisk_api_key.stdout_lines[0] }}
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
       when: faas_platform == "openwhisk"
@@ -253,7 +253,7 @@
         --values {{ agent_values_file }}
       environment:
         KUBECONFIG: /etc/rancher/k3s/k3s.yaml
-      when: agent_values_file != ""
+      when: agent_values_file | length > 0
 
     - name: Install DFaaS Forecaster
       ansible.builtin.command: helm install forecaster ./k8s/charts/forecaster

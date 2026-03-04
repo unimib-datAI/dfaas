@@ -248,16 +248,7 @@ func (c *Client) QueryAFET(timeSpan time.Duration) (map[string]float64, error) {
 		if len(item.Value) < 2 {
 			continue
 		}
-		str, ok := item.Value[1].(string)
-		if !ok {
-			result[item.Metric.Action] = math.NaN()
-			continue
-		}
-		num, err := strconv.ParseFloat(str, 64)
-		if err != nil {
-			num = math.NaN()
-		}
-		result[item.Metric.Action] = num
+		result[item.Metric.Action] = parsePromValue(item.Value[1])
 	}
 	return result, nil
 }
@@ -286,18 +277,33 @@ func (c *Client) QueryInvoc(timeSpan time.Duration) (map[string]map[string]float
 			result[action] = map[string]float64{}
 		}
 		code := owStatusToCode(item.Metric.Status)
-		str, ok := item.Value[1].(string)
-		if !ok {
-			result[action][code] = math.NaN()
-			continue
-		}
-		num, err := strconv.ParseFloat(str, 64)
-		if err != nil {
-			num = math.NaN()
-		}
-		result[action][code] = num
+		result[action][code] = parsePromValue(item.Value[1])
 	}
 	return result, nil
+}
+
+// buildFuncFilter returns a PromQL alternation regex from a list of function names,
+// with each name regexp-escaped to prevent special characters from being misinterpreted.
+func buildFuncFilter(funcNames []string) string {
+	escaped := make([]string, len(funcNames))
+	for i, n := range funcNames {
+		escaped[i] = regexp.QuoteMeta(n)
+	}
+	return strings.Join(escaped, "|")
+}
+
+// parsePromValue extracts a float64 from a Prometheus instant-query value slot.
+// Returns math.NaN() if the slot is missing, not a string, or not parseable.
+func parsePromValue(v interface{}) float64 {
+	str, ok := v.(string)
+	if !ok {
+		return math.NaN()
+	}
+	num, err := strconv.ParseFloat(str, 64)
+	if err != nil {
+		return math.NaN()
+	}
+	return num
 }
 
 // owStatusToCode maps an OpenWhisk activation status label to an HTTP-like
@@ -331,7 +337,10 @@ func (c *Client) QueryServiceCount() (map[string]int, error) {
 		if !ok {
 			continue
 		}
-		val, _ := strconv.Atoi(str)
+		val, err := strconv.Atoi(str)
+		if err != nil {
+			return nil, fmt.Errorf("openwhisk QueryServiceCount: parsing replica count for %q: %w", item.Metric.Deployment, err)
+		}
 		result[item.Metric.Deployment] = val
 	}
 	return result, nil
@@ -356,17 +365,7 @@ func (c *Client) QueryCPUusage(timeSpan time.Duration) (map[string]float64, erro
 		if len(item.Value) < 2 {
 			continue
 		}
-		instance := item.Metric["instance"]
-		str, ok := item.Value[1].(string)
-		if !ok {
-			result[instance] = math.NaN()
-			continue
-		}
-		num, err := strconv.ParseFloat(str, 64)
-		if err != nil {
-			num = math.NaN()
-		}
-		result[instance] = num
+		result[item.Metric["instance"]] = parsePromValue(item.Value[1])
 	}
 	return result, nil
 }
@@ -391,17 +390,7 @@ func (c *Client) QueryRAMusage(timeSpan time.Duration) (map[string]float64, erro
 		if len(item.Value) < 2 {
 			continue
 		}
-		instance := item.Metric["instance"]
-		str, ok := item.Value[1].(string)
-		if !ok {
-			result[instance] = math.NaN()
-			continue
-		}
-		num, err := strconv.ParseFloat(str, 64)
-		if err != nil {
-			num = math.NaN()
-		}
-		result[instance] = num
+		result[item.Metric["instance"]] = parsePromValue(item.Value[1])
 	}
 	return result, nil
 }
@@ -413,11 +402,7 @@ func (c *Client) QueryCPUusagePerFunction(timeSpan time.Duration, funcName []str
 		return map[string]float64{}, nil
 	}
 	t := fmt.Sprintf("%.0fm", timeSpan.Minutes())
-	escaped := make([]string, len(funcName))
-	for i, n := range funcName {
-		escaped[i] = regexp.QuoteMeta(n)
-	}
-	funcFilter := strings.Join(escaped, "|")
+	funcFilter := buildFuncFilter(funcName)
 	rawQuery := `sum by (container) ( irate(container_cpu_usage_seconds_total{container=~"%s"}[%s]) ) / on() group_left() sum by (instance) ( irate(node_cpu_seconds_total{service="prometheus-prometheus-node-exporter"}[%s]) )`
 	query := fmt.Sprintf(rawQuery, funcFilter, t, t)
 	query = strings.Join(strings.Fields(query), " ")
@@ -434,16 +419,7 @@ func (c *Client) QueryCPUusagePerFunction(timeSpan time.Duration, funcName []str
 		if len(item.Value) < 2 {
 			continue
 		}
-		str, ok := item.Value[1].(string)
-		if !ok {
-			result[item.Metric.Container] = math.NaN()
-			continue
-		}
-		num, err := strconv.ParseFloat(str, 64)
-		if err != nil {
-			num = math.NaN()
-		}
-		result[item.Metric.Container] = num
+		result[item.Metric.Container] = parsePromValue(item.Value[1])
 	}
 	return result, nil
 }
@@ -455,11 +431,7 @@ func (c *Client) QueryRAMusagePerFunction(timeSpan time.Duration, funcName []str
 		return map[string]float64{}, nil
 	}
 	t := fmt.Sprintf("%.0fm", timeSpan.Minutes())
-	escaped := make([]string, len(funcName))
-	for i, n := range funcName {
-		escaped[i] = regexp.QuoteMeta(n)
-	}
-	funcFilter := strings.Join(escaped, "|")
+	funcFilter := buildFuncFilter(funcName)
 	rawQuery := `( sum ( avg_over_time(container_memory_usage_bytes{container=~"%s"}[%s]) ) by(container) ) / on() group_left() ( avg_over_time(node_memory_MemTotal_bytes[%s]) )`
 	query := fmt.Sprintf(rawQuery, funcFilter, t, t)
 	query = strings.Join(strings.Fields(query), " ")
@@ -476,16 +448,7 @@ func (c *Client) QueryRAMusagePerFunction(timeSpan time.Duration, funcName []str
 		if len(item.Value) < 2 {
 			continue
 		}
-		str, ok := item.Value[1].(string)
-		if !ok {
-			result[item.Metric.Container] = math.NaN()
-			continue
-		}
-		num, err := strconv.ParseFloat(str, 64)
-		if err != nil {
-			num = math.NaN()
-		}
-		result[item.Metric.Container] = num
+		result[item.Metric.Container] = parsePromValue(item.Value[1])
 	}
 	return result, nil
 }
