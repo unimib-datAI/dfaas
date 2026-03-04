@@ -13,6 +13,8 @@ import (
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 )
 
+
+
 // periodicRunner runs a PeriodicStrategy on a fixed ticker.
 type periodicRunner struct {
 	s PeriodicStrategy
@@ -66,12 +68,4 @@ func NewRunner(s interface{}) StrategyRunner {
 	}
 }
 
-// newHybridRunner is a placeholder — replaced in Task 4.
-// HybridStrategy also satisfies PeriodicStrategy; use that until Task 4 lands.
-func newHybridRunner(s HybridStrategy) StrategyRunner {
-	// NOTE: event-driven triggers are inactive until Task 4 replaces this placeholder.
-	logger := logging.Logger()
-	logger.Warnf("newHybridRunner: using periodic-only runner; event-driven triggers are inactive until Task 4 replaces this placeholder")
-	return newPeriodicRunner(s)
-}
 
