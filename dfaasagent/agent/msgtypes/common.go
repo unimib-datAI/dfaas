@@ -63,8 +63,8 @@ type MsgHeartbeat struct {
 	// to this node through HAProxy.
 	HAProxyHost string `json:"haproxy_host"`
 
-	// HAProxyPort is the public port of HAProxy on this node.
-	HAProxyPort uint `json:"haproxy_port"`
+	// HAProxyPort is the public port of HAProxy on this node (valid range: 1–65535).
+	HAProxyPort uint16 `json:"haproxy_port"`
 
 	// Functions lists the names of the FaaS functions deployed on this node.
 	Functions []string `json:"functions"`
