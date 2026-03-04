@@ -51,21 +51,4 @@ func (r *periodicRunner) Run(ctx context.Context) error {
 	}
 }
 
-// NewRunner creates the appropriate StrategyRunner for s based on which loop
-// interface s implements. HybridStrategy takes precedence over its two
-// constituents. Panics if s implements none of the known loop interfaces.
-// TODO(Task 5): narrow to Strategy once RunStrategy() is removed from the base interface.
-func NewRunner(s interface{}) StrategyRunner {
-	switch st := s.(type) {
-	case HybridStrategy:
-		return newHybridRunner(st)
-	case EventDrivenStrategy:
-		return newEventDrivenRunner(st)
-	case PeriodicStrategy:
-		return newPeriodicRunner(st)
-	default:
-		panic("strategy implements no known loop interface (must implement PeriodicStrategy, EventDrivenStrategy, or HybridStrategy)")
-	}
-}
-
 

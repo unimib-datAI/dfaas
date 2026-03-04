@@ -68,16 +68,30 @@ func Initialize(p2pHost host.Host, dm communication.DirectMessenger, config conf
 	}
 }
 
-// Strategy interface represents a generic strategy. Every new strategy for the
-// agent must implement this interface.
+// Strategy is the base message-receiving interface shared by all loop models.
+// Every strategy must implement at least one of PeriodicStrategy,
+// EventDrivenStrategy, or HybridStrategy (defined in interfaces.go).
 type Strategy interface {
-	// RunStrategy executes the strategy loop. Warning: this function runs an
-	// infinite loop and should not return, except in case of errors or at
-	// termination.
-	RunStrategy() error
-
-	// OnReceives is called each time a message is received from a peer.
+	// OnReceived is called for every incoming broadcast message.
+	// Implementors are responsible for filtering out self-messages if needed.
+	// Used for state table updates only; does NOT trigger a recalculation cycle.
 	OnReceived(msg *pubsub.Message) error
+}
+
+// NewRunner creates the appropriate StrategyRunner for s based on which loop
+// interface s implements. HybridStrategy takes precedence over its two
+// constituents. Panics if s implements none of the known loop interfaces.
+func NewRunner(s Strategy) StrategyRunner {
+	switch st := s.(type) {
+	case HybridStrategy:
+		return newHybridRunner(st)
+	case EventDrivenStrategy:
+		return newEventDrivenRunner(st)
+	case PeriodicStrategy:
+		return newPeriodicRunner(st)
+	default:
+		panic("strategy implements no known loop interface (must implement PeriodicStrategy, EventDrivenStrategy, or HybridStrategy)")
+	}
 }
 
 // DirectMessenger returns the DirectMessenger available to strategies for
