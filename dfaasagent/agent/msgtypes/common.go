@@ -155,3 +155,21 @@ type MsgOffloadResponse struct {
 	// rejection (RateAccepted == 0).
 	Reason string `json:"reason,omitempty"`
 }
+
+// MsgEnvelope is a minimal struct used to peek at the msg_type field before
+// full decoding. The msg_type field is nested under "header" in all common
+// vocabulary messages.
+type MsgEnvelope struct {
+	Header struct {
+		MsgType string `json:"msg_type"`
+	} `json:"header"`
+}
+
+// CommonBroadcastTypes is the set of message type discriminators that belong
+// to the common broadcast vocabulary. Used by the pre-filter in
+// commondispatch.go to identify common messages arriving on GossipSub.
+var CommonBroadcastTypes = map[string]struct{}{
+	TypeHeartbeat:     {},
+	TypeOverloadAlert: {},
+	TypeFunctionEvent: {},
+}
