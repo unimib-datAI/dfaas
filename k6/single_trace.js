@@ -71,6 +71,9 @@ export let options = {
       stages: stages,
     },
   },
+  // We can ignore the responses' body.
+  // See: https://grafana.com/docs/k6/latest/testing-guides/running-large-tests/#save-memory-with-discardresponsebodies
+  discardResponseBodies: true,
 };
 
 export default function () {
