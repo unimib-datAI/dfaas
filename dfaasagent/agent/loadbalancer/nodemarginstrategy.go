@@ -6,6 +6,7 @@
 package loadbalancer
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -76,107 +77,89 @@ type nodeInfo struct {
 
 //////////////////// PUBLIC FUNCTIONS FOR NODE MARGIN STRATEGY ////////////////////
 
-// RunStrategy handles the periodic execution of the recalculation function. It
-// should run in a goroutine
-func (strategy *NodeMarginStrategy) RunStrategy() error {
-	logger := logging.Logger()
-
-	var millisNow, millisSleep int64
-	var err error
-
-	millisInterval := int64(_config.RecalcPeriod / time.Millisecond)
-
-	strategy.maxValues[cpuUsageNodeMetric] = _config.CPUThresholdNMS
-	strategy.maxValues[ramUsageNodeMetric] = _config.RAMThresholdNMS
-	strategy.maxValues[powerUsageNodeMetric] = _config.PowerThresholdNMS
-
-	strategy.nodeInfo.nodeType = _config.NodeType
-	strategy.nodeInfo.overload = false
-
-	var cpuUsage = make(map[string]float64)
-	var ramUsage = make(map[string]float64)
-
-	for {
-		start := time.Now()
-
-		cpuUsage, err = strategy.faasProvider.QueryCPUusage(_config.RecalcPeriod)
-		if err != nil {
-			logger.Error("Failed to execute Prometheus QueryCPUusage query, skipping RunStrategy iteration ", err)
-			logger.Warn("Waiting 5 second before retrying RunStrategy after Prometheus error")
-			time.Sleep(5 * time.Second)
-			continue
-		}
-		debugPromCPUusage(_config.RecalcPeriod, cpuUsage)
-
-		ramUsage, err = strategy.faasProvider.QueryRAMusage(_config.RecalcPeriod)
-		if err != nil {
-			logger.Error("Failed to execute Prometheus QueryRAMusage query, skipping RunStrategy iteration ", err)
-			logger.Warn("Waiting 5 second before retrying RunStrategy after Prometheus error")
-			time.Sleep(5 * time.Second)
-			continue
-		}
-		debugPromRAMusage(_config.RecalcPeriod, ramUsage)
-
-		if err := strategy.publishNodeInfo(); err != nil {
-			logger.Error("Failed to publish node info, skipping RunStrategy iteration ", err)
-			logger.Warn("Waiting 5 second before retrying RunStrategy")
-			time.Sleep(5 * time.Second)
-			continue
-		}
-
-		strategy.updateCommonNeighbours()
-
-		strategy.nodeInfo.funcsRates, err = strategy.getFunctionsRates()
-
-		strategy.funcsGroups, err = GetFuncsGroups()
-		if err != nil {
-			return err
-		}
-
-		strategy.nodeInfo.funcsGroupsLoad, err = strategy.getFuncsGroupsLoad()
-		if err != nil {
-			return err
-		}
-
-		strategy.nodeInfo.metricsPredictions, err = strategy.getNodeMetricPredictions(strategy.nodeInfo.nodeType, strategy.nodeInfo.funcsGroupsLoad)
-		if err != nil {
-			return err
-		}
-
-		strategy.nodeInfo.overload = strategy.isNodeOverloaded(strategy.nodeInfo.metricsPredictions)
-
-		strategy.nodeInfo.margin = strategy.calculateMargin(strategy.maxValues)
-
-		err = strategy.sendMarginToNeighbours()
-		if err != nil {
-			return err
-		}
-
-		strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryNMS) error {
-			debugNodesTblContentNMS(entries)
-			return nil
-		})
-
-		strategy.weights, err = strategy.calculateWeights()
-		if err != nil {
-			return err
-		}
-
-		err = strategy.setProxyWeights()
-		if err != nil {
-			return err
-		}
-
-		duration := time.Since(start)
-
-		httpserver.StrategySuccessIterations.Inc()
-		httpserver.StrategyIterationDuration.Set(duration.Seconds())
-
-		millisNow = time.Now().UnixNano() / 1000000
-		millisSleep = millisInterval - (millisNow % millisInterval)
-		time.Sleep(time.Duration(millisSleep) * time.Millisecond)
+// Period returns the recalculation interval. Defaults to 1 minute if not configured.
+func (strategy *NodeMarginStrategy) Period() time.Duration {
+	if _config.RecalcPeriod == 0 {
+		return time.Minute
 	}
+	return _config.RecalcPeriod
 }
+
+// Tick runs one full Node Margin strategy decision cycle.
+// The runner handles the outer loop and inter-tick sleep; Tick must not sleep
+// at the end.
+func (strategy *NodeMarginStrategy) Tick(ctx context.Context) error {
+	logger := logging.Logger()
+	start := time.Now()
+
+	cpuUsage, err := strategy.faasProvider.QueryCPUusage(_config.RecalcPeriod)
+	if err != nil {
+		logger.Errorf("NMS: QueryCPUusage failed: %v", err)
+		return nil // non-fatal
+	}
+	debugPromCPUusage(_config.RecalcPeriod, cpuUsage)
+
+	ramUsage, err := strategy.faasProvider.QueryRAMusage(_config.RecalcPeriod)
+	if err != nil {
+		logger.Errorf("NMS: QueryRAMusage failed: %v", err)
+		return nil
+	}
+	debugPromRAMusage(_config.RecalcPeriod, ramUsage)
+
+	if err := strategy.publishNodeInfo(); err != nil {
+		logger.Errorf("NMS: failed to publish node info: %v", err)
+		return nil
+	}
+
+	strategy.updateCommonNeighbours()
+
+	strategy.nodeInfo.funcsRates, _ = strategy.getFunctionsRates()
+
+	funcsGroups, err := GetFuncsGroups()
+	if err != nil {
+		return err
+	}
+	strategy.funcsGroups = funcsGroups
+
+	strategy.nodeInfo.funcsGroupsLoad, err = strategy.getFuncsGroupsLoad()
+	if err != nil {
+		return err
+	}
+
+	strategy.nodeInfo.metricsPredictions, err = strategy.getNodeMetricPredictions(
+		strategy.nodeInfo.nodeType, strategy.nodeInfo.funcsGroupsLoad)
+	if err != nil {
+		return err
+	}
+
+	strategy.nodeInfo.overload = strategy.isNodeOverloaded(strategy.nodeInfo.metricsPredictions)
+	strategy.nodeInfo.margin = strategy.calculateMargin(strategy.maxValues)
+
+	if err := strategy.sendMarginToNeighbours(); err != nil {
+		return err
+	}
+
+	strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryNMS) error {
+		debugNodesTblContentNMS(entries)
+		return nil
+	})
+
+	weights, err := strategy.calculateWeights()
+	if err != nil {
+		return err
+	}
+	strategy.weights = weights
+
+	if err := strategy.setProxyWeights(); err != nil {
+		return err
+	}
+
+	httpserver.StrategySuccessIterations.Inc()
+	httpserver.StrategyIterationDuration.Set(time.Since(start).Seconds())
+	return nil
+}
+
+var _ PeriodicStrategy = (*NodeMarginStrategy)(nil)
 
 // OnReceived should be executed every time a message from a peer is received
 func (strategy *NodeMarginStrategy) OnReceived(msg *pubsub.Message) error {

@@ -109,8 +109,15 @@ func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, er
 		Port:     constants.ForeasterPort,
 	}
 
-	strategy.nodeInfo = nodeInfo{}
-	strategy.maxValues = make(map[string]float64)
+	strategy.nodeInfo = nodeInfo{
+		nodeType: _config.NodeType,
+		overload: false,
+	}
+	strategy.maxValues = map[string]float64{
+		cpuUsageNodeMetric:   _config.CPUThresholdNMS,
+		ramUsageNodeMetric:   _config.RAMThresholdNMS,
+		powerUsageNodeMetric: _config.PowerThresholdNMS,
+	}
 	strategy.targetNodes = make(map[string][]string)
 	strategy.weights = make(map[string]map[string]uint)
 
@@ -182,6 +189,8 @@ func (strategyFactory *allLocalStrategyFactory) createStrategy() (Strategy, erro
 		return nil, fmt.Errorf("creating FaaS provider: %w", err)
 	}
 	strategy.faasProvider = provider
+
+	strategy.prevFuncs = make(map[string]*uint)
 
 	return strategy, nil
 }
