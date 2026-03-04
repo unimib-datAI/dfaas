@@ -95,6 +95,14 @@ type Configuration struct {
 	// OpenWhiskAPIKey is the OpenWhisk API key in "uuid:key" format.
 	// Only used when FaaSPlatform is "openwhisk".
 	OpenWhiskAPIKey string `mapstructure:"AGENT_OPENWHISK_API_KEY"`
+
+	// HeartbeatInterval controls how often the agent broadcasts a MsgHeartbeat
+	// to announce its presence to peers. Defaults to 10s.
+	HeartbeatInterval time.Duration `mapstructure:"AGENT_HEARTBEAT_INTERVAL"`
+
+	// DirectMsgTimeout is the deadline for dialing a peer and completing a
+	// directed message exchange over a libp2p stream. Defaults to 5s.
+	DirectMsgTimeout time.Duration `mapstructure:"AGENT_DIRECT_MSG_TIMEOUT"`
 }
 
 // viperBindConfig binds each field of the Configuration struct with its
