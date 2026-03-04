@@ -60,13 +60,58 @@ func TestMsgOffloadRequest_JSONRoundTrip(t *testing.T) {
 	assert.Equal(t, orig, got)
 }
 
+func TestMsgFunctionEvent_JSONRoundTrip(t *testing.T) {
+	orig := msgtypes.MsgFunctionEvent{
+		Header:   msgtypes.MsgHeader{MsgType: msgtypes.TypeFunctionEvent, SenderID: "peer4", Timestamp: time.Now().Truncate(time.Second)},
+		Function: "resize",
+		Event:    msgtypes.FunctionEventDeployed,
+	}
+	data, err := json.Marshal(orig)
+	require.NoError(t, err)
+
+	var got msgtypes.MsgFunctionEvent
+	require.NoError(t, json.Unmarshal(data, &got))
+	assert.Equal(t, orig, got)
+}
+
+func TestMsgBackpressure_JSONRoundTrip(t *testing.T) {
+	orig := msgtypes.MsgBackpressure{
+		Header:    msgtypes.MsgHeader{MsgType: msgtypes.TypeBackpressure, SenderID: "peer5", Timestamp: time.Now().Truncate(time.Second)},
+		Functions: []string{"resize", "figlet"},
+		Reason:    "overloaded",
+	}
+	data, err := json.Marshal(orig)
+	require.NoError(t, err)
+
+	var got msgtypes.MsgBackpressure
+	require.NoError(t, json.Unmarshal(data, &got))
+	assert.Equal(t, orig, got)
+}
+
 func TestMsgOffloadResponse_JSONRoundTrip(t *testing.T) {
 	orig := msgtypes.MsgOffloadResponse{
-		Header:        msgtypes.MsgHeader{MsgType: msgtypes.TypeOffloadResponse, SenderID: "peer4", Timestamp: time.Now().Truncate(time.Second)},
+		Header:        msgtypes.MsgHeader{MsgType: msgtypes.TypeOffloadResponse, SenderID: "peer6", Timestamp: time.Now().Truncate(time.Second)},
 		CorrelationID: "abc-123",
 		Function:      "resize",
 		RateAccepted:  30.0,
 		Reason:        "",
+	}
+	data, err := json.Marshal(orig)
+	require.NoError(t, err)
+
+	var got msgtypes.MsgOffloadResponse
+	require.NoError(t, json.Unmarshal(data, &got))
+	assert.Equal(t, orig, got)
+}
+
+func TestMsgOffloadResponse_Rejection_JSONRoundTrip(t *testing.T) {
+	// Verify that Reason (omitempty) is preserved when the response is a rejection.
+	orig := msgtypes.MsgOffloadResponse{
+		Header:        msgtypes.MsgHeader{MsgType: msgtypes.TypeOffloadResponse, SenderID: "peer6", Timestamp: time.Now().Truncate(time.Second)},
+		CorrelationID: "abc-123",
+		Function:      "resize",
+		RateAccepted:  0,
+		Reason:        "overloaded",
 	}
 	data, err := json.Marshal(orig)
 	require.NoError(t, err)
