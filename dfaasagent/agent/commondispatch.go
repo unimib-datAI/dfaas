@@ -14,14 +14,6 @@ import (
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
 )
 
-// msgTypeEnvelope extracts the msg_type field from the common vocabulary
-// message JSON. The field is nested under "header" in all common messages.
-type msgTypeEnvelope struct {
-	Header struct {
-		MsgType string `json:"msg_type"`
-	} `json:"header"`
-}
-
 // MakeCommonCallback wraps a strategy's OnReceived callback with a pre-filter
 // that intercepts common broadcast messages and updates the CommonNodeTable.
 // The strategy callback is always invoked after the pre-filter, so strategies
@@ -31,9 +23,9 @@ func MakeCommonCallback(tbl *nodestbl.TableCommon, strategyCB communication.CBOn
 		data := msg.GetData()
 
 		// Peek at the message type without full decoding.
-		var env msgTypeEnvelope
+		var env msgtypes.MsgEnvelope
 		if err := json.Unmarshal(data, &env); err == nil {
-			if _, isCommon := communication.CommonMsgTypes[env.Header.MsgType]; isCommon {
+			if _, isCommon := msgtypes.CommonBroadcastTypes[env.Header.MsgType]; isCommon {
 				dispatchCommon(tbl, env.Header.MsgType, data)
 			}
 		}

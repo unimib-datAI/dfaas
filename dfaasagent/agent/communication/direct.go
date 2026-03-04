@@ -23,14 +23,6 @@ import (
 // DirectProtocol is the libp2p protocol ID used for directed dfaas messages.
 const DirectProtocol = "/dfaas/msg/1.0.0"
 
-// msgTypeEnvelope is used to peek at the msg_type field before full decoding.
-// The msg_type field is nested under "header" in all common vocabulary messages.
-type msgTypeEnvelope struct {
-	Header struct {
-		MsgType string `json:"msg_type"`
-	} `json:"header"`
-}
-
 // HandlerFunc is called when a directed message of a specific type arrives.
 // It receives the raw JSON payload and may return a response object (which will
 // be JSON-encoded and sent back) or nil (fire-and-forget, no response sent).
@@ -146,7 +138,7 @@ func (dm *directMessenger) handleStream(s network.Stream) {
 	}
 
 	// Peek at the message type.
-	var env msgTypeEnvelope
+	var env msgtypes.MsgEnvelope
 	if err := json.Unmarshal(raw, &env); err != nil {
 		return
 	}
@@ -170,21 +162,19 @@ func (dm *directMessenger) handleStream(s network.Stream) {
 }
 
 // writeMsg serialises msg to JSON and writes it with a 4-byte big-endian
-// length prefix.
+// length prefix in a single Write call.
 func writeMsg(w io.Writer, msg interface{}) error {
 	payload, err := json.Marshal(msg)
 	if err != nil {
 		return errors.Wrap(err, "marshalling directed message")
 	}
 
-	var lenBuf [4]byte
-	binary.BigEndian.PutUint32(lenBuf[:], uint32(len(payload)))
+	buf := make([]byte, 4+len(payload))
+	binary.BigEndian.PutUint32(buf[:4], uint32(len(payload)))
+	copy(buf[4:], payload)
 
-	if _, err := w.Write(lenBuf[:]); err != nil {
-		return errors.Wrap(err, "writing message length prefix")
-	}
-	if _, err := w.Write(payload); err != nil {
-		return errors.Wrap(err, "writing message payload")
+	if _, err := w.Write(buf); err != nil {
+		return errors.Wrap(err, "writing directed message")
 	}
 	return nil
 }
@@ -212,10 +202,3 @@ func readMsg(r io.Reader) (json.RawMessage, error) {
 // Ensure directMessenger satisfies the interface at compile time.
 var _ DirectMessenger = (*directMessenger)(nil)
 
-// CommonMsgTypes lists the broadcast message types that belong to the common
-// vocabulary. Used by the pre-filter in commondispatch.go to identify common messages.
-var CommonMsgTypes = map[string]struct{}{
-	msgtypes.TypeHeartbeat:     {},
-	msgtypes.TypeOverloadAlert: {},
-	msgtypes.TypeFunctionEvent: {},
-}
