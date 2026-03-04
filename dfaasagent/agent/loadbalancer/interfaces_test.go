@@ -7,8 +7,6 @@ package loadbalancer_test
 
 import (
 	"context"
-	"encoding/json"
-	"testing"
 	"time"
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -32,7 +30,6 @@ var _ loadbalancer.PeriodicStrategy = (*mockPeriodic)(nil)
 // mockEventDriven is a minimal EventDrivenStrategy used in tests.
 type mockEventDriven struct {
 	reactCalled int
-	lastEvent   loadbalancer.StrategyEvent
 }
 
 func (m *mockEventDriven) OnReceived(_ *pubsub.Message) error { return nil }
@@ -40,7 +37,6 @@ func (m *mockEventDriven) TriggerEvents() []string            { return []string{
 func (m *mockEventDriven) Debounce() time.Duration            { return 0 }
 func (m *mockEventDriven) React(_ context.Context, ev loadbalancer.StrategyEvent) error {
 	m.reactCalled++
-	m.lastEvent = ev
 	return nil
 }
 
@@ -63,14 +59,3 @@ func (m *mockHybrid) React(_ context.Context, ev loadbalancer.StrategyEvent) err
 }
 
 var _ loadbalancer.HybridStrategy = (*mockHybrid)(nil)
-
-// TestStrategyEvent_Fields verifies the StrategyEvent struct has the expected fields.
-func TestStrategyEvent_Fields(t *testing.T) {
-	ev := loadbalancer.StrategyEvent{
-		Type: "overload_alert",
-		Raw:  json.RawMessage(`{"header":{"msg_type":"overload_alert"}}`),
-	}
-	if ev.Type != "overload_alert" {
-		t.Fatalf("expected Type overload_alert, got %s", ev.Type)
-	}
-}

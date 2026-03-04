@@ -19,6 +19,7 @@ import (
 type PeriodicStrategy interface {
 	// OnReceived is called for every incoming broadcast message.
 	// Used for state table updates; does NOT trigger a recalculation cycle.
+	// Implementors are responsible for filtering out self-messages if needed.
 	OnReceived(msg *pubsub.Message) error
 
 	// Period returns the interval between consecutive Tick calls.
@@ -35,6 +36,7 @@ type PeriodicStrategy interface {
 type EventDrivenStrategy interface {
 	// OnReceived is called for every incoming broadcast message.
 	// Used for state table updates; does NOT trigger React.
+	// Implementors are responsible for filtering out self-messages if needed.
 	OnReceived(msg *pubsub.Message) error
 
 	// TriggerEvents returns the msgtypes.Type* constants that cause React to be invoked.
@@ -51,6 +53,8 @@ type EventDrivenStrategy interface {
 
 // HybridStrategy combines a periodic baseline with event-driven triggers.
 // The runner guarantees that Tick and React are never called concurrently.
+// Both embedded interfaces declare OnReceived with an identical signature;
+// Go merges them into one — implementors provide a single OnReceived method.
 type HybridStrategy interface {
 	PeriodicStrategy
 	EventDrivenStrategy
@@ -61,12 +65,11 @@ type HybridStrategy interface {
 type StrategyEvent struct {
 	// Type is one of the msgtypes.Type* constants.
 	Type string
-	// Raw is the full JSON payload of the triggering message.
+	// Raw is valid JSON; callers may unmarshal it into their concrete message type.
 	Raw json.RawMessage
 }
 
 // StrategyRunner manages the execution lifecycle of a strategy.
-// Obtain one via NewRunner.
 type StrategyRunner interface {
 	// Callback returns the pubsub CBOnReceived to register with the receiver.
 	// For Periodic strategies it simply delegates to OnReceived.
