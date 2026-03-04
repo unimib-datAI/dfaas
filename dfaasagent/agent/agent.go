@@ -42,6 +42,8 @@ import (
 
 var _p2pHost host.Host
 
+var _directMessenger communication.DirectMessenger
+
 // Convert libp2p PrivKey to ed25519.PrivateKey.
 func toEd25519PrivateKey(priv crypto.PrivKey) (ed25519.PrivateKey, error) {
 	// Only works for Ed25519 keys.
@@ -187,6 +189,14 @@ func runAgent(config config.Configuration) error {
 		logger.Info("  ", i+1, ". ", addr)
 	}
 
+	////////// DIRECT MESSENGER //////////
+
+	directTimeout := config.DirectMsgTimeout
+	if directTimeout == 0 {
+		directTimeout = 5 * time.Second
+	}
+	_directMessenger = communication.NewDirectMessenger(_p2pHost, directTimeout)
+
 	////////// LOAD BALANCER INITIALIZATION //////////
 
 	loadbalancer.Initialize(_p2pHost, config)
@@ -199,11 +209,26 @@ func runAgent(config config.Configuration) error {
 		return fmt.Errorf("error while getting strategy instance: %w", err)
 	}
 
+	////////// COMMON NODE TABLE //////////
+
+	// Use 3× the heartbeat interval as the TTL so that entries survive up to
+	// three missed heartbeats before expiring.
+	heartbeatTTL := 3 * config.HeartbeatInterval
+	if heartbeatTTL == 0 {
+		heartbeatTTL = 30 * time.Second // safe default when interval is not configured
+	}
+	commonTable := nodestbl.NewTableCommon(heartbeatTTL)
+
 	////////// PUBSUB INITIALIZATION //////////
+
+	// Wrap the strategy callback with the common message pre-filter so that
+	// heartbeats, overload alerts, and function events update the shared
+	// CommonNodeTable before being forwarded to the strategy.
+	commonCB := MakeCommonCallback(commonTable, strategy.OnReceived)
 
 	// The PubSub initialization must be done before the Kademlia one. Otherwise
 	// the agent won't be able to publish or subscribe.
-	err = communication.Initialize(ctx, _p2pHost, config.PubSubTopic, strategy.OnReceived)
+	err = communication.Initialize(ctx, _p2pHost, config.PubSubTopic, commonCB)
 	if err != nil {
 		return err
 	}
