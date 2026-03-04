@@ -42,7 +42,7 @@ type StaticStrategy struct {
 
 // Private struct containing info about us.
 type nodeInfoStatic struct {
-	funcs               []string // Our OpenFaaS functions.
+	funcs               []string // Our FaaS functions.
 	commonNeighboursNum int      // Number of neighbours with at least a function in common.
 }
 
@@ -160,7 +160,7 @@ func (strategy *StaticStrategy) publishNodeInfo() error {
 	// Obtain our function names list.
 	strategy.nodeInfo.funcs, err = strategy.faasProvider.GetFuncsNames()
 	if err != nil {
-		return fmt.Errorf("getting functions info from OpenFaaS: %w", err)
+		return fmt.Errorf("getting functions info from FaaS provider: %w", err)
 	}
 
 	msg := MsgNodeInfoStatic{
@@ -244,8 +244,8 @@ func (strategy *StaticStrategy) setProxyWeights() error {
 // updateHAProxyConfig to update the HAProxy configuration.
 func (strategy *StaticStrategy) createHACfgObject(
 	myNodeID string,
-	openFaaSHost string,
-	openFaaSPort uint,
+	faasHost string,
+	faasPort uint,
 	entries map[string]*nodestbl.EntryNMS,
 	funcsWeights map[string]map[string]uint,
 ) *HACfgStatic {
@@ -254,8 +254,8 @@ func (strategy *StaticStrategy) createHACfgObject(
 			MyNodeID:        myNodeID,
 			NodeIP:          _config.NodeIP,
 			HAProxyHost:     _config.HAProxyHost,
-			FaaSHost:        openFaaSHost,
-			FaaSPort:        openFaaSPort,
+			FaaSHost:        faasHost,
+			FaaSPort:        faasPort,
 			FaaSBackendPath: faasprovider.BackendPathPrefix(_config.FaaSPlatform, _config.OpenWhiskNamespace),
 		},
 

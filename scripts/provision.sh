@@ -123,5 +123,5 @@ log "  IP:           ${VM_IP}"
 log "  FaaS:         ${FAAS_PLATFORM}"
 log "  SSH:          ssh ${E2E_VM_USER:-ubuntu}@${VM_IP}"
 if [[ "${FAAS_PLATFORM}" == "openwhisk" ]]; then
-    log "  Next step:    set AGENT_OPENWHISK_API_KEY in your agent values"
+    log "  OpenWhisk API key was retrieved and injected into the agent automatically."
 fi
