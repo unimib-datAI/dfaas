@@ -213,7 +213,7 @@ func readMsg(r io.Reader) (json.RawMessage, error) {
 var _ DirectMessenger = (*directMessenger)(nil)
 
 // CommonMsgTypes lists the broadcast message types that belong to the common
-// vocabulary. Used by the pre-filter in agent.go to identify common messages.
+// vocabulary. Used by the pre-filter in commondispatch.go to identify common messages.
 var CommonMsgTypes = map[string]struct{}{
 	msgtypes.TypeHeartbeat:     {},
 	msgtypes.TypeOverloadAlert: {},
