@@ -208,6 +208,7 @@ func runAgent(config config.Configuration) error {
 	if err != nil {
 		return fmt.Errorf("error while getting strategy instance: %w", err)
 	}
+	runner := loadbalancer.NewRunner(strategy)
 
 	////////// COMMON NODE TABLE //////////
 
@@ -224,7 +225,7 @@ func runAgent(config config.Configuration) error {
 	// Wrap the strategy callback with the common message pre-filter so that
 	// heartbeats, overload alerts, and function events update the shared
 	// CommonNodeTable before being forwarded to the strategy.
-	commonCB := MakeCommonCallback(commonTable, strategy.OnReceived)
+	commonCB := MakeCommonCallback(commonTable, runner.Callback())
 
 	// The PubSub initialization must be done before the Kademlia one. Otherwise
 	// the agent won't be able to publish or subscribe.
@@ -293,7 +294,7 @@ func runAgent(config config.Configuration) error {
 
 	go func() { chanErr <- communication.RunReceiver() }()
 
-	go func() { chanErr <- strategy.RunStrategy() }()
+	go func() { chanErr <- runner.Run(ctx) }()
 
 	go func() { chanErr <- httpserver.RunHttpServer() }()
 
@@ -302,6 +303,7 @@ func runAgent(config config.Configuration) error {
 	select {
 	case sig := <-chanStop:
 		logger.Warn("Caught " + sig.String() + " signal. Stopping.")
+		cancelCtx()
 		if config.MDNSEnabled {
 			if err := mdns.Stop(); err != nil {
 				return err
