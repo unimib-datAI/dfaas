@@ -13,8 +13,6 @@ import (
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 )
 
-
-
 // periodicRunner runs a PeriodicStrategy on a fixed ticker.
 type periodicRunner struct {
 	s PeriodicStrategy
@@ -50,5 +48,3 @@ func (r *periodicRunner) Run(ctx context.Context) error {
 		}
 	}
 }
-
-

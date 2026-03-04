@@ -81,7 +81,7 @@ func TestEventDrivenRunner_DebounceCollapsesEvents(t *testing.T) {
 	// Wait longer than the debounce window (40ms); 200ms gives 5x headroom for CI reliability.
 	time.Sleep(200 * time.Millisecond)
 
-	assert.Equal(t, int32(1), s.reactCalled.Load(), "debounce should collapse 3 rapid events into 1 React call")
+	assert.Equal(t, int32(1), s.reactCalled.Load(), "with a capacity-1 event channel, only 1 of the 3 rapid events reaches React (the others are dropped at the channel)")
 }
 
 func TestEventDrivenRunner_StopsOnContextCancel(t *testing.T) {

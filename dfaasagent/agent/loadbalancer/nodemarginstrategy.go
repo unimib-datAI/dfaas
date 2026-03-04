@@ -751,8 +751,8 @@ func (strategy *NodeMarginStrategy) processMsgNodeMarginInfoNMS(sender string, m
 				entries[sender].TAlive = time.Now()
 				entries[sender].Margin = msg.Margin
 				entries[sender].Load.RateHighUsage = msg.Load.RateHighUsage
-				entries[sender].Load.RateMediumUsage = msg.Load.RateLowUsage
-				entries[sender].Load.RateMediumUsage = msg.Load.RateLowUsage
+				entries[sender].Load.RateMediumUsage = msg.Load.RateMediumUsage
+				entries[sender].Load.RateLowUsage = msg.Load.RateLowUsage
 			}
 		} else {
 			logger.Debugf("Ignore margin info message from node %s (not a common neighbour)", sender)

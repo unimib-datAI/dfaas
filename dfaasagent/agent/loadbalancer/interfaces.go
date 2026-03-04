@@ -51,10 +51,13 @@ type EventDrivenStrategy interface {
 	React(ctx context.Context, ev StrategyEvent) error
 }
 
-// HybridStrategy combines a periodic baseline with event-driven triggers.
-// The runner guarantees that Tick and React are never called concurrently.
-// Both embedded interfaces declare OnReceived with an identical signature;
-// Go merges them into one — implementors provide a single OnReceived method.
+// HybridStrategy combines a periodic baseline with event triggers.
+// Both embedded interfaces declare OnReceived with identical signatures;
+// Go merges them — implementors provide a single OnReceived method.
+//
+// Note: Debounce() is inherited from EventDrivenStrategy but intentionally
+// ignored by hybridRunner. Event delivery to hybrid strategies uses the
+// channel-drop policy (cap 1) instead of debounce.
 type HybridStrategy interface {
 	PeriodicStrategy
 	EventDrivenStrategy
@@ -65,7 +68,9 @@ type HybridStrategy interface {
 type StrategyEvent struct {
 	// Type is one of the msgtypes.Type* constants.
 	Type string
-	// Raw is valid JSON; callers may unmarshal it into their concrete message type.
+	// Raw is the full wire envelope as raw JSON. Callers may unmarshal it into
+	// msgtypes.MsgEnvelope to read the header, or into a concrete message type
+	// that includes the header fields.
 	Raw json.RawMessage
 }
 

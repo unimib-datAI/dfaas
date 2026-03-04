@@ -28,7 +28,7 @@ func TestPeriodicRunner_CallsTick(t *testing.T) {
 	<-done
 
 	// Should have ticked at least twice in 200ms with 30ms period.
-	assert.GreaterOrEqual(t, s.tickCalled, 2)
+	assert.GreaterOrEqual(t, s.tickCalled.Load(), int32(2))
 }
 
 func TestPeriodicRunner_StopsOnContextCancel(t *testing.T) {
@@ -63,5 +63,5 @@ func TestPeriodicRunner_DefaultPeriod(t *testing.T) {
 	go func() { done <- runner.Run(ctx) }()
 	<-done
 
-	assert.Equal(t, 0, s.tickCalled)
+	assert.Equal(t, int32(0), s.tickCalled.Load())
 }

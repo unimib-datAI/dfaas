@@ -17,13 +17,13 @@ import (
 
 // mockPeriodic is a minimal PeriodicStrategy used in tests.
 type mockPeriodic struct {
-	tickCalled int
+	tickCalled atomic.Int32
 	period     time.Duration
 }
 
 func (m *mockPeriodic) OnReceived(_ *pubsub.Message) error { return nil }
 func (m *mockPeriodic) Period() time.Duration              { return m.period }
-func (m *mockPeriodic) Tick(_ context.Context) error       { m.tickCalled++; return nil }
+func (m *mockPeriodic) Tick(_ context.Context) error       { m.tickCalled.Add(1); return nil }
 
 // Compile-time check: mockPeriodic satisfies PeriodicStrategy.
 var _ loadbalancer.PeriodicStrategy = (*mockPeriodic)(nil)
