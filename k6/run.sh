@@ -82,8 +82,12 @@ for NODE in "${NODES[@]}"; do
     echo "Upload path (at the end): $UPLOAD_PATH"
 
     echo "Running k6 load test on node $NODE..."
-    k6 run single_trace.js --out csv=k6_results.csv.gz --env NODE=$NODE --env IP_SERVER=$IP_SERVER
+    k6 run single_trace.js --out csv=k6_results.csv --env NODE=$NODE --env IP_SERVER=$IP_SERVER --no-thresholds --summary-mode=disabled
     echo "k6 load test completed."
+
+    echo "Compress k6 results CSV file with gzip..."
+    gzip --force k6_results.csv
+    echo "CSV file compressed."
 
     echo "Creating remote upload directory: $UPLOAD_PATH..."
     rclone mkdir "$UPLOAD_PATH"
