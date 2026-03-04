@@ -18,6 +18,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
 
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/communication"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/config"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/constants"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
@@ -28,6 +29,9 @@ import (
 // singleton pattern.
 var (
 	_p2pHost host.Host
+
+	// _directMessenger is used by strategies to send directed messages to peers.
+	_directMessenger communication.DirectMessenger
 
 	// Configuration given by the environment.
 	_config config.Configuration
@@ -43,8 +47,9 @@ var (
 )
 
 // Initialize sets up the package. Warning: call this function only once!
-func Initialize(p2pHost host.Host, config config.Configuration) {
+func Initialize(p2pHost host.Host, dm communication.DirectMessenger, config config.Configuration) {
 	_p2pHost = p2pHost
+	_directMessenger = dm
 	_config = config
 	_lock = &sync.Mutex{}
 
@@ -73,6 +78,12 @@ type Strategy interface {
 
 	// OnReceives is called each time a message is received from a peer.
 	OnReceived(msg *pubsub.Message) error
+}
+
+// DirectMessenger returns the DirectMessenger available to strategies for
+// sending directed messages to specific peers.
+func DirectMessenger() communication.DirectMessenger {
+	return _directMessenger
 }
 
 // GetStrategyInstance returns the singleton Strategy instance.
