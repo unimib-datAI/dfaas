@@ -10,6 +10,7 @@ import (
 	"encoding/binary"
 	"encoding/json"
 	"io"
+	"sync"
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/host"
@@ -58,6 +59,7 @@ type DirectMessenger interface {
 type directMessenger struct {
 	host     host.Host
 	timeout  time.Duration
+	mu       sync.RWMutex
 	handlers map[string]HandlerFunc
 }
 
@@ -79,7 +81,10 @@ func (dm *directMessenger) PeerID() string {
 }
 
 // SetHandler registers h for the given msgType.
+// Safe to call concurrently with incoming stream handlers.
 func (dm *directMessenger) SetHandler(msgType string, h HandlerFunc) {
+	dm.mu.Lock()
+	defer dm.mu.Unlock()
 	dm.handlers[msgType] = h
 }
 
@@ -146,7 +151,9 @@ func (dm *directMessenger) handleStream(s network.Stream) {
 		return
 	}
 
+	dm.mu.RLock()
 	h, ok := dm.handlers[env.Header.MsgType]
+	dm.mu.RUnlock()
 	if !ok {
 		// No handler registered; ignore the message.
 		return
@@ -157,7 +164,8 @@ func (dm *directMessenger) handleStream(s network.Stream) {
 		return
 	}
 
-	// Write response back on the same stream.
+	// Write response back on the same stream. Error is intentionally discarded:
+	// the requester will time out if the write fails.
 	_ = writeMsg(s, resp)
 }
 
