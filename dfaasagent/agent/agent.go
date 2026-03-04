@@ -199,7 +199,7 @@ func runAgent(config config.Configuration) error {
 
 	////////// LOAD BALANCER INITIALIZATION //////////
 
-	loadbalancer.Initialize(_p2pHost, config)
+	loadbalancer.Initialize(_p2pHost, _directMessenger, config)
 
 	// Get the Strategy instance (which is a singleton) of type
 	// dependent on the strategy specified in the configuration
