@@ -1,30 +1,34 @@
 ---
-- name: Adjust system limits and IPv4 port range
+- name: Fine-tune OS settings to let k6 run with large number of sockets
   hosts: all
 
   tasks:
-    - name: Increase ulimit soft limit for open files in .bashrc
+    - name: Increase number of maximum open files (also sockets)
       ansible.builtin.blockinfile:
         path: ~/.bashrc
         block: |
           # Increase soft limit for open files (sockets).
-          ulimit -n 50000
+          ulimit -n 100000
         marker: "# {mark} ANSIBLE ULIMIT BLOCK"
         create: yes
 
-    - name: Increase IPv4 port range and immediately reuse ports
+    - name: Fine-tune IPv4 settings in Linux kernel
       become: true
       ansible.builtin.copy:
-        dest: /etc/sysctl.d/10-ipv4-port-range.conf
+        dest: /etc/sysctl.d/10-k6-fine-tune.conf
         owner: root
         group: root
         mode: '0644'
         content: |
-          # Increase port range for IPv4 connections and reuse
-          # reuse connections in TIME_WAIT state.
-          # For more info: https://grafana.com/docs/k6/latest/set-up/fine-tune-os/
+          # Fine tune some kernel settings as suggested by k6 docs.
+          # See: https://grafana.com/docs/k6/latest/set-up/fine-tune-os/
           net.ipv4.ip_local_port_range=7000 65000
           net.ipv4.tcp_tw_reuse=1
+          net.ipv4.tcp_timestamps=1
 
-          # Decrease also the FIN_WAIT2 wait state to speed up socket closing.
+          # Speed up socket closing by decreasing FIN_WAIT2 state timeout.
           net.ipv4.tcp_fin_timeout=5
+
+          # Increase queue size for incoming packets (responses from the
+          # server).
+          net.core.netdev_max_backlog = 5000
