@@ -9,8 +9,6 @@ import (
 	"context"
 	"time"
 
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
-
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/communication"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 )
@@ -77,19 +75,4 @@ func newHybridRunner(s HybridStrategy) StrategyRunner {
 	return newPeriodicRunner(s)
 }
 
-// newEventDrivenRunner is a placeholder — replaced in Task 3.
-func newEventDrivenRunner(_ EventDrivenStrategy) StrategyRunner {
-	return &noopRunner{}
-}
-
-// noopRunner is used as a placeholder for eventDrivenRunner until Task 3.
-type noopRunner struct{}
-
-func (r *noopRunner) Callback() communication.CBOnReceived {
-	return func(_ *pubsub.Message) error { return nil }
-}
-
-func (r *noopRunner) Run(ctx context.Context) error {
-	<-ctx.Done()
-	return ctx.Err()
-}
+// newEventDrivenRunner is defined in runner_eventdriven.go.
