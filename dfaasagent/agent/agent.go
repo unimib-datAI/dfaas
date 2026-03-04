@@ -297,6 +297,8 @@ func runAgent(config config.Configuration) error {
 
 	go func() { chanErr <- httpserver.RunHttpServer() }()
 
+	go func() { chanErr <- RunHeartbeat(config, faasProvider) }()
+
 	select {
 	case sig := <-chanStop:
 		logger.Warn("Caught " + sig.String() + " signal. Stopping.")
