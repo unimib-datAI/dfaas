@@ -137,7 +137,11 @@ func (t *TableCommon) GetLiveEntries() []EntryCommon {
 			delete(t.entries, id)
 			continue
 		}
-		live = append(live, *e)
+		// Deep-copy Functions to prevent callers from observing mutations made
+		// by concurrent UpdateFromFunctionEvent calls on the same backing array.
+		snapshot := *e
+		snapshot.Functions = append([]string(nil), e.Functions...)
+		live = append(live, snapshot)
 	}
 
 	return live
