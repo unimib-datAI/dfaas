@@ -78,8 +78,8 @@ func TestEventDrivenRunner_DebounceCollapsesEvents(t *testing.T) {
 		require.NoError(t, cb(fakeEvent("test_event")))
 	}
 
-	// Wait longer than the debounce window (40ms).
-	time.Sleep(120 * time.Millisecond)
+	// Wait longer than the debounce window (40ms); 200ms gives 5x headroom for CI reliability.
+	time.Sleep(200 * time.Millisecond)
 
 	assert.Equal(t, int32(1), s.reactCalled.Load(), "debounce should collapse 3 rapid events into 1 React call")
 }
