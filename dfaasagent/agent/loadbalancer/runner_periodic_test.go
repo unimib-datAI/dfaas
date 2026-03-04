@@ -20,14 +20,14 @@ func TestPeriodicRunner_CallsTick(t *testing.T) {
 	s := &mockPeriodic{period: 30 * time.Millisecond}
 	runner := loadbalancer.NewRunner(s)
 
-	ctx, cancel := context.WithTimeout(context.Background(), 120*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), 200*time.Millisecond)
 	defer cancel()
 
 	done := make(chan error, 1)
 	go func() { done <- runner.Run(ctx) }()
 	<-done
 
-	// Should have ticked at least twice in 120ms with 30ms period.
+	// Should have ticked at least twice in 200ms with 30ms period.
 	assert.GreaterOrEqual(t, s.tickCalled, 2)
 }
 

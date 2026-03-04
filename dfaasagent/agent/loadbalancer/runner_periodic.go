@@ -54,6 +54,7 @@ func (r *periodicRunner) Run(ctx context.Context) error {
 // NewRunner creates the appropriate StrategyRunner for s based on which loop
 // interface s implements. HybridStrategy takes precedence over its two
 // constituents. Panics if s implements none of the known loop interfaces.
+// TODO(Task 5): narrow to Strategy once RunStrategy() is removed from the base interface.
 func NewRunner(s interface{}) StrategyRunner {
 	switch st := s.(type) {
 	case HybridStrategy:
@@ -70,6 +71,9 @@ func NewRunner(s interface{}) StrategyRunner {
 // newHybridRunner is a placeholder — replaced in Task 4.
 // HybridStrategy also satisfies PeriodicStrategy; use that until Task 4 lands.
 func newHybridRunner(s HybridStrategy) StrategyRunner {
+	// NOTE: event-driven triggers are inactive until Task 4 replaces this placeholder.
+	logger := logging.Logger()
+	logger.Warnf("newHybridRunner: using periodic-only runner; event-driven triggers are inactive until Task 4 replaces this placeholder")
 	return newPeriodicRunner(s)
 }
 
