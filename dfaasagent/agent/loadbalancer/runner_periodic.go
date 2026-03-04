@@ -75,4 +75,3 @@ func newHybridRunner(s HybridStrategy) StrategyRunner {
 	return newPeriodicRunner(s)
 }
 
-// newEventDrivenRunner is defined in runner_eventdriven.go.

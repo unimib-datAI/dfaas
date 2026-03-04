@@ -45,18 +45,19 @@ func (m *mockEventDriven) React(_ context.Context, ev loadbalancer.StrategyEvent
 var _ loadbalancer.EventDrivenStrategy = (*mockEventDriven)(nil)
 
 // mockHybrid is a minimal HybridStrategy used in tests.
+// tickCalled and reactCalled are accessed atomically so the race detector is satisfied.
 type mockHybrid struct {
-	tickCalled  int
-	reactCalled int
+	tickCalled  atomic.Int32
+	reactCalled atomic.Int32
 }
 
 func (m *mockHybrid) OnReceived(_ *pubsub.Message) error { return nil }
 func (m *mockHybrid) Period() time.Duration              { return 50 * time.Millisecond }
-func (m *mockHybrid) Tick(_ context.Context) error       { m.tickCalled++; return nil }
+func (m *mockHybrid) Tick(_ context.Context) error       { m.tickCalled.Add(1); return nil }
 func (m *mockHybrid) TriggerEvents() []string            { return []string{"test_event"} }
 func (m *mockHybrid) Debounce() time.Duration            { return 0 }
 func (m *mockHybrid) React(_ context.Context, ev loadbalancer.StrategyEvent) error {
-	m.reactCalled++
+	m.reactCalled.Add(1)
 	return nil
 }
 

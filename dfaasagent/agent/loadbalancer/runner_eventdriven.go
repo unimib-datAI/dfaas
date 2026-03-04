@@ -72,6 +72,7 @@ func (r *eventDrivenRunner) Run(ctx context.Context) error {
 	for {
 		select {
 		case <-ctx.Done():
+			// Pending debounced event (if any) is intentionally dropped on cancellation.
 			return ctx.Err()
 
 		case ev := <-r.events:
