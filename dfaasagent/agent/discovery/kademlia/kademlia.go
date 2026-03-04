@@ -87,7 +87,7 @@ func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig Bootstra
 					logger.Infof("Connected to bootstrap node %s", peerInfo.String())
 					return
 				}
-				logger.Error(fmt.Sprintf("Connection failed to a bootstrap node: %w", err))
+				logger.Errorf("Connection failed to a bootstrap node: %v", err)
 				errWrap := fmt.Errorf("Connection failed to a bootstrap node: %w", err)
 
 				if bootstrapConfig.BootstrapForce {
