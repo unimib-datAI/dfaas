@@ -5,18 +5,58 @@
 # AUTHORS file for more information.
 #
 # Run the script with the --help flag for more details.
-#!/usr/bin/env python3
 import argparse
 import csv
 import subprocess
 import time
 import re
 import random
+import requests
+from pathlib import Path
 from datetime import datetime
 
 # Internal function database mapping each function name to its body. You may
 # update it to support additional functions as needed.
 FUNCTION_DATABASE = {"figlet": "Hello World"}
+
+# Special handling for functions that require binary data.
+BINARY_FUNCTIONS = {
+    "mlimage": {
+        "url": "https://github.com/EliSchwartz/imagenet-sample-images/blob/master/n01616318_vulture.JPEG?raw=true",
+        "local_path": Path("/tmp/mlimage_vulture.jpg"),
+        "content_type": "image/jpeg",
+    }
+}
+
+
+def download_binary_data(function_name):
+    """Download binary data for functions that require it."""
+    if function_name not in BINARY_FUNCTIONS:
+        return None
+
+    binary_config = BINARY_FUNCTIONS[function_name]
+    local_path = binary_config["local_path"]
+
+    # Avoid downloading if file already exists.
+    if local_path.exists():
+        print(f"  Using cached binary data from {local_path}")
+        return local_path
+
+    print(f"  Downloading binary data from {binary_config['url']}...")
+    try:
+        response = requests.get(binary_config["url"], timeout=30)
+        response.raise_for_status()
+
+        local_path.write_bytes(response.content)
+
+        print(f"  Downloaded to {local_path}")
+        return local_path
+    except requests.RequestException as e:
+        print(f"  Error downloading binary data: {e}")
+        return None
+    except Exception as e:
+        print(f"  Error saving binary data: {e}")
+        return None
 
 
 def delete_function_pods(function_name):
@@ -87,10 +127,9 @@ def wait_for_pods_terminating(function_name, max_wait=30):
 
 def invoke_function(endpoint, function_name):
     """Invoke the function using curl and returns latency metrics."""
-    # read request body from db here
-    body = FUNCTION_DATABASE[function_name]
     url = f"http://{endpoint}/function/{function_name}"
 
+    # Base curl command
     cmd = [
         "curl",
         "--http1.1",
@@ -99,10 +138,30 @@ def invoke_function(endpoint, function_name):
         "--write-out",
         "cold_start_service_time_s=%{time_total} time_to_first_byte_s=%{time_starttransfer}\n",
         url,
-        "--data",
-        body,
-        "--include",
     ]
+
+    # Check if this is a binary function
+    if function_name in BINARY_FUNCTIONS:
+        binary_path = download_binary_data(function_name)
+        if binary_path is None:
+            print("  Error: Failed to get binary data")
+            return None, None, None
+
+        binary_config = BINARY_FUNCTIONS[function_name]
+        cmd.extend(
+            [
+                "--data-binary",
+                f"@{binary_path}",
+                "-H",
+                f"Content-Type: {binary_config['content_type']}",
+            ]
+        )
+    else:
+        # Read request body from database for text-based functions
+        body = FUNCTION_DATABASE.get(function_name, "")
+        cmd.extend(["--data", body])
+
+    cmd.append("--include")
 
     try:
         result = subprocess.run(cmd, capture_output=True, text=True, timeout=120)
@@ -138,6 +197,13 @@ def run_benchmark(endpoint, function_name, cycles, output_file):
     print(f"Cycles: {cycles}")
     print(f"Output file: {output_file}")
     print("-" * 60)
+
+    # Pre-download binary data if needed
+    if function_name in BINARY_FUNCTIONS:
+        print(f"\nPre-downloading binary data for '{function_name}'...")
+        if download_binary_data(function_name) is None:
+            print("Error: Failed to download binary data. Exiting.")
+            return
 
     # Open CSV file and write header.
     with open(output_file, "w", newline="") as csvfile:
@@ -220,7 +286,7 @@ Examples:
     )
 
     parser.add_argument("endpoint", help="Endpoint address (e.g., 10.0.2.38:30080)")
-    parser.add_argument("function", help="Function name to use (e.g., figlet)")
+    parser.add_argument("function", help="Function name to use (e.g., figlet, mlimage)")
     parser.add_argument(
         "-c",
         "--cycles",
