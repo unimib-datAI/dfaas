@@ -1,0 +1,25 @@
+# Helm values to deploy Apache OpenWhisk instead of OpenFaaS.
+#
+# Usage:
+#   helm install owdev owdev/openwhisk --values k8s/charts/values-openwhisk.yaml
+#
+# Reference: https://github.com/apache/openwhisk-deploy-kube
+
+whisk:
+  ingress:
+    apiHostName: "localhost"
+    apiHostPort: 31001
+    apiHostProto: "http"
+    type: NodePort
+    nodePort: 31001
+
+# After deploying OpenWhisk, install the DFaaS agent with:
+#   helm install agent ./k8s/charts/agent/ --values values-test.yaml \
+#     --set config.AGENT_FAAS_PLATFORM=openwhisk \
+#     --set config.AGENT_FAAS_HOST=owdev-nginx.openwhisk \
+#     --set config.AGENT_FAAS_PORT=80 \
+#     --set config.AGENT_OPENWHISK_NAMESPACE=guest \
+#     --set config.AGENT_OPENWHISK_API_KEY="<uuid>:<key>"
+#
+# To retrieve the OpenWhisk API key after deployment:
+#   kubectl -n openwhisk exec deploy/owdev-wskadmin -- wskadmin user get guest

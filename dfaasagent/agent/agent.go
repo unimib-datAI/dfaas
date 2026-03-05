@@ -30,6 +30,7 @@ import (
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/communication"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/discovery/kademlia"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/discovery/mdns"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/faasprovider"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/loadbalancer"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
@@ -40,6 +41,8 @@ import (
 //////////////////// PRIVATE VARIABLES ////////////////////
 
 var _p2pHost host.Host
+
+var _directMessenger communication.DirectMessenger
 
 // Convert libp2p PrivKey to ed25519.PrivateKey.
 func toEd25519PrivateKey(priv crypto.PrivKey) (ed25519.PrivateKey, error) {
@@ -186,9 +189,17 @@ func runAgent(config config.Configuration) error {
 		logger.Info("  ", i+1, ". ", addr)
 	}
 
+	////////// DIRECT MESSENGER //////////
+
+	directTimeout := config.DirectMsgTimeout
+	if directTimeout == 0 {
+		directTimeout = 5 * time.Second
+	}
+	_directMessenger = communication.NewDirectMessenger(_p2pHost, directTimeout)
+
 	////////// LOAD BALANCER INITIALIZATION //////////
 
-	loadbalancer.Initialize(_p2pHost, config)
+	loadbalancer.Initialize(_p2pHost, _directMessenger, config)
 
 	// Get the Strategy instance (which is a singleton) of type
 	// dependent on the strategy specified in the configuration
@@ -197,12 +208,28 @@ func runAgent(config config.Configuration) error {
 	if err != nil {
 		return fmt.Errorf("error while getting strategy instance: %w", err)
 	}
+	runner := loadbalancer.NewRunner(strategy)
+
+	////////// COMMON NODE TABLE //////////
+
+	// Use 3× the heartbeat interval as the TTL so that entries survive up to
+	// three missed heartbeats before expiring.
+	heartbeatTTL := 3 * config.HeartbeatInterval
+	if heartbeatTTL == 0 {
+		heartbeatTTL = 30 * time.Second // safe default when interval is not configured
+	}
+	commonTable := nodestbl.NewTableCommon(heartbeatTTL)
 
 	////////// PUBSUB INITIALIZATION //////////
 
+	// Wrap the strategy callback with the common message pre-filter so that
+	// heartbeats, overload alerts, and function events update the shared
+	// CommonNodeTable before being forwarded to the strategy.
+	commonCB := MakeCommonCallback(commonTable, runner.Callback())
+
 	// The PubSub initialization must be done before the Kademlia one. Otherwise
 	// the agent won't be able to publish or subscribe.
-	err = communication.Initialize(ctx, _p2pHost, config.PubSubTopic, strategy.OnReceived)
+	err = communication.Initialize(ctx, _p2pHost, config.PubSubTopic, commonCB)
 	if err != nil {
 		return err
 	}
@@ -242,7 +269,19 @@ func runAgent(config config.Configuration) error {
 
 	////////// HTTPSERVER INITIALIZATION //////////
 
-	httpserver.Initialize(config)
+	// Create FaaS provider for use by httpserver health check.
+	faasProvider, err := faasprovider.NewFaaSProvider(
+		config.FaaSPlatform,
+		config.FaaSHost,
+		config.FaaSPort,
+		config.OpenWhiskNamespace,
+		config.OpenWhiskAPIKey,
+	)
+	if err != nil {
+		return fmt.Errorf("creating FaaS provider for httpserver: %w", err)
+	}
+
+	httpserver.Initialize(config, faasProvider)
 
 	////////// GOROUTINES //////////
 
@@ -255,13 +294,16 @@ func runAgent(config config.Configuration) error {
 
 	go func() { chanErr <- communication.RunReceiver() }()
 
-	go func() { chanErr <- strategy.RunStrategy() }()
+	go func() { chanErr <- runner.Run(ctx) }()
 
 	go func() { chanErr <- httpserver.RunHttpServer() }()
+
+	go func() { chanErr <- RunHeartbeat(config, faasProvider) }()
 
 	select {
 	case sig := <-chanStop:
 		logger.Warn("Caught " + sig.String() + " signal. Stopping.")
+		cancelCtx()
 		if config.MDNSEnabled {
 			if err := mdns.Stop(); err != nil {
 				return err
