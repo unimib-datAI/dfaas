@@ -29,12 +29,7 @@ func (r *periodicRunner) Callback() communication.CBOnReceived {
 func (r *periodicRunner) Run(ctx context.Context) error {
 	logger := logging.Logger()
 
-	period := r.s.Period()
-	if period == 0 {
-		period = time.Minute
-	}
-
-	ticker := time.NewTicker(period)
+	ticker := time.NewTicker(effectivePeriod(r.s.Period()))
 	defer ticker.Stop()
 
 	for {
