@@ -1,0 +1,121 @@
+% =============================================================================
+%  DFaaS — Paper Sections Draft
+%  Sections: Messaging Subsystem + Strategy Execution Models
+%
+%  Compile with:
+%    pdflatex main.tex
+%    bibtex main
+%    pdflatex main.tex
+%    pdflatex main.tex
+% =============================================================================
+
+\documentclass[conference]{IEEEtran}
+
+% --- Encoding & fonts --------------------------------------------------------
+\usepackage[T1]{fontenc}
+\usepackage[utf8]{inputenc}
+
+% --- Math & symbols ----------------------------------------------------------
+\usepackage{amsmath}
+\usepackage{amssymb}
+
+% --- Figures & tables --------------------------------------------------------
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{array}
+\usepackage{float}
+
+% --- Listings (code) ---------------------------------------------------------
+\usepackage{listings}
+\usepackage{xcolor}
+
+\lstset{
+  basicstyle=\ttfamily\footnotesize,
+  keywordstyle=\bfseries\color{blue!70!black},
+  commentstyle=\itshape\color{gray},
+  stringstyle=\color{green!50!black},
+  breaklines=true,
+  frame=single,
+  numbers=left,
+  numberstyle=\tiny\color{gray},
+  xleftmargin=1.5em,
+  framexleftmargin=1.5em,
+  language=Go,
+}
+
+% --- Acronyms ----------------------------------------------------------------
+\usepackage{acro}
+
+\DeclareAcronym{DFaaS}{short=DFaaS, long=Decentralized Function-as-a-Service}
+\DeclareAcronym{FaaS}{short=FaaS, long=Function-as-a-Service}
+\DeclareAcronym{P2P}{short=P2P, long=peer-to-peer}
+\DeclareAcronym{API}{short=API, long=Application Programming Interface}
+\DeclareAcronym{GossipSub}{short=GossipSub, long=GossipSub pub/sub protocol}
+\DeclareAcronym{HAProxy}{short=HAProxy, long=High Availability Proxy}
+\DeclareAcronym{JSON}{short=JSON, long=JavaScript Object Notation}
+\DeclareAcronym{TTL}{short=TTL, long=time-to-live}
+\DeclareAcronym{CPU}{short=CPU, long=Central Processing Unit}
+\DeclareAcronym{RAM}{short=RAM, long=Random Access Memory}
+\DeclareAcronym{DHT}{short=DHT, long=Distributed Hash Table}
+\DeclareAcronym{I/O}{short=I/O, long=input/output}
+
+% --- Hyperlinks --------------------------------------------------------------
+\usepackage[hidelinks]{hyperref}
+
+% --- Misc --------------------------------------------------------------------
+\usepackage{microtype}
+
+% =============================================================================
+\begin{document}
+
+\title{%
+  DFaaS: Messaging and Execution Model Design\\
+  {\large [Draft --- Sections III and IV]}%
+}
+
+\author{%
+  \IEEEauthorblockN{DFaaS Authors}
+  \IEEEauthorblockA{%
+    University of Milano-Bicocca\\
+    Milan, Italy
+  }
+}
+
+\maketitle
+
+\begin{abstract}
+  This document contains draft text for two sections of the \ac{DFaaS} paper:
+  the messaging subsystem (Section~\ref{sec:messaging}) and the strategy
+  execution model (Section~\ref{sec:execution-models}).
+  \ac{DFaaS} is a decentralized \ac{FaaS} platform for federated edge computing
+  in which autonomous agents cooperate over a libp2p \ac{P2P} overlay to
+  distribute function invocations without a central orchestrator.
+  The messaging subsystem defines a common, transport-agnostic message
+  vocabulary and a two-plane communication architecture combining
+  \ac{GossipSub} broadcast and directed libp2p stream messaging.
+  The execution model abstraction decouples the \emph{when} of agent
+  decision-making from the \emph{what}, providing three composable loop
+  models — periodic, event-driven, and hybrid — selectable by strategy
+  developers through Go's structural type system.
+\end{abstract}
+
+% Optional: table of contents for draft review
+% \tableofcontents
+
+% =============================================================================
+%  Section III — Messaging Subsystem
+% =============================================================================
+\input{sections/messaging}
+
+% =============================================================================
+%  Section IV — Strategy Execution Models
+% =============================================================================
+\input{sections/execution_models}
+
+% =============================================================================
+%  References
+% =============================================================================
+\bibliographystyle{IEEEtran}
+\bibliography{references}
+
+\end{document}
