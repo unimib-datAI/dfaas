@@ -68,6 +68,13 @@ config:
   AGENT_OPENFAAS_HOST: "gateway"
   AGENT_OPENFAAS_PORT: 8080
 
+  # FaaS platform selection. Accepted values: "openfaas" (default), "openwhisk".
+  AGENT_FAAS_PLATFORM: "openfaas"
+
+  # OpenWhisk settings — only used when AGENT_FAAS_PLATFORM=openwhisk.
+  AGENT_OPENWHISK_NAMESPACE: "guest"
+  AGENT_OPENWHISK_API_KEY: ""  # Format: "uuid:key"
+
   AGENT_STRATEGY: "nodemarginstrategy"
 
   AGENT_GROUP_LIST_FILE_NAME: "./group_list.json"

@@ -11,9 +11,9 @@ import (
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/faasprovider"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/offuncs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 )
 
@@ -23,8 +23,8 @@ type AllLocalStrategy struct {
 	// HAProxy client to update configuration.
 	hacfgupdater hacfgupd.Updater
 
-	// OpenFaaS Gateway client to retrive deployed functions.
-	offuncsClient *offuncs.Client
+	// FaaS provider client to retrieve deployed functions.
+	faasProvider  faasprovider.FaaSProvider
 }
 
 // RunStrategy handles the periodic execution of the recalculation function. It
@@ -44,7 +44,7 @@ func (strategy *AllLocalStrategy) RunStrategy() error {
 	for {
 		start := time.Now()
 
-		funcs, err := strategy.offuncsClient.GetFuncsWithTimeout()
+		funcs, err := strategy.faasProvider.GetFuncsWithTimeout()
 		if err != nil {
 			return fmt.Errorf("get function metadata: %w", err)
 		}
@@ -88,17 +88,19 @@ func (strategy *AllLocalStrategy) updateProxyConfiguration(funcs map[string]*uin
 	// Define and populate this anonymous struct to pass data to the Go
 	// template.
 	data := struct {
-		Now          string
-		DFaaSNodeID  string
-		Functions    map[string]*uint
-		OpenFaaSHost string
-		OpenFaaSPort uint
+		Now             string
+		DFaaSNodeID     string
+		Functions       map[string]*uint
+		FaaSHost        string
+		FaaSPort        uint
+		FaaSBackendPath string
 	}{
-		Now:          time.Now().Format("2006-01-02 15:04:05"),
-		DFaaSNodeID:  _p2pHost.ID().String(),
-		Functions:    funcs,
-		OpenFaaSHost: _config.OpenFaaSHost,
-		OpenFaaSPort: _config.OpenFaaSPort,
+		Now:             time.Now().Format("2006-01-02 15:04:05"),
+		DFaaSNodeID:     _p2pHost.ID().String(),
+		Functions:       funcs,
+		FaaSHost:        _config.OpenFaaSHost,
+		FaaSPort:        _config.OpenFaaSPort,
+		FaaSBackendPath: faasprovider.BackendPathPrefix(_config.FaaSPlatform, _config.OpenWhiskNamespace),
 	}
 
 	return strategy.hacfgupdater.UpdateHAConfig(data)
