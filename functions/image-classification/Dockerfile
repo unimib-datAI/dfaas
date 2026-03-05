@@ -5,7 +5,7 @@
 ARG PYTHON_VERSION=3.12
 ARG DEBIAN_OS=slim
 
-FROM --platform=${TARGETPLATFORM:-linux/amd64} ghcr.io/openfaas/of-watchdog:0.10.11 AS watchdog
+FROM --platform=${TARGETPLATFORM:-linux/amd64} ghcr.io/openfaas/of-watchdog:0.11.4 AS watchdog
 FROM --platform=${TARGETPLATFORM:-linux/amd64} python:${PYTHON_VERSION}-${DEBIAN_OS} AS build
 
 COPY --from=watchdog /fwatchdog /usr/bin/fwatchdog
@@ -29,8 +29,8 @@ ENV PATH=$PATH:/home/app/.local/bin
 
 WORKDIR /home/app/
 
-COPY --chown=app:app functions/image-classification/index.py           .
-COPY --chown=app:app functions/image-classification/requirements.txt   .
+COPY --chown=app:app functions/image-classification/index.py .
+COPY --chown=app:app functions/image-classification/requirements.txt .
 USER root
 RUN pip install --no-cache-dir -r requirements.txt
 USER app
@@ -44,17 +44,18 @@ RUN pip install --no-cache-dir --user -r requirements.txt
 RUN pip install --no-cache-dir --user -r requirements.torch.txt
 
 USER root
-COPY --chown=app:app functions/image-classification/function/   .
+COPY --chown=app:app functions/image-classification/function/ .
 
 FROM build AS ship
 WORKDIR /home/app/
 
 USER app
 
-# Set up of-watchdog for HTTP mode
+# Configure of-watchdog in HTTP mode.
+# See: https://github.com/openfaas/of-watchdog?tab=readme-ov-file#modes
+ENV mode="http"
 ENV fprocess="python index.py"
 ENV cgi_headers="true"
-ENV mode="http"
 ENV upstream_url="http://127.0.0.1:5000"
 
 CMD ["fwatchdog"]
