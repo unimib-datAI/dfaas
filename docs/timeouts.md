@@ -37,11 +37,6 @@ setting, especially when CPU or RAM usage is growing or when handling high
 concurrency. The max inflight setting relates closely to exec timeout by
 controlling concurrent requests.
 
-We recommend to disable readiness and liveness probes for OpenFaaS functions,
-and using only `max_inflight` to control the number of concurrent requests per
-function replica. If you use or custom `values.yaml` for OpenFaaS Helm chart, it
-will disable these probes.
-
 See additional environment variables in the watchdog's
 [README](https://github.com/openfaas/classic-watchdog?tab=readme-ov-file#environment-variable-overrides)
 or the of-watchdog's
@@ -59,6 +54,23 @@ You can set these environment variables in two ways:
 > scraping is disabled by default. To enable metrics scraping, add the
 > `prometheus.io.scrape` annotation set to `true` in the deployment object
 > (using `faas-cli deploy --annotation` or `kubectl edit`).
+
+### Disabling probes
+
+We recommend disabling readiness and liveness probes for OpenFaaS functions,
+and using only `max_inflight` to control the number of concurrent requests per
+function replica. There are two ways to do this:
+
+1. Use our custom `values-openfaas.yaml` for the OpenFaaS Helm chart. This
+   configuration should disable these probes. Unfortunately, this currently does
+   not work, and there is an [open issue for it.
+
+2. Manually patch the deployment object of each function and remove the probes.
+   We assume there is only one container:
+
+   ```console
+   $ sudo kubectl patch deployment FUNCTION --type='json' -p '[{"op": "remove", "path": "/spec/template/spec/containers/0/readinessProbe"}, {"op": "remove", "path": "/spec/template/spec/containers/0/livenessProbe"}]'
+   ```
 
 ## OpenFaaS Gateway
 
