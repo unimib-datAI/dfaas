@@ -13,6 +13,12 @@ $ sudo helm install prometheus prometheus-community/prometheus --values k8s/char
 $ sudo helm install openfaas openfaas/openfaas --values k8s/charts/values-openfaas.yaml --version 14.2.128
 ```
 
+If you are running a debugging node, run also:
+
+```console
+$ sudo kubectl apply -f k8s/scripts/prometheus-nodeport-service.yaml
+```
+
 Next deploy the custom stick-table-exporter service:
 
 ```console
