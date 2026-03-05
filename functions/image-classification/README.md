@@ -47,6 +47,11 @@ This will deploy the function to the local OpenFaaS instance as `mlimage`. The
 `dfaas.maxrate` label is required by the Recalc strategy. You can omit the label
 if the DFaaS Agent does not use this strategy.
 
+You can also pass the options `--env exec_timeout=4s` and `--env
+max_inflight=400` to configure the per-request execution timeout and the maximum
+number of concurrent requests each replica can handle. See
+[docs/timeout.md](../docs/timeout.md) for more details.
+
 ## Test
 
 Download example images from the ImageNet dataset. In this case, we use a few
