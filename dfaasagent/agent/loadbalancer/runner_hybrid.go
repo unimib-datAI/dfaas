@@ -7,14 +7,10 @@ package loadbalancer
 
 import (
 	"context"
-	"encoding/json"
 	"time"
-
-	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/communication"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/msgtypes"
 )
 
 // hybridRunner executes a HybridStrategy using a single select loop that
@@ -27,46 +23,21 @@ type hybridRunner struct {
 }
 
 func newHybridRunner(s HybridStrategy) StrategyRunner {
-	trigSet := make(map[string]struct{})
-	for _, t := range s.TriggerEvents() {
-		trigSet[t] = struct{}{}
-	}
 	return &hybridRunner{
 		s:       s,
 		events:  make(chan StrategyEvent, 1),
-		trigSet: trigSet,
+		trigSet: makeTrigSet(s.TriggerEvents()),
 	}
 }
 
 func (r *hybridRunner) Callback() communication.CBOnReceived {
-	return func(msg *pubsub.Message) error {
-		if err := r.s.OnReceived(msg); err != nil {
-			return err
-		}
-		var env msgtypes.MsgEnvelope
-		if err := json.Unmarshal(msg.GetData(), &env); err != nil {
-			return nil
-		}
-		if _, ok := r.trigSet[env.Header.MsgType]; ok {
-			ev := StrategyEvent{Type: env.Header.MsgType, Raw: json.RawMessage(msg.GetData())}
-			select {
-			case r.events <- ev:
-			default: // channel full; drop
-			}
-		}
-		return nil
-	}
+	return makeTriggerCallback(r.s.OnReceived, r.trigSet, r.events)
 }
 
 func (r *hybridRunner) Run(ctx context.Context) error {
 	logger := logging.Logger()
 
-	period := r.s.Period()
-	if period == 0 {
-		period = time.Minute
-	}
-
-	ticker := time.NewTicker(period)
+	ticker := time.NewTicker(effectivePeriod(r.s.Period()))
 	defer ticker.Stop()
 
 	for {

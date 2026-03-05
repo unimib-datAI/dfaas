@@ -72,32 +72,20 @@ func (strategy *RecalcStrategy) Tick(ctx context.Context) error {
 	startStep1 := time.Now()
 	if err := strategy.recalcStep1(); err != nil {
 		logger.Errorf("Recalc step 1 failed: %v", err)
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(failedInterval):
-		}
-		return nil // non-fatal; runner retries at next tick
+		return sleepOrCtx(ctx, failedInterval)
 	}
 	durationStep1 := time.Since(startStep1)
 
 	// Wait half the period before step 2, respecting context cancellation.
-	select {
-	case <-ctx.Done():
-		return ctx.Err()
-	case <-time.After(strategy.Period() / 2):
+	if err := sleepOrCtx(ctx, strategy.Period()/2); err != nil {
+		return err
 	}
 
 	// Step 2: calculate weights and update HAProxy.
 	startStep2 := time.Now()
 	if err := strategy.recalcStep2(); err != nil {
 		logger.Errorf("Recalc step 2 failed: %v", err)
-		select {
-		case <-ctx.Done():
-			return ctx.Err()
-		case <-time.After(failedInterval):
-		}
-		return nil // non-fatal
+		return sleepOrCtx(ctx, failedInterval)
 	}
 	durationStep2 := time.Since(startStep2)
 
