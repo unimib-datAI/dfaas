@@ -33,7 +33,7 @@
 import argparse
 from pathlib import Path
 
-import pandas as pd
+import polars as pl
 
 
 def parse_args(argv=None):
@@ -70,89 +70,98 @@ def _prefix_for_path(path):
 
 
 def run_one(path):
-    df_iter = pd.read_csv(
-        path,
-        usecols=["metric_name", "extra_tags"],
-        dtype={"metric_name": "string", "extra_tags": "string"},
-        chunksize=50_000,
+    # Read CSV (only a subset of the columns).
+    df = pl.scan_csv(path).select(["metric_name", "extra_tags"])
+
+    # Get only http_reqs metric.
+    df = df.filter(pl.col("metric_name") == "http_reqs")
+
+    # Extract stage number from extra_tags using regex.
+    df = df.with_columns(
+        pl.col("extra_tags")
+        .str.extract(r"^stage=(.+)$", 1)
+        .cast(pl.Int64, strict=False)
+        .alias("stage")
     )
 
-    chunks = []
-    for chunk in df_iter:
-        chunks.append(chunk[chunk["metric_name"].eq("http_reqs")])
+    # Drop rows where stage extraction failed.
+    df = df.filter(pl.col("stage").is_not_null())
 
-    if not chunks:
-        return pd.DataFrame()
-
-    df = pd.concat(chunks, ignore_index=True)
-
-    df["stage"] = df["extra_tags"].str.extract(r"^stage=(.+)$")[0]
-    df["stage"] = pd.to_numeric(df["stage"], errors="coerce").astype("Int64")
-    df = df.dropna(subset=["stage"])
-
-    if df.empty:
-        return pd.DataFrame()
+    # Execute query and get the result.
+    df = df.collect()
+    if df.is_empty():
+        return pl.DataFrame()
 
     # Merge stages 2-by-2: (0,1)->0, (2,3)->2, (4,5)->4, ...
-    df["merged_stage"] = (df["stage"] // 2) * 2
+    df = df.with_columns(((pl.col("stage") // 2) * 2).alias("merged_stage"))
 
+    # Group by merged_stage and count.
     stage_counts = (
-        df.groupby("merged_stage")
-        .size()
-        .rename("total_requests")
-        .to_frame()
-        .sort_index()
+        df.group_by("merged_stage")
+        .agg(pl.len().alias("total_requests"))
+        .sort("merged_stage")
     )
 
     # avg req/s over merged stage duration (5s + 55s = 60s)
     # This is an assumption that the stages lasts 5s and 55s.
-    stage_counts["avg_req_per_s"] = stage_counts["total_requests"] / 60
+    stage_counts = stage_counts.with_columns(
+        (pl.col("total_requests") / 60).alias("avg_req_per_s")
+    )
 
     # Re-index merged stages from 0..N-1 (instead of 0,2,4,...)
-    stage_counts.index = range(len(stage_counts.index))
-    stage_counts.index.name = "stage"
+    stage_counts = stage_counts.with_columns(
+        pl.int_range(0, pl.len()).alias("stage")
+    ).select(["stage", "total_requests", "avg_req_per_s"])
 
     return stage_counts
 
 
 def run(paths):
-    combined = None
+    all_stage_dfs = []
     per_file_metric_cols = {"total_requests": [], "avg_req_per_s": []}
 
     for path in paths:
         prefix = _prefix_for_path(path)
         stage_counts = run_one(path)
 
-        if stage_counts.empty:
+        if stage_counts.is_empty():
             continue
 
+        # Rename columns with file prefix.
         renamed = {
             "total_requests": prefix + "_total_requests",
             "avg_req_per_s": prefix + "_avg_req_per_s",
         }
-        stage_counts = stage_counts.rename(columns=renamed)
+        stage_counts = stage_counts.rename(renamed)
 
         per_file_metric_cols["total_requests"].append(renamed["total_requests"])
         per_file_metric_cols["avg_req_per_s"].append(renamed["avg_req_per_s"])
 
-        if combined is None:
-            combined = stage_counts
-        else:
-            combined = combined.join(stage_counts, how="outer")
+        all_stage_dfs.append(stage_counts)
 
-    if combined is None:
-        return pd.DataFrame()
+    if not all_stage_dfs:
+        return pl.DataFrame()
 
-    combined = combined.sort_index()
+    # Start with the first dataframe
+    combined = all_stage_dfs[0]
+
+    # Join the rest one by one using 'full' join
+    for stage_df in all_stage_dfs[1:]:
+        combined = combined.join(stage_df, on="stage", how="full", coalesce=True)
+
+    combined = combined.sort("stage")
 
     # Add generic aggregate columns (mean/std) across all files for each stage.
-    # Note: std is sample standard deviation (pandas default, ddof=1); with one
-    # file it will be NaN, which is expected.
+    # Note: std is sample standard deviation (ddof=1); with one file it will be null.
     for metric, cols in per_file_metric_cols.items():
         if not cols:
             continue
-        combined[f"mean_{metric}"] = combined[cols].mean(axis=1, skipna=True)
-        combined[f"std_{metric}"] = combined[cols].std(axis=1, skipna=True)
+        combined = combined.with_columns(
+            [
+                pl.mean_horizontal(cols).alias(f"mean_{metric}"),
+                pl.concat_list(cols).list.std(ddof=1).alias(f"std_{metric}"),
+            ]
+        )
 
     return combined
 
@@ -162,16 +171,13 @@ def main(argv=None):
 
     out = run(args.paths)
 
-    # Show output table.
-    print(out.to_string(index=True))
+    # Show full table.
+    out.show(limit=None)
 
     # Save output CSV if requested.
     if args.output:
-        output_path = Path(args.output)
-        out.to_csv(output_path, index=True)
-        print(f"Saved CSV to: {output_path.as_posix()}")
-
-    return 0
+        out.write_csv(args.output)
+        print(f"Saved CSV to: {args.output}")
 
 
 if __name__ == "__main__":
