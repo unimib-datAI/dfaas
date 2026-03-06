@@ -57,20 +57,12 @@ You can set these environment variables in two ways:
 
 ### Disabling probes
 
-We recommend disabling readiness and liveness probes for OpenFaaS functions,
-and using only `max_inflight` to control the number of concurrent requests per
-function replica. There are two ways to do this:
+We recommend disabling readiness and liveness probes for OpenFaaS functions, and
+using only `max_inflight` to control the number of concurrent requests per
+function replica. With OpenFaaS CE there is only a way to do this: manually
+patch the deployment object of each function. We assume there is only one container:
 
-1. Use our custom `values-openfaas.yaml` for the OpenFaaS Helm chart. This
-   configuration should disable these probes. Unfortunately, this currently does
-   not work, and there is an [open issue for it.
-
-2. Manually patch the deployment object of each function and remove the probes.
-   We assume there is only one container:
-
-   ```console
-   $ sudo kubectl patch deployment FUNCTION --type='json' -p '[{"op": "remove", "path": "/spec/template/spec/containers/0/readinessProbe"}, {"op": "remove", "path": "/spec/template/spec/containers/0/livenessProbe"}]'
-   ```
+     $ sudo kubectl patch deployment FUNCTION --type='json' -p '[{"op": "remove", "path": "/spec/template/spec/containers/0/readinessProbe"}, {"op": "remove", "path": "/spec/template/spec/containers/0/livenessProbe"}]'
 
 ## OpenFaaS Gateway
 
