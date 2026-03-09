@@ -13,7 +13,7 @@ metric;haproxy_backend_http_responses_total;;
 query;increase(haproxy_backend_http_responses_total[10s]);custom_haproxy_responses_total;Number of HTTP responses returned by each HAProxy backend over the last 10 seconds
 metric;haproxy_backend_http_requests_total;;
 metric;haproxy_backend_response_time_average_seconds;;
-query;irate(haproxy_backend_http_requests_total{proxy="function_figlet"}[1m]);custom_haproxy_requests_rate;Number of requests per second over the last minute
+query;irate(haproxy_backend_http_requests_total{proxy="function_mlimage"}[1m]);custom_haproxy_requests_rate;Number of requests per second over the last minute
 metric;gateway_function_invocation_started;;
 metric;gateway_function_invocation_total;;
 metric;gateway_functions_seconds_bucket;;
