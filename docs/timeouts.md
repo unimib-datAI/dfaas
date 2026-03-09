@@ -62,7 +62,7 @@ using only `max_inflight` to control the number of concurrent requests per
 function replica. With OpenFaaS CE there is only a way to do this: manually
 patch the deployment object of each function. We assume there is only one container:
 
-     $ sudo kubectl patch deployment FUNCTION --type='json' -p '[{"op": "remove", "path": "/spec/template/spec/containers/0/readinessProbe"}, {"op": "remove", "path": "/spec/template/spec/containers/0/livenessProbe"}]'
+     $ sudo kubectl patch deployment FUNCTION --type='json' -p '[ {"op": "remove", "path": "/spec/template/spec/containers/0/readinessProbe"}, {"op": "remove", "path": "/spec/template/spec/containers/0/livenessProbe"}]'
 
 ## OpenFaaS Gateway
 
@@ -81,13 +81,15 @@ custom timeouts for individual functions. To set these environment variables,
 use the same approaches as described for OpenFaaS Functions.
 
 We use the OpenFaaS' defaults. But make sure to tune `upstream_timeout` to avoid
-overload in the gateway!
+overload in the gateway! As for single functions, you can tune this value via
+`kubectl patch` or `kubectl edit`.
 
 The gateway exports metrics to Prometheus, with scraping enabled by default.
 
 ## HAProxy
 
-WIP
+The timeouts in HAProxy depend on the chosen strategy. Refer to the [strategies
+documentation](agent-strategies.md) for more details.
 
 ## k6
 
