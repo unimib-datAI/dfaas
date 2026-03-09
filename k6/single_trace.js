@@ -4,19 +4,37 @@
 // AUTHORS file for more information.
 import http from 'k6/http';
 
-// Requires to track the stage of a request in CSV output.
+// Required to track the stage of a request in CSV output.
 import { tagWithCurrentStageIndex, getCurrentStageIndex } from 'https://jslib.k6.io/k6-utils/1.6.0/index.js';
+
+// Required to store only a single copy of an image for mlimage function.
+import { readAll } from "./utils.js";
 
 const IP_SERVER = __ENV.IP_SERVER || "10.12.68.9"
 
-const FUNCTION_URL = `http://${IP_SERVER}:30080/function/figlet`;
+// We first set up the function to call, with the URL and body.
+let OPENFAAS_FUNCTION = "mlimage";
+const FUNCTION_URL = `http://${IP_SERVER}:30080/function/${OPENFAAS_FUNCTION}`;
 
-// Body of the HTTP request as string.
-const BODY_CONTENT = 'Hello World!';
+let CONTENT_TYPE, BODY_CONTENT, DATA_PATH;
+switch (OPENFAAS_FUNCTION) {
+  case "figlet":
+    CONTENT_TYPE = "text/plain";
+    BODY_CONTENT = "Hello World!";
+    break;
+  case "mlimage":
+    CONTENT_TYPE = "image/jpeg";
+    (async function () {
+      BODY_CONTENT = await readAll("data/mlimage_vulture.jpg");
+    })();
+    break;
+  default:
+    throw new Error(`Function ${OPENFAAS_FUNCTION} not supported.`)
+}
 
 // Read the trace path from the TRACE_PATH env variable.
 if (!__ENV.TRACE_PATH) {
-    throw new Error("Missing environment variable TRACE_PATH");
+  throw new Error("Missing environment variable TRACE_PATH");
 }
 const TRACE_PATH = __ENV.TRACE_PATH;
 
@@ -30,10 +48,10 @@ const LIMIT = parseInt(__ENV.LIMIT) || 0;
 // We must validate FUNCTION, NODE and LIMIT because JavaScript won't throw a
 // clear error otherwise.
 if (!Object.prototype.hasOwnProperty.call(TRACES, FUNCTION)) {
-    throw new Error(`Function '${FUNCTION}' not found in '${TRACE_PATH}'`);
+  throw new Error(`Function '${FUNCTION}' not found in '${TRACE_PATH}'`);
 }
 if (!Object.prototype.hasOwnProperty.call(TRACES[FUNCTION], NODE)) {
-    throw new Error(`Node '${FUNCTION}' not found in '${TRACE_PATH}'`);
+  throw new Error(`Node '${FUNCTION}' not found in '${TRACE_PATH}'`);
 }
 
 // Read the trace.
@@ -41,10 +59,10 @@ let nodeTrace = TRACES[FUNCTION][NODE]
 
 // Optionally trim the trace.
 if (LIMIT > 0) {
-    if (LIMIT < 0) {
-        throw new Error(`Limit '${LIMIT}' must be non-negative`)
-    }
-    nodeTrace = nodeTrace.slice(0, LIMIT)
+  if (LIMIT < 0) {
+    throw new Error(`Limit '${LIMIT}' must be non-negative`)
+  }
+  nodeTrace = nodeTrace.slice(0, LIMIT)
 }
 
 // Build stages with 5s transitions and 55s constant rate.
@@ -90,11 +108,11 @@ export default function () {
 
   const params = {
     headers: {
-      "Content-Type": "text/plain",
+      "Content-Type": CONTENT_TYPE,
       "DFaaS-K6-Stage": stage,
     },
     timeout: "8s",
   };
-  
+
   const response = http.post(FUNCTION_URL, BODY_CONTENT, params);
 }
