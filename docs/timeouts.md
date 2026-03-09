@@ -89,8 +89,12 @@ The gateway exports metrics to Prometheus, with scraping enabled by default.
 ## HAProxy
 
 The timeouts in HAProxy depend on the chosen strategy. Refer to the [strategies
-documentation](agent-strategies.md) for more details.
+documentation](agent-strategies.md) for more details. In any case, the timeouts
+are usually set automatically by reading the associated labels for each function
+(deployed via `faas-cli`).
 
 ## k6
 
-WIP
+The timeout must be set manually for each function in the JavaScript file that
+defines the load test. See [`k6/single_trace.js`](../k6/single_trace.js) for an
+example.

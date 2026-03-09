@@ -78,10 +78,11 @@ $ curl -i -u admin:admin 'http://localhost:30555/v3/services/haproxy/runtime/sti
 ## Deploy a FaaS function with custom env vars
 
 ```console
-$ faas-cli store deploy figlet --env exec_timeout=4s --env max_inflight=800
+$ faas-cli store deploy figlet --env exec_timeout=4s --env max_inflight=800 --label dfaas.timeout_ms=6000
 ```
 
-See [timeouts.md](timeouts.md) file for information about these env vars.
+See [timeouts.md](timeouts.md) file for information about these env vars, while
+[agent-strategies](agent-strategies.md) for the label.
 
 You can also change the env vars with `sudo kubectl edit deployment figlet`. The
 pods will be restarted!
