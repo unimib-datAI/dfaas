@@ -1,4 +1,8 @@
 #!/usr/bin/env python
+# SPDX-License-Identifier: AGPL-3.0-or-later.
+# Copyright 2026 The DFaaS Authors. All rights reserved.
+# This file is licensed under the AGPL v3.0 or later license. See LICENSE and
+# AUTHORS file for more information.
 #
 # This small script reads one or more k6 result files in CSV format and produces
 # a summary table where each row represents a merged stage.

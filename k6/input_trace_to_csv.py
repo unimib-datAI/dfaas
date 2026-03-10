@@ -1,4 +1,8 @@
 #!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later.
+# Copyright 2026 The DFaaS Authors. All rights reserved.
+# This file is licensed under the AGPL v3.0 or later license. See LICENSE and
+# AUTHORS file for more information.
 #
 # This small Python script parses a JSON-formatted execution trace for a
 # specific function and node, then converts it into a CSV file.
@@ -27,22 +31,15 @@ import json
 import csv
 import argparse
 
+
 def main():
     parser = argparse.ArgumentParser(
         description="Extract from JSON the input trace of a specific function and node."
     )
-    parser.add_argument(
-        "input_file", help="Path to the input JSON file."
-    )
-    parser.add_argument(
-        "output_file", help="Path to the output CSV file."
-    )
-    parser.add_argument(
-        "function_name", help="Function name."
-    )
-    parser.add_argument(
-        "node_name", help="Node name."
-    )
+    parser.add_argument("input_file", help="Path to the input JSON file.")
+    parser.add_argument("output_file", help="Path to the output CSV file.")
+    parser.add_argument("function_name", help="Function name.")
+    parser.add_argument("node_name", help="Node name.")
     args = parser.parse_args()
 
     # Load JSON.
@@ -58,6 +55,7 @@ def main():
         writer = csv.writer(f)
         writer.writerow(["stage", "avg_reqs_per_sec"])
         writer.writerows(rows)
+
 
 if __name__ == "__main__":
     main()

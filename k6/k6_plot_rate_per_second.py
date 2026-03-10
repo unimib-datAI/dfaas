@@ -1,3 +1,11 @@
+#!/usr/bin/env bash
+# SPDX-License-Identifier: AGPL-3.0-or-later.
+# Copyright 2026 The DFaaS Authors. All rights reserved.
+# This file is licensed under the AGPL v3.0 or later license. See LICENSE and
+# AUTHORS file for more information.
+#
+# Small script to generate a plot with req./s reading data from
+# "k6_results.csv.gz" and "input_requests_traces.json".
 import json
 
 import pandas as pd
