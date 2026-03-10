@@ -46,6 +46,9 @@ export TRACE_PATH="${TRACE_PATH:-input_requests_traces.json}"
 # length.
 #export LIMIT=2
 
+# Function name, used also in the URL.
+export FUNCTION_NAME="${FUNCTION_NAME:-mlimage}"
+
 # For each k6 run, results are stored in a directory named:
 #
 #   ${DATE}_${EXP_NAME}_${NODE}
@@ -82,7 +85,7 @@ for NODE in "${NODES[@]}"; do
     echo "Upload path (at the end): $UPLOAD_PATH"
 
     echo "Running k6 load test on node $NODE..."
-    k6 run single_trace.js --out csv=k6_results.csv --env NODE=$NODE --env IP_SERVER=$IP_SERVER --no-thresholds --summary-mode=disabled
+    k6 run single_trace.js --out csv=k6_results.csv --env NODE=$NODE --env IP_SERVER=$IP_SERVER --env FUNCTION_NAME=$FUNCTION_NAME --no-thresholds --summary-mode=disabled
     echo "k6 load test completed."
 
     echo "Compress k6 results CSV file with gzip..."
@@ -149,6 +152,16 @@ for NODE in "${NODES[@]}"; do
     echo "Prometheus metrics and k6 stages uploaded."
 
     # Let DFaaS node go back to normal operations.
+    echo "Restarting OpenFaaS Gateway..."
+    ssh -i ~/.ssh/id_ed25519 "$SSH_SERVER" sudo kubectl rollout restart deployment gateway
+    ssh -i ~/.ssh/id_ed25519 "$SSH_SERVER" sudo kubectl rollout status deployment gateway --watch --timeout=1m
+    echo "OpenFaaS Gateway restarted."
+
+    echo "Restarting $FUNCTION_NAME pods.."
+    ssh -i ~/.ssh/id_ed25519 "$SSH_SERVER" sudo kubectl rollout restart deployment "$FUNCTION_NAME"
+    ssh -i ~/.ssh/id_ed25519 "$SSH_SERVER" sudo kubectl rollout status deployment "$FUNCTION_NAME" --watch --timeout=1m
+    echo "$FUNCTION_NAME pods restarted."
+
     echo "Waiting 120 seconds for DFaaS node to return to normal operations..."
     sleep 120s
     echo "Done. Test for node $NODE completed successfully."

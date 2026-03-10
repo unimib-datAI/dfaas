@@ -13,11 +13,11 @@ import { readAll } from "./utils.js";
 const IP_SERVER = __ENV.IP_SERVER || "10.12.68.9"
 
 // We first set up the function to call, with the URL and body.
-let OPENFAAS_FUNCTION = "mlimage";
-const FUNCTION_URL = `http://${IP_SERVER}:30080/function/${OPENFAAS_FUNCTION}`;
+let FUNCTION_NAME = __ENV.FUNCTION_NAME || "mlimage";
+const FUNCTION_URL = `http://${IP_SERVER}:30080/function/${FUNCTION_NAME}`;
 
 let CONTENT_TYPE, BODY_CONTENT, DATA_PATH;
-switch (OPENFAAS_FUNCTION) {
+switch (FUNCTION_NAME) {
   case "figlet":
     CONTENT_TYPE = "text/plain";
     BODY_CONTENT = "Hello World!";
@@ -29,7 +29,7 @@ switch (OPENFAAS_FUNCTION) {
     })();
     break;
   default:
-    throw new Error(`Function ${OPENFAAS_FUNCTION} not supported.`)
+    throw new Error(`Function ${FUNCTION_NAME} not supported.`)
 }
 
 // Read the trace path from the TRACE_PATH env variable.
