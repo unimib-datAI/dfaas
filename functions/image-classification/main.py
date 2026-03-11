@@ -3,7 +3,7 @@ from flask import Flask, request, jsonify
 from waitress import serve
 import os
 
-from function import handler
+import function
 
 app = Flask(__name__)
 
@@ -75,7 +75,7 @@ def call_handler(path):
     event = Event()
     context = Context()
 
-    response_data = handler.handle(event, context)
+    response_data = function.handle(event, context)
     
     res = format_response(response_data)
     return res

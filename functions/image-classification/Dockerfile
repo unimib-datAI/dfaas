@@ -27,34 +27,24 @@ USER app
 
 ENV PATH=$PATH:/home/app/.local/bin
 
-WORKDIR /home/app/
+WORKDIR /opt/app
 
-COPY --chown=app:app functions/image-classification/index.py .
-COPY --chown=app:app functions/image-classification/requirements.txt .
-USER root
+COPY functions/image-classification/main.py .
+COPY functions/image-classification/function.py .
+
+COPY functions/image-classification/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
-USER app
 
-RUN mkdir -p function
-RUN touch ./function/__init__.py
-WORKDIR /home/app/function/
-COPY --chown=app:app functions/image-classification/function/requirements.txt .
-COPY --chown=app:app functions/image-classification/function/requirements.torch.txt .
-RUN pip install --no-cache-dir --user -r requirements.txt
+COPY functions/image-classification/requirements.torch.txt .
 RUN pip install --no-cache-dir --user -r requirements.torch.txt
 
-USER root
-COPY --chown=app:app functions/image-classification/function/ .
-
 FROM build AS ship
-WORKDIR /home/app/
-
-USER app
+WORKDIR /opt/app
 
 # Configure of-watchdog in HTTP mode.
 # See: https://github.com/openfaas/of-watchdog?tab=readme-ov-file#modes
 ENV mode="http"
-ENV fprocess="python index.py"
+ENV fprocess="python main.py"
 ENV cgi_headers="true"
 ENV upstream_url="http://127.0.0.1:5000"
 
