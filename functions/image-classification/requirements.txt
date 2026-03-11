@@ -1,5 +1,5 @@
 flask
-waitress
+gunicorn
 tox==3.*
 certifi==2025.8.3
 charset-normalizer==3.4.3
