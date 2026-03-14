@@ -11,9 +11,15 @@ server:
     evaluation_interval: 5s
     scrape_timeout: 4s
 
-  # Default metrics retention time is 15 days, but it is too large for the DFaaS
-  # Agent's needs.
-  retention: "3d"
+  # Decrease the default retention time. This is enough for the DFaaS prototype.
+  retention: "2d"
+
+  # Enable retention size to 85% of the allocated Persistent Volume.
+  retentionSize: "5.1GB"
+
+  persistentVolume:
+    # Decrease default volume size (8Gi).
+    size: 6Gi
 
   # Make sure the service is named "prometheus", as this DNS name is hardcoded
   # in the OpenFaaS CE Gateway and cannot be changed.
