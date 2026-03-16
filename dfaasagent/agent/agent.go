@@ -30,6 +30,7 @@ import (
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/communication"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/discovery/kademlia"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/discovery/mdns"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/faasprovider"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/loadbalancer"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
@@ -242,7 +243,19 @@ func runAgent(config config.Configuration) error {
 
 	////////// HTTPSERVER INITIALIZATION //////////
 
-	httpserver.Initialize(config)
+	// Create FaaS provider for use by httpserver health check.
+	faasProvider, err := faasprovider.NewFaaSProvider(
+		config.FaaSPlatform,
+		config.OpenFaaSHost,
+		config.OpenFaaSPort,
+		config.OpenWhiskNamespace,
+		config.OpenWhiskAPIKey,
+	)
+	if err != nil {
+		return fmt.Errorf("creating FaaS provider for httpserver: %w", err)
+	}
+
+	httpserver.Initialize(config, faasProvider)
 
 	////////// GOROUTINES //////////
 
