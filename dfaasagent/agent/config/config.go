@@ -71,8 +71,8 @@ type Configuration struct {
 	HAProxyHost       string `mapstructure:"AGENT_HAPROXY_HOST"`
 	HAProxyPort       uint   `mapstructure:"AGENT_HAPROXY_PORT"`
 
-	OpenFaaSHost string `mapstructure:"AGENT_OPENFAAS_HOST"`
-	OpenFaaSPort uint   `mapstructure:"AGENT_OPENFAAS_PORT"`
+	FaaSHost string `mapstructure:"AGENT_FAAS_HOST"`
+	FaaSPort uint   `mapstructure:"AGENT_FAAS_PORT"`
 
 	Strategy string `mapstructure:"AGENT_STRATEGY"`
 
@@ -83,6 +83,26 @@ type Configuration struct {
 	CPUThresholdNMS   float64 `mapstructure:"AGENT_NMS_CPU_THRESHOLD"`
 	RAMThresholdNMS   float64 `mapstructure:"AGENT_NMS_RAM_THRESHOLD"`
 	PowerThresholdNMS float64 `mapstructure:"AGENT_NMS_POWER_THRESHOLD"`
+
+	// FaaSPlatform selects the FaaS backend. Accepted values: "openfaas"
+	// (default), "openwhisk".
+	FaaSPlatform string `mapstructure:"AGENT_FAAS_PLATFORM"`
+
+	// OpenWhiskNamespace is the OpenWhisk namespace to query actions from.
+	// Only used when FaaSPlatform is "openwhisk". Defaults to "guest".
+	OpenWhiskNamespace string `mapstructure:"AGENT_OPENWHISK_NAMESPACE"`
+
+	// OpenWhiskAPIKey is the OpenWhisk API key in "uuid:key" format.
+	// Only used when FaaSPlatform is "openwhisk".
+	OpenWhiskAPIKey string `mapstructure:"AGENT_OPENWHISK_API_KEY"`
+
+	// HeartbeatInterval controls how often the agent broadcasts a MsgHeartbeat
+	// to announce its presence to peers. Defaults to 10s.
+	HeartbeatInterval time.Duration `mapstructure:"AGENT_HEARTBEAT_INTERVAL"`
+
+	// DirectMsgTimeout is the deadline for dialing a peer and completing a
+	// directed message exchange over a libp2p stream. Defaults to 5s.
+	DirectMsgTimeout time.Duration `mapstructure:"AGENT_DIRECT_MSG_TIMEOUT"`
 }
 
 // viperBindConfig binds each field of the Configuration struct with its

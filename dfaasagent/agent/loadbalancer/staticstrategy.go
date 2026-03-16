@@ -6,6 +6,7 @@
 package loadbalancer
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -15,9 +16,9 @@ import (
 
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/communication"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/constants"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/faasprovider"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/offuncs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
 )
@@ -29,7 +30,7 @@ import (
 type StaticStrategy struct {
 	hacfgupdater  hacfgupd.Updater
 	nodestbl      *nodestbl.TableNMS
-	offuncsClient *offuncs.Client
+	faasProvider  faasprovider.FaaSProvider
 
 	nodeInfo nodeInfoStatic
 	// Map of target nodes, with node ID of a common neighbour as key,
@@ -42,50 +43,48 @@ type StaticStrategy struct {
 
 // Private struct containing info about us.
 type nodeInfoStatic struct {
-	funcs               []string // Our OpenFaaS functions.
+	funcs               []string // Our FaaS functions.
 	commonNeighboursNum int      // Number of neighbours with at least a function in common.
 }
 
-// RunStrategy handles the periodic execution of the recalculation function. It
-// should run in a goroutine.
-func (strategy *StaticStrategy) RunStrategy() error {
-	logger := logging.Logger()
-
-	var millisNow, millisSleep int64
-	var err error
-
-	millisInterval := int64(_config.RecalcPeriod / time.Millisecond)
-
-	for {
-		start := time.Now()
-
-		if err := strategy.publishNodeInfo(); err != nil {
-			logger.Error("Failed to publish node info, skipping RunStrategy iteration ", err)
-			logger.Warn("Waiting 5 second before retrying RunStrategy")
-			time.Sleep(5 * time.Second)
-			continue
-		}
-
-		strategy.updateCommonNeighbours()
-
-		strategy.weights, err = strategy.calculateWeights()
-		if err != nil {
-			return fmt.Errorf("calculating new weights: %w", err)
-		}
-
-		if err = strategy.setProxyWeights(); err != nil {
-			return fmt.Errorf("setting new weights: %w", err)
-		}
-		duration := time.Since(start)
-
-		httpserver.StrategySuccessIterations.Inc()
-		httpserver.StrategyIterationDuration.Set(duration.Seconds())
-
-		millisNow = time.Now().UnixNano() / 1000000
-		millisSleep = millisInterval - (millisNow % millisInterval)
-		time.Sleep(time.Duration(millisSleep) * time.Millisecond)
+// Period returns the recalculation interval. Defaults to 1 minute if not configured.
+func (strategy *StaticStrategy) Period() time.Duration {
+	if _config.RecalcPeriod == 0 {
+		return time.Minute
 	}
+	return _config.RecalcPeriod
 }
+
+// Tick runs one full Static strategy decision cycle.
+// The runner handles the outer loop and inter-tick sleep; Tick must not sleep
+// at the end.
+func (strategy *StaticStrategy) Tick(ctx context.Context) error {
+	logger := logging.Logger()
+	start := time.Now()
+
+	if err := strategy.publishNodeInfo(); err != nil {
+		logger.Errorf("StaticStrategy: failed to publish node info: %v", err)
+		return nil // non-fatal; runner retries at next tick
+	}
+
+	strategy.updateCommonNeighbours()
+
+	weights, err := strategy.calculateWeights()
+	if err != nil {
+		return fmt.Errorf("calculating new weights: %w", err)
+	}
+	strategy.weights = weights
+
+	if err := strategy.setProxyWeights(); err != nil {
+		return fmt.Errorf("setting new weights: %w", err)
+	}
+
+	httpserver.StrategySuccessIterations.Inc()
+	httpserver.StrategyIterationDuration.Set(time.Since(start).Seconds())
+	return nil
+}
+
+var _ PeriodicStrategy = (*StaticStrategy)(nil)
 
 // OnReceived is executed every time a message from a peer is received.
 func (strategy *StaticStrategy) OnReceived(msg *pubsub.Message) error {
@@ -158,9 +157,9 @@ func (strategy *StaticStrategy) publishNodeInfo() error {
 	var err error
 
 	// Obtain our function names list.
-	strategy.nodeInfo.funcs, err = strategy.offuncsClient.GetFuncsNames()
+	strategy.nodeInfo.funcs, err = strategy.faasProvider.GetFuncsNames()
 	if err != nil {
-		return fmt.Errorf("getting functions info from OpenFaaS: %w", err)
+		return fmt.Errorf("getting functions info from FaaS provider: %w", err)
 	}
 
 	msg := MsgNodeInfoStatic{
@@ -174,14 +173,6 @@ func (strategy *StaticStrategy) publishNodeInfo() error {
 	err = communication.MarshAndPublish(msg)
 	if err != nil {
 		return fmt.Errorf("publishing node info to other DFaaS nodes: %w", err)
-	}
-
-	return nil
-
-	// Obtain our function names list
-	strategy.nodeInfo.funcs, err = strategy.offuncsClient.GetFuncsNames()
-	if err != nil {
-		return err
 	}
 
 	return nil
@@ -233,8 +224,8 @@ func (strategy *StaticStrategy) setProxyWeights() error {
 	strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryNMS) error {
 		hacfg = strategy.createHACfgObject(
 			myID,
-			_config.OpenFaaSHost,
-			_config.OpenFaaSPort,
+			_config.FaaSHost,
+			_config.FaaSPort,
 			entries,
 			strategy.weights,
 		)
@@ -252,18 +243,19 @@ func (strategy *StaticStrategy) setProxyWeights() error {
 // updateHAProxyConfig to update the HAProxy configuration.
 func (strategy *StaticStrategy) createHACfgObject(
 	myNodeID string,
-	openFaaSHost string,
-	openFaaSPort uint,
+	faasHost string,
+	faasPort uint,
 	entries map[string]*nodestbl.EntryNMS,
 	funcsWeights map[string]map[string]uint,
 ) *HACfgStatic {
 	hacfg := &HACfgStatic{
 		HACfg: HACfg{
-			MyNodeID:     myNodeID,
-			NodeIP:       _config.NodeIP,
-			HAProxyHost:  _config.HAProxyHost,
-			OpenFaaSHost: openFaaSHost,
-			OpenFaaSPort: openFaaSPort,
+			MyNodeID:        myNodeID,
+			NodeIP:          _config.NodeIP,
+			HAProxyHost:     _config.HAProxyHost,
+			FaaSHost:        faasHost,
+			FaaSPort:        faasPort,
+			FaaSBackendPath: faasprovider.BackendPathPrefix(_config.FaaSPlatform, _config.OpenWhiskNamespace),
 		},
 
 		Nodes:     map[string]*HACfgNodeStatic{},
