@@ -28,7 +28,16 @@ def main():
     parser.add_argument(
         "--function-name", type=str, default="0", help="Function name (e.g., '0')."
     )
+    parser.add_argument(
+        "--steps",
+        type=int,
+        default=None,
+        help="Cut the trace after the given steps (if None all trace is kept).",
+    )
     args = parser.parse_args()
+
+    if args.steps is not None:
+        assert args.steps > 0, "--steps must be a positive integer."
 
     data = json.loads(args.input.read_text())
 
@@ -39,6 +48,11 @@ def main():
             node_id = node_key[len("node_") :]
         else:
             node_id = node_key
+
+        # Optionally cut the values on a specific length.
+        if args.steps is not None:
+            values = values[: args.steps]
+
         out_json[args.function_name][node_id] = values
 
     args.output.write_text(json.dumps(out_json, indent=2) + "\n")
