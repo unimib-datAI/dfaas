@@ -35,29 +35,7 @@ type HandlerFunc func(raw json.RawMessage) (response interface{}, err error)
 
 // DirectMessenger provides directed peer-to-peer messaging over libp2p streams.
 // It supports fire-and-forget (Send) and request/response (Request) patterns.
-type DirectMessenger interface {
-	// PeerID returns the string representation of this messenger's peer ID.
-	//
-	// If the DirectMessenger is created with local host, return the local
-	// peer's ID.
-	PeerID() string
-
-	// SetHandler registers a handler for messages of the given type. Replaces
-	// any previously registered handler for that type. Safe to call
-	// concurrently.
-	SetHandler(msgType string, handler HandlerFunc)
-
-	// Send delivers msg to the peer identified by peerID and returns without
-	// waiting for a response (fire-and-forget).
-	Send(ctx context.Context, peerID string, msg interface{}) error
-
-	// Request delivers msg to peerID and waits for a response, returning the
-	// raw JSON of the response message.
-	Request(ctx context.Context, peerID string, msg interface{}) (json.RawMessage, error)
-}
-
-// directMessenger is the concrete implementation of DirectMessenger.
-type directMessenger struct {
+type DirectMessenger struct {
 	host    host.Host
 	timeout time.Duration
 
@@ -67,10 +45,10 @@ type directMessenger struct {
 	handlers map[string]HandlerFunc
 }
 
-// NewDirectMessenger creates a DirectMessenger backed by h and registers the
+// NewDirectMessenger creates a *DirectMessenger backed by h and registers the
 // libp2p stream handler for DirectProtocol.
-func NewDirectMessenger(h host.Host, timeout time.Duration) DirectMessenger {
-	dm := &directMessenger{
+func NewDirectMessenger(h host.Host, timeout time.Duration) *DirectMessenger {
+	dm := &DirectMessenger{
 		host:     h,
 		timeout:  timeout,
 		handlers: make(map[string]HandlerFunc),
@@ -79,17 +57,26 @@ func NewDirectMessenger(h host.Host, timeout time.Duration) DirectMessenger {
 	return dm
 }
 
-func (dm *directMessenger) PeerID() string {
+// PeerID returns the string representation of this messenger's peer ID.
+//
+// If the DirectMessenger is created with local host, returns the local
+// peer's ID.
+func (dm *DirectMessenger) PeerID() string {
 	return dm.host.ID().String()
 }
 
-func (dm *directMessenger) SetHandler(msgType string, handler HandlerFunc) {
+// SetHandler registers a handler for messages of the given type. Replaces
+// any previously registered handler for that type. Safe to call
+// concurrently.
+func (dm *DirectMessenger) SetHandler(msgType string, handler HandlerFunc) {
 	dm.mu.Lock()
 	defer dm.mu.Unlock()
 	dm.handlers[msgType] = handler
 }
 
-func (dm *directMessenger) Send(ctx context.Context, peerID string, msg interface{}) error {
+// Send delivers msg to the peer identified by peerID and returns without
+// waiting for a response (fire-and-forget).
+func (dm *DirectMessenger) Send(ctx context.Context, peerID string, msg interface{}) error {
 	// It is a fire-and-forget message: we open a stream to peerID, write
 	// msg,and close the stream.
 	pid, err := peer.Decode(peerID)
@@ -112,7 +99,7 @@ func (dm *directMessenger) Send(ctx context.Context, peerID string, msg interfac
 
 // Request opens a stream to peerID, writes msg, reads the response, and
 // returns the raw JSON response bytes.
-func (dm *directMessenger) Request(ctx context.Context, peerID string, msg interface{}) (json.RawMessage, error) {
+func (dm *DirectMessenger) Request(ctx context.Context, peerID string, msg interface{}) (json.RawMessage, error) {
 	pid, err := peer.Decode(peerID)
 	if err != nil {
 		return nil, fmt.Errorf("invalid peer ID: %w", err)
@@ -140,7 +127,7 @@ func (dm *directMessenger) Request(ctx context.Context, peerID string, msg inter
 }
 
 // handleStream is the libp2p stream handler for incoming directed messages.
-func (dm *directMessenger) handleStream(s network.Stream) {
+func (dm *DirectMessenger) handleStream(s network.Stream) {
 	defer s.Close()
 
 	raw, err := readMsg(s)
