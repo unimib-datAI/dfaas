@@ -262,6 +262,7 @@ func runAgent(config config.Configuration) error {
 	select {
 	case sig := <-chanStop:
 		logger.Warn("Caught " + sig.String() + " signal. Stopping.")
+		cancelCtx()
 		if config.MDNSEnabled {
 			if err := mdns.Stop(); err != nil {
 				return err
