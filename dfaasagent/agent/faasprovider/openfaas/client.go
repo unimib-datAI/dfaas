@@ -83,3 +83,7 @@ func (c *Client) HealthCheck() (string, error) {
 	defer resp.Body.Close()
 	return resp.Status, nil
 }
+
+func (c *Client) Platform() string {
+    return "openfaas"
+}

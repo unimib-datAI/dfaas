@@ -15,6 +15,7 @@ import (
 
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/config"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/constants"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/faasprovider"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/forecaster"
 
 	"github.com/prometheus/client_golang/prometheus"
@@ -25,6 +26,7 @@ import (
 //////////////////// MAIN PRIVATE VARS AND INIT FUNCTION ////////////////////
 
 var _config config.Configuration
+var _faasProvider faasprovider.FaaSProvider
 var _forecasterClient forecaster.Client
 
 var StrategySuccessIterations = promauto.NewCounter(prometheus.CounterOpts{
@@ -38,13 +40,15 @@ var StrategyIterationDuration = prometheus.NewGauge(prometheus.GaugeOpts{
 })
 
 // Initialize initializes this package (sets some vars, etc...)
-func Initialize(config config.Configuration) {
+func Initialize(config config.Configuration, provider faasprovider.FaaSProvider) {
 	_config = config
 
 	_forecasterClient = forecaster.Client{
 		Hostname: constants.ForecasterHost,
 		Port:     constants.ForeasterPort,
 	}
+
+	_faasProvider = provider
 }
 
 //////////////////// PUBLIC FUNCTIONS ////////////////////
@@ -70,7 +74,9 @@ func RunHttpServer() error {
 //////////////////// PRIVATE REQUEST HANDLERS FUNCTIONS ////////////////////
 
 // Function to handle requests to "/healthz" endpoint.
-// This endpoint is useful to check if the DFaaS agent is healthy, and also if other main components (Forecaster and OpenFaaS cluster) are healthy.
+//
+// This endpoint is useful to check if the DFaaS agent is healthy, and also if
+// other main components (Forecaster and FaaS gateway) are healthy.
 func healthzHandler(w http.ResponseWriter, r *http.Request) {
 	io.WriteString(w, "DFaaS Node running.\n")
 	io.WriteString(w, "Components status:\n")
@@ -84,29 +90,13 @@ func healthzHandler(w http.ResponseWriter, r *http.Request) {
 		io.WriteString(w, "- DFaaS Forecaster ready.\n")
 	}
 
-	// Check OpenFaaS status
-	respStatusOpenFaaS, err := healthCheckOpenFaaS()
-	if err != nil || respStatusOpenFaaS != "200 OK" {
+	// Check FaaS gateway status.
+	prefixMsg := fmt.Sprintf("- FaaS gateway (%s)", _faasProvider.Platform())
+	respStatusFaaS, err := _faasProvider.HealthCheck()
+	if err != nil || respStatusFaaS != "200 OK" {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		io.WriteString(w, "- OpenFaaS cluster not ready.\n")
+		io.WriteString(w, prefixMsg+" not ready.\n")
 	} else {
-		io.WriteString(w, "- OpenFaaS cluster ready.\n")
+		io.WriteString(w, prefixMsg+" ready.\n")
 	}
-}
-
-// Function used by the "healthzHandler" to send a request to the "/healthz" endpoint of OpenFaaS.
-func healthCheckOpenFaaS() (string, error) {
-	strURL := fmt.Sprintf("http://%s:%d/healthz", _config.OpenFaaSHost, _config.OpenFaaSPort)
-	httpClient := &http.Client{}
-	req, err := http.NewRequest("GET", strURL, nil)
-	if err != nil {
-		return "", err
-	}
-	resp, err := httpClient.Do(req)
-	if err != nil {
-		return "", err
-	}
-	defer resp.Body.Close()
-
-	return resp.Status, nil
 }

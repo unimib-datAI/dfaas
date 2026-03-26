@@ -452,3 +452,7 @@ func (c *Client) QueryRAMusagePerFunction(timeSpan time.Duration, funcName []str
 	}
 	return result, nil
 }
+
+func (c *Client) Platform() string {
+    return "openwhisk"
+}

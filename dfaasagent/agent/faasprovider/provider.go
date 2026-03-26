@@ -73,6 +73,9 @@ type FaaSProvider interface {
 	// HealthCheck returns "200 OK" if the FaaS gateway is reachable, or an
 	// error otherwise.
 	HealthCheck() (string, error)
+
+    // Platform returns the FaaS platform name ("openfaas", "openwhisk"...).
+    Platform() string
 }
 
 
