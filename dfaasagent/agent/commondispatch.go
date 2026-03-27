@@ -56,5 +56,11 @@ func dispatchCommon(tbl *nodestbl.TableCommon, msgType string, data []byte) {
 		if err := json.Unmarshal(data, &msg); err == nil {
 			tbl.UpdateFromFunctionEvent(msg)
 		}
+
+	case msgtypes.TypeCoordinate:
+		var msg msgtypes.MsgCoordinate
+		if err := json.Unmarshal(data, &msg); err == nil {
+			tbl.UpdateFromCoordinate(msg)
+		}
 	}
 }

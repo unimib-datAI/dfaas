@@ -11,7 +11,11 @@
 // (protocol /dfaas/msg/1.0.0).
 package msgtypes
 
-import "time"
+import (
+	"time"
+
+	"github.com/hashicorp/serf/coordinate"
+)
 
 // Message type discriminator constants.
 const (
@@ -32,6 +36,9 @@ const (
 
 	// TypeOffloadResponse identifies a MsgOffloadResponse message.
 	TypeOffloadResponse = "offload_response"
+
+	// TypeCoordinate identifies a MsgCoordinate message.
+	TypeCoordinate = "coordinate"
 )
 
 // Function event kinds used in MsgFunctionEvent.Event.
@@ -156,6 +163,15 @@ type MsgOffloadResponse struct {
 	Reason string `json:"reason,omitempty"`
 }
 
+// MsgCoordinate broadcasts the sender's current Vivaldi network coordinate.
+// Transport: GossipSub (broadcast).
+type MsgCoordinate struct {
+	Header MsgHeader `json:"header"`
+
+	// Coordinate is the sender's current network coordinate estimate.
+	Coordinate *coordinate.Coordinate `json:"coordinate"`
+}
+
 // MsgEnvelope is a minimal struct used to peek at the msg_type field before
 // full decoding. The msg_type field is nested under "header" in all common
 // vocabulary messages.
@@ -172,4 +188,5 @@ var CommonBroadcastTypes = map[string]struct{}{
 	TypeHeartbeat:     {},
 	TypeOverloadAlert: {},
 	TypeFunctionEvent: {},
+	TypeCoordinate:    {},
 }

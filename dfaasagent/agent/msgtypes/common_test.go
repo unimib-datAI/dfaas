@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/serf/coordinate"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/msgtypes"
@@ -119,4 +120,30 @@ func TestMsgOffloadResponse_Rejection_JSONRoundTrip(t *testing.T) {
 	var got msgtypes.MsgOffloadResponse
 	require.NoError(t, json.Unmarshal(data, &got))
 	assert.Equal(t, orig, got)
+}
+
+func TestMsgCoordinate_JSONRoundTrip(t *testing.T) {
+	cfg := coordinate.DefaultConfig()
+	coord := coordinate.NewCoordinate(cfg)
+	coord.Height = 0.123
+
+	orig := msgtypes.MsgCoordinate{
+		Header: msgtypes.MsgHeader{
+			MsgType:   msgtypes.TypeCoordinate,
+			SenderID:  "peer7",
+			Timestamp: time.Now().Truncate(time.Second),
+		},
+		Coordinate: coord,
+	}
+	data, err := json.Marshal(orig)
+	require.NoError(t, err)
+
+	var got msgtypes.MsgCoordinate
+	require.NoError(t, json.Unmarshal(data, &got))
+	require.NotNil(t, got.Coordinate)
+	assert.Equal(t, orig.Header, got.Header)
+	assert.Equal(t, orig.Coordinate.Vec, got.Coordinate.Vec)
+	assert.Equal(t, orig.Coordinate.Error, got.Coordinate.Error)
+	assert.Equal(t, orig.Coordinate.Adjustment, got.Coordinate.Adjustment)
+	assert.Equal(t, orig.Coordinate.Height, got.Coordinate.Height)
 }

@@ -10,6 +10,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hashicorp/serf/coordinate"
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	pubsub_pb "github.com/libp2p/go-libp2p-pubsub/pb"
 	"github.com/stretchr/testify/assert"
@@ -104,4 +105,81 @@ func TestMakeCommonCallback_UnknownTypePassesThrough(t *testing.T) {
 	// The table must remain empty because the message type is not common.
 	entries := tbl.GetLiveEntries()
 	assert.Empty(t, entries)
+}
+
+func TestMakeCommonCallback_CoordinateUpdatesTable(t *testing.T) {
+	tbl := nodestbl.NewTableCommon(10 * time.Second)
+	strategyCalled := false
+	var strategyCB communication.CBOnReceived = func(msg *pubsub.Message) error {
+		strategyCalled = true
+		return nil
+	}
+
+	cb := agent.MakeCommonCallback(tbl, strategyCB)
+	now := time.Now()
+	coord := coordinate.NewCoordinate(coordinate.DefaultConfig())
+	coord.Height = 0.33
+
+	tbl.UpdateFromHeartbeat(msgtypes.MsgHeartbeat{
+		Header:      msgtypes.MsgHeader{SenderID: "peer-coord-1", Timestamp: now},
+		HAProxyHost: "192.168.1.11",
+		HAProxyPort: 30080,
+		Functions:   []string{"resize"},
+	})
+
+	msg := msgtypes.MsgCoordinate{
+		Header: msgtypes.MsgHeader{
+			MsgType:   msgtypes.TypeCoordinate,
+			SenderID:  "peer-coord-1",
+			Timestamp: now.Add(time.Second),
+		},
+		Coordinate: coord,
+	}
+
+	data, err := json.Marshal(msg)
+	require.NoError(t, err)
+	require.NoError(t, cb(fakeMsg(data)))
+
+	assert.True(t, strategyCalled, "strategy callback was not called")
+
+	entry, ok := tbl.GetLiveEntry("peer-coord-1")
+	require.True(t, ok)
+	require.NotNil(t, entry.Coordinate)
+	assert.Equal(t, 0.33, entry.Coordinate.Height)
+	assert.True(t, entry.CoordinateUpdatedAt.Equal(now.Add(time.Second)))
+}
+
+func TestMakeCommonCallback_CoordinateCreatesEntryWithoutPriorHeartbeat(t *testing.T) {
+	tbl := nodestbl.NewTableCommon(10 * time.Second)
+	strategyCalled := false
+	var strategyCB communication.CBOnReceived = func(msg *pubsub.Message) error {
+		strategyCalled = true
+		return nil
+	}
+
+	cb := agent.MakeCommonCallback(tbl, strategyCB)
+	now := time.Now()
+	coord := coordinate.NewCoordinate(coordinate.DefaultConfig())
+	coord.Height = 0.27
+
+	msg := msgtypes.MsgCoordinate{
+		Header: msgtypes.MsgHeader{
+			MsgType:   msgtypes.TypeCoordinate,
+			SenderID:  "peer-coord-2",
+			Timestamp: now,
+		},
+		Coordinate: coord,
+	}
+
+	data, err := json.Marshal(msg)
+	require.NoError(t, err)
+	require.NoError(t, cb(fakeMsg(data)))
+
+	assert.True(t, strategyCalled, "strategy callback was not called")
+
+	entry, ok := tbl.GetLiveEntry("peer-coord-2")
+	require.True(t, ok)
+	require.NotNil(t, entry.Coordinate)
+	assert.Equal(t, 0.27, entry.Coordinate.Height)
+	assert.True(t, entry.CoordinateUpdatedAt.Equal(now))
 }

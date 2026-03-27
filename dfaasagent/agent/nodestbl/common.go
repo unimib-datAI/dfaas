@@ -9,6 +9,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/hashicorp/serf/coordinate"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/msgtypes"
 )
 
@@ -38,6 +39,21 @@ type EntryCommon struct {
 	// RAMUsage is the last reported RAM utilization in [0.0, 1.0].
 	// Updated by MsgOverloadAlert; zero if no alert has been received.
 	RAMUsage float64
+
+	// Coordinate is the last Vivaldi network coordinate broadcast by this peer.
+	Coordinate *coordinate.Coordinate
+
+	// CoordinateUpdatedAt is when Coordinate was last updated.
+	CoordinateUpdatedAt time.Time
+
+	// MeasuredRTT is the most recent libp2p RTT observed to this peer.
+	MeasuredRTT time.Duration
+
+	// EstimatedRTT is the RTT estimated from the local and peer coordinates.
+	EstimatedRTT time.Duration
+
+	// LatencyUpdatedAt is when the RTT fields were last updated.
+	LatencyUpdatedAt time.Time
 }
 
 // TableCommon is a thread-safe, TTL-expiring table of peer nodes populated
@@ -123,26 +139,106 @@ func (t *TableCommon) UpdateFromFunctionEvent(msg msgtypes.MsgFunctionEvent) {
 	}
 }
 
+// UpdateFromCoordinate stores the peer's last broadcast Vivaldi coordinate.
+// If the peer is not yet in the table, a skeletal entry is created so early
+// coordinate broadcasts are not lost before the first heartbeat arrives.
+func (t *TableCommon) UpdateFromCoordinate(msg msgtypes.MsgCoordinate) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	e, ok := t.entries[msg.Header.SenderID]
+	if !ok {
+		e = &EntryCommon{ID: msg.Header.SenderID}
+		t.entries[msg.Header.SenderID] = e
+	}
+
+	e.TAlive = msg.Header.Timestamp
+	e.Coordinate = cloneCoordinate(msg.Coordinate)
+	e.CoordinateUpdatedAt = msg.Header.Timestamp
+}
+
+// UpdateLatency stores the latest measured and estimated RTT values for peerID.
+// If the peer is not yet in the table, the update is ignored.
+func (t *TableCommon) UpdateLatency(peerID string, measured, estimated time.Duration, ts time.Time) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	e, ok := t.entries[peerID]
+	if !ok {
+		return
+	}
+
+	e.MeasuredRTT = measured
+	e.EstimatedRTT = estimated
+	e.LatencyUpdatedAt = ts
+}
+
+// ForgetLatency clears only the latency-derived state for peerID. Other
+// liveness and routing metadata are preserved.
+func (t *TableCommon) ForgetLatency(peerID string) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	e, ok := t.entries[peerID]
+	if !ok {
+		return
+	}
+
+	e.MeasuredRTT = 0
+	e.EstimatedRTT = 0
+	e.LatencyUpdatedAt = time.Time{}
+}
+
+// GetLiveEntry returns a snapshot of peerID if it exists and has not expired.
+// Expired entries are removed from the table as a side effect.
+func (t *TableCommon) GetLiveEntry(peerID string) (EntryCommon, bool) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+
+	t.purgeExpiredLocked(time.Now())
+
+	e, ok := t.entries[peerID]
+	if !ok {
+		return EntryCommon{}, false
+	}
+
+	return snapshotEntry(e), true
+}
+
 // GetLiveEntries returns a snapshot of all entries that have not yet expired.
 // Expired entries are removed from the table as a side effect.
 func (t *TableCommon) GetLiveEntries() []EntryCommon {
 	t.mu.Lock()
 	defer t.mu.Unlock()
 
-	now := time.Now()
+	t.purgeExpiredLocked(time.Now())
 	var live []EntryCommon
 
-	for id, e := range t.entries {
-		if now.Sub(e.TAlive) > t.ttl {
-			delete(t.entries, id)
-			continue
-		}
-		// Deep-copy Functions to prevent callers from observing mutations made
-		// by concurrent UpdateFromFunctionEvent calls on the same backing array.
-		snapshot := *e
-		snapshot.Functions = append([]string(nil), e.Functions...)
-		live = append(live, snapshot)
+	for _, e := range t.entries {
+		live = append(live, snapshotEntry(e))
 	}
 
 	return live
+}
+
+func (t *TableCommon) purgeExpiredLocked(now time.Time) {
+	for id, e := range t.entries {
+		if now.Sub(e.TAlive) > t.ttl {
+			delete(t.entries, id)
+		}
+	}
+}
+
+func snapshotEntry(e *EntryCommon) EntryCommon {
+	snapshot := *e
+	snapshot.Functions = append([]string(nil), e.Functions...)
+	snapshot.Coordinate = cloneCoordinate(e.Coordinate)
+	return snapshot
+}
+
+func cloneCoordinate(coord *coordinate.Coordinate) *coordinate.Coordinate {
+	if coord == nil {
+		return nil
+	}
+	return coord.Clone()
 }

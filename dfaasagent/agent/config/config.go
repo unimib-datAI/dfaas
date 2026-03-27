@@ -103,6 +103,15 @@ type Configuration struct {
 	// DirectMsgTimeout is the deadline for dialing a peer and completing a
 	// directed message exchange over a libp2p stream. Defaults to 5s.
 	DirectMsgTimeout time.Duration `mapstructure:"AGENT_DIRECT_MSG_TIMEOUT"`
+
+	// VivaldiEnabled enables the Vivaldi latency-state manager built on top of
+	// the existing libp2p-discovered peer set.
+	VivaldiEnabled bool `mapstructure:"AGENT_VIVALDI_ENABLED"`
+
+	// VivaldiProbeInterval controls how often the agent probes connected peers
+	// and republishes its coordinate. If zero, it falls back to
+	// HeartbeatInterval, then to 10s.
+	VivaldiProbeInterval time.Duration `mapstructure:"AGENT_VIVALDI_PROBE_INTERVAL"`
 }
 
 // viperBindConfig binds each field of the Configuration struct with its

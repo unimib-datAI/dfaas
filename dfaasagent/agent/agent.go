@@ -32,6 +32,7 @@ import (
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/discovery/mdns"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/faasprovider"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/latency/vivaldi"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/loadbalancer"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
@@ -43,6 +44,8 @@ import (
 var _p2pHost host.Host
 
 var _directMessenger communication.DirectMessenger
+
+var newVivaldiManager = vivaldi.NewManager
 
 // Convert libp2p PrivKey to ed25519.PrivateKey.
 func toEd25519PrivateKey(priv crypto.PrivKey) (ed25519.PrivateKey, error) {
@@ -104,6 +107,32 @@ func getPrivateKey(filePath string) (crypto.PrivKey, error) {
 	}
 
 	return prvKey, nil
+}
+
+func newVivaldiManagerFromConfig(cfg config.Configuration, p2pHost host.Host, commonTable *nodestbl.TableCommon) (*vivaldi.Manager, time.Duration, time.Duration, error) {
+	if !cfg.VivaldiEnabled {
+		return nil, 0, 0, nil
+	}
+
+	vivaldiProbeInterval := cfg.VivaldiProbeInterval
+	if vivaldiProbeInterval == 0 {
+		vivaldiProbeInterval = cfg.HeartbeatInterval
+	}
+	if vivaldiProbeInterval == 0 {
+		vivaldiProbeInterval = 10 * time.Second
+	}
+
+	vivaldiProbeTimeout := cfg.DirectMsgTimeout
+	if vivaldiProbeTimeout == 0 {
+		vivaldiProbeTimeout = 5 * time.Second
+	}
+
+	vivaldiManager, err := newVivaldiManager(p2pHost, commonTable, vivaldiProbeInterval, vivaldiProbeTimeout)
+	if err != nil {
+		return nil, vivaldiProbeInterval, vivaldiProbeTimeout, err
+	}
+
+	return vivaldiManager, vivaldiProbeInterval, vivaldiProbeTimeout, nil
 }
 
 // runAgent is the main function to be called once we got some very basic setup,
@@ -237,6 +266,20 @@ func runAgent(config config.Configuration) error {
 
 	////////// KADEMLIA DHT INITIALIZATION //////////
 
+	vivaldiManager, vivaldiProbeInterval, vivaldiProbeTimeout, err := newVivaldiManagerFromConfig(config, _p2pHost, commonTable)
+	if err != nil {
+		return fmt.Errorf("initializing Vivaldi latency manager: %w", err)
+	}
+	if vivaldiManager != nil {
+		logger.Debugf(
+			"Vivaldi latency manager enabled with probe interval %s and timeout %s",
+			vivaldiProbeInterval,
+			vivaldiProbeTimeout,
+		)
+	} else {
+		logger.Debug("Vivaldi latency manager disabled")
+	}
+
 	bootstrapConfig := kademlia.BootstrapConfiguration{
 		BootstrapNodes:       config.BootstrapNodes,
 		PublicBootstrapNodes: config.PublicBootstrapNodes,
@@ -293,6 +336,10 @@ func runAgent(config config.Configuration) error {
 	go func() { chanErr <- kademlia.RunDiscovery() }()
 
 	go func() { chanErr <- communication.RunReceiver() }()
+
+	if vivaldiManager != nil {
+		go func() { chanErr <- vivaldiManager.Run(ctx) }()
+	}
 
 	go func() { chanErr <- runner.Run(ctx) }()
 
