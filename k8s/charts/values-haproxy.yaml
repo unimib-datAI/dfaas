@@ -2,27 +2,34 @@
 # This YAML file overwrites the default values.yaml file in the HAProxy Helm
 # chart.
 #
-# The main point is that HAProxy runs in master-worker mode, which allows for
-# seamless restarts when the configuration is updated and enables the Dataplane
-# API process to run. This means that we run multiple processes in a single
-# container. While this is not ideal for Kubernetes, DFaaS is a prototype.
+# We run HAProxy in a master–worker model within a single container, alongside
+# the Data Plane API operating in a sidecar container.
 #
 # Copyright 2025-2026 The DFaaS Authors. All rights reserved.
 # This file is licensed under the AGPL v3.0 or later license. See LICENSE and
 # AUTHORS file for more information.
 
+# Set the HAProxy version, the same version is also for Data Plane API.
+image:
+  image: docker.io/haproxytech/haproxy-alpine
+  tag: "3.2.6"
+
 config: |
   # This is the basic HAProxy configuration, which overwrites the default
-  # configuration from the Helm chart. Note this configuration will be updated
-  # by the DFaaS agent.
+  # configuration from the Helm chart.
   global
-    # This is required since we also run the Dataplane API process.
-    master-worker no-exit-on-failure
-    # Required by Dataplane API.
-    stats socket /var/run/haproxy.sock mode 660 level admin expose-fd listeners
-    insecure-fork-wanted
-    # The program section is deprecated.
-    expose-deprecated-directives
+    # Enable master-worker node to enable hot-reload feature.
+    # See: https://docs.haproxy.org/3.2/configuration.html#3.1-master-worker
+    master-worker
+
+    # Enable Runtime API. This allows Data Plane API to make some changes
+    # without requiding a reload. We expose the socket as TCP rather than UNIX
+    # socket to allow Data Plane API to be in a different container than the
+    # proxy.
+    #
+    # See: https://www.haproxy.com/documentation/haproxy-data-plane-api/installation/install-on-haproxy/
+    # See: https://www.haproxy.com/documentation/haproxy-runtime-api/installation/
+    stats socket ipv4@*:6666 mode 660 level admin expose-fd listeners
     log stdout format raw local0
 
   # An user is required by Dataplane API to work.
@@ -50,47 +57,15 @@ config: |
     bind :80
     http-request return status 503 content-type "text/plain" string "This is a DFaaS node. Proxy is running, but the DFaaS agent is not!\n"
 
-  # This section is required only at the start of HAProxy, then the DFaaS Agent
-  # does not need to add this section anymore.
-  program api
-    # The script is required because the dataplane API process does not run
-    # immediately when HAProxy is initializing. We must wait a few seconds.
-    # However, since the configuration does not support delays, we wrote a
-    # custom script.
-    command /bin/sh /usr/local/etc/haproxy/includes/dataplane-start.sh
-    no option start-on-reload
-
 # The original HAProxy configuration cannot be modified, so we placed it in a
 # different location.
 configMount:
   mountPath: /usr/local/etc/haproxy/haproxy.init.readonly.cfg 
   subPath: haproxy.cfg        
 
-includes:
-  # This script starts and restarts the dataplane API process until it
-  # stabilizes.
-  dataplane-start.sh: |
-    #!/bin/sh
-
-    while true; do
-      echo "/usr/local/bin/dataplaneapi starting..." >&2
-      /usr/local/bin/dataplaneapi --host 0.0.0.0 --port 5555 --haproxy-bin /usr/sbin/haproxy --config-file /usr/local/etc/haproxy/config/haproxy.cfg --reload-cmd "kill -SIGUSR2 1" --restart-cmd "kill -SIGUSR2 1" --userlist dataplaneapi --log-level info
-      ret=$?
-      if [ "$ret" -ne 0 ]; then
-        echo "/usr/local/bin/dataplaneapi crashed with exit code 1. Restarting..." >&2
-        sleep 1
-      else
-        echo "/usr/local/bin/dataplaneapi exited with code $ret. Not restarting." >&2
-        break
-      fi
-    done
-
-# haproxy container will contain: /usr/local/etc/haproxy/includes/dataplane-start.sh
-includesMountPath: /usr/local/etc/haproxy/includes
-
 initContainers:
-  # Since the HAProxy configuration is read-only, we need to copy it to a
-  # writable volume. Then, we must configure HAProxy (and the dataplane) to use
+  # Since the initial HAProxy configuration is read-only, we need to copy it to
+  # a writable volume. Then, we must configure HAProxy and Data Plane API to use
   # the copied configuration file.
   - name: init-haproxy-config
     image: "busybox:musl"
@@ -112,9 +87,21 @@ extraVolumeMounts:
     mountPath: /usr/local/etc/haproxy/config
 
 args:
-  # Read the configuration from the writable mount.
-  defaults: ["-f", "/usr/local/etc/haproxy/config/haproxy.cfg"]
+  # Read the configuration from the writable mount. Also enable master CLI as
+  # UNIX socket, used by the Data Plane API. This is not exposed outside the
+  # pod.
+  #
+  # See: https://docs.haproxy.org/3.3/management.html#9.4
+  # See also: https://github.com/haproxytech/dataplaneapi/issues/391#issuecomment-3929209196
+  defaults: ["-W", "-S", "/usr/local/etc/haproxy/config/haproxy-master.sock,mode,666,level,admin", "-db", "-f", "/usr/local/etc/haproxy/config/haproxy.cfg"]
 
+# We expose HAProxy as a NodePort service to make it accessible from outside the
+# cluster. As a result, other internal services (Runtime API, Data Plane API,
+# and the Prometheus endpoint) are also exposed. While this may pose a security
+# risk, keep in mind that DFaaS is a prototype.
+#
+# Note that the Runtime API is for the worker process, not the master (master
+# CLI)!
 service:
   type: NodePort
 
@@ -124,19 +111,53 @@ service:
     prometheus.io/scrape: "true"
     prometheus.io/port: "8405"
 
-  # Map each container port to a specific node port for external access (from
-  # outside the cluster). We do not intend to expose the Prometheus port, but
-  # Kubernetes will still map it to a random node port regardless.
+  # We do not intend to expose the Prometheus port, but Kubernetes will still
+  # map it to a random node port regardless.
   nodePorts:
     http: 30080
-    dataplane: 30555
-    stat: 31024
+    dataplaneapi: 30555
+    runtimeapi: 30666
+
+# Required to enable Data Plane API sending UNIX signals to the HAProxy master
+# node running on the main container.
+shareProcessNamespace:
+  enabled: true
+
+# Start the Data Plane API in a dedicated container. The API connects to the
+# master CLI UNIX socket exposed by HAProxy through the custom shared path between
+# the two containers. Reload operations are performed via UNIX signals, which
+# is why `shareProcessNamespace` is set to `true`.
+sidecarContainers:
+  - name: dataplaneapi
+    image: docker.io/haproxytech/haproxy-alpine:3.2.6
+    # We cannot run the Data Plane API directly, as we observed that it crashes
+    # on the first attempt. Therefore, we need to execute it within a loop.
+    command: ["/bin/sh", "-c"]
+    args:
+      - |
+        while true; do
+          /usr/local/bin/dataplaneapi \
+            --host 0.0.0.0 \
+            --port 5555 \
+            --log-level info \
+            --master-runtime /usr/local/etc/haproxy/config/haproxy-master.sock \
+            --userlist dataplaneapi \
+            --config-file /usr/local/etc/haproxy/config/haproxy.cfg \
+            --reload-cmd "pkill -SIGUSR2 haproxy" \
+            --restart-cmd "pkill -SIGUSR1 haproxy" \
+          && break
+          echo "Dataplane API failed to start, retrying in 5s..."
+          sleep 5
+        done
+    volumeMounts:
+      - name: haproxy-config-writable
+        mountPath: /usr/local/etc/haproxy/config
 
 # These ports will be automatically included in the service object and exposed
 # for external access (because we selected NodePort service type).
 containerPorts:
   http: 80
   https: 443
-  stat: 1024
-  dataplane: 5555
+  runtimeapi: 6666
+  dataplaneapi: 5555
   prometheus: 8405
