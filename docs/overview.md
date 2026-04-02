@@ -15,7 +15,7 @@ Single DFaaS node: a single Kubernetes (k3s) cluster composed of a single node.
 |------------------|-------------------|------|------------|
 | DFaaS Agent      | DFaaS Agent       | 1    | 1          |
 | DFaaS Agent      | DFaaS Forecaster  | 1    | 1          |
-| Proxy            | HAProxy           | 1    | 1          |
+| Proxy            | HAProxy           | 1    | 2          |
 | FaaS Platform    | OpenFaaS          | 1    | 2          |
 | Metrics          | Prometheus        | 4    | 5          |
 
@@ -30,7 +30,7 @@ Note: in addition there are the individual FaaS functions (with zero or more rep
 Improvement proposals:
 
 * Stay with HAProxy: there is no reason to change, it works well.
-* Avoid restarting HAProxy too frequently to reload the configuration: use the REST API to update weights/backends. Only restart if strictly necessary (e.g., adding a neighbor).
+* Avoid restarting HAProxy too frequently to reload the configuration: use the Data Plane API API to update weights/backends. Only restart if strictly necessary (e.g., adding a neighbor).
 
 ### FaaS Platform
 
