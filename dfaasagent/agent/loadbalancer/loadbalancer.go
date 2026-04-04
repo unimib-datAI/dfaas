@@ -18,6 +18,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 	"github.com/libp2p/go-libp2p/core/host"
 
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/communication"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/config"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/constants"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
@@ -28,6 +29,9 @@ import (
 // singleton pattern.
 var (
 	_p2pHost host.Host
+
+	// _directMessenger is used by strategies to send directed messages to peers.
+	_directMessenger communication.DirectMessenger
 
 	// Configuration given by the environment.
 	_config config.Configuration
@@ -43,8 +47,9 @@ var (
 )
 
 // Initialize sets up the package. Warning: call this function only once!
-func Initialize(p2pHost host.Host, config config.Configuration) {
+func Initialize(p2pHost host.Host, dm communication.DirectMessenger, config config.Configuration) {
 	_p2pHost = p2pHost
+	_directMessenger = dm
 	_config = config
 	_lock = &sync.Mutex{}
 
@@ -63,16 +68,36 @@ func Initialize(p2pHost host.Host, config config.Configuration) {
 	}
 }
 
-// Strategy interface represents a generic strategy. Every new strategy for the
-// agent must implement this interface.
+// Strategy is the base message-receiving interface shared by all loop models.
+// Every strategy must implement at least one of PeriodicStrategy,
+// EventDrivenStrategy, or HybridStrategy (defined in interfaces.go).
 type Strategy interface {
-	// RunStrategy executes the strategy loop. Warning: this function runs an
-	// infinite loop and should not return, except in case of errors or at
-	// termination.
-	RunStrategy() error
-
-	// OnReceives is called each time a message is received from a peer.
+	// OnReceived is called for every incoming broadcast message.
+	// Implementors are responsible for filtering out self-messages if needed.
+	// Used for state table updates only; does NOT trigger a recalculation cycle.
 	OnReceived(msg *pubsub.Message) error
+}
+
+// NewRunner creates the appropriate StrategyRunner for s based on which loop
+// interface s implements. HybridStrategy takes precedence over its two
+// constituents. Panics if s implements none of the known loop interfaces.
+func NewRunner(s Strategy) StrategyRunner {
+	switch st := s.(type) {
+	case HybridStrategy:
+		return newHybridRunner(st)
+	case EventDrivenStrategy:
+		return newEventDrivenRunner(st)
+	case PeriodicStrategy:
+		return newPeriodicRunner(st)
+	default:
+		panic("strategy implements no known loop interface (must implement PeriodicStrategy, EventDrivenStrategy, or HybridStrategy)")
+	}
+}
+
+// DirectMessenger returns the DirectMessenger available to strategies for
+// sending directed messages to specific peers.
+func DirectMessenger() communication.DirectMessenger {
+	return _directMessenger
 }
 
 // GetStrategyInstance returns the singleton Strategy instance.

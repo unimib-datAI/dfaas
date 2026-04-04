@@ -30,7 +30,9 @@ import (
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/communication"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/discovery/kademlia"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/discovery/mdns"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/faasprovider"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/latency/vivaldi"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/loadbalancer"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
@@ -40,6 +42,10 @@ import (
 //////////////////// PRIVATE VARIABLES ////////////////////
 
 var _p2pHost host.Host
+
+var _directMessenger communication.DirectMessenger
+
+var newVivaldiManager = vivaldi.NewManager
 
 // Convert libp2p PrivKey to ed25519.PrivateKey.
 func toEd25519PrivateKey(priv crypto.PrivKey) (ed25519.PrivateKey, error) {
@@ -101,6 +107,32 @@ func getPrivateKey(filePath string) (crypto.PrivKey, error) {
 	}
 
 	return prvKey, nil
+}
+
+func newVivaldiManagerFromConfig(cfg config.Configuration, p2pHost host.Host, commonTable *nodestbl.TableCommon) (*vivaldi.Manager, time.Duration, time.Duration, error) {
+	if !cfg.VivaldiEnabled {
+		return nil, 0, 0, nil
+	}
+
+	vivaldiProbeInterval := cfg.VivaldiProbeInterval
+	if vivaldiProbeInterval == 0 {
+		vivaldiProbeInterval = cfg.HeartbeatInterval
+	}
+	if vivaldiProbeInterval == 0 {
+		vivaldiProbeInterval = 10 * time.Second
+	}
+
+	vivaldiProbeTimeout := cfg.DirectMsgTimeout
+	if vivaldiProbeTimeout == 0 {
+		vivaldiProbeTimeout = 5 * time.Second
+	}
+
+	vivaldiManager, err := newVivaldiManager(p2pHost, commonTable, vivaldiProbeInterval, vivaldiProbeTimeout)
+	if err != nil {
+		return nil, vivaldiProbeInterval, vivaldiProbeTimeout, err
+	}
+
+	return vivaldiManager, vivaldiProbeInterval, vivaldiProbeTimeout, nil
 }
 
 // runAgent is the main function to be called once we got some very basic setup,
@@ -186,9 +218,17 @@ func runAgent(config config.Configuration) error {
 		logger.Info("  ", i+1, ". ", addr)
 	}
 
+	////////// DIRECT MESSENGER //////////
+
+	directTimeout := config.DirectMsgTimeout
+	if directTimeout == 0 {
+		directTimeout = 5 * time.Second
+	}
+	_directMessenger = communication.NewDirectMessenger(_p2pHost, directTimeout)
+
 	////////// LOAD BALANCER INITIALIZATION //////////
 
-	loadbalancer.Initialize(_p2pHost, config)
+	loadbalancer.Initialize(_p2pHost, _directMessenger, config)
 
 	// Get the Strategy instance (which is a singleton) of type
 	// dependent on the strategy specified in the configuration
@@ -197,18 +237,48 @@ func runAgent(config config.Configuration) error {
 	if err != nil {
 		return fmt.Errorf("error while getting strategy instance: %w", err)
 	}
+	runner := loadbalancer.NewRunner(strategy)
+
+	////////// COMMON NODE TABLE //////////
+
+	// Use 3× the heartbeat interval as the TTL so that entries survive up to
+	// three missed heartbeats before expiring.
+	heartbeatTTL := 3 * config.HeartbeatInterval
+	if heartbeatTTL == 0 {
+		heartbeatTTL = 30 * time.Second // safe default when interval is not configured
+	}
+	commonTable := nodestbl.NewTableCommon(heartbeatTTL)
 
 	////////// PUBSUB INITIALIZATION //////////
 
+	// Wrap the strategy callback with the common message pre-filter so that
+	// heartbeats, overload alerts, and function events update the shared
+	// CommonNodeTable before being forwarded to the strategy.
+	commonCB := MakeCommonCallback(commonTable, runner.Callback())
+
 	// The PubSub initialization must be done before the Kademlia one. Otherwise
 	// the agent won't be able to publish or subscribe.
-	err = communication.Initialize(ctx, _p2pHost, config.PubSubTopic, strategy.OnReceived)
+	err = communication.Initialize(ctx, _p2pHost, config.PubSubTopic, commonCB)
 	if err != nil {
 		return err
 	}
 	logger.Debug("PubSub initialization completed")
 
 	////////// KADEMLIA DHT INITIALIZATION //////////
+
+	vivaldiManager, vivaldiProbeInterval, vivaldiProbeTimeout, err := newVivaldiManagerFromConfig(config, _p2pHost, commonTable)
+	if err != nil {
+		return fmt.Errorf("initializing Vivaldi latency manager: %w", err)
+	}
+	if vivaldiManager != nil {
+		logger.Debugf(
+			"Vivaldi latency manager enabled with probe interval %s and timeout %s",
+			vivaldiProbeInterval,
+			vivaldiProbeTimeout,
+		)
+	} else {
+		logger.Debug("Vivaldi latency manager disabled")
+	}
 
 	bootstrapConfig := kademlia.BootstrapConfiguration{
 		BootstrapNodes:       config.BootstrapNodes,
@@ -242,7 +312,19 @@ func runAgent(config config.Configuration) error {
 
 	////////// HTTPSERVER INITIALIZATION //////////
 
-	httpserver.Initialize(config)
+	// Create FaaS provider for use by httpserver health check.
+	faasProvider, err := faasprovider.NewFaaSProvider(
+		config.FaaSPlatform,
+		config.FaaSHost,
+		config.FaaSPort,
+		config.OpenWhiskNamespace,
+		config.OpenWhiskAPIKey,
+	)
+	if err != nil {
+		return fmt.Errorf("creating FaaS provider for httpserver: %w", err)
+	}
+
+	httpserver.Initialize(config, faasProvider)
 
 	////////// GOROUTINES //////////
 
@@ -255,13 +337,20 @@ func runAgent(config config.Configuration) error {
 
 	go func() { chanErr <- communication.RunReceiver() }()
 
-	go func() { chanErr <- strategy.RunStrategy() }()
+	if vivaldiManager != nil {
+		go func() { chanErr <- vivaldiManager.Run(ctx) }()
+	}
+
+	go func() { chanErr <- runner.Run(ctx) }()
 
 	go func() { chanErr <- httpserver.RunHttpServer() }()
+
+	go func() { chanErr <- RunHeartbeat(config, faasProvider) }()
 
 	select {
 	case sig := <-chanStop:
 		logger.Warn("Caught " + sig.String() + " signal. Stopping.")
+		cancelCtx()
 		if config.MDNSEnabled {
 			if err := mdns.Stop(); err != nil {
 				return err
