@@ -103,13 +103,18 @@ export default function () {
   // See: https://grafana.com/docs/k6/latest/using-k6/tags-and-groups/
   tagWithCurrentStageIndex();
 
-  // Add to each requests its current stage index.
+  // Add to each requests its current stage index, the rate and duration. This
+  // will help the DFaaS node to extract some information about the input trace.
   const stage = getCurrentStageIndex();
+  const rate = stages[stage].target;
+  const duration = stages[stage].duration;
 
   const params = {
     headers: {
       "Content-Type": CONTENT_TYPE,
       "DFaaS-K6-Stage": stage,
+      "DFaaS-K6-Rate": String(rate),
+      "DFaaS-K6-Duration": String(duration),
     },
     timeout: "8s",
   };
