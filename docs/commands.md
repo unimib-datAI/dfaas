@@ -81,6 +81,12 @@ $ curl -i -u admin:admin 'http://localhost:30555/v3/services/haproxy/runtime/sti
 $ faas-cli store deploy figlet --env exec_timeout=4s --env max_inflight=800 --label dfaas.timeout_ms=6000
 ```
 
+Or with a custom function not in store:
+
+```console
+$ faas-cli deploy --image=ghcr.io/unimib-datai/dfaas-openfaas-image-classification:dev --name=mlimage --env exec_timeout=4s --env max_inflight=400 --label dfaas.timeout_ms=6000
+```
+
 See [timeouts.md](timeouts.md) file for information about these env vars, while
 [agent-strategies](agent-strategies.md) for the label.
 
