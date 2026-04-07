@@ -51,10 +51,15 @@ func (strategyFactory *recalcStrategyFactory) createStrategy() (Strategy, error)
 	// Avoid premature expiration of nodes in the table between strategy runs.
 	strategy.nodestbl = nodestbl.NewTableRecalc(_config.RecalcPeriod + (_config.RecalcPeriod / 5))
 
-	strategy.hacfgupdater = hacfgupd.Updater{}
-	if err := strategy.hacfgupdater.LoadTemplate(haproxycfgrecalcTemplate); err != nil {
-		return nil, fmt.Errorf("loading HAProxy config. template: %w", err)
+	hacfgupdater, err := hacfgupd.New(_config.DataPlaneAPIHost,
+		_config.DataPlaneAPIPort,
+		_config.DataPlaneAPIUser,
+		_config.DataPlaneAPIPassword,
+		haproxycfgrecalcTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
 	}
+	strategy.hacfgupdater = hacfgupdater
 
 	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
 
@@ -75,12 +80,15 @@ func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, er
 
 	strategy.nodestbl = nodestbl.NewTableNMS(_config.RecalcPeriod * 2)
 
-	strategy.hacfgupdater = hacfgupd.Updater{}
-
-	err := strategy.hacfgupdater.LoadTemplate(haproxycfgnmsTemplate)
+	hacfgupdater, err := hacfgupd.New(_config.DataPlaneAPIHost,
+		_config.DataPlaneAPIPort,
+		_config.DataPlaneAPIUser,
+		_config.DataPlaneAPIPassword,
+		haproxycfgnmsTemplate)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
 	}
+	strategy.hacfgupdater = hacfgupdater
 
 	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
 
@@ -110,11 +118,15 @@ func (strategyFactory *staticStrategyFactory) createStrategy() (Strategy, error)
 	// TODO: Use a custom table.
 	strategy.nodestbl = nodestbl.NewTableNMS(_config.RecalcPeriod * 2)
 
-	strategy.hacfgupdater = hacfgupd.Updater{}
-
-	if err := strategy.hacfgupdater.LoadTemplate(haproxycfgStaticTemplate); err != nil {
-		return nil, fmt.Errorf("loading HAProxy config. template: %w", err)
+	hacfgupdater, err := hacfgupd.New(_config.DataPlaneAPIHost,
+		_config.DataPlaneAPIPort,
+		_config.DataPlaneAPIUser,
+		_config.DataPlaneAPIPassword,
+		haproxycfgStaticTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
 	}
+	strategy.hacfgupdater = hacfgupdater
 
 	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
 

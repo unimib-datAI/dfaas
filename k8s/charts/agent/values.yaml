@@ -58,10 +58,17 @@ config:
 
   AGENT_RECALC_PERIOD: 1m
 
-  # DNS name automatically set by Kubernetes to OpenFaaS Gateway service. If not
-  # using Kubernetes, set manually the IP/DNS.
+  # DNS name automatically set by Kubernetes to HAProxy service. If not using
+  # Kubernetes, set manually the IP/DNS.
   AGENT_HAPROXY_HOST: "haproxy.default.svc.cluster.local"
   AGENT_HAPROXY_PORT: 80
+
+  # DNS name automatically set by Kubernetes to HAProxy service. If not using
+  # Kubernetes, set manually the IP/DNS.
+  AGENT_DATAPLANEAPI_HOST: "haproxy.default.svc.cluster.local"
+  AGENT_DATAPLANEAPI_PORT: 5555
+  AGENT_DATAPLANEAPI_USER: "admin"
+  AGENT_DATAPLANEAPI_PASSWORD: "admin"
 
   # DNS name automatically set by Kubernetes to OpenFaaS Gateway service. If not
   # using Kubernetes, set manually the IP/DNS.

@@ -38,7 +38,7 @@ const powerUsageNodeMetric = "power_usage_node"
 // NodeMarginStrategy represents the NMS strategy and implements the Strategy
 // interface.
 type NodeMarginStrategy struct {
-	hacfgupdater     hacfgupd.Updater
+	hacfgupdater     *hacfgupd.Updater
 	nodestbl         *nodestbl.TableNMS
 	offuncsClient    *offuncs.Client
 	forecasterClient forecaster.Client

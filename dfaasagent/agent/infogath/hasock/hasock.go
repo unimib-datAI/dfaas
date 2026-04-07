@@ -11,8 +11,6 @@ import (
 	"io"
 	"net/http"
 	"regexp"
-
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/constants"
 )
 
 // STEntry represents a row of a stick-table
@@ -29,10 +27,26 @@ type haproxyAPIEntry struct {
 
 var _reStickTable *regexp.Regexp = nil
 
+var dataplaneapi_url string
+var dataplaneapi_username string
+var dataplaneapi_password string
+
+// Initialize sets up the hasock package with the custom Data Plane API host,
+// port, username and password. Must be executed before any other calls of this
+// package.
+//
+// FIXME: We should refactor this package with a struct that holds the
+// connection info instead of using global shared variables!
+func Initialize(host string, port uint, username, password string) {
+	dataplaneapi_url = fmt.Sprintf("http://%s:%d", host, port)
+	dataplaneapi_username = username
+	dataplaneapi_password = password
+}
+
 // ReadStickTable reads the content of a stick table from the HAProxy Data Plane
 // API. The stick table must be of type "http_req_cnt,http_req_rate(1s)"
 func ReadStickTable(stName string) (map[string]*STEntry, error) {
-	baseURL := fmt.Sprintf("%s/v3/services/haproxy/runtime", constants.HAProxyDataPlaneAPIOrigin)
+	baseURL := fmt.Sprintf("%s/v3/services/haproxy/runtime", dataplaneapi_url)
 
 	client := &http.Client{}
 
@@ -42,7 +56,7 @@ func ReadStickTable(stName string) (map[string]*STEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("creating request for stick table list: %w", err)
 	}
-	req.SetBasicAuth(constants.HAProxyDataPlaneUsername, constants.HAProxyDataPlanePassword)
+	req.SetBasicAuth(dataplaneapi_username, dataplaneapi_password)
 
 	resp, err := client.Do(req)
 	if err != nil {
@@ -80,7 +94,7 @@ func ReadStickTable(stName string) (map[string]*STEntry, error) {
 	if err != nil {
 		return nil, fmt.Errorf("creating request for stick table entries: %w", err)
 	}
-	req.SetBasicAuth(constants.HAProxyDataPlaneUsername, constants.HAProxyDataPlanePassword)
+	req.SetBasicAuth(dataplaneapi_username, dataplaneapi_password)
 
 	resp, err = client.Do(req)
 	if err != nil {

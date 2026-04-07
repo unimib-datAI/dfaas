@@ -27,7 +27,7 @@ import (
 // evenly among them. If there are no neighbors, all requests are processed
 // locally.
 type StaticStrategy struct {
-	hacfgupdater  hacfgupd.Updater
+	hacfgupdater  *hacfgupd.Updater
 	nodestbl      *nodestbl.TableNMS
 	offuncsClient *offuncs.Client
 

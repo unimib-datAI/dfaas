@@ -36,7 +36,7 @@ import (
 //
 // As an internal detail, the strategy action is divided into two steps.
 type RecalcStrategy struct {
-	hacfgupdater  hacfgupd.Updater
+	hacfgupdater  *hacfgupd.Updater
 	nodestbl      *nodestbl.TableRecalc
 	offuncsClient *offuncs.Client
 
@@ -155,7 +155,7 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 	if err != nil {
 		return fmt.Errorf("get functions info from OpenFaaS: %w", err)
 	}
-	debugFuncs(strategy.funcs)
+	debugFuncsWithMaxRates(strategy.funcs)
 
 	// For each function, the following stick tables are defined in HAProxy:
 	//

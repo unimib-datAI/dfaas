@@ -12,15 +12,11 @@ const (
 	NodeMarginStrategy = "nodemarginstrategy"
 	StaticStrategy     = "staticstrategy"
 	AllLocalStrategy   = "alllocalstrategy"
+	RLAgentStrategy    = "rlagentstrategy"
 
 	// HAProxyMaxWeight is the maximum possible weight value that should be used
 	// in the HAProxy configuration file
 	HAProxyMaxWeight = 100
-
-	// Connection information for accessing the Data Plane API.
-	HAProxyDataPlaneAPIOrigin = "http://haproxy.default.svc.cluster.local:5555"
-	HAProxyDataPlaneUsername  = "admin"
-	HAProxyDataPlanePassword  = "admin"
 
 	// Public port for accessing HAProxy externally. In Kubernetes, HAProxy is
 	// exposed as a NodePort on 30080.

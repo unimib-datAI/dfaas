@@ -36,10 +36,10 @@ func Initialize(datetime bool, debugMode bool, colors bool) (*zap.SugaredLogger,
 	zapConfig.DisableStacktrace = !debugMode
 
 	if datetime {
-        // Show only date and time, without timezone.
+		// Show only date and time, without timezone.
 		zapConfig.EncoderConfig.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
-            enc.AppendString(t.Format("2006-01-02T15:04:05.000"))
-        }
+			enc.AppendString(t.Format("2006-01-02T15:04:05.000"))
+		}
 	} else {
 		// Empty time encoder function (to disable date/time logging)
 		zapConfig.EncoderConfig.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {}

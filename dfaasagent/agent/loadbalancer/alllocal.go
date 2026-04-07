@@ -21,7 +21,7 @@ import (
 // always processes incoming requests locally.
 type AllLocalStrategy struct {
 	// HAProxy client to update configuration.
-	hacfgupdater hacfgupd.Updater
+	hacfgupdater *hacfgupd.Updater
 
 	// OpenFaaS Gateway client to retrive deployed functions.
 	offuncsClient *offuncs.Client

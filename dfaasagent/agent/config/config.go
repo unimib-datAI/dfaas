@@ -71,6 +71,12 @@ type Configuration struct {
 	HAProxyHost       string `mapstructure:"AGENT_HAPROXY_HOST"`
 	HAProxyPort       uint   `mapstructure:"AGENT_HAPROXY_PORT"`
 
+	// Connection information for the Data Plane API, an API REST for HAProxy.
+	DataPlaneAPIHost     string `mapstructure:"AGENT_DATAPLANEAPI_HOST"`
+	DataPlaneAPIPort     uint   `mapstructure:"AGENT_DATAPLANEAPI_PORT"`
+	DataPlaneAPIUser     string `mapstructure:"AGENT_DATAPLANEAPI_USER"`
+	DataPlaneAPIPassword string `mapstructure:"AGENT_DATAPLANEAPI_PASSWORD"`
+
 	OpenFaaSHost string `mapstructure:"AGENT_OPENFAAS_HOST"`
 	OpenFaaSPort uint   `mapstructure:"AGENT_OPENFAAS_PORT"`
 
