@@ -7,6 +7,7 @@ package hasock
 
 import (
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -18,6 +19,8 @@ type STEntry struct {
 	HTTPReqCnt  uint
 	HTTPReqRate uint
 }
+
+var ErrEmpty = errors.New("empty stick table")
 
 type haproxyAPIEntry struct {
 	Key         string `json:"key"`
@@ -122,4 +125,58 @@ func ReadStickTable(stName string) (map[string]*STEntry, error) {
 	}
 
 	return result, nil
+}
+
+// StickTableField returns the value of a given field (e.g. "gpt0") inside the
+// given stick-table (e.g. "main"). Returns ErrEmpty if the field is not found.
+// The function assumes the value is an integer.
+func StickTableField(client *http.Client, stickTable, field string) (int, error) {
+	fullURL := fmt.Sprintf("%s/v3/services/haproxy/runtime/stick_tables/%s/entries", dataplaneapi_url, stickTable)
+
+	req, err := http.NewRequest("GET", fullURL, nil)
+	if err != nil {
+		return 0, fmt.Errorf("creating HTTP request: %w", err)
+	}
+
+	// Add basic auth (required to interact with HAProxy Data Plane API).
+	req.SetBasicAuth(dataplaneapi_username, dataplaneapi_password)
+
+	resp, err := client.Do(req)
+	if err != nil {
+		return 0, fmt.Errorf("running HTTP request: %w", err)
+	}
+
+	// Read and close immediately the body to allow to reuse the HTTP connection.
+	body, err := io.ReadAll(resp.Body)
+	resp.Body.Close()
+	if err != nil {
+		return 0, fmt.Errorf("reading HTTP response body: %w", err)
+	}
+
+	// Parse result.
+	switch resp.StatusCode {
+	case 200:
+		// First parse the JSON as an array of generic objects.
+		var entries []map[string]interface{}
+		if err := json.Unmarshal(body, &entries); err != nil {
+			return 0, fmt.Errorf("parsing JSON from HTTP response: %w", err)
+		}
+
+		// Stick-table exists, but may be empty!
+		if len(entries) > 0 {
+			// We know there is only one entry (an object) with the given key
+			// (e.g. "gpt0"). We want this value as int (but it is float64 since
+			// it is JSON).
+			if value, ok := entries[0][field].(float64); ok {
+				return int(value), nil
+			} else {
+				return 0, fmt.Errorf("found %q key but is type %T, expected float64", field, entries[0][field])
+			}
+		}
+		return 0, ErrEmpty
+	case 503:
+		return 0, errors.New("stick table not available (HTTP 503)")
+	default:
+		return 0, fmt.Errorf("unexpected HTTP status code: %s", resp.StatusCode)
+	}
 }
