@@ -7,9 +7,8 @@
 package logging
 
 import (
+	"fmt"
 	"time"
-
-	"github.com/pkg/errors"
 
 	"go.uber.org/zap"
 	"go.uber.org/zap/zapcore"
@@ -30,14 +29,17 @@ var _colors bool
 func Initialize(datetime bool, debugMode bool, colors bool) (*zap.SugaredLogger, error) {
 	zapConfig := zap.NewProductionConfig()
 
-	// Use human-readable messages instead of JSON
+	// Use human-readable messages instead of JSON.
 	zapConfig.Encoding = "console"
 
-	// Disable stack trace output if not in debug mode
+	// Disable stack trace output if not in debug mode.
 	zapConfig.DisableStacktrace = !debugMode
 
 	if datetime {
-		zapConfig.EncoderConfig.EncodeTime = zapcore.ISO8601TimeEncoder
+        // Show only date and time, without timezone.
+		zapConfig.EncoderConfig.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {
+            enc.AppendString(t.Format("2006-01-02T15:04:05.000"))
+        }
 	} else {
 		// Empty time encoder function (to disable date/time logging)
 		zapConfig.EncoderConfig.EncodeTime = func(t time.Time, enc zapcore.PrimitiveArrayEncoder) {}
@@ -57,7 +59,7 @@ func Initialize(datetime bool, debugMode bool, colors bool) (*zap.SugaredLogger,
 
 	unsugared, err := zapConfig.Build()
 	if err != nil {
-		return nil, errors.Wrap(err, "Error while constructing a logger")
+		return nil, fmt.Errorf("on building global logger: %w", err)
 	}
 
 	// The logger will always be a sugared one
