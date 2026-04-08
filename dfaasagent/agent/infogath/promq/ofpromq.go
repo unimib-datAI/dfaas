@@ -21,6 +21,9 @@ import (
 )
 
 // Query executes a Prometheus query and returns the JSON string.
+//
+// Deprecated: use the Prometheus Go API client directly to execute custom
+// queries.
 func Query(query string) (string, error) {
 	logger := logging.Logger()
 
@@ -65,6 +68,9 @@ func Query(query string) (string, error) {
 
 // queryRate performs a custom AFET rate(...) Prometheus query. The returned map has
 // function names as keys average execution times as values.
+//
+// Deprecated: use the Prometheus Go API client directly to execute custom
+// queries.
 func queryAFETrate(query string) (map[string]float64, error) {
 	strJSON, err := Query(query)
 	if err != nil {
@@ -93,6 +99,9 @@ func queryAFETrate(query string) (map[string]float64, error) {
 //
 // The returned map contain for each function (key) the returned status code
 // (other key) and the invocation rate as value.
+//
+// Deprecated: use the Prometheus Go API client directly to execute custom
+// queries.
 func queryInvocRate(query string) (map[string]map[string]float64, error) {
 	logger := logging.Logger()
 
@@ -135,6 +144,9 @@ func queryInvocRate(query string) (map[string]map[string]float64, error) {
 }
 
 // This query return number of currently actived services for each function.
+//
+// Deprecated: use the Prometheus Go API client directly to execute custom
+// queries.
 func queryServiceCount(query string) (map[string]int, error) {
 	strJSON, err := Query(query)
 	if err != nil {
@@ -162,6 +174,9 @@ func queryServiceCount(query string) (map[string]int, error) {
 //////////////// NODE EXPORTER METRICS QUERY ////////////////////
 
 // This query return the CPU usage for each specific function.
+//
+// Deprecated: use the Prometheus Go API client directly to execute custom
+// queries.
 func queryCPUusage(query string) (map[string]float64, error) {
 	strJSON, err := Query(query)
 	if err != nil {
@@ -187,6 +202,9 @@ func queryCPUusage(query string) (map[string]float64, error) {
 }
 
 // This query return the RAM usage for each specific function.
+//
+// Deprecated: use the Prometheus Go API client directly to execute custom
+// queries.
 func queryRAMusage(query string) (map[string]float64, error) {
 	strJSON, err := Query(query)
 	if err != nil {
@@ -214,6 +232,9 @@ func queryRAMusage(query string) (map[string]float64, error) {
 //////////////// cADVISOR METRICS QUERY ////////////////////
 
 // This query return the CPU usage for each specific function.
+//
+// Deprecated: use the Prometheus Go API client directly to execute custom
+// queries.
 func queryCPUusagePerFunction(query string) (map[string]float64, error) {
 	strJSON, err := Query(query)
 	if err != nil {
@@ -239,6 +260,9 @@ func queryCPUusagePerFunction(query string) (map[string]float64, error) {
 }
 
 // This query return the RAM usage for each specific function.
+//
+// Deprecated: use the Prometheus Go API client directly to execute custom
+// queries.
 func queryRAMusagePerFunction(query string) (map[string]float64, error) {
 	strJSON, err := Query(query)
 	if err != nil {
@@ -271,6 +295,9 @@ func queryRAMusagePerFunction(query string) (map[string]float64, error) {
 // Warning: the time might be NaN if the values are too low.
 //
 // It uses metrics from the OpenFaaS Gateway.
+//
+// Deprecated: use the Prometheus Go API client directly to execute custom
+// queries.
 func QueryAFET(timeSpan time.Duration) (map[string]float64, error) {
 	strTimeSpan := fmt.Sprintf("%.0fm", timeSpan.Minutes())
 
@@ -289,6 +316,9 @@ func QueryAFET(timeSpan time.Duration) (map[string]float64, error) {
 // Warning: the time might be NaN if the values are too low.
 //
 // It uses metrics from the OpenFaaS Gateway.
+//
+// Deprecated: use the Prometheus Go API client directly to execute custom
+// queries.
 func QueryInvoc(timeSpan time.Duration) (map[string]map[string]float64, error) {
 	strTimeSpan := fmt.Sprintf("%.0fm", timeSpan.Minutes())
 
@@ -303,6 +333,9 @@ func QueryInvoc(timeSpan time.Duration) (map[string]map[string]float64, error) {
 // The returned map has function names as keys.
 //
 // It uses metrics from the OpenFaaS Gateway.
+//
+// Deprecated: use the Prometheus Go API client directly to execute custom
+// queries.
 func QueryServiceCount() (map[string]int, error) {
 	return queryServiceCount("gateway_service_count")
 }
@@ -313,6 +346,9 @@ func QueryServiceCount() (map[string]int, error) {
 // instances of node-exporer) and the CPU usage (percentage) as value.
 //
 // It uses metrics from the Prometheus node-exporter.
+//
+// Deprecated: use the Prometheus Go API client directly to execute custom
+// queries.
 func QueryCPUusage(timeSpan time.Duration) (map[string]float64, error) {
 	strTimeSpan := fmt.Sprintf("%.0fm", timeSpan.Minutes())
 
@@ -331,6 +367,9 @@ func QueryCPUusage(timeSpan time.Duration) (map[string]float64, error) {
 // instances of node-exporter) and the RAM usage (percentage) as value.
 //
 // It uses metrics from the Prometheus node-exporter.
+//
+// Deprecated: use the Prometheus Go API client directly to execute custom
+// queries.
 func QueryRAMusage(timeSpan time.Duration) (map[string]float64, error) {
 	strTimeSpan := fmt.Sprintf("%.0fm", timeSpan.Minutes())
 
@@ -363,6 +402,9 @@ func QueryRAMusage(timeSpan time.Duration) (map[string]float64, error) {
 //
 // Note: this function use metrics of cAdvisor (CPU usage of single container)
 // and node-exporter (total amount of available CPU).
+//
+// Deprecated: use the Prometheus Go API client directly to execute custom
+// queries.
 func QueryCPUusagePerFunction(timeSpan time.Duration, funcName []string) (map[string]float64, error) {
 	if len(funcName) == 0 {
 		logging.Logger().Warn("Empty funcName in QueryCPUusagePerFunction, returning empty map")
@@ -399,6 +441,9 @@ func QueryCPUusagePerFunction(timeSpan time.Duration, funcName []string) (map[st
 //
 // Note: this function use metrics of cAdvisor (RAM usage of single container)
 // and node_exporter (total amount of available RAM).
+//
+// Deprecated: use the Prometheus Go API client directly to execute custom
+// queries.
 func QueryRAMusagePerFunction(timeSpan time.Duration, funcName []string) (map[string]float64, error) {
 	if len(funcName) == 0 {
 		logging.Logger().Warn("Empty funcName in QueryCPUusagePerFunction, returning empty map")
