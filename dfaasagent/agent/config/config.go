@@ -85,6 +85,10 @@ type Configuration struct {
 	PrometheusHost string `mapstructure:"AGENT_PROMETHEUS_HOST"`
 	PrometheusPort uint   `mapstructure:"AGENT_PROMETHEUS_PORT"`
 
+	// Query resolution step for Prometheus. Should be set accordingly to the
+	// scrape interval (see Prometheus config).
+	PrometheusStep time.Duration `mapstructure:"AGENT_PROMETHEUS_STEP"`
+
 	Strategy string `mapstructure:"AGENT_STRATEGY"`
 
 	GroupListFileName string `mapstructure:"AGENT_GROUP_LIST_FILE_NAME"`
