@@ -21,7 +21,7 @@ import (
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/forecaster"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/hasock"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/offuncs"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/ofpromq"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/promq"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
 )
@@ -100,7 +100,7 @@ func (strategy *NodeMarginStrategy) RunStrategy() error {
 	for {
 		start := time.Now()
 
-		cpuUsage, err = ofpromq.QueryCPUusage(_config.RecalcPeriod)
+		cpuUsage, err = promq.QueryCPUusage(_config.RecalcPeriod)
 		if err != nil {
 			logger.Error("Failed to execute Prometheus QueryCPUusage query, skipping RunStrategy iteration ", err)
 			logger.Warn("Waiting 5 second before retrying RunStrategy after Prometheus error")
@@ -109,7 +109,7 @@ func (strategy *NodeMarginStrategy) RunStrategy() error {
 		}
 		debugPromCPUusage(_config.RecalcPeriod, cpuUsage)
 
-		ramUsage, err = ofpromq.QueryRAMusage(_config.RecalcPeriod)
+		ramUsage, err = promq.QueryRAMusage(_config.RecalcPeriod)
 		if err != nil {
 			logger.Error("Failed to execute Prometheus QueryRAMusage query, skipping RunStrategy iteration ", err)
 			logger.Warn("Waiting 5 second before retrying RunStrategy after Prometheus error")

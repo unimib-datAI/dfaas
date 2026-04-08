@@ -3,9 +3,8 @@
 // This file is licensed under the AGPL v3.0 or later license. See LICENSE and
 // AUTHORS file for more information.
 
-// This package is for communicating with Prometheus. The name of the package
-// stands for: OpenFaas PROMetheus Querent.
-package ofpromq
+// This package is for communicating with Prometheus.
+package promq
 
 import (
 	"encoding/json"
