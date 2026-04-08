@@ -75,6 +75,11 @@ config:
   AGENT_OPENFAAS_HOST: "gateway"
   AGENT_OPENFAAS_PORT: 8080
 
+  # DNS name automatically set by Kubernetes to Prometheus service. If not using
+  # Kubernetes, set manually the IP/DNS.
+  AGENT_PROMETHEUS_HOST: "prometheus.default.svc.cluster.local"
+  AGENT_PROMETHEUS_PORT: 80
+
   AGENT_STRATEGY: "nodemarginstrategy"
 
   AGENT_GROUP_LIST_FILE_NAME: "./group_list.json"

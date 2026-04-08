@@ -32,6 +32,7 @@ import (
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/discovery/mdns"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/hasock"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/promq"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/loadbalancer"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
@@ -199,13 +200,15 @@ func runAgent(config config.Configuration) error {
 		return fmt.Errorf("error while getting strategy instance: %w", err)
 	}
 
-	////////// INFOGATH/HASOCK INITIALIZATION //////////
+	////////// INFOGATH INITIALIZATION //////////
 
 	hasock.Initialize(config.DataPlaneAPIHost,
 		config.DataPlaneAPIPort,
 		config.DataPlaneAPIUser,
 		config.DataPlaneAPIPassword)
 	logger.Debug("infogath/hasock package initialization completed.")
+	promq.Initialize(config.PrometheusHost, config.PrometheusPort)
+	logger.Debug("infogath/promq package initialization completed.")
 
 	////////// PUBSUB INITIALIZATION //////////
 

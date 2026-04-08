@@ -30,7 +30,4 @@ const (
 	// at /healthz endpoint.
 	HttpServerHost = "0.0.0.0"
 	HttpServerPort = 8080
-
-	// Connection information for accessing Prometheus server.
-	PrometheusOrigin = "prometheus-server.default.svc.cluster.local:80"
 )

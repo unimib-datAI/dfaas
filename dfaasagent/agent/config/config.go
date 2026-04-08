@@ -80,6 +80,11 @@ type Configuration struct {
 	OpenFaaSHost string `mapstructure:"AGENT_OPENFAAS_HOST"`
 	OpenFaaSPort uint   `mapstructure:"AGENT_OPENFAAS_PORT"`
 
+	// Connection information for Prometheus. You can skip if you use a strategy
+	// that do not use Prometheus.
+	PrometheusHost string `mapstructure:"AGENT_PROMETHEUS_HOST"`
+	PrometheusPort uint   `mapstructure:"AGENT_PROMETHEUS_PORT"`
+
 	Strategy string `mapstructure:"AGENT_STRATEGY"`
 
 	GroupListFileName string `mapstructure:"AGENT_GROUP_LIST_FILE_NAME"`

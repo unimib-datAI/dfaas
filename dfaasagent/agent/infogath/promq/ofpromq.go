@@ -16,9 +16,21 @@ import (
 	"strings"
 	"time"
 
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/constants"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 )
+
+// Initialized by Initialize().
+//
+// Deprecated: do not use Query() and other functions.
+var prometheus_origin string
+
+// Initialize sets up the promq package with the custom Prometheus host and
+// port. Must be executed before any deprecated function calls of this package.
+//
+// FIXME: Remove this function once the deprecated function are removed!
+func Initialize(host string, port uint) {
+	prometheus_origin = fmt.Sprintf("http://%s:%d", host, port)
+}
 
 // Query executes a Prometheus query and returns the JSON string.
 //
@@ -27,7 +39,7 @@ import (
 func Query(query string) (string, error) {
 	logger := logging.Logger()
 
-	strURL := fmt.Sprintf("http://%s/api/v1/query", constants.PrometheusOrigin)
+	strURL := fmt.Sprintf("http://%s:%s/api/v1/query", prometheus_origin)
 
 	httpClient := &http.Client{}
 
