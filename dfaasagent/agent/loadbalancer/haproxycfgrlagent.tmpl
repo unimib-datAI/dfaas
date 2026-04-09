@@ -1,0 +1,98 @@
+# HAProxy configuration file updated by DFaaS Agent on {{.Now}}
+# DFaaS Agent running with "RL Agent" strategy.
+
+# See k8s/charts/values-haproxy.yaml for more information about global,
+# userlist, defaults, and prometheus frontend sections.
+global
+  master-worker
+  stats socket ipv4@*:6666 mode 660 level admin expose-fd listeners
+  log stdout format raw local0
+
+userlist dataplaneapi
+  user admin insecure-password admin
+
+defaults
+  mode http
+  option httplog
+  option forwardfor
+  option http-server-close
+  log global
+  timeout client 60s
+  timeout connect 60s
+  timeout server 60s
+
+frontend prometheus
+  bind :8405
+  http-request use-service prometheus-exporter
+  no log
+
+# The configuration is generated and changed by the DFaaS agent from this point
+# on.
+
+frontend main
+    bind :80
+
+    # Use a stick table with only 1 global value, we will track the latest
+    # DFaaS-K6-Stage header value for incoming requests.
+    #
+    # We use type string for the key ("global") and gpt0 integer field to write
+    # the stage.
+    #
+    # Reminder: the name of this stick table is the section's name: "main".
+    #
+    # Ignore requests without the header.
+    #
+    # Warning: this stick table is used only for debugging purposes.
+    stick-table type string size 1 expire 5s store gpt0
+
+    # Map stick counter 0 (sc0) with the key "global". Reminder: it is mandatory
+    # to first select the key and then write the value.
+    http-request track-sc0 str(global)
+
+    # ACL to check if header exists and it is numeric.
+    acl has_stage_hdr req.hdr(DFaaS-K6-Stage) -m reg ^[0-9]+$
+
+    # Store latest stage to gpc0 as integer for the stick counter sc0 (we know it
+    # is mapped to the "global" key).
+    http-request sc-set-gpt0(0) req.hdr(DFaaS-K6-Stage) if has_stage_hdr
+
+    # Track for the current transaction (request-response) the DFaaS-Node-ID
+    # header (if exists), it will be added in the response for incoming
+    # forwarded requests.
+    http-request set-var(txn.dfaas_node_id) req.hdr(DFaaS-Node-ID)
+
+    # ACLs to detect incoming forwarded requests.
+    acl has_node_hdr req.hdr(DFaaS-Node-ID) -m found
+
+    {{/* Create ACLs and backend selection for each function. */}}
+    {{range $funcName, $_ := .Functions -}}
+    # Match function path (always under /function/).
+    acl is_{{$funcName}} path_beg /function/{{$funcName}}
+
+    # Use the forwarded backend if the request originates from another DFaaS
+    # node, otherwise, use the local backend. This distinction is required to
+    # correctly compute statistics for both client and forwarded requests.
+    use_backend function_{{$funcName}}_forwarded if is_{{$funcName}} has_node_hdr
+    use_backend function_{{$funcName}} if is_{{$funcName}}
+    {{end}}
+
+{{range $funcName, $timeout := .Functions -}}
+backend function_{{$funcName}}
+    http-response set-header DFaaS-Node-ID {{$.DFaaSNodeID}}
+    server openfaas-local {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}}
+    {{- if $timeout}}
+    timeout connect {{$timeout}}ms
+    timeout server {{$timeout}}ms
+    {{- end}}
+
+backend function_{{$funcName}}_forwarded
+    # This is a forwarded request: we preserve original node ID and add where it
+    # was forwarded to.
+    http-response set-header DFaaS-Node-ID %[var(txn.dfaas_node_id)]
+    http-response add-header DFaaS-Forwarded-To {{$.DFaaSNodeID}}
+    server openfaas-local {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}}
+    {{- if $timeout}}
+    timeout connect {{$timeout}}ms
+    timeout server {{$timeout}}ms
+    {{- end}}
+{{end}}
