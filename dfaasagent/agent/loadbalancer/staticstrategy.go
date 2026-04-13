@@ -177,14 +177,6 @@ func (strategy *StaticStrategy) publishNodeInfo() error {
 	}
 
 	return nil
-
-	// Obtain our function names list
-	strategy.nodeInfo.funcs, err = strategy.offuncsClient.GetFuncsNames()
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // Check which neighbour has at least a function in common and update the

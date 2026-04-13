@@ -13,6 +13,7 @@ import (
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/forecaster"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/offuncs"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/promq"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
 )
 
@@ -147,13 +148,51 @@ var haproxycfgAllLocalTemplate string
 func (strategyFactory *allLocalStrategyFactory) createStrategy() (Strategy, error) {
 	strategy := &AllLocalStrategy{}
 
-	strategy.hacfgupdater = hacfgupd.Updater{}
-
-	if err := strategy.hacfgupdater.LoadTemplate(haproxycfgAllLocalTemplate); err != nil {
-		return nil, fmt.Errorf("loading HAProxy config. template: %w", err)
+	hacfgupdater, err := hacfgupd.New(_config.DataPlaneAPIHost,
+		_config.DataPlaneAPIPort,
+		_config.DataPlaneAPIUser,
+		_config.DataPlaneAPIPassword,
+		haproxycfgAllLocalTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
 	}
+	strategy.hacfgupdater = hacfgupdater
 
 	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+
+	return strategy, nil
+}
+
+// rlAgentStrategyFactory is the strategy factory for the RL Agent strategy.
+type rlAgentStrategyFactory struct{}
+
+//go:embed haproxycfgrlagent.tmpl
+var haproxycfgRLAgentTemplate string
+
+// createStrategy creates and returns a new RL Agent instance.
+func (strategyFactory *rlAgentStrategyFactory) createStrategy() (Strategy, error) {
+	strategy := &RLAgentStrategy{}
+
+	hacfgupdater, err := hacfgupd.New(_config.DataPlaneAPIHost,
+		_config.DataPlaneAPIPort,
+		_config.DataPlaneAPIUser,
+		_config.DataPlaneAPIPassword,
+		haproxycfgRLAgentTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
+	}
+	strategy.hacfgupdater = hacfgupdater
+
+	promq, err := promq.New(_config.PrometheusHost, _config.PrometheusPort, _config.PrometheusStep)
+	if err != nil {
+		return nil, fmt.Errorf("initializing Prometheus client: %w", err)
+	}
+	strategy.promq = promq
+
+	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+
+	strategy.targetNodes = make(map[string][]string)
+	strategy.weights = make(map[string]map[string]uint)
 
 	return strategy, nil
 }
