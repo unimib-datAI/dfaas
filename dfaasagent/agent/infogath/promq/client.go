@@ -166,3 +166,54 @@ avg by (container) (
 
 	return usage, nil
 }
+
+// InputRate returns the average number of incoming client requests per second
+// for each function within the specified time range. Note that requests from
+// other nodes (forwarded) are not included.
+func (c *Client) InputRate(start, end time.Time) (map[string]float32, error) {
+	if end.Before(start) {
+		return nil, errors.New("end time must be after start time")
+	}
+
+	// Compute range duration (same approach as other functions).
+	duration := end.Sub(start).String()
+
+	// Each function has two backends: one for local requests (function_X) and
+	// one for incoming forwarded requests (function_X_forwarded). We want only
+	// the first ones.
+	query := fmt.Sprintf(`
+avg by (proxy) (
+  rate(haproxy_backend_http_requests_total{
+    proxy=~"function_.*",
+    proxy!~".*_forwarded"
+  }[%s])
+)`, duration)
+
+	ctx := context.Background()
+	result, warnings, err := c.promAPI.Query(ctx, query, end)
+	if err != nil {
+		return nil, fmt.Errorf("get input rate from Prometheus: %w", err)
+	}
+	if len(warnings) > 0 {
+		c.logger.Warnf("Prometheus warnings for query %q\n%s", query, strings.Join(warnings, "\n"))
+	}
+
+	// We expect a vector result.
+	vector, ok := result.(model.Vector)
+	if !ok {
+		return nil, fmt.Errorf("result type is %T, expected %T", result, model.Vector{})
+	}
+
+	rates := make(map[string]float32, len(vector))
+
+	for _, sample := range vector {
+		proxy := string(sample.Metric["proxy"])
+
+		// proxy format is "function_<name>"
+		function := strings.TrimPrefix(proxy, "function_")
+
+		rates[function] = float32(sample.Value)
+	}
+
+	return rates, nil
+}
