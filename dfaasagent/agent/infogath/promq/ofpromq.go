@@ -3,7 +3,6 @@
 // This file is licensed under the AGPL v3.0 or later license. See LICENSE and
 // AUTHORS file for more information.
 
-// This package is for communicating with Prometheus.
 package promq
 
 import (
