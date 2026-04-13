@@ -109,6 +109,9 @@ func (strategy *RLAgentStrategy) RunStrategy() error {
 		// in the stick-table "main" (a frontend) from HAProxy. This field
 		// represents the current "Stage" of k6, which HAProxy stores by parsing
 		// the "DFaaS-K6-Stage" header from incoming requests.
+		//
+		// Note the value is always added with +1, so if it is 0 means no header
+		// has been found.
 		stage, err := hasock.StickTableField(strategy.httpClient, "main", "gpt0")
 		if err != nil {
 			if errors.Is(err, hasock.ErrEmpty) {
@@ -116,6 +119,15 @@ func (strategy *RLAgentStrategy) RunStrategy() error {
 				continue
 			}
 			return fmt.Errorf("reading gpt0 field in stick-table main from HAProxy: %w", err)
+		}
+		if stage == 0 {
+			logger.Warn("Cannot detect current stage: requests do not have DFaaS-K6-Stage header. Skipping iteration")
+			continue
+		} else {
+			// We must subtract 1 because the HAProxy config always add +1 to
+			// the stage counter to be able to represent the value 0 as "no
+			// stage header found".
+			stage--
 		}
 		logger.Infof("Current detected stage: %d", stage)
 
@@ -167,7 +179,7 @@ func (strategy *RLAgentStrategy) RunStrategy() error {
 			return fmt.Errorf("running phase %q: %w", currentPhase, err)
 		}
 
-		*previousPhase = currentPhase
+		previousPhase = &currentPhase
 
 		duration := time.Since(start)
 		httpserver.StrategyIterationDuration.Set(duration.Seconds())
