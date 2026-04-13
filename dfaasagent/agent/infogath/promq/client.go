@@ -217,3 +217,68 @@ avg by (proxy) (
 
 	return rates, nil
 }
+
+// AvgRespTime returns, for each function, the average response time (in
+// milliseconds) of requests locally processed by the node over the given time
+// range.
+//
+// Functions that are not present in the returned map indicate that the metric
+// could not be computed (for example, due to no invocations in the specified
+// time range).
+func (c *Client) AvgRespTimeLocal(start, end time.Time) (map[string]float32, error) {
+	if end.Before(start) {
+		return nil, errors.New("end time must be after start time")
+	}
+
+	duration := end.Sub(start).String()
+
+	// We use the metric "gateway_functions_seconds" exported by OpenFaaS
+	// Gateway. It's an histogram.
+	// See: https://docs.openfaas.com/architecture/metrics/#gateway
+	//
+	// We do an "avg by" aggregation because the gateway may restart and produce
+	// duplicate time series for the same function. Aggregating ensures we
+	// return a single time series per function instead of multiple series
+	// fragmented across gateway restarts.
+	query := fmt.Sprintf(`
+avg by (function_name) (
+  rate(gateway_functions_seconds_sum[%[1]s])
+  /
+  rate(gateway_functions_seconds_count[%[1]s])
+)
+`, duration)
+
+	ctx := context.Background()
+	result, warnings, err := c.promAPI.Query(ctx, query, end)
+	if err != nil {
+		return nil, fmt.Errorf("get average response time from Prometheus: %w", err)
+	}
+	if len(warnings) > 0 {
+		c.logger.Warnf("Prometheus warnings for query %q\n%s", query, strings.Join(warnings, "\n"))
+	}
+
+	vector, ok := result.(model.Vector)
+	if !ok {
+		return nil, fmt.Errorf("result type is %T, expected %T", result, model.Vector{})
+	}
+
+	resp := make(map[string]float32, len(vector))
+
+	for _, sample := range vector {
+		// We know that function_name are in the form "function.namespace",
+		// where usually namespace is "default". We do not want it.
+		function := strings.Split(string(sample.Metric["function_name"]), ".")[0]
+
+		value := float32(sample.Value) * 1000
+
+		// Ignore invalid Prometheus outputs like NaN or Inf. This means that
+		// the metric for this function could not be computed.
+		if math.IsNaN(float64(value)) || math.IsInf(float64(value), 0) {
+			continue
+		}
+
+		resp[function] = value
+	}
+
+	return resp, nil
+}
