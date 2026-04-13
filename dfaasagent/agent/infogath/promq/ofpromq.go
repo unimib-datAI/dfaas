@@ -38,7 +38,7 @@ func Initialize(host string, port uint) {
 func Query(query string) (string, error) {
 	logger := logging.Logger()
 
-	strURL := fmt.Sprintf("http://%s:%s/api/v1/query", prometheus_origin)
+	strURL := fmt.Sprintf("%s/api/v1/query", prometheus_origin)
 
 	httpClient := &http.Client{}
 

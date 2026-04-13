@@ -82,7 +82,7 @@ func (c *Client) Replicas(start, end time.Time) (map[string]uint, error) {
 	// sure that must be a Vector.
 	vector, ok := result.(model.Vector)
 	if !ok {
-		return nil, fmt.Errorf("result type is %T, expected %T", model.Vector{})
+		return nil, fmt.Errorf("result type is %T, expected %T", result, model.Vector{})
 	}
 
 	replicas := make(map[string]uint)
@@ -139,7 +139,7 @@ avg by (container) (
 	// See Replicas().
 	vector, ok := result.(model.Vector)
 	if !ok {
-		return nil, fmt.Errorf("result type is %T, expected %T", model.Vector{})
+		return nil, fmt.Errorf("result type is %T, expected %T", result, model.Vector{})
 	}
 
 	// Initialize return value.
