@@ -282,3 +282,77 @@ avg by (function_name) (
 
 	return resp, nil
 }
+
+// RejectRate returns, for each function, the percentage of requests rejected by
+// the node (either due to agent decision or rejection by the FaaS platform).
+//
+// The percentage is computed over the total number of requests in the specified
+// time range.
+func (c *Client) RejectRate(start, end time.Time) (map[string]float32, error) {
+	if end.Before(start) {
+		return nil, errors.New("end time must be after start time")
+	}
+	duration := end.Sub(start).String()
+
+	// We use increase because the rate is calculated over a custom time window,
+	// not per second (with classic rate).
+	//
+	// We exclude incoming forwarded traffic and consider only 4xx and 5xx
+	// responses as rejections.
+	query := fmt.Sprintf(`
+sum by (proxy) (
+  increase(haproxy_server_http_responses_total{
+    proxy=~"function_.*",
+    proxy!~".*_forwarded",
+    code=~"4..|5.."
+  }[%[1]s])
+)
+/
+sum by (proxy) (
+  increase(haproxy_server_http_requests_total{
+    proxy=~"function_.*",
+    proxy!~".*_forwarded"
+  }[%[1]s])
+)
+`, duration)
+
+	ctx := context.Background()
+	result, warnings, err := c.promAPI.Query(ctx, query, end)
+	if err != nil {
+		return nil, fmt.Errorf("get reject rate from Prometheus: %w", err)
+	}
+	if len(warnings) > 0 {
+		c.logger.Warnf("Prometheus warnings for query %q\n%s", query, strings.Join(warnings, "\n"))
+	}
+
+	vector, ok := result.(model.Vector)
+	if !ok {
+		return nil, fmt.Errorf("result type is %T, expected %T", result, model.Vector{})
+	}
+
+	rates := make(map[string]float32, len(vector))
+
+	for _, sample := range vector {
+		proxy := string(sample.Metric["proxy"])
+
+		// Proxy format is "function_<name>".
+		function := strings.TrimPrefix(proxy, "function_")
+
+		value := float32(sample.Value)
+
+		// Replace NaN/Inf with 0 (no rejections). This can happen if no
+		// requests have been made within the time range.
+		if math.IsNaN(float64(value)) || math.IsInf(float64(value), 0) {
+			value = 0
+		}
+
+		// Must be a percentage.
+		if value < 0 || value > 1 {
+			return nil, fmt.Errorf("reject rate for function %q is not in [0, 1], but %f", function, value)
+		}
+
+		rates[function] = value
+	}
+
+	return rates, nil
+}

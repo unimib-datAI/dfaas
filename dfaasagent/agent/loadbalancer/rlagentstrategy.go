@@ -652,9 +652,31 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	obs["previous_fwd_to_node_3_rejected"] = 0
 	obs["previous_fwd_to_node_4_rejected"] = 0
 
-	// FIXME: Currently not supported.
-	obs["reject_rate"] = 0.0
-	obs["previous_reject_rate"] = 0.0
+	// reject_rate key in observation.
+	rejectRate, err := strategy.promq.RejectRate(strategy.allLocalPhaseTimestamp, now)
+	if err != nil {
+		return nil, fmt.Errorf("building observation for 'reject_rate' key: %w", err)
+	}
+	rejectRateSingle, err := extractSingleFunctionValue(rejectRate)
+	if err != nil {
+		return nil, fmt.Errorf("building observation for 'reject_rate' key: %w", err)
+	}
+	obs["rejectRateSingle"] = rejectRateSingle
+
+	// previous_reject_rate key in observation.
+	if strategy.rlAgentPhaseTimestamp.IsZero() {
+		obs["previous_reject_rate"] = 0.0
+	} else {
+		prevRejectRate, err := strategy.promq.RejectRate(strategy.rlAgentPhaseTimestamp, strategy.allLocalPhaseTimestamp)
+		if err != nil {
+			return nil, fmt.Errorf("building observation for 'previous_reject_rate' key: %w", err)
+		}
+		prevRejectRateSingle, err := extractSingleFunctionValue(prevRejectRate)
+		if err != nil {
+			return nil, fmt.Errorf("building observation for 'previous_reject_rate' key: %w", err)
+		}
+		obs["previous_reject_rate"] = prevRejectRateSingle
+	}
 
 	// avg_resp_time_loc key in observation.
 	avgRespTime, err := strategy.promq.AvgRespTimeLocal(strategy.allLocalPhaseTimestamp, now)
