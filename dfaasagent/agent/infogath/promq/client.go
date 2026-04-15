@@ -485,7 +485,7 @@ func (c *Client) ForwardRejectRPS(start, end time.Time) (map[string]map[string]f
 	ctx := context.Background()
 	result, warnings, err := c.promAPI.Query(ctx, query, end)
 	if err != nil {
-		return nil, fmt.Errorf("get forward reject rate from Prometheus: %w", err)
+		return nil, fmt.Errorf("get forward reject RPS from Prometheus: %w", err)
 	}
 	if len(warnings) > 0 {
 		c.logger.Warnf("Prometheus warnings for query %q\n%s", query, strings.Join(warnings, "\n"))
