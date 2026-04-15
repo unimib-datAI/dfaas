@@ -202,7 +202,7 @@
             chdir: "{{ playbook_dir }}"
 
     - name: Deploy OpenFaaS functions
-      ansible.builtin.shell: ./k8s/scripts/deploy_functions.sh
+      ansible.builtin.shell: ./k8s/scripts/deploy-functions.sh
       args:
         chdir: "{{ playbook_dir }}"
       environment:
