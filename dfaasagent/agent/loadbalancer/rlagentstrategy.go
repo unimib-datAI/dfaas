@@ -642,11 +642,39 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 		obs["previous_input_rate"] = inputRateSingle
 	}
 
+	// previous_fwd_to_node_X key in observation.
+	peers := 0
+	if strategy.rlAgentPhaseTimestamp.IsZero() {
+		for _, peer := range _p2pHost.Network().Peers() {
+			key := fmt.Sprintf("previous_fwd_to_node_%s", peer.String())
+			obs[key] = 0
+			peers++
+		}
+	} else {
+		prevForwardRate, err := strategy.promq.ForwardRate(strategy.rlAgentPhaseTimestamp, strategy.allLocalPhaseTimestamp)
+		if err != nil {
+			return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X' key: %w", err)
+		}
+		prevForwardRateSingle, err := extractSingleFunctionValue(prevForwardRate)
+		if err != nil {
+			return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X' key: %w", err)
+		}
+		for peer, rate := range prevForwardRateSingle {
+			// ForwardRate() always returns openfaas-local node that is the
+			// local one (not remote).
+			if peer == "openfaas-local" {
+				continue
+			}
+			key := fmt.Sprintf("previous_fwd_to_%s", peer)
+			obs[key] = rate
+		}
+	}
+	// FIXME: Remove this code (used for debugging).
+	if peers != 4 {
+		return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X' key: found %d peers, expected 4: peers", peers)
+	}
+
 	// FIXME: Enable dynamic neighbours. Currently not supported.
-	obs["previous_fwd_to_node_1"] = 0
-	obs["previous_fwd_to_node_2"] = 0
-	obs["previous_fwd_to_node_3"] = 0
-	obs["previous_fwd_to_node_4"] = 0
 	obs["previous_fwd_to_node_1_rejected"] = 0
 	obs["previous_fwd_to_node_2_rejected"] = 0
 	obs["previous_fwd_to_node_3_rejected"] = 0

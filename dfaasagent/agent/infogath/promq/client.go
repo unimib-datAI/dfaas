@@ -360,3 +360,77 @@ sum by (proxy) (
 
 	return rates, nil
 }
+
+// ForwardRate returns the average number of incoming client requests per second to a
+// DFaaS node for each function within the specified time range.
+//
+// The return type is a map with function names as the first level key and the
+// DFaaS node as second level key.
+//
+// Note that the return map contains also the local DFaaS node names as
+// "openfaas-local". Other nodes are named with "node_X", where X is its ID.
+//
+// Note that requests coming from other nodes (forwarded) are not included.
+func (c *Client) ForwardRate(start, end time.Time) (map[string]map[string]float32, error) {
+	if end.Before(start) {
+		return nil, errors.New("end time must be after start time")
+	}
+	duration := end.Sub(start)
+
+	// For each function, there are two backends (function_X and
+	// function_X_forwarded). We focus only on the function_X backend. This
+	// backend can have multiple servers: the default openfaas-local instance
+	// and zero or more node_ID servers.
+	//
+	// Metrics are aggregated by proxy/backend and server, since HAProxy may
+	// restart within the selected time range, potentially causing duplicated
+	// time series.
+	query := fmt.Sprintf(`
+		sum by (proxy, server) (
+		  rate(haproxy_server_http_requests_total{
+			proxy=~"function_.*",
+			proxy!~".*_forwarded",
+		  }[%s])
+		)`, duration)
+
+	ctx := context.Background()
+	result, warnings, err := c.promAPI.Query(ctx, query, end)
+	if err != nil {
+		return nil, fmt.Errorf("get forward rate from Prometheus: %w", err)
+	}
+	if len(warnings) > 0 {
+		c.logger.Warnf("Prometheus warnings for query %q\n%s", query, strings.Join(warnings, "\n"))
+	}
+
+	vector, ok := result.(model.Vector)
+	if !ok {
+		return nil, fmt.Errorf("result type is %T, expected %T", result, model.Vector{})
+	}
+
+	// Structure: function name, node name and finally the rate.
+	rates := make(map[string]map[string]float32)
+
+	for _, sample := range vector {
+		proxy := string(sample.Metric["proxy"])
+		server := string(sample.Metric["server"])
+
+		// Proxy format is "function_<name>".
+		function := strings.TrimPrefix(proxy, "function_")
+
+		// The sub-map may be not initialized yet.
+		if _, exists := rates[function]; !exists {
+			rates[function] = make(map[string]float32)
+		}
+
+		value := float32(sample.Value)
+
+		// Handle NaN/Inf (can happen if no traffic in range).
+		if math.IsNaN(float64(value)) || math.IsInf(float64(value), 0) {
+			value = 0
+		}
+
+		rates[function][server] = value
+	}
+
+	return rates, nil
+}
