@@ -616,30 +616,30 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	obs := make(map[string]any)
 
 	// input_rate key in observation.
-	inputRate, err := strategy.promq.InputRate(strategy.allLocalPhaseTimestamp, now)
+	inputRPS, err := strategy.promq.InputRPS(strategy.allLocalPhaseTimestamp, now)
 	if err != nil {
 		return nil, fmt.Errorf("building observation for 'input_rate' key: %w", err)
 	}
 	// Because we currently support only one function!
-	inputRateSingle, err := extractSingleFunctionValue(inputRate)
+	inputRPSSingle, err := extractSingleFunctionValue(inputRPS)
 	if err != nil {
 		return nil, fmt.Errorf("building observation for 'input_rate' key: %w", err)
 	}
-	obs["input_rate"] = inputRateSingle
+	obs["input_rate"] = inputRPSSingle
 
 	// previous_input_rate key in observation.
 	if strategy.rlAgentPhaseTimestamp.IsZero() {
 		obs["previous_input_rate"] = 0
 	} else {
-		inputRate, err := strategy.promq.InputRate(strategy.rlAgentPhaseTimestamp, strategy.allLocalPhaseTimestamp)
+		inputRPS, err := strategy.promq.InputRPS(strategy.rlAgentPhaseTimestamp, strategy.allLocalPhaseTimestamp)
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_input_rate' key: %w", err)
 		}
-		inputRateSingle, err := extractSingleFunctionValue(inputRate)
+		inputRPSSingle, err := extractSingleFunctionValue(inputRPS)
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_input_rate' key: %w", err)
 		}
-		obs["previous_input_rate"] = inputRateSingle
+		obs["previous_input_rate"] = inputRPSSingle
 	}
 
 	// previous_fwd_to_node_X key in observation.
@@ -651,16 +651,16 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 			peers++
 		}
 	} else {
-		prevForwardRate, err := strategy.promq.ForwardRate(strategy.rlAgentPhaseTimestamp, strategy.allLocalPhaseTimestamp)
+		prevForwardRPS, err := strategy.promq.ForwardRPS(strategy.rlAgentPhaseTimestamp, strategy.allLocalPhaseTimestamp)
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X' key: %w", err)
 		}
-		prevForwardRateSingle, err := extractSingleFunctionValue(prevForwardRate)
+		prevForwardRPSSingle, err := extractSingleFunctionValue(prevForwardRPS)
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X' key: %w", err)
 		}
-		for peer, rate := range prevForwardRateSingle {
-			// ForwardRate() always returns openfaas-local node that is the
+		for peer, rate := range prevForwardRPSSingle {
+			// ForwardRPS() always returns openfaas-local node that is the
 			// local one (not remote).
 			if peer == "openfaas-local" {
 				continue

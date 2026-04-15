@@ -167,10 +167,10 @@ avg by (container) (
 	return usage, nil
 }
 
-// InputRate returns the average number of incoming client requests per second
+// InputRPS returns the average number of incoming client requests per second
 // for each function within the specified time range. Note that requests from
 // other nodes (forwarded) are not included.
-func (c *Client) InputRate(start, end time.Time) (map[string]float32, error) {
+func (c *Client) InputRPS(start, end time.Time) (map[string]float32, error) {
 	if end.Before(start) {
 		return nil, errors.New("end time must be after start time")
 	}
@@ -182,17 +182,17 @@ func (c *Client) InputRate(start, end time.Time) (map[string]float32, error) {
 	// one for incoming forwarded requests (function_X_forwarded). We want only
 	// the first ones.
 	query := fmt.Sprintf(`
-avg by (proxy) (
-  rate(haproxy_backend_http_requests_total{
-    proxy=~"function_.*",
-    proxy!~".*_forwarded"
-  }[%s])
-)`, duration)
+	avg by (proxy) (
+	  rate(haproxy_backend_http_requests_total{
+		proxy=~"function_.*",
+		proxy!~".*_forwarded"
+	  }[%s])
+	)`, duration)
 
 	ctx := context.Background()
 	result, warnings, err := c.promAPI.Query(ctx, query, end)
 	if err != nil {
-		return nil, fmt.Errorf("get input rate from Prometheus: %w", err)
+		return nil, fmt.Errorf("get input RPS from Prometheus: %w", err)
 	}
 	if len(warnings) > 0 {
 		c.logger.Warnf("Prometheus warnings for query %q\n%s", query, strings.Join(warnings, "\n"))
@@ -204,7 +204,7 @@ avg by (proxy) (
 		return nil, fmt.Errorf("result type is %T, expected %T", result, model.Vector{})
 	}
 
-	rates := make(map[string]float32, len(vector))
+	rps := make(map[string]float32, len(vector))
 
 	for _, sample := range vector {
 		proxy := string(sample.Metric["proxy"])
@@ -212,10 +212,10 @@ avg by (proxy) (
 		// proxy format is "function_<name>"
 		function := strings.TrimPrefix(proxy, "function_")
 
-		rates[function] = float32(sample.Value)
+		rps[function] = float32(sample.Value)
 	}
 
-	return rates, nil
+	return rps, nil
 }
 
 // AvgRespTime returns, for each function, the average response time (in
@@ -294,31 +294,45 @@ func (c *Client) RejectRate(start, end time.Time) (map[string]float32, error) {
 	}
 	duration := end.Sub(start).String()
 
-	// We use increase because the rate is calculated over a custom time window,
-	// not per second (with classic rate).
+	// The formula is: (total requests - good requests) / total requests
 	//
-	// We exclude incoming forwarded traffic and consider only 4xx and 5xx
-	// responses as rejections.
+	// We use increase because the rate is calculated over a custom time window,
+	// not per second (as with rate()).
+	//
+	// We exclude incoming forwarded traffic and consider rejected requests as
+	// requests with no response or with response not in 2xx status code.
+	//
+	// HAProxy is configured without retries or request replays, so each request
+	// is expected to generate at most one response.
 	//
 	// The aggregation is done based on proxies (1 function = 1 proxy).
 	query := fmt.Sprintf(`
-sum by (proxy) (
-  increase(haproxy_server_http_responses_total{
-    proxy=~"function_.*",
-    proxy!~".*_forwarded",
-    server="openfaas-local",
-    code=~"4..|5.."
-  }[%[1]s])
-)
-/
-sum by (proxy) (
-  increase(haproxy_server_http_requests_total{
-    proxy=~"function_.*",
-    proxy!~".*_forwarded",
-    server="openfaas-local"
-  }[%[1]s])
-)
-`, duration)
+	(
+		sum by (proxy) (
+		  increase(haproxy_server_http_requests_total{
+			proxy=~"function_.*",
+			proxy!~".*_forwarded",
+			server="openfaas-local"
+		  }[%[1]s])
+		)
+		-
+		sum by (proxy) (
+		  increase(haproxy_server_http_responses_total{
+			proxy=~"function_.*",
+			proxy!~".*_forwarded",
+			server="openfaas-local",
+			code="2xx"
+		  }[%[1]s])
+	  )
+	)
+	/
+	sum by (proxy) (
+	  increase(haproxy_server_http_requests_total{
+		proxy=~"function_.*",
+		proxy!~".*_forwarded",
+		server="openfaas-local"
+	  }[%[1]s])
+	)`, duration)
 
 	ctx := context.Background()
 	result, warnings, err := c.promAPI.Query(ctx, query, end)
@@ -361,8 +375,8 @@ sum by (proxy) (
 	return rates, nil
 }
 
-// ForwardRate returns the average number of incoming client requests per second to a
-// DFaaS node for each function within the specified time range.
+// ForwardRPS returns the average number of incoming client requests per second
+// to a DFaaS node for each function within the specified time range.
 //
 // The return type is a map with function names as the first level key and the
 // DFaaS node as second level key.
@@ -371,7 +385,7 @@ sum by (proxy) (
 // "openfaas-local". Other nodes are named with "node_X", where X is its ID.
 //
 // Note that requests coming from other nodes (forwarded) are not included.
-func (c *Client) ForwardRate(start, end time.Time) (map[string]map[string]float32, error) {
+func (c *Client) ForwardRPS(start, end time.Time) (map[string]map[string]float32, error) {
 	if end.Before(start) {
 		return nil, errors.New("end time must be after start time")
 	}
@@ -396,7 +410,7 @@ func (c *Client) ForwardRate(start, end time.Time) (map[string]map[string]float3
 	ctx := context.Background()
 	result, warnings, err := c.promAPI.Query(ctx, query, end)
 	if err != nil {
-		return nil, fmt.Errorf("get forward rate from Prometheus: %w", err)
+		return nil, fmt.Errorf("get forward RPS from Prometheus: %w", err)
 	}
 	if len(warnings) > 0 {
 		c.logger.Warnf("Prometheus warnings for query %q\n%s", query, strings.Join(warnings, "\n"))
@@ -407,8 +421,8 @@ func (c *Client) ForwardRate(start, end time.Time) (map[string]map[string]float3
 		return nil, fmt.Errorf("result type is %T, expected %T", result, model.Vector{})
 	}
 
-	// Structure: function name, node name and finally the rate.
-	rates := make(map[string]map[string]float32)
+	// Structure: function name, node name and finally the average RPS.
+	rps := make(map[string]map[string]float32)
 
 	for _, sample := range vector {
 		proxy := string(sample.Metric["proxy"])
@@ -418,8 +432,8 @@ func (c *Client) ForwardRate(start, end time.Time) (map[string]map[string]float3
 		function := strings.TrimPrefix(proxy, "function_")
 
 		// The sub-map may be not initialized yet.
-		if _, exists := rates[function]; !exists {
-			rates[function] = make(map[string]float32)
+		if _, exists := rps[function]; !exists {
+			rps[function] = make(map[string]float32)
 		}
 
 		value := float32(sample.Value)
@@ -429,10 +443,15 @@ func (c *Client) ForwardRate(start, end time.Time) (map[string]map[string]float3
 			value = 0
 		}
 
-		rates[function][server] = value
+		// There may be a negative approximation error.
+		if value < 0 {
+			value = 0
+		}
+
+		rps[function][server] = value
 	}
 
-	return rates, nil
+	return rps, nil
 }
 
 // ForwardRejectRPS returns the average number of rejected client requests per
@@ -496,8 +515,8 @@ func (c *Client) ForwardRejectRPS(start, end time.Time) (map[string]map[string]f
 		return nil, fmt.Errorf("result type is %T, expected %T", result, model.Vector{})
 	}
 
-	// Structure: function name, node name and finally the rate.
-	rates := make(map[string]map[string]float32)
+	// Structure: function name, node name and finally the average rps.
+	rps := make(map[string]map[string]float32)
 
 	for _, sample := range vector {
 		proxy := string(sample.Metric["proxy"])
@@ -506,8 +525,8 @@ func (c *Client) ForwardRejectRPS(start, end time.Time) (map[string]map[string]f
 		// Proxy format is "function_<name>".
 		function := strings.TrimPrefix(proxy, "function_")
 
-		if _, exists := rates[function]; !exists {
-			rates[function] = make(map[string]float32)
+		if _, exists := rps[function]; !exists {
+			rps[function] = make(map[string]float32)
 		}
 
 		value := float32(sample.Value)
@@ -522,8 +541,8 @@ func (c *Client) ForwardRejectRPS(start, end time.Time) (map[string]map[string]f
 			value = 0
 		}
 
-		rates[function][server] = value
+		rps[function][server] = value
 	}
 
-	return rates, nil
+	return rps, nil
 }
