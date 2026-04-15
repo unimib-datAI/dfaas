@@ -675,7 +675,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	}
 
 	// previous_fwd_to_node_X_rejected key in observation.
-	peers := 0
+	peers = 0
 	if strategy.rlAgentPhaseTimestamp.IsZero() {
 		for _, peer := range _p2pHost.Network().Peers() {
 			key := fmt.Sprintf("previous_fwd_to_node_%s_rejected", peer.String())
@@ -683,16 +683,16 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 			peers++
 		}
 	} else {
-		prevForwardRejectedRPS, err := strategy.promq.ForwardRejectedRPS(strategy.rlAgentPhaseTimestamp, strategy.allLocalPhaseTimestamp)
+		prevForwardRejectRPS, err := strategy.promq.ForwardRejectRPS(strategy.rlAgentPhaseTimestamp, strategy.allLocalPhaseTimestamp)
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X_rejected' key: %w", err)
 		}
-		prevForwardRejectedRPSSingle, err := extractSingleFunctionValue(prevForwardRejectRPS)
+		prevForwardRejectRPSSingle, err := extractSingleFunctionValue(prevForwardRejectRPS)
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X_rejected' key: %w", err)
 		}
 		for peer, rate := range prevForwardRejectRPSSingle {
-			// ForwardRejectedRPS() always returns openfaas-local node that is the
+			// ForwardRejectRPS() always returns openfaas-local node that is the
 			// local one (not remote).
 			if peer == "openfaas-local" {
 				continue
