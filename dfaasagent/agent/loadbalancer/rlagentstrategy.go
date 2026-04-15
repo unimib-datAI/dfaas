@@ -674,11 +674,37 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 		return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X' key: found %d peers, expected 4: peers", peers)
 	}
 
-	// FIXME: Enable dynamic neighbours. Currently not supported.
-	obs["previous_fwd_to_node_1_rejected"] = 0
-	obs["previous_fwd_to_node_2_rejected"] = 0
-	obs["previous_fwd_to_node_3_rejected"] = 0
-	obs["previous_fwd_to_node_4_rejected"] = 0
+	// previous_fwd_to_node_X_rejected key in observation.
+	peers := 0
+	if strategy.rlAgentPhaseTimestamp.IsZero() {
+		for _, peer := range _p2pHost.Network().Peers() {
+			key := fmt.Sprintf("previous_fwd_to_node_%s_rejected", peer.String())
+			obs[key] = 0
+			peers++
+		}
+	} else {
+		prevForwardRejectedRPS, err := strategy.promq.ForwardRejectedRPS(strategy.rlAgentPhaseTimestamp, strategy.allLocalPhaseTimestamp)
+		if err != nil {
+			return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X_rejected' key: %w", err)
+		}
+		prevForwardRejectedRPSSingle, err := extractSingleFunctionValue(prevForwardRejectRPS)
+		if err != nil {
+			return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X_rejected' key: %w", err)
+		}
+		for peer, rate := range prevForwardRejectRPSSingle {
+			// ForwardRejectedRPS() always returns openfaas-local node that is the
+			// local one (not remote).
+			if peer == "openfaas-local" {
+				continue
+			}
+			key := fmt.Sprintf("previous_fwd_to_%s_rejected", peer)
+			obs[key] = rate
+		}
+	}
+	// FIXME: Remove this code (used for debugging).
+	if peers != 4 {
+		return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X_rejected' key: found %d peers, expected 4: peers", peers)
+	}
 
 	// reject_rate key in observation.
 	rejectRate, err := strategy.promq.RejectRate(strategy.allLocalPhaseTimestamp, now)

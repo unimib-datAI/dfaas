@@ -434,3 +434,96 @@ func (c *Client) ForwardRate(start, end time.Time) (map[string]map[string]float3
 
 	return rates, nil
 }
+
+// ForwardRejectRPS returns the average number of rejected client requests per
+// second to a DFaaS node for each function within the specified time range.
+//
+// The return type is a map with function names as the first level key and the
+// DFaaS node as second level key.
+//
+// The return map contains also the local DFaaS node names as "openfaas-local".
+// Other nodes are named with "node_X", where X is its ID.
+//
+// Rejected requests coming from other nodes (forwarded) are not included.
+func (c *Client) ForwardRejectRPS(start, end time.Time) (map[string]map[string]float32, error) {
+	if end.Before(start) {
+		return nil, errors.New("end time must be after start time")
+	}
+	duration := end.Sub(start)
+
+	// As with ForwardRate(), each function exposes two backends: function_X and
+	// function_X_forwarded. We focus only on the function_X backend. This
+	// backend has multiple servers: the default openfaas-local instance, plus
+	// zero or more node_ID servers.
+	//
+	// We define successful requests using haproxy_server_http_responses_total
+	// with 2xx status codes. Rejected requests include 4xx/5xx responses, as
+	// well as cases with no response (e.g. timeouts or errors).
+	//
+	// HAProxy is configured without retries or request replays, so each request
+	// is expected to generate at most one response.
+	//
+	// Metrics are aggregated by proxy/backend and server, since HAProxy may
+	// restart within the selected time range, which can lead to duplicated time
+	// series.
+	query := fmt.Sprintf(`
+	sum by (proxy, server) (
+	  rate(haproxy_server_http_requests_total{
+		proxy=~"function_.*",
+		proxy!~".*_forwarded"
+	  }[%[1]s])
+	)
+	-
+	sum by (proxy, server) (
+	  rate(haproxy_server_http_responses_total{
+		proxy=~"function_.*",
+		proxy!~".*_forwarded",
+		code="2xx"
+	  }[%[1]s])
+	)`, duration)
+
+	ctx := context.Background()
+	result, warnings, err := c.promAPI.Query(ctx, query, end)
+	if err != nil {
+		return nil, fmt.Errorf("get forward reject rate from Prometheus: %w", err)
+	}
+	if len(warnings) > 0 {
+		c.logger.Warnf("Prometheus warnings for query %q\n%s", query, strings.Join(warnings, "\n"))
+	}
+
+	vector, ok := result.(model.Vector)
+	if !ok {
+		return nil, fmt.Errorf("result type is %T, expected %T", result, model.Vector{})
+	}
+
+	// Structure: function name, node name and finally the rate.
+	rates := make(map[string]map[string]float32)
+
+	for _, sample := range vector {
+		proxy := string(sample.Metric["proxy"])
+		server := string(sample.Metric["server"])
+
+		// Proxy format is "function_<name>".
+		function := strings.TrimPrefix(proxy, "function_")
+
+		if _, exists := rates[function]; !exists {
+			rates[function] = make(map[string]float32)
+		}
+
+		value := float32(sample.Value)
+
+		// Handle NaN/Inf (can happen if no traffic in range).
+		if math.IsNaN(float64(value)) || math.IsInf(float64(value), 0) {
+			value = 0
+		}
+
+		// There may be a negative approximation error.
+		if value < 0 {
+			value = 0
+		}
+
+		rates[function][server] = value
+	}
+
+	return rates, nil
+}
