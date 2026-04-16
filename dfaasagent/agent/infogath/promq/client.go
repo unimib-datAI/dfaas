@@ -218,7 +218,7 @@ func (c *Client) InputRPS(start, end time.Time) (map[string]float32, error) {
 	return rps, nil
 }
 
-// AvgRespTime returns, for each function, the average response time (in
+// AvgRespTimeLocal returns, for each function, the average response time (in
 // milliseconds) of requests locally processed by the node over the given time
 // range.
 //
@@ -545,4 +545,85 @@ func (c *Client) ForwardRejectRPS(start, end time.Time) (map[string]map[string]f
 	}
 
 	return rps, nil
+}
+
+// AvgRespTimeForward returns, for each function, the average response time (in
+// milliseconds) of requests forwarded to other DFaaS nods over the given time
+// range.
+//
+// The return type is a map with function names as the first level key and the
+// DFaaS node as second level key.
+//
+// Note that the return map contains also the local DFaaS node names as
+// "openfaas-local". Other nodes are named with "node_X", where X is its ID.
+//
+// Note that requests coming from other nodes (forwarded) are not included.
+func (c *Client) AvgRespTimeForward(start, end time.Time) (map[string]map[string]float32, error) {
+	if end.Before(start) {
+		return nil, errors.New("end time must be after start time")
+	}
+	duration := end.Sub(start)
+
+	// As with other queries, each function exposes two backends: function_X and
+	// function_X_forwarded. We focus only on the function_X backend. This
+	// backend has multiple servers: the default openfaas-local instance, plus
+	// zero or more node_ID servers.
+	//
+	// Metrics are aggregated by proxy/backend and server, since HAProxy may
+	// restart within the selected time range, which can lead to duplicated time
+	// series.
+	query := fmt.Sprintf(`
+	sum by (proxy, server) (
+	  last_over_time(
+	    haproxy_server_response_time_average_seconds{
+	      proxy=~"function_.*",
+	      proxy!~".*_forwarded"
+	    }[%s]
+	  )
+	)`, duration)
+
+	ctx := context.Background()
+	result, warnings, err := c.promAPI.Query(ctx, query, end)
+	if err != nil {
+		return nil, fmt.Errorf("get forward average response time from Prometheus: %w", err)
+	}
+	if len(warnings) > 0 {
+		c.logger.Warnf("Prometheus warnings for query %q\n%s", query, strings.Join(warnings, "\n"))
+	}
+
+	vector, ok := result.(model.Vector)
+	if !ok {
+		return nil, fmt.Errorf("result type is %T, expected %T", result, model.Vector{})
+	}
+
+	// Structure: function name, node name and finally the response time (ms).
+	resp := make(map[string]map[string]float32)
+
+	for _, sample := range vector {
+		proxy := string(sample.Metric["proxy"])
+		server := string(sample.Metric["server"])
+
+		// Proxy format is "function_<name>".
+		function := strings.TrimPrefix(proxy, "function_")
+
+		if _, exists := resp[function]; !exists {
+			resp[function] = make(map[string]float32)
+		}
+
+		value := float32(sample.Value) * 1000
+
+		// Ignore invalid values.
+		if math.IsNaN(float64(value)) || math.IsInf(float64(value), 0) {
+			value = 0
+		}
+
+		// Guard against negative approximation errors.
+		if value < 0 {
+			value = 0
+		}
+
+		resp[function][server] = value
+	}
+
+	return resp, nil
 }

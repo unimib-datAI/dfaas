@@ -758,11 +758,37 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 		obs["previous_avg_resp_time_loc"] = prevAvgRespTimeSingle
 	}
 
-	// FIXME: Enable dynamic neighbours. Currently not supported.
-	obs["previous_avg_resp_time_fwd_to_node_1"] = 0.0
-	obs["previous_avg_resp_time_fwd_to_node_2"] = 0.0
-	obs["previous_avg_resp_time_fwd_to_node_3"] = 0.0
-	obs["previous_avg_resp_time_fwd_to_node_4"] = 0.0
+	// previous_avg_resp_time_fwd_to_node_X key in observation.
+	peers = 0
+	if strategy.rlAgentPhaseTimestamp.IsZero() {
+		for _, peer := range _p2pHost.Network().Peers() {
+			key := fmt.Sprintf("previous_avg_resp_time_fwd_to_node_%s", peer.String())
+			obs[key] = 0
+			peers++
+		}
+	} else {
+		prevAvgRespTimeForward, err := strategy.promq.AvgRespTimeForward(strategy.rlAgentPhaseTimestamp, strategy.allLocalPhaseTimestamp)
+		if err != nil {
+			return nil, fmt.Errorf("building observation for 'previous_avg_resp_time_fwd_to_node_X' key: %w", err)
+		}
+		prevAvgRespTimeForwardSingle, err := extractSingleFunctionValue(prevAvgRespTimeForward)
+		if err != nil {
+			return nil, fmt.Errorf("building observation for 'previous_avg_resp_time_fwd_to_node_X' key: %w", err)
+		}
+		for peer, rate := range prevAvgRespTimeForwardSingle {
+			// AvgRespTimeForward() always returns openfaas-local node that is
+			// the local one (not remote).
+			if peer == "openfaas-local" {
+				continue
+			}
+			key := fmt.Sprintf("previous_avg_resp_time_fwd_to_node_%s", peer)
+			obs[key] = rate
+		}
+	}
+	// FIXME: Remove this code (used for debugging).
+	if peers != 4 {
+		return nil, fmt.Errorf("building observation for 'previous_avg_resp_time_fwd_to_node_X' key: found %d peers, expected 4: peers", peers)
+	}
 
 	// cpu_utilization key in observation.
 	// FIXME: Only one function is supported!
