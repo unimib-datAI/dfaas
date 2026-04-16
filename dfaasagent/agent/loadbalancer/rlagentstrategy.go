@@ -665,6 +665,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 			if peer == "openfaas-local" {
 				continue
 			}
+			// Peer here is already a string with format "node_X".
 			key := fmt.Sprintf("previous_fwd_to_%s", peer)
 			obs[key] = rate
 		}
@@ -697,6 +698,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 			if peer == "openfaas-local" {
 				continue
 			}
+			// Peer here is already a string with format "node_X".
 			key := fmt.Sprintf("previous_fwd_to_%s_rejected", peer)
 			obs[key] = rate
 		}
@@ -715,7 +717,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("building observation for 'reject_rate' key: %w", err)
 	}
-	obs["rejectRateSingle"] = rejectRateSingle
+	obs["reject_rate"] = rejectRateSingle
 
 	// previous_reject_rate key in observation.
 	if strategy.rlAgentPhaseTimestamp.IsZero() {
