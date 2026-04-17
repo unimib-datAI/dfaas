@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/json"
 	"flag"
+	"fmt"
 	"io"
 	"log"
 	"net/http"
@@ -113,10 +114,15 @@ func main() {
 		}
 		resp.Body.Close()
 
-		newBody := reverseReplacer.Replace(string(bodyBytes))
+		newBody, err := updateActionFormat(bodyBytes)
+		if err != nil {
+			return fmt.Errorf("failed to update action JSON format: %w", err)
+		}
+
+		newBodyStr := reverseReplacer.Replace(string(newBody))
 
 		var buf bytes.Buffer
-		buf.WriteString(newBody)
+		buf.WriteString(newBodyStr)
 
 		resp.Body = io.NopCloser(&buf)
 		resp.ContentLength = int64(buf.Len())
@@ -129,4 +135,70 @@ func main() {
 
 	log.Printf("Proxy listening on %q with target %q", cfg.Listen, cfg.Target)
 	log.Fatal(http.ListenAndServe(cfg.Listen, proxy))
+}
+
+// updateActionFormat returns a modified version of the JSON body from the
+// action response.
+//
+// With the following fixed nodes: [node_0, ..., node_4]. Example input:
+//
+//	{"node_0":[0.9999946355819702,9.961642035705154e-07,1.2219852578709833e-06,1.0784980304379133e-06,1.2444977528502932e-06,9.146793331638037e-07]}
+//
+// Example output:
+//
+//  {"node_A":{"local":0.9999946355819702,"node_B":9.961642035705154e-7,"node_C":0.0000012219852578709833,"node_D":0.0000010784980304379133,"node_E":0.0000012444977528502932,"reject":9.146793331638037e-7}}
+func updateActionFormat(body []byte) ([]byte, error) {
+	var action map[string][]float64
+	if err := json.Unmarshal(body, &action); err != nil {
+		return nil, fmt.Errorf("unmarshalling original action JSON: %w", err)
+	}
+
+	// Make sure in the action JSON there is only one node!
+	found := false
+	var node string
+	var values []float64
+	for nodeKey, valuesOrig := range action {
+		if found {
+			return nil, fmt.Errorf("action JSON should contain only one node ID, found one more node called %q", nodeKey)
+		}
+		found = true
+		node = nodeKey
+		values = valuesOrig
+	}
+
+	updatedAction := make(map[string]map[string]float64)
+	updatedAction[node] = make(map[string]float64)
+
+	if len(values) != 6 {
+		return nil, fmt.Errorf("expected action should have 6 sub-actions, found %d", len(values))
+	}
+
+	// These are always fixed indexes.
+	updatedAction[node]["local"] = values[0]
+	updatedAction[node]["reject"] = values[5]
+
+	// Each action JSON array has a dynamic index for each node. Since in the
+	// original action there is no reference to each node, we have a static list
+	// for each node, extracted from the DFaaS environment.
+    //
+    // FIXME: This is an hack and should be removed!
+	//
+	// Se __init__() from DFaaS env in Python.
+	graph := map[string][]string{
+		"node_0": {"node_1", "node_2", "node_3", "node_4"},
+		"node_1": {"node_0", "node_2", "node_3", "node_4"},
+		"node_2": {"node_0", "node_1", "node_3", "node_4"},
+		"node_3": {"node_0", "node_1", "node_2", "node_4"},
+		"node_4": {"node_0", "node_1", "node_2", "node_3"},
+	}
+	for index, neighbor := range graph[node] {
+		// The 0 index is local action (see above).
+		updatedAction[node][neighbor] = values[index+1]
+	}
+
+	updatedActionBytes, err := json.Marshal(updatedAction)
+	if err != nil {
+		return nil, fmt.Errorf("marshalling updated action JSON: %w", err)
+	}
+	return updatedActionBytes, nil
 }

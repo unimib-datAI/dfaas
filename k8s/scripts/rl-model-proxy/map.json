@@ -1,4 +1,7 @@
 {
-  "node_XX": "node_0",
-  "node_YY": "node_1"
+  "node_A": "node_0",
+  "node_B": "node_1",
+  "node_C": "node_2",
+  "node_D": "node_3",
+  "node_E": "node_4"
 }
