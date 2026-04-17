@@ -94,6 +94,11 @@ config:
   AGENT_NMS_RAM_THRESHOLD: 5500000000.0 # max ram usage in bytes
   AGENT_NMS_POWER_THRESHOLD: 2100000.0 # max power usage in microwatts
 
+  # Set manually the IP and the port for the RL model Web service. Used only for
+  # "rlagentstrategy" strategy.
+  AGENT_RLMODEL_HOST: "localhost"
+  AGENT_RLMODEL_PORT: 6666
+
 # Agent's private key in PEM format. If empty, the agent will generate a new
 # private key and it will print to the standard output.
 privateKey: ""

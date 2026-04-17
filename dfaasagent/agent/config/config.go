@@ -98,6 +98,11 @@ type Configuration struct {
 	CPUThresholdNMS   float64 `mapstructure:"AGENT_NMS_CPU_THRESHOLD"`
 	RAMThresholdNMS   float64 `mapstructure:"AGENT_NMS_RAM_THRESHOLD"`
 	PowerThresholdNMS float64 `mapstructure:"AGENT_NMS_POWER_THRESHOLD"`
+
+	// Connection information for RL model. Used only for "rlagentstrategy"
+	// strategy.
+	RLModelHost string `mapstructure:"AGENT_RLMODEL_HOST"`
+	RLModelPort uint   `mapstructure:"AGENT_RLMODEL_PORT"`
 }
 
 // viperBindConfig binds each field of the Configuration struct with its

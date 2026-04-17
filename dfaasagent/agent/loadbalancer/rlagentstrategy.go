@@ -6,9 +6,11 @@
 package loadbalancer
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"net/http"
 	"time"
 
@@ -29,6 +31,11 @@ type RLAgentStrategy struct {
 	offuncsClient *offuncs.Client
 	promq         *promq.Client
 	httpClient    *http.Client
+
+	// Connection information for the RL model Web service. Used in RL Agent
+	// phase.
+	rlModelHost string
+	rlModelPort uint
 
 	funcs               []string // Our OpenFaaS functions.
 	commonNeighboursNum int      // Number of neighbours with at least a function in common.
@@ -551,11 +558,17 @@ func (strategy *RLAgentStrategy) allLocalPhase() error {
 // the RL model, queries the model, and applies the resulting action to the
 // proxy.
 func (strategy *RLAgentStrategy) rlAgentPhase() error {
-	// Build observation
-	strategy.buildObservation()
+	obs, err := strategy.buildObservation()
+	if err != nil {
+		return fmt.Errorf("building observation for RL phase: %w", err)
+	}
 
-	// Ask RL model
+	action, err := strategy.queryRLModel(obs)
+	if err != nil {
+		return fmt.Errorf("querying RL model for RL phase: %w", err)
+	}
 
+	fmt.Printf("action: %v\n", action)
 	// Apply action
 
 	return nil
@@ -860,6 +873,36 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 		return nil, fmt.Errorf("failed to build JSON observation: %w", err)
 	}
 	return data, nil
+}
+
+// queryRLModel queries the RL model with the given observation already
+// marshalled into a JSON and returns the action result.
+func (strategy *RLAgentStrategy) queryRLModel(observation []byte) (map[string]map[string]float64, error) {
+	url := fmt.Sprintf("http://%s:%d/action", strategy.rlModelHost, strategy.rlModelPort)
+
+	resp, err := strategy.httpClient.Post(url, "application/json", bytes.NewReader(observation))
+	if err != nil {
+		return nil, fmt.Errorf("querying RL model: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != http.StatusOK {
+		body, _ := io.ReadAll(resp.Body)
+		return nil, fmt.Errorf("rl model returned %d: %s", resp.StatusCode, string(body))
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return nil, fmt.Errorf("reading RL model response: %w", err)
+	}
+
+	var action map[string]map[string]float64
+	err = json.Unmarshal(body, &action)
+	if err != nil {
+		return nil, fmt.Errorf("unmarshalling JSON RL model response: %w", err)
+	}
+
+	return action, nil
 }
 
 // FIXME: Remove this! Use because currently we support observations for the RL
