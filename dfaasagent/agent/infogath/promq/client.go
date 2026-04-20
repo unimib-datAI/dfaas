@@ -63,9 +63,14 @@ func (c *Client) Replicas(start, end time.Time) (map[string]uint, error) {
 		return nil, errors.New("end time must be after start time")
 	}
 
-	// We need a relative time (e.g. 1h30m) to make the range query.
-	duration := end.Sub(start).String()
-	query := fmt.Sprintf(`avg by (function_name) (avg_over_time(gateway_service_count[%s]))`, duration)
+	// Compute range duration (same approach as other functions).
+	duration := end.Sub(start)
+
+	// duration is a time.Duration. Prometheus do not supports float duration,
+	// only integer. So: convert to seconds, round, then rebuild a clean duration.
+	durationStr := (time.Duration(math.Round(duration.Seconds())) * time.Second).String()
+
+	query := fmt.Sprintf(`avg by (function_name) (avg_over_time(gateway_service_count[%s]))`, durationStr)
 
 	// Run query.
 	ctx := context.Background()
@@ -108,24 +113,28 @@ func (c *Client) CPUUsage(start, end time.Time, containers []string) (map[string
 		return nil, errors.New("containers list cannot be empty")
 	}
 
-	// Same as Replicas().
+	// Compute range duration (same approach as other functions).
 	duration := end.Sub(start)
+
+	// duration is a time.Duration. Prometheus do not supports float duration,
+	// only integer. So: convert to seconds, round, then rebuild a clean duration.
+	durationStr := (time.Duration(math.Round(duration.Seconds())) * time.Second).String()
 
 	// Query mainly taken from k8s/scripts/prometheus2csv/metrics.csv
 	containerRegex := strings.Join(containers, "|")
 	query := fmt.Sprintf(`
-avg by (container) (
-  avg_over_time(
-    (
-      irate(container_cpu_usage_seconds_total{
-        namespace="default",
-        container=~"%s",
-        container!=""
-      }[1m])
-      / on(instance) group_left machine_cpu_cores
-    )[%s]
-  )
-)`, containerRegex, duration.String())
+	avg by (container) (
+	  avg_over_time(
+		(
+		  irate(container_cpu_usage_seconds_total{
+			namespace="default",
+			container=~"%s",
+			container!=""
+		  }[1m])
+		  / on(instance) group_left machine_cpu_cores
+		)[%s]
+	  )
+	)`, containerRegex, durationStr)
 
 	ctx := context.Background()
 	result, warnings, err := c.promAPI.Query(ctx, query, end)
@@ -176,7 +185,11 @@ func (c *Client) InputRPS(start, end time.Time) (map[string]float32, error) {
 	}
 
 	// Compute range duration (same approach as other functions).
-	duration := end.Sub(start).String()
+	duration := end.Sub(start)
+
+	// duration is a time.Duration. Prometheus do not supports float duration,
+	// only integer. So: convert to seconds, round, then rebuild a clean duration.
+	durationStr := (time.Duration(math.Round(duration.Seconds())) * time.Second).String()
 
 	// Each function has two backends: one for local requests (function_X) and
 	// one for incoming forwarded requests (function_X_forwarded). We want only
@@ -187,7 +200,7 @@ func (c *Client) InputRPS(start, end time.Time) (map[string]float32, error) {
 		proxy=~"function_.*",
 		proxy!~".*_forwarded"
 	  }[%s])
-	)`, duration)
+	)`, durationStr)
 
 	ctx := context.Background()
 	result, warnings, err := c.promAPI.Query(ctx, query, end)
@@ -230,7 +243,12 @@ func (c *Client) AvgRespTimeLocal(start, end time.Time) (map[string]float32, err
 		return nil, errors.New("end time must be after start time")
 	}
 
-	duration := end.Sub(start).String()
+	// Compute range duration (same approach as other functions).
+	duration := end.Sub(start)
+
+	// duration is a time.Duration. Prometheus do not supports float duration,
+	// only integer. So: convert to seconds, round, then rebuild a clean duration.
+	durationStr := (time.Duration(math.Round(duration.Seconds())) * time.Second).String()
 
 	// We use the metric "gateway_functions_seconds" exported by OpenFaaS
 	// Gateway. It's an histogram.
@@ -241,12 +259,11 @@ func (c *Client) AvgRespTimeLocal(start, end time.Time) (map[string]float32, err
 	// return a single time series per function instead of multiple series
 	// fragmented across gateway restarts.
 	query := fmt.Sprintf(`
-avg by (function_name) (
-  rate(gateway_functions_seconds_sum[%[1]s])
-  /
-  rate(gateway_functions_seconds_count[%[1]s])
-)
-`, duration)
+	avg by (function_name) (
+	  rate(gateway_functions_seconds_sum[%[1]s])
+	  /
+	  rate(gateway_functions_seconds_count[%[1]s])
+	)`, durationStr)
 
 	ctx := context.Background()
 	result, warnings, err := c.promAPI.Query(ctx, query, end)
@@ -292,7 +309,12 @@ func (c *Client) RejectRate(start, end time.Time) (map[string]float32, error) {
 	if end.Before(start) {
 		return nil, errors.New("end time must be after start time")
 	}
-	duration := end.Sub(start).String()
+	// Compute range duration (same approach as other functions).
+	duration := end.Sub(start)
+
+	// duration is a time.Duration. Prometheus do not supports float duration,
+	// only integer. So: convert to seconds, round, then rebuild a clean duration.
+	durationStr := (time.Duration(math.Round(duration.Seconds())) * time.Second).String()
 
 	// The formula is: (total requests - good requests) / total requests
 	//
@@ -332,7 +354,7 @@ func (c *Client) RejectRate(start, end time.Time) (map[string]float32, error) {
 		proxy!~".*_forwarded",
 		server="openfaas-local"
 	  }[%[1]s])
-	)`, duration)
+	)`, durationStr)
 
 	ctx := context.Background()
 	result, warnings, err := c.promAPI.Query(ctx, query, end)
@@ -389,7 +411,12 @@ func (c *Client) ForwardRPS(start, end time.Time) (map[string]map[string]float32
 	if end.Before(start) {
 		return nil, errors.New("end time must be after start time")
 	}
+	// Compute range duration (same approach as other functions).
 	duration := end.Sub(start)
+
+	// duration is a time.Duration. Prometheus do not supports float duration,
+	// only integer. So: convert to seconds, round, then rebuild a clean duration.
+	durationStr := (time.Duration(math.Round(duration.Seconds())) * time.Second).String()
 
 	// For each function, there are two backends (function_X and
 	// function_X_forwarded). We focus only on the function_X backend. This
@@ -405,7 +432,7 @@ func (c *Client) ForwardRPS(start, end time.Time) (map[string]map[string]float32
 			proxy=~"function_.*",
 			proxy!~".*_forwarded",
 		  }[%s])
-		)`, duration)
+		)`, durationStr)
 
 	ctx := context.Background()
 	result, warnings, err := c.promAPI.Query(ctx, query, end)
@@ -468,7 +495,12 @@ func (c *Client) ForwardRejectRPS(start, end time.Time) (map[string]map[string]f
 	if end.Before(start) {
 		return nil, errors.New("end time must be after start time")
 	}
+	// Compute range duration (same approach as other functions).
 	duration := end.Sub(start)
+
+	// duration is a time.Duration. Prometheus do not supports float duration,
+	// only integer. So: convert to seconds, round, then rebuild a clean duration.
+	durationStr := (time.Duration(math.Round(duration.Seconds())) * time.Second).String()
 
 	// As with ForwardRate(), each function exposes two backends: function_X and
 	// function_X_forwarded. We focus only on the function_X backend. This
@@ -499,7 +531,7 @@ func (c *Client) ForwardRejectRPS(start, end time.Time) (map[string]map[string]f
 		proxy!~".*_forwarded",
 		code="2xx"
 	  }[%[1]s])
-	)`, duration)
+	)`, durationStr)
 
 	ctx := context.Background()
 	result, warnings, err := c.promAPI.Query(ctx, query, end)
@@ -562,7 +594,12 @@ func (c *Client) AvgRespTimeForward(start, end time.Time) (map[string]map[string
 	if end.Before(start) {
 		return nil, errors.New("end time must be after start time")
 	}
+	// Compute range duration (same approach as other functions).
 	duration := end.Sub(start)
+
+	// duration is a time.Duration. Prometheus do not supports float duration,
+	// only integer. So: convert to seconds, round, then rebuild a clean duration.
+	durationStr := (time.Duration(math.Round(duration.Seconds())) * time.Second).String()
 
 	// As with other queries, each function exposes two backends: function_X and
 	// function_X_forwarded. We focus only on the function_X backend. This
@@ -580,7 +617,7 @@ func (c *Client) AvgRespTimeForward(start, end time.Time) (map[string]map[string
 	      proxy!~".*_forwarded"
 	    }[%s]
 	  )
-	)`, duration)
+	)`, durationStr)
 
 	ctx := context.Background()
 	result, warnings, err := c.promAPI.Query(ctx, query, end)

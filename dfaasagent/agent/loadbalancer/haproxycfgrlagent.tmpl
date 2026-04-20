@@ -1,5 +1,5 @@
 # HAProxy configuration file updated by DFaaS Agent on {{.Now}}
-# DFaaS Agent running with "RL Agent" strategy.
+# DFaaS Agent running with "RL Agent" strategy in phase {{.Phase}}.
 
 # See k8s/charts/values-haproxy.yaml for more information about global,
 # userlist, defaults, and prometheus frontend sections.
@@ -53,7 +53,7 @@ frontend main
     acl has_stage_hdr req.hdr(DFaaS-K6-Stage) -m reg ^[0-9]+$
 
     # Store latest stage to gpt0 as integer for the stick counter sc0 (we know
-    # it is mapped to the "global" key). Note we add +1 do dinstinguish the case
+    # it is mapped to the "global" key). Note we add +1 to distinguish the case
     # where the header has not been found (default value is 0).
     http-request sc-set-gpt(0,0) req.hdr(DFaaS-K6-Stage),add(1) if has_stage_hdr
 
@@ -62,25 +62,61 @@ frontend main
     # forwarded requests.
     http-request set-var(txn.dfaas_node_id) req.hdr(DFaaS-Node-ID)
 
+    {{- if eq .Phase "rlAgentPhase" -}}
+    # Generate a random integer number in [0, 99), will be used to check if the
+    # incoming request will be rejected by the "reject" action of the strategy.
+    # Note that a single request can be mapped to one single function.
+    http-request set-var(txn.rand) rand(100)
+    {{- end -}}
+
     # ACLs to detect incoming forwarded requests.
     acl has_node_hdr req.hdr(DFaaS-Node-ID) -m found
 
     {{/* Create ACLs and backend selection for each function. */}}
     {{range $funcName, $_ := .Functions -}}
-    # Match function path (always under /function/).
-    acl is_{{$funcName}} path_beg /function/{{$funcName}}
+        # Match function path (always under /function/).
+        acl is_{{$funcName}} path_beg /function/{{$funcName}}
 
-    # Use the forwarded backend if the request originates from another DFaaS
-    # node, otherwise, use the local backend. This distinction is required to
-    # correctly compute statistics for both client and forwarded requests.
-    use_backend function_{{$funcName}}_forwarded if is_{{$funcName}} has_node_hdr
-    use_backend function_{{$funcName}} if is_{{$funcName}}
+        {{- if eq $.Phase "rlAgentPhase" -}}
+        # Get the reject action (a probability over 0-100) from the current
+        # function.
+        acl reject_{{$funcName}} var(txn.rand) lt {{ index (index $.Weights $funcName) "reject" }}
+
+        # Apply the action reject, only for non forwarded requests!
+        http-request deny deny_status 503 if is_{{$funcName}} !has_node_hdr reject_{{$funcName}}
+        {{- end -}}
+
+        # Use the forwarded backend if the request originates from another DFaaS
+        # node, otherwise, use the local backend. This distinction is required to
+        # correctly compute statistics for both client and forwarded requests.
+        use_backend function_{{$funcName}}_forwarded if is_{{$funcName}} has_node_hdr
+        use_backend function_{{$funcName}} if is_{{$funcName}}
     {{end}}
 
 {{range $funcName, $timeout := .Functions -}}
 backend function_{{$funcName}}
     http-response set-header DFaaS-Node-ID {{$.DFaaSNodeID}}
-    server openfaas-local {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}}
+
+    {{- if eq $.Phase "allLocalPhase" -}}
+        # With "allLocalPhase" all incoming requests are processed locally.
+        server openfaas-local {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}}
+    {{- else -}}
+        # With "rlAgentPhase" incoming requests are load balanced locally and with
+        # remote DFaaS nodes. Direct rejections happens in the frontend.
+        {{- range $action, $weight := (index $.Weights $funcName) -}}
+            {{- if eq $action "local" -}}
+                server openfaas-local {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} weight {{$weight}}
+            {{- else if eq $action "reject" -}}
+                {{- /* Skip reject action (done in frontend). */ -}}
+            {{- else -}}
+                {{- /* Action here is the forwarding node with format "node_ID". */ -}}
+                {{ $neighborHost := (index (index $.Neighbors $action) "host") }}
+                {{ $neighborPort := (index (index $.Neighbors $action) "port") }}
+                server {{$action}} {{$neighborHost}}:{{$neighborPort}} weight {{$weight}}
+            {{- end -}}
+        {{- end -}}
+    {{- end -}}
+
     {{- if $timeout}}
     timeout connect {{$timeout}}ms
     timeout server {{$timeout}}ms

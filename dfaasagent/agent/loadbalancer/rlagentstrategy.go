@@ -15,6 +15,9 @@ import (
 	"time"
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
+	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/peer"
+	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
@@ -198,327 +201,8 @@ func (strategy *RLAgentStrategy) RunStrategy() error {
 
 // OnReceived is executed every time a message from a peer is received.
 func (strategy *RLAgentStrategy) OnReceived(msg *pubsub.Message) error {
-	// Check the type before deserializing to the right object.
-	/*
-		var msgForType struct{ MsgType string }
-		if err := json.Unmarshal(msg.GetData(), &msgForType); err != nil {
-			return fmt.Errorf("deserializing PubSub msg: %w", err)
-		}
-
-		if msgForType.MsgType != StrMsgNodeInfoTypeStatic {
-			logging.Logger().Warnf("Received a PubSub message of type %q, expected %q",
-				msgForType.MsgType,
-				StrMsgNodeInfoTypeStatic)
-			return nil
-		}
-
-		var objMsg MsgNodeInfoStatic
-		if err := json.Unmarshal(msg.GetData(), &objMsg); err != nil {
-			return fmt.Errorf("deserializing PubSub msg: %w", err)
-		}
-
-		return strategy.processMsgNodeInfoStatic(msg.GetFrom().String(), &objMsg)
-	*/
 	return nil
 }
-
-/*
-func (strategy *RLAgentStrategy) calculateWeights() (map[string]map[string]uint, error) {
-    weights := make(map[string]map[string]uint)
-
-    // For each function (for now single function):
-    //  1. Get data from previous obs:
-    //      - Previous input rate
-    //      -
-    //  2. Get new local data:
-    //      - Input rate
-    //      - Reject Rate
-    //      - AvgRespTimeLoc
-    //      - CPUUtilization
-    //      - NReplicas
-    //  3. Get neighbor data:
-    //      - Previous rejected fwd to neighbors (rate)
-    //      - Previous fwd to neighbors (rate)
-    //      -
-    //  3. Build observation
-    //  4. Call RL Agent to get action
-    //  5. Parse action and convert to weights.
-
-    weights := map[string]map[string]uint{
-		"funcA": {"node1": 40, "node2": 40, "reject": 20},
-		"funcB": {"node1": 50, "node2": 50},
-		"funcC": {"node1": 60, "node2": 30, "reject": 5}, // invalid
-	}
-
-    if !weightsArePercentual(weights) {
-        return nil, fmt.Errorf("weights sum is not 100: %v", weights)
-    }
-}
-
-// weightsArePercentual returns true if the given weights for each function are
-// percentuals (the sums equals 100), otherwise returns false.
-func weightsArePercentual(weights map[string]map[string]uint) bool {
-	for _, nodeWeights := range weights {
-		var total uint = 0
-
-		for _, w := range nodeWeights {
-			total += w
-		}
-
-		if total != 100 {
-            return false
-		}
-	}
-	return true
-}
-
-func prettyPrintWeights(weights map[string]map[string]uint) {
-	// Sort function names.
-	funcNames := make([]string, 0, len(weights))
-	for f := range weights {
-		funcNames = append(funcNames, f)
-	}
-	sort.Strings(funcNames)
-
-	for _, f := range funcNames {
-		fmt.Printf("Function: %s\n", f)
-
-		nodes := weights[f]
-
-		// Separate "reject" from other nodes
-		var rejectWeight uint
-		keys := make([]string, 0, len(nodes))
-		for k := range nodes {
-			if k == "reject" {
-				rejectWeight = nodes[k]
-			} else {
-				keys = append(keys, k)
-			}
-		}
-
-		sort.Strings(keys) // sort other nodes
-
-		// Print normal nodes
-		for _, k := range keys {
-			fmt.Printf("  %s -> %d\n", k, nodes[k])
-		}
-
-		// Print reject last if present
-		if _, ok := nodes["reject"]; ok {
-			fmt.Printf("  reject -> %d\n", rejectWeight)
-		}
-	}
-}
-
-func (strategy *RLAgentStrategy) calculateWeightsOld() (map[string]map[string]uint, error) {
-	myNodeID := _p2pHost.ID().String()
-	weights := make(map[string]map[string]uint)
-
-	// Get current common neighbours.
-	var neighbourIDs []string
-	strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryNMS) error {
-		for neighID, entry := range entries {
-			if entry.CommonNeighbour {
-				neighbourIDs = append(neighbourIDs, neighID)
-			}
-		}
-		return nil
-	})
-
-	numNeighbours := len(neighbourIDs)
-	localWeight := float64(constants.HAProxyMaxWeight) * 0.6
-	neighbourWeight := float64(constants.HAProxyMaxWeight) * 0.4
-
-	// Set the weights for each deployed functions.
-	for _, funcName := range strategy.nodeInfo.funcs {
-		weights[funcName] = make(map[string]uint)
-		weights[funcName][myNodeID] = uint(math.Round(localWeight))
-
-		if numNeighbours > 0 {
-			// Divide the 40% equally among neighbours.
-			perNeigh := neighbourWeight / float64(numNeighbours)
-			for _, neighID := range neighbourIDs {
-				weights[funcName][neighID] = uint(math.Round(perNeigh))
-			}
-		} else {
-			// No neighbours, everything local.
-			weights[funcName][myNodeID] = constants.HAProxyMaxWeight
-		}
-	}
-
-	debugWeightsNMS(weights)
-
-	return weights, nil
-}
-
-// Send to other nodes our information.
-func (strategy *RLAgentStrategy) publishNodeInfo() error {
-	var err error
-
-	// Obtain our function names list.
-	strategy.nodeInfo.funcs, err = strategy.offuncsClient.GetFuncsNames()
-	if err != nil {
-		return fmt.Errorf("getting functions info from OpenFaaS: %w", err)
-	}
-
-	msg := MsgNodeInfoStatic{
-		MsgType:     StrMsgNodeInfoTypeStatic,
-		HAProxyHost: _config.NodeIP,
-		HAProxyPort: constants.HAProxyPort,
-		Functions:   strategy.nodeInfo.funcs,
-	}
-	debugMsgNodeInfoStatic(msg)
-
-	err = communication.MarshAndPublish(msg)
-	if err != nil {
-		return fmt.Errorf("publishing node info to other DFaaS nodes: %w", err)
-	}
-
-	return nil
-
-	// Obtain our function names list
-	strategy.nodeInfo.funcs, err = strategy.offuncsClient.GetFuncsNames()
-	if err != nil {
-		return err
-	}
-
-	return nil
-}
-
-// Check which neighbour has at least a function in common and update the
-// relative information in nodestbl.
-func (strategy *RLAgentStrategy) updateCommonNeighbours() {
-	commonNeighbours := 0
-	var targetNodes = make(map[string][]string)
-	var common bool
-
-	strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryNMS) error {
-		for neighbourID, neighInfo := range entries {
-			common = false
-			var commonFuncs []string
-			for i := 0; i < len(strategy.nodeInfo.funcs); i++ {
-				for j := 0; j < len(neighInfo.Funcs); j++ {
-					if strategy.nodeInfo.funcs[i] == neighInfo.Funcs[j] {
-						commonFuncs = append(commonFuncs, strategy.nodeInfo.funcs[i])
-						common = true
-						break
-					}
-				}
-			}
-			if common {
-				commonNeighbours += 1
-				neighbour, _ := entries[neighbourID]
-				neighbour.CommonNeighbour = true
-				entries[neighbourID] = neighbour
-				targetNodes[neighbourID] = commonFuncs
-			}
-		}
-
-		// Update targetNodes
-		strategy.targetNodes = targetNodes
-		// Update commonNeighboursNum
-		strategy.nodeInfo.commonNeighboursNum = commonNeighbours
-
-		return nil
-	})
-}
-
-// Update HAProxy configuration with new weights.
-func (strategy *RLAgentStrategy) setProxyWeights() error {
-	myID := _p2pHost.ID().String()
-
-	var hacfg *HACfgStatic
-	strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryNMS) error {
-		hacfg = strategy.createHACfgObject(
-			myID,
-			_config.OpenFaaSHost,
-			_config.OpenFaaSPort,
-			entries,
-			strategy.weights,
-		)
-		return nil
-	})
-
-	hacfg.Now = time.Now()
-	if err := strategy.hacfgupdater.UpdateHAConfig(hacfg); err != nil {
-		return err
-	}
-	return nil
-}
-
-// Method which creates and returns the HACfgStatic object, used from method
-// updateHAProxyConfig to update the HAProxy configuration.
-func (strategy *RLAgentStrategy) createHACfgObject(
-	myNodeID string,
-	openFaaSHost string,
-	openFaaSPort uint,
-	entries map[string]*nodestbl.EntryNMS,
-	funcsWeights map[string]map[string]uint,
-) *HACfgStatic {
-	hacfg := &HACfgStatic{
-		HACfg: HACfg{
-			MyNodeID:     myNodeID,
-			NodeIP:       _config.NodeIP,
-			HAProxyHost:  _config.HAProxyHost,
-			OpenFaaSHost: openFaaSHost,
-			OpenFaaSPort: openFaaSPort,
-		},
-
-		Nodes:     map[string]*HACfgNodeStatic{},
-		Functions: map[string]*HACfgFuncStatic{},
-	}
-
-	// For each node write Host and port.
-	for nodeID, entry := range entries {
-		hacfg.Nodes[nodeID] = &HACfgNodeStatic{
-			HAProxyHost: entry.HAProxyHost,
-			HAProxyPort: entry.HAProxyPort,
-		}
-	}
-
-	// For each function write weights for load-balancing.
-	for funcName, weights := range funcsWeights {
-		hacfg.Functions[funcName] = &HACfgFuncStatic{
-			Weights: weights,
-		}
-	}
-
-	return hacfg
-}
-
-// processMsgNodeInfoStatic processes a node info message received from pubsub.
-func (strategy *RLAgentStrategy) processMsgNodeInfoStatic(sender string, msg *MsgNodeInfoStatic) error {
-	logger := logging.Logger()
-
-	if sender == _p2pHost.ID().String() {
-		return nil // Ignore ourselves.
-	}
-
-	if logging.GetDebugMode() {
-		logger.Debugf("Received msg from node: %s (%s:%d) (functions: %v)",
-			sender, msg.HAProxyHost, msg.HAProxyPort, msg.Functions)
-	}
-
-	strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryNMS) error {
-		_, present := entries[sender]
-		if !present {
-			entries[sender] = &nodestbl.EntryNMS{
-				CommonNeighbour: false,
-				Load:            nodestbl.Load{},
-			}
-			logger.Debugf("Node %s was not present and has been added to the table", sender)
-		}
-		entries[sender].TAlive = time.Now()
-		entries[sender].HAProxyHost = msg.HAProxyHost
-		entries[sender].HAProxyPort = msg.HAProxyPort
-		entries[sender].Funcs = msg.Functions
-
-		return nil
-	})
-
-	return nil
-}
-*/
 
 // setup() runs the initial setup of the strategy, mainly configuring HAProxy to
 // process all incoming requests locally.
@@ -568,8 +252,9 @@ func (strategy *RLAgentStrategy) rlAgentPhase() error {
 		return fmt.Errorf("querying RL model for RL phase: %w", err)
 	}
 
-	fmt.Printf("action: %v\n", action)
-	// Apply action
+	if err := strategy.applyAction(action); err != nil {
+		return fmt.Errorf("applying RL action for RL phase: %w", err)
+	}
 
 	return nil
 }
@@ -589,7 +274,7 @@ func (strategy *RLAgentStrategy) setAllLocal() error {
 	}
 
 	debugFuncs(funcs)
-	if err = strategy.updateProxyConfiguration(funcs); err != nil {
+	if err = strategy.updateProxyConfiguration(funcs, nil, allLocalPhase); err != nil {
 		return fmt.Errorf("updating proxy config: %w", err)
 	}
 	return nil
@@ -597,21 +282,44 @@ func (strategy *RLAgentStrategy) setAllLocal() error {
 
 // updateProxyConfiguration updates the HAProxy configuration with the provided
 // list of deployed functions. HAProxy will always be reloaded after the update.
-func (strategy *RLAgentStrategy) updateProxyConfiguration(funcs map[string]*uint) error {
+//
+// weights can be nil if phase is allLocalPhase.
+func (strategy *RLAgentStrategy) updateProxyConfiguration(funcs map[string]*uint, weights map[string]map[string]uint, phase strategyPhase) error {
+	neighbors := make(map[string]map[string]string)
+	for _, peer := range _p2pHost.Network().Peers() {
+		host, err := extractSingleIPv4(_p2pHost, peer)
+		if err != nil {
+			return fmt.Errorf("failed to build neighbors information: %w", err)
+		}
+
+		// "node_ID" is required format.
+		peerID := fmt.Sprintf("node_%s", peer)
+		neighbors[peerID] = make(map[string]string)
+		neighbors[peerID]["host"] = host
+		// FIXME: The remote port may change!
+		neighbors[peerID]["port"] = fmt.Sprintf("%d", _config.HAProxyPort)
+	}
+
 	// Define and populate this anonymous struct to pass data to the Go
 	// template.
 	data := struct {
 		Now          string
 		DFaaSNodeID  string
 		Functions    map[string]*uint
+		Weights      map[string]map[string]uint
+		Neighbors    map[string]map[string]string
 		OpenFaaSHost string
 		OpenFaaSPort uint
+		Phase        string
 	}{
 		Now:          time.Now().Format("2006-01-02 15:04:05"),
 		DFaaSNodeID:  _p2pHost.ID().String(),
 		Functions:    funcs,
+		Weights:      weights,
+		Neighbors:    neighbors,
 		OpenFaaSHost: _config.OpenFaaSHost,
 		OpenFaaSPort: _config.OpenFaaSPort,
+		Phase:        phase.String(),
 	}
 
 	return strategy.hacfgupdater.UpdateHAConfig(data)
@@ -877,6 +585,13 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 
 // queryRLModel queries the RL model with the given observation already
 // marshalled into a JSON and returns the action result.
+//
+// The returned map contains the node ID as first-level key, in the form
+// "node_ID" (typically only one entry). The second-level keys represent
+// actions: "local" is the proportion of requests to enqueue locally, "reject"
+// is the proportion of requests to reject, and zero or more "node_X" with the
+// proportion of requests to forward to the node with ID X. The sum of all
+// proportions is equal to 1.
 func (strategy *RLAgentStrategy) queryRLModel(observation []byte) (map[string]map[string]float64, error) {
 	url := fmt.Sprintf("http://%s:%d/action", strategy.rlModelHost, strategy.rlModelPort)
 
@@ -905,6 +620,75 @@ func (strategy *RLAgentStrategy) queryRLModel(observation []byte) (map[string]ma
 	return action, nil
 }
 
+func (strategy *RLAgentStrategy) applyAction(action map[string]map[string]float64) error {
+	// The initial part is similar to allLocalPhase.
+	funcs, err := strategy.offuncsClient.GetFuncsWithTimeout()
+	if err != nil {
+		return fmt.Errorf("get function metadata: %w", err)
+	}
+
+	// Add 1 seconds to base timeout (if given) to all functions.
+	for _, timeout := range funcs {
+		if timeout != nil {
+			*timeout += 1000
+		}
+	}
+	debugFuncs(funcs)
+
+	if len(action) != 1 {
+		return fmt.Errorf("found %d node IDs in RL action, expected 1", len(action))
+	}
+
+	localNode := fmt.Sprintf("node_%s", _p2pHost.ID())
+	if _, exist := action[localNode]; !exist {
+		return fmt.Errorf("local node ID not found in RL action. Node ID: %s", localNode)
+	}
+
+	localProportion, exist := action[localNode]["local"]
+	if !exist {
+		return fmt.Errorf("local proportion not found in RL action: %v", action)
+	}
+	rejectProportion, exist := action[localNode]["reject"]
+	if !exist {
+		return fmt.Errorf("reject proportion not found in RL action: %v", action)
+	}
+
+	weights := make(map[string]map[string]uint)
+	// FIXME: Support more than functions!
+	weights["figlet"] = make(map[string]uint)
+
+	weights["figlet"]["reject"] = uint(rejectProportion * 100)
+
+	// We need to rescale local and forward proportions because in HAProxy
+	// config the reject is handled separately and the local+forward is handled
+	// as HAProxy weights.
+	usable := 1.0 - rejectProportion
+	if usable <= 0 {
+		// Should not happen.
+		return fmt.Errorf("invalid proportions: reject=%f leaves no usable capacity", rejectProportion)
+	}
+
+	rescaledLocal := localProportion / usable
+	weights["figlet"]["local"] = uint(rescaledLocal * 100)
+
+	for _, peer := range _p2pHost.Network().Peers() {
+		forwardTo := fmt.Sprintf("node_%s", peer)
+
+		forwardProportion, exist := action[localNode][forwardTo]
+		if !exist {
+			return fmt.Errorf("peer node not found in RL action for forward: %s", forwardTo)
+		}
+
+		rescaledForward := forwardProportion / usable
+		weights["figlet"][forwardTo] = uint(rescaledForward * 100)
+	}
+
+	if err = strategy.updateProxyConfiguration(funcs, weights, rlAgentPhase); err != nil {
+		return fmt.Errorf("updating proxy config: %w", err)
+	}
+	return nil
+}
+
 // FIXME: Remove this! Use because currently we support observations for the RL
 // model with only a single function.
 func extractSingleFunctionValue[T any](funcs map[string]T) (T, error) {
@@ -917,4 +701,20 @@ func extractSingleFunctionValue[T any](funcs map[string]T) (T, error) {
 		return zero, fmt.Errorf("missing function %q in %v", name, funcs)
 	}
 	return value, nil
+}
+
+func extractSingleIPv4(h host.Host, p peer.ID) (string, error) {
+	conns := h.Network().ConnsToPeer(p)
+
+	for _, conn := range conns {
+		// Get the IPv4 of the active connection, not the cached one in
+		// Peerstore!
+		remoteAddr := conn.RemoteMultiaddr()
+
+		if ip, err := remoteAddr.ValueForProtocol(ma.P_IP4); err == nil {
+			return ip, nil
+		}
+	}
+
+	return "", fmt.Errorf("no IPv4 address found on active connections for peer: %s", p)
 }
