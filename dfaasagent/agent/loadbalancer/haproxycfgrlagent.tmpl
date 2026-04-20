@@ -55,7 +55,9 @@ frontend main
     # Store latest stage to gpt0 as integer for the stick counter sc0 (we know
     # it is mapped to the "global" key). Note we add +1 to distinguish the case
     # where the header has not been found (default value is 0).
-    http-request sc-set-gpt(0,0) req.hdr(DFaaS-K6-Stage),add(1) if has_stage_hdr
+    #
+    # Note: forwarded requests from other nodes are ignored!
+    http-request sc-set-gpt(0,0) req.hdr(DFaaS-K6-Stage),add(1) if has_stage_hdr !has_node_hdr
 
     # Track for the current transaction (request-response) the DFaaS-Node-ID
     # header (if exists), it will be added in the response for incoming
