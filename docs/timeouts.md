@@ -47,7 +47,7 @@ You can set these environment variables in two ways:
 1. When deploying the function with `faas-cli`, by specifying the `--env
    ENVVAR=VALUE` option (repeat for each variable).
 2. After deployment, by updating the Kubernetes deployment object associated
-   with the function, using `kubectl edit` or `kubectl patch`.
+   with the function, using `kubectl edit` or `kubectl set env`.
 
 > [!NOTE]
 > Both classic watchdog and of-watchdog expose some metrics to Prometheus, but
@@ -82,7 +82,11 @@ use the same approaches as described for OpenFaaS Functions.
 
 We use the OpenFaaS' defaults. But make sure to tune `upstream_timeout` to avoid
 overload in the gateway! As for single functions, you can tune this value via
-`kubectl patch` or `kubectl edit`.
+`kubectl patch` or `kubectl set env`. An example with `kubectl set env`:
+
+```console
+$ sudo kubectl set env deployment/gateway --containers gateway upstream_timeout=5s
+```
 
 The gateway exports metrics to Prometheus, with scraping enabled by default.
 
