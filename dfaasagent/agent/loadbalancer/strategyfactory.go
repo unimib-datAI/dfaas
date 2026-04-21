@@ -148,6 +148,7 @@ var haproxycfgAllLocalTemplate string
 func (strategyFactory *allLocalStrategyFactory) createStrategy() (Strategy, error) {
 	strategy := &AllLocalStrategy{}
 
+	// Set up the HAProxy config update mechanism (via HAProxy Data Plane API).
 	hacfgupdater, err := hacfgupd.New(_config.DataPlaneAPIHost,
 		_config.DataPlaneAPIPort,
 		_config.DataPlaneAPIUser,
@@ -158,6 +159,8 @@ func (strategyFactory *allLocalStrategyFactory) createStrategy() (Strategy, erro
 	}
 	strategy.hacfgupdater = hacfgupdater
 
+	// Set up the wrapper to OpenFaaS Gateway API used to get the list of
+	// deployed OpenFaaS functions.
 	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
 
 	return strategy, nil
@@ -173,6 +176,12 @@ var haproxycfgRLAgentTemplate string
 func (strategyFactory *rlAgentStrategyFactory) createStrategy() (Strategy, error) {
 	strategy := &RLAgentStrategy{}
 
+	// Set up RL model connection info. Used to query the RL model with the
+	// observation, the response will contain the action to apply.
+	strategy.rlModelHost = _config.RLModelHost
+	strategy.rlModelPort = _config.RLModelPort
+
+	// Set up the HAProxy config update mechanism (via HAProxy Data Plane API).
 	hacfgupdater, err := hacfgupd.New(_config.DataPlaneAPIHost,
 		_config.DataPlaneAPIPort,
 		_config.DataPlaneAPIUser,
@@ -183,16 +192,16 @@ func (strategyFactory *rlAgentStrategyFactory) createStrategy() (Strategy, error
 	}
 	strategy.hacfgupdater = hacfgupdater
 
+	// Set up the Prometheus client used to run PromQL queries.
 	promq, err := promq.New(_config.PrometheusHost, _config.PrometheusPort, _config.PrometheusStep)
 	if err != nil {
 		return nil, fmt.Errorf("initializing Prometheus client: %w", err)
 	}
 	strategy.promq = promq
 
+	// Set up the wrapper to OpenFaaS Gateway API used to get the list of
+	// deployed OpenFaaS functions.
 	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
-
-	strategy.targetNodes = make(map[string][]string)
-	strategy.weights = make(map[string]map[string]uint)
 
 	return strategy, nil
 }

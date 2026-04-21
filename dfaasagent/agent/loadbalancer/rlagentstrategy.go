@@ -40,19 +40,6 @@ type RLAgentStrategy struct {
 	rlModelHost string
 	rlModelPort uint
 
-	funcs               []string // Our OpenFaaS functions.
-	commonNeighboursNum int      // Number of neighbours with at least a function in common.
-
-	// Map of target nodes, with node ID of a common neighbour as key,
-	// and array of common functions as value
-	targetNodes map[string][]string
-
-	// For each function deployed at node we have a map containing for each node
-	// the corresponding weight. The node can be a remote one, local one or
-	// "reject", a special node for direct rejection. The weights must sums to
-	// 100 (they're percentuals).
-	weights map[string]map[string]uint
-
 	// The RL Agent strategy consists of two cycling phases.
 	// allLocalPhaseTimestamp and rlAgentPhaseTimestamp store the timestamps
 	// indicating when each phase starts. They may be zero if not yet set,

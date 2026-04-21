@@ -124,16 +124,12 @@ func (c *Client) CPUUsage(start, end time.Time, containers []string) (map[string
 	containerRegex := strings.Join(containers, "|")
 	query := fmt.Sprintf(`
 	avg by (container) (
-	  avg_over_time(
-		(
-		  irate(container_cpu_usage_seconds_total{
+		rate(container_cpu_usage_seconds_total{
 			namespace="default",
 			container=~"%s",
 			container!=""
-		  }[1m])
-		  / on(instance) group_left machine_cpu_cores
-		)[%s]
-	  )
+			}[%s])
+		/ on(instance) group_left machine_cpu_cores
 	)`, containerRegex, durationStr)
 
 	ctx := context.Background()
