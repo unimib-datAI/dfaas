@@ -17,6 +17,7 @@ import (
 
 	dht "github.com/libp2p/go-libp2p-kad-dht"
 	"github.com/libp2p/go-libp2p/core/host"
+	"github.com/libp2p/go-libp2p/core/network"
 	"github.com/libp2p/go-libp2p/core/peer"
 	discovery "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 	discoveryUtils "github.com/libp2p/go-libp2p/p2p/discovery/util"
@@ -49,7 +50,12 @@ func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig Bootstra
 	// client because we want each peer to maintain its own local copy of the
 	// DHT, so that the bootstrapping node of the DHT can go down without
 	// inhibiting future peer discovery.
-	kadDHT, err := dht.New(ctx, p2pHost)
+	//
+	// Configure the peer in server mode to ensure the P2P network remains fully
+	// decentralized. This setup enables bootstrapping a DFaaS agent using a
+	// single known node, after which additional peers are discovered
+	// automatically.
+	kadDHT, err := dht.New(ctx, p2pHost, dht.Mode(dht.ModeServer))
 	if err != nil {
 		return fmt.Errorf("Error while starting the DHT for Kademlia peer discovery: %w", err)
 	}
@@ -128,7 +134,7 @@ func RunDiscovery() error {
 	for {
 		logger.Debug("Current connected peers: ")
 		for _, conn := range _p2pHost.Network().Conns() {
-			logger.Debug(fmt.Sprintf("  - Peer: %s, Addr: %s\n", conn.RemotePeer(), conn.RemoteMultiaddr()))
+			logger.Debugf("  - Peer: %s, Addr: %s\n", conn.RemotePeer(), conn.RemoteMultiaddr())
 		}
 
 		logger.Debug("Searching for other peers...")
@@ -143,16 +149,17 @@ func RunDiscovery() error {
 				continue
 			}
 
-			logger.Debugf("Connecting to a new peer: ",
-				zap.Any("addrs", peerInfo.Addrs),
-				zap.String("id", peerInfo.ID.String()))
+			// Skip peer if already connected.
+			if _p2pHost.Network().Connectedness(peerInfo.ID) == network.Connected {
+				continue
+			}
+
+			logger.Debugf("Found a new peer with ID %s", peerInfo.ID)
 			if err := _p2pHost.Connect(_ctx, peerInfo); err != nil {
 				logger.Error("Connection to peer (skipping): ", zap.Error(err))
 				continue
 			}
-			logger.Debug("Connected to a new peer",
-				zap.Any("addrs", peerInfo.Addrs),
-				zap.String("id", peerInfo.ID.String()))
+			logger.Debugf("Connected to a new peer with ID %s from %v", peerInfo.ID, peerInfo.Addrs)
 		}
 
 		// Now wait a bit and relax...
