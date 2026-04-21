@@ -517,7 +517,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	// FIXME: Only one function is supported!
 	cpuUsage, err := strategy.promq.CPUUsage(strategy.allLocalPhaseTimestamp,
 		now,
-		[]string{"figlet"})
+		[]string{"mlimage"})
 	if err != nil {
 		return nil, fmt.Errorf("building observation for 'cpu_utilization' key: %w", err)
 	}
@@ -534,7 +534,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 		// FIXME: Only one function is supported!
 		prevCPUUsage, err := strategy.promq.CPUUsage(strategy.rlAgentPhaseTimestamp,
 			strategy.allLocalPhaseTimestamp,
-			[]string{"figlet"})
+			[]string{"mlimage"})
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_cpu_utilization' key: %w", err)
 		}
@@ -655,9 +655,9 @@ func (strategy *RLAgentStrategy) applyAction(action map[string]map[string]float6
 
 	weights := make(map[string]map[string]uint)
 	// FIXME: Support more than functions!
-	weights["figlet"] = make(map[string]uint)
+	weights["mlimage"] = make(map[string]uint)
 
-	weights["figlet"]["reject"] = uint(rejectProportion * 100)
+	weights["mlimage"]["reject"] = uint(rejectProportion * 100)
 
 	// We need to rescale local and forward proportions because in HAProxy
 	// config the reject is handled separately and the local+forward is handled
@@ -669,7 +669,7 @@ func (strategy *RLAgentStrategy) applyAction(action map[string]map[string]float6
 	}
 
 	rescaledLocal := localProportion / usable
-	weights["figlet"]["local"] = uint(rescaledLocal * 100)
+	weights["mlimage"]["local"] = uint(rescaledLocal * 100)
 
 	for _, peer := range _p2pHost.Network().Peers() {
 		forwardTo := fmt.Sprintf("node_%s", peer)
@@ -680,7 +680,7 @@ func (strategy *RLAgentStrategy) applyAction(action map[string]map[string]float6
 		}
 
 		rescaledForward := forwardProportion / usable
-		weights["figlet"][forwardTo] = uint(rescaledForward * 100)
+		weights["mlimage"][forwardTo] = uint(rescaledForward * 100)
 	}
 
 	if err = strategy.updateProxyConfiguration(funcs, weights, rlAgentPhase); err != nil {
@@ -693,7 +693,7 @@ func (strategy *RLAgentStrategy) applyAction(action map[string]map[string]float6
 // model with only a single function.
 func extractSingleFunctionValue[T any](funcs map[string]T) (T, error) {
 	// FIXME: Make configurable!
-	name := "figlet"
+	name := "mlimage"
 
 	value, exists := funcs[name]
 	if !exists {
