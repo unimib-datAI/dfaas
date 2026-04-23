@@ -71,6 +71,7 @@ func (c *Client) Replicas(start, end time.Time) (map[string]uint, error) {
 	durationStr := (time.Duration(math.Round(duration.Seconds())) * time.Second).String()
 
 	query := fmt.Sprintf(`avg by (function_name) (avg_over_time(gateway_service_count[%s]))`, durationStr)
+	c.logQuery(query, end)
 
 	// Run query.
 	ctx := context.Background()
@@ -131,6 +132,7 @@ func (c *Client) CPUUsage(start, end time.Time, containers []string) (map[string
 			}[%s])
 		/ on(instance) group_left machine_cpu_cores
 	)`, containerRegex, durationStr)
+	c.logQuery(query, end)
 
 	ctx := context.Background()
 	result, warnings, err := c.promAPI.Query(ctx, query, end)
@@ -197,6 +199,7 @@ func (c *Client) InputRPS(start, end time.Time) (map[string]float32, error) {
 		proxy!~".*_forwarded"
 	  }[%s])
 	)`, durationStr)
+	c.logQuery(query, end)
 
 	ctx := context.Background()
 	result, warnings, err := c.promAPI.Query(ctx, query, end)
@@ -253,13 +256,15 @@ func (c *Client) AvgRespTimeLocal(start, end time.Time) (map[string]float32, err
 	// We do an "avg by" aggregation because the gateway may restart and produce
 	// duplicate time series for the same function. Aggregating ensures we
 	// return a single time series per function instead of multiple series
-	// fragmented across gateway restarts.
+	// fragmented across gateway restarts. Also we may have multiple series with
+	// different return code (e.g. 500, 200...).
 	query := fmt.Sprintf(`
 	avg by (function_name) (
 	  rate(gateway_functions_seconds_sum[%[1]s])
 	  /
 	  rate(gateway_functions_seconds_count[%[1]s])
 	)`, durationStr)
+	c.logQuery(query, end)
 
 	ctx := context.Background()
 	result, warnings, err := c.promAPI.Query(ctx, query, end)
@@ -351,6 +356,7 @@ func (c *Client) RejectRate(start, end time.Time) (map[string]float32, error) {
 		server="openfaas-local"
 	  }[%[1]s])
 	)`, durationStr)
+	c.logQuery(query, end)
 
 	ctx := context.Background()
 	result, warnings, err := c.promAPI.Query(ctx, query, end)
@@ -429,6 +435,7 @@ func (c *Client) ForwardRPS(start, end time.Time) (map[string]map[string]float32
 			proxy!~".*_forwarded",
 		  }[%s])
 		)`, durationStr)
+	c.logQuery(query, end)
 
 	ctx := context.Background()
 	result, warnings, err := c.promAPI.Query(ctx, query, end)
@@ -528,6 +535,7 @@ func (c *Client) ForwardRejectRPS(start, end time.Time) (map[string]map[string]f
 		code="2xx"
 	  }[%[1]s])
 	)`, durationStr)
+	c.logQuery(query, end)
 
 	ctx := context.Background()
 	result, warnings, err := c.promAPI.Query(ctx, query, end)
@@ -614,6 +622,7 @@ func (c *Client) AvgRespTimeForward(start, end time.Time) (map[string]map[string
 	    }[%s]
 	  )
 	)`, durationStr)
+	c.logQuery(query, end)
 
 	ctx := context.Background()
 	result, warnings, err := c.promAPI.Query(ctx, query, end)
@@ -659,4 +668,16 @@ func (c *Client) AvgRespTimeForward(start, end time.Time) (map[string]map[string
 	}
 
 	return resp, nil
+}
+
+// logQuery logs a Prometheus query in a single line along with the evaluation
+// time. Used for debugging.
+func (c *Client) logQuery(query string, end time.Time) {
+	// Normalize query to a single line for logging. First remove all
+	// whitespaces and the join the strings with a space as separator.
+	logQuery := strings.Join(strings.Fields(query), " ")
+
+	endTime := end.Format("2006-01-02 15:04:05")
+
+	c.logger.Debugf("Prometheus query at %s: %s", endTime, logQuery)
 }
