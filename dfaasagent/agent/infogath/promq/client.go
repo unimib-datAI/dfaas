@@ -677,7 +677,7 @@ func (c *Client) logQuery(query string, end time.Time) {
 	// whitespaces and the join the strings with a space as separator.
 	logQuery := strings.Join(strings.Fields(query), " ")
 
-	endTime := end.Format("2006-01-02 15:04:05")
+	endTime := end.Format("2006-01-02 15:04:05 MST")
 
 	c.logger.Debugf("Prometheus query at %s: %s", endTime, logQuery)
 }

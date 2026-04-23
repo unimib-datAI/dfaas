@@ -98,7 +98,7 @@ func (strategy *NodeMarginStrategy) RunStrategy() error {
 	var ramUsage = make(map[string]float64)
 
 	for {
-		start := time.Now()
+		start := time.Now().UTC()
 
 		cpuUsage, err = promq.QueryCPUusage(_config.RecalcPeriod)
 		if err != nil {
@@ -173,7 +173,7 @@ func (strategy *NodeMarginStrategy) RunStrategy() error {
 		httpserver.StrategySuccessIterations.Inc()
 		httpserver.StrategyIterationDuration.Set(duration.Seconds())
 
-		millisNow = time.Now().UnixNano() / 1000000
+		millisNow = time.Now().UTC().UnixNano() / 1000000
 		millisSleep = millisInterval - (millisNow % millisInterval)
 		time.Sleep(time.Duration(millisSleep) * time.Millisecond)
 	}
@@ -727,7 +727,7 @@ func (strategy *NodeMarginStrategy) processMsgNodeInfoNMS(sender string, msg *Ms
 			}
 			logger.Debugf("Node %s was not present and has been added to the table", sender)
 		}
-		entries[sender].TAlive = time.Now()
+		entries[sender].TAlive = time.Now().UTC()
 		entries[sender].HAProxyHost = msg.HAProxyHost
 		entries[sender].HAProxyPort = msg.HAProxyPort
 		entries[sender].NodeType = msg.NodeType
@@ -766,7 +766,7 @@ func (strategy *NodeMarginStrategy) processMsgNodeMarginInfoNMS(sender string, m
 			// Check if exists the neighbour with "sender" ID with its info in entries before adding new info to avoid errors
 			_, exists := entries[sender]
 			if exists {
-				entries[sender].TAlive = time.Now()
+				entries[sender].TAlive = time.Now().UTC()
 				entries[sender].Margin = msg.Margin
 				entries[sender].Load.RateHighUsage = msg.Load.RateHighUsage
 				entries[sender].Load.RateMediumUsage = msg.Load.RateLowUsage
@@ -784,7 +784,7 @@ func (strategy *NodeMarginStrategy) processMsgNodeMarginInfoNMS(sender string, m
 // updateHAProxyConfig updates the HAProxy config file with the provided object.
 // Note: Go templates sort maps by key (see https://stackoverflow.com/questions/33860961/sorted-map-iteration-in-go-templates#comment76560806_33862260)
 func (strategy *NodeMarginStrategy) updateHAProxyConfig(hacfg *HACfgNMS) error {
-	hacfg.Now = time.Now()
+	hacfg.Now = time.Now().UTC()
 
 	// hacfg is a struct of type HACfgNMS, that is use as content
 	// for writing template file.

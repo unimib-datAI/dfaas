@@ -42,7 +42,7 @@ func (strategy *AllLocalStrategy) RunStrategy() error {
 	// This strategy is straightforward: we only need to update the HAProxy
 	// configuration when the list of functions changes, and nothing more.
 	for {
-		start := time.Now()
+		start := time.Now().UTC()
 
 		funcs, err := strategy.offuncsClient.GetFuncsWithTimeout()
 		if err != nil {
@@ -76,7 +76,7 @@ func (strategy *AllLocalStrategy) RunStrategy() error {
 		// Suspend the goroutine until the start of the next cycle/period.
 		// Aligns the next iteration with the fixed periodic "ticks" of
 		// millisInterval.
-		millisNow = time.Now().UnixNano() / 1000000
+		millisNow = time.Now().UTC().UnixNano() / 1000000
 		millisSleep = millisInterval - (millisNow % millisInterval)
 		time.Sleep(time.Duration(millisSleep) * time.Millisecond)
 	}
@@ -94,7 +94,7 @@ func (strategy *AllLocalStrategy) updateProxyConfiguration(funcs map[string]*uin
 		OpenFaaSHost string
 		OpenFaaSPort uint
 	}{
-		Now:          time.Now().Format("2006-01-02 15:04:05"),
+		Now:          time.Now().UTC().Format("2006-01-02 15:04:05 MST"),
 		DFaaSNodeID:  _p2pHost.ID().String(),
 		Functions:    funcs,
 		OpenFaaSHost: _config.OpenFaaSHost,

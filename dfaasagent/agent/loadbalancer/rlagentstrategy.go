@@ -100,7 +100,7 @@ func (strategy *RLAgentStrategy) RunStrategy() error {
 	defer ticker.Stop()
 
 	for range ticker.C {
-		start := time.Now()
+		start := time.Now().UTC()
 
 		// Get the "General Purpose Table 0" (gpt0) field for the key "global"
 		// in the stick-table "main" (a frontend) from HAProxy. This field
@@ -220,7 +220,7 @@ func (strategy *RLAgentStrategy) allLocalPhase() error {
 		return fmt.Errorf("failed to configure proxy: %w", err)
 	}
 
-	strategy.allLocalPhaseTimestamp = time.Now()
+	strategy.allLocalPhaseTimestamp = time.Now().UTC()
 
 	return nil
 }
@@ -299,7 +299,7 @@ func (strategy *RLAgentStrategy) updateProxyConfiguration(funcs map[string]*uint
 		OpenFaaSPort uint
 		Phase        string
 	}{
-		Now:          time.Now().Format("2006-01-02 15:04:05"),
+		Now:          time.Now().UTC().Format("2006-01-02 15:04:05 MST"),
 		DFaaSNodeID:  _p2pHost.ID().String(),
 		Functions:    funcs,
 		Weights:      weights,
@@ -316,7 +316,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	if strategy.allLocalPhaseTimestamp.IsZero() {
 		return nil, errors.New("allLocalPhaseTimestamp is not set, but is required for rlAgentPhase")
 	}
-	now := time.Now()
+	now := time.Now().UTC()
 	if now.Before(strategy.allLocalPhaseTimestamp) {
 		return nil, errors.New("allLocalPhaseTimestamp cannot be greater than time.Now()!")
 	}

@@ -76,7 +76,7 @@ func (tbl *TableNMS) initTable() {
 // isExpired returns true if the EntryNMS is expired, according to
 // tbl.EntryValidity and entry.TAlive
 func (tbl *TableNMS) isExpired(entry *EntryNMS) bool {
-	return entry.TAlive.Add(tbl.EntryValidity).Before(time.Now())
+	return entry.TAlive.Add(tbl.EntryValidity).Before(time.Now().UTC())
 }
 
 //////////////////// PUBLIC METHODS ////////////////////

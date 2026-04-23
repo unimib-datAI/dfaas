@@ -66,7 +66,7 @@ func (tbl *TableRecalc) initTable() {
 // isExpired returns true if the EntryRecalc is expired, according to
 // tbl.EntryValidity and entry.TAlive
 func (tbl *TableRecalc) isExpired(entry *EntryRecalc) bool {
-	return entry.TAlive.Add(tbl.EntryValidity).Before(time.Now())
+	return entry.TAlive.Add(tbl.EntryValidity).Before(time.Now().UTC())
 }
 
 //////////////////// PUBLIC METHODS ////////////////////

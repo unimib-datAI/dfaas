@@ -80,7 +80,7 @@ func (strategy *RecalcStrategy) RunStrategy() error {
 	// data and updates the local state, and the second calculates the new
 	// weights and updates the HAProxy configuration.
 	for {
-		startStep1 := time.Now()
+		startStep1 := time.Now().UTC()
 		if err := strategy.recalcStep1(); err != nil {
 			logger.Error("Failed Recalc step 1, skipping RunStrategy iteration ", err)
 			logger.Warnf("Waiting %v before retrying RunStrategy", failedInterval.Seconds())
@@ -89,11 +89,11 @@ func (strategy *RecalcStrategy) RunStrategy() error {
 		}
 		durationStep1 := time.Since(startStep1)
 
-		millisNow = time.Now().UnixNano() / 1000000
+		millisNow = time.Now().UTC().UnixNano() / 1000000
 		millisSleep = millisInterval - ((millisNow + millisIntervalHalf) % millisInterval)
 		time.Sleep(time.Duration(millisSleep) * time.Millisecond)
 
-		startStep2 := time.Now()
+		startStep2 := time.Now().UTC()
 		if err := strategy.recalcStep2(); err != nil {
 			logger.Error("Failed Recalc step 2, skipping RunStrategy iteration ", err)
 			logger.Warnf("Waiting %v before retrying RunStrategy", failedInterval.Seconds())
@@ -107,7 +107,7 @@ func (strategy *RecalcStrategy) RunStrategy() error {
 		httpserver.StrategySuccessIterations.Inc()
 		httpserver.StrategyIterationDuration.Set(totalDuration.Seconds())
 
-		millisNow = time.Now().UnixNano() / 1000000
+		millisNow = time.Now().UTC().UnixNano() / 1000000
 		millisSleep = millisInterval - (millisNow % millisInterval)
 		time.Sleep(time.Duration(millisSleep) * time.Millisecond)
 	}
@@ -467,7 +467,7 @@ func (strategy *RecalcStrategy) processMsgNodeInfoRecalc(sender string, msg *Msg
 			debugBuffer.WriteString(fmt.Sprintf("Node %s was not present and has been added to the table\n", sender))
 		}
 
-		entries[sender].TAlive = time.Now()
+		entries[sender].TAlive = time.Now().UTC()
 
 		entries[sender].HAProxyHost = msg.HAProxyHost
 		entries[sender].HAProxyPort = msg.HAProxyPort
@@ -515,7 +515,7 @@ func (strategy *RecalcStrategy) processMsgNodeInfoRecalc(sender string, msg *Msg
 // updateHAProxyConfig updates the HAProxy config file with the provided object.
 // Note: Go templates sort maps by key (see https://stackoverflow.com/questions/33860961/sorted-map-iteration-in-go-templates#comment76560806_33862260)
 func (strategy *RecalcStrategy) updateHAProxyConfig(hacfg *HACfgRecalc) error {
-	hacfg.Now = time.Now()
+	hacfg.Now = time.Now().UTC()
 
 	// hacfg is a struct of type HACfgRecalc, that is use as content
 	// for writing template file.

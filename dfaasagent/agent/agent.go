@@ -111,13 +111,6 @@ func runAgent(config config.Configuration) error {
 	// Obtain the global logger object
 	logger := logging.Logger()
 
-	////////// TIMEZONE CHECK //////////
-
-	// We must ensure UTC timezone since k8s workloads use this timezone.
-	if time.Local != time.UTC {
-		return fmt.Errorf("Default timezone is %s, expected UTC", time.Local.String())
-	}
-
 	// Create a new context for libp2p and all the other stuff related to
 	// dfaasagent
 	ctx, cancelCtx := context.WithCancel(context.Background())
@@ -303,7 +296,7 @@ func runAgent(config config.Configuration) error {
 
 func Main() {
 	// Initializes Go random number generator.
-	rand.Seed(int64(time.Now().Nanosecond()))
+	rand.Seed(int64(time.Now().UTC().Nanosecond()))
 
 	// Load configuration.
 	_config, err := config.LoadConfig()
