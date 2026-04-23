@@ -583,7 +583,7 @@ func (strategy *RLAgentStrategy) queryRLModel(observation []byte) (map[string]ma
 	url := fmt.Sprintf("http://%s:%d/action", strategy.rlModelHost, strategy.rlModelPort)
 
 	logger := logging.Logger()
-	logger.Debugf("Observation JSON to send to RL model: %q", string(observation))
+	logger.Debugf("Observation JSON to send to RL model: %s", string(observation))
 
 	resp, err := strategy.httpClient.Post(url, "application/json", bytes.NewReader(observation))
 	if err != nil {
@@ -600,6 +600,8 @@ func (strategy *RLAgentStrategy) queryRLModel(observation []byte) (map[string]ma
 	if err != nil {
 		return nil, fmt.Errorf("reading HTTP response: %w", err)
 	}
+
+	logger.Debugf("Action JSON from response: %s", string(body))
 
 	var action map[string]map[string]float64
 	err = json.Unmarshal(body, &action)
