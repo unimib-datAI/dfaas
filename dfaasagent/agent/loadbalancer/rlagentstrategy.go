@@ -582,6 +582,9 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 func (strategy *RLAgentStrategy) queryRLModel(observation []byte) (map[string]map[string]float64, error) {
 	url := fmt.Sprintf("http://%s:%d/action", strategy.rlModelHost, strategy.rlModelPort)
 
+	logger := logging.Logger()
+	logger.Debugf("Observation JSON to send to RL model: %q", string(observation))
+
 	resp, err := strategy.httpClient.Post(url, "application/json", bytes.NewReader(observation))
 	if err != nil {
 		return nil, fmt.Errorf("querying RL model: %w", err)
@@ -590,18 +593,18 @@ func (strategy *RLAgentStrategy) queryRLModel(observation []byte) (map[string]ma
 
 	if resp.StatusCode != http.StatusOK {
 		body, _ := io.ReadAll(resp.Body)
-		return nil, fmt.Errorf("rl model returned %d: %s", resp.StatusCode, string(body))
+		return nil, fmt.Errorf("HTTP POST request returned %d with body %q", resp.StatusCode, string(body))
 	}
 
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
-		return nil, fmt.Errorf("reading RL model response: %w", err)
+		return nil, fmt.Errorf("reading HTTP response: %w", err)
 	}
 
 	var action map[string]map[string]float64
 	err = json.Unmarshal(body, &action)
 	if err != nil {
-		return nil, fmt.Errorf("unmarshalling JSON RL model response: %w", err)
+		return nil, fmt.Errorf("unmarshalling HTTP response to JSON: %w", err)
 	}
 
 	return action, nil
