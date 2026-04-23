@@ -52,6 +52,9 @@ frontend main
     # ACL to check if DFaaS-K6-Stage header exists and it is numeric.
     acl has_stage_hdr req.hdr(DFaaS-K6-Stage) -m reg ^[0-9]+$
 
+    # ACLs to detect incoming forwarded requests.
+    acl has_node_hdr req.hdr(DFaaS-Node-ID) -m found
+
     # Store latest stage to gpt0 as integer for the stick counter sc0 (we know
     # it is mapped to the "global" key). Note we add +1 to distinguish the case
     # where the header has not been found (default value is 0).
@@ -70,9 +73,6 @@ frontend main
     # Note that a single request can be mapped to one single function.
     http-request set-var(txn.rand) rand(100)
     {{ end -}}
-
-    # ACLs to detect incoming forwarded requests.
-    acl has_node_hdr req.hdr(DFaaS-Node-ID) -m found
 
     {{/* Create ACLs and backend selection for each function. */}}
     {{range $funcName, $_ := .Functions -}}
