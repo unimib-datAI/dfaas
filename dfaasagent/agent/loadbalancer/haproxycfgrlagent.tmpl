@@ -97,6 +97,12 @@ frontend main
 
 {{range $funcName, $timeout := .Functions -}}
 backend function_{{$funcName}}
+    # Mark request with DFaaS-Node-ID header, otherwise if it is forwarded the
+    # receiving node cannot determine if the request has been forwarded or not.
+    http-request set-header DFaaS-Node-ID {{$.DFaaSNodeID}}
+
+    # Mark also response with DFaaS-Node-ID to let client know which DFaaS node
+    # managed (but possibily not processed) the request.
     http-response set-header DFaaS-Node-ID {{$.DFaaSNodeID}}
 
     {{- if eq $.Phase "allLocalPhase" -}}
