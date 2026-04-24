@@ -10,6 +10,13 @@ import { tagWithCurrentStageIndex, getCurrentStageIndex } from 'https://jslib.k6
 // Required to store only a single copy of an image for mlimage function.
 import { readAll } from "./utils.js";
 
+// Required to create a custom counter metric.
+import { Counter } from 'k6/metrics';
+
+// This is a dummy counter, used only to attach custom tags for each response
+// (DFaaS-Forwarded-To and DFaaS-Node-ID tags).
+const DFaaSCounter = new Counter('DFaaS');
+
 const IP_SERVER = __ENV.IP_SERVER || "10.12.68.9"
 
 // We first set up the function to call, with the URL and body.
@@ -115,4 +122,15 @@ export default function () {
   };
 
   const response = http.post(FUNCTION_URL, BODY_CONTENT, params);
+
+  // Extract the headers added by the DFaaS node and save them as tags on the
+  // custom metric!
+  //
+  // K6 stores header names in canonical form in a case sensitive key-value map.
+  // Also by default it stores as array (header can have multiple values).
+  //
+  // Note we need to check if the header exists and is not empty.
+  const nodeId = response.headers["Dfaas-Node-Id"] || "";
+  const forwardedTo = response.headers["Dfaas-Forwarded-To"] || "";
+  DFaaSCounter.add(1, {DFaaS_Node_ID: nodeId, DFaaS_Forwarded_To: forwardedTo, });
 }
