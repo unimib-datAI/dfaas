@@ -253,17 +253,16 @@ func (c *Client) AvgRespTimeLocal(start, end time.Time) (map[string]float32, err
 	// Gateway. It's an histogram.
 	// See: https://docs.openfaas.com/architecture/metrics/#gateway
 	//
-	// We do an "avg by" aggregation because the gateway may restart and produce
+	// We do an "sum by" aggregation because the gateway may restart and produce
 	// duplicate time series for the same function. Aggregating ensures we
 	// return a single time series per function instead of multiple series
 	// fragmented across gateway restarts. Also we may have multiple series with
 	// different return code (e.g. 500, 200...).
 	query := fmt.Sprintf(`
-	avg by (function_name) (
-	  rate(gateway_functions_seconds_sum[%[1]s])
-	  /
-	  rate(gateway_functions_seconds_count[%[1]s])
-	)`, durationStr)
+	sum by (function_name) ( rate(gateway_functions_seconds_sum[%[1]s]))
+		/
+	sum by (function_name) (rate(gateway_functions_seconds_count[%[1]s]))
+	`, durationStr)
 	c.logQuery(query, end)
 
 	ctx := context.Background()
