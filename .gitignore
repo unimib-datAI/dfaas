@@ -25,7 +25,6 @@ dfaasagent/dfaasagent
 
 # Custom ignores
 __pycache__
-venv
 .idea
 .DS_Store
 vegeta-results
@@ -44,8 +43,9 @@ simulation/outputs/**
 *.yaml
 *.json.gz
 
-# Ignore Python venv.
-*.env
+# Ignore Python virtual environment directories.
+*.env/
+env/
 
 # Ignore generated or downloaded data for k6 runs.
 k6/plots
