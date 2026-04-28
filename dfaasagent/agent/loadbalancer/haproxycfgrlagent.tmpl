@@ -95,7 +95,7 @@ frontend main
         use_backend function_{{$funcName}} if is_{{$funcName}}
     {{end}}
 
-{{range $funcName, $timeout := .Functions -}}
+{{- range $funcName, $timeout := .Functions }}
 backend function_{{$funcName}}
     # Mark request with DFaaS-Node-ID header, otherwise if it is forwarded the
     # receiving node cannot determine if the request has been forwarded or not.
@@ -105,25 +105,25 @@ backend function_{{$funcName}}
     # managed (but possibily not processed) the request.
     http-response set-header DFaaS-Node-ID {{$.DFaaSNodeID}}
 
-    {{- if eq $.Phase "allLocalPhase" -}}
+    {{- if eq $.Phase "allLocalPhase" }}
         # With "allLocalPhase" all incoming requests are processed locally.
         server openfaas-local {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}}
-    {{- else -}}
+    {{- else }}
         # With "rlAgentPhase" incoming requests are load balanced locally and with
         # remote DFaaS nodes. Direct rejections happens in the frontend.
-        {{- range $action, $weight := (index $.Weights $funcName) -}}
-            {{- if eq $action "local" -}}
+        {{- range $action, $weight := (index $.Weights $funcName) }}
+            {{- if eq $action "local" }}
                 server openfaas-local {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} weight {{$weight}}
-            {{- else if eq $action "reject" -}}
+            {{- else if eq $action "reject" }}
                 {{- /* Skip reject action (done in frontend). */ -}}
             {{- else -}}
                 {{- /* Action here is the forwarding node with format "node_ID". */ -}}
                 {{ $neighborHost := (index (index $.Neighbors $action) "host") }}
                 {{ $neighborPort := (index (index $.Neighbors $action) "port") }}
                 server {{$action}} {{$neighborHost}}:{{$neighborPort}} weight {{$weight}}
-            {{- end -}}
-        {{- end -}}
-    {{- end -}}
+            {{- end }}
+        {{- end }}
+    {{- end }}
 
     {{- if $timeout}}
     timeout connect {{$timeout}}ms
