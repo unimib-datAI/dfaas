@@ -91,7 +91,7 @@ export let options = {
       executor: 'ramping-arrival-rate',
       startRate: Math.round(nodeTrace[0]),
       timeUnit: '1s',
-      preAllocatedVUs: 3000,
+      preAllocatedVUs: 1000,
       maxVUs: 50000,
       stages: stages,
     },
