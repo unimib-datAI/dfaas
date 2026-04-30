@@ -110,3 +110,21 @@ Docker images for the old operator are no longer built or published. While the
 legacy images [remain
 available](https://github.com/unimib-datAI/dfaas/pkgs/container/dfaas-operator),
 they are no longer supported.
+
+## Tips and tricks
+
+### Converting input reqs. to RL agent strategy
+
+With `jq`:
+
+```console
+jq 'walk(
+  if type == "array"
+    then map([., .]) | add
+    else .
+  end
+)' input_requests_mlimage_scaled_pwr_5.json > data/input_requests/mlimage/rlstrategy/scaled_pwr_5.json
+```
+
+We duplicate each entry because the RL agent strategy uses the first entry for
+local processing and the second for the RL load balancing processing.
