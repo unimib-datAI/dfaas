@@ -64,7 +64,6 @@ frontend fe_main
     stats uri /haproxy?stats
 
     {{/* Path ACLs */ -}}
-    acl is_path_healthz path /healthz
     acl is_path_haproxy path_beg /haproxy
     acl is_path_system_funcs path /system/functions
     acl is_path_function path_beg /function/
@@ -72,7 +71,7 @@ frontend fe_main
     {{/* Deny requests which are not directed to a function or / (root) or the
     stats page (note: the root path is needed for health checks by
     other nodes) or to /healthz */ -}}
-    http-request deny unless is_path_healthz or is_path_haproxy or is_path_system_funcs or is_path_function
+    http-request deny unless is_path_haproxy or is_path_system_funcs or is_path_function
 
     {{/* Capture some request headers in log */ -}}
     http-request capture req.hdr(Host) len 50
@@ -158,7 +157,6 @@ frontend fe_main
 
     {{/* ########## BACKEND SELECTION ########## */ -}}
 
-    use_backend be_healthz if is_path_healthz
     use_backend be_system_funcs if is_path_system_funcs
     {{range $funcName, $func := .Functions -}}
 
@@ -177,12 +175,6 @@ frontend fe_main
 # on the server side. This provides the lowest latency on the client side (slow
 # network) and the fastest session reuse on the server side to save server
 # resources.
-
-# Backend for health check.
-backend be_healthz
-    option httpchk GET /healthz
-    option http-server-close
-    server healthz dfaas-agent:80 check
 
 # Backend for OpenFaaS Administrative API (/system/functions)
 backend be_system_funcs
