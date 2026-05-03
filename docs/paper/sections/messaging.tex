@@ -1,0 +1,139 @@
+% =============================================================================
+%  Section III — Messaging Subsystem
+% =============================================================================
+
+\section{Messaging Subsystem}
+\label{sec:messaging}
+
+The messaging layer of \ac{DFaaS} must serve two distinct communication
+patterns across a dynamically changing peer-to-peer overlay: (i)~\emph{broadcast
+dissemination} of shared load state to all reachable agents, and
+(ii)~\emph{directed exchanges} between specific pairs of agents for
+time-sensitive control operations such as offload negotiation and backpressure
+signaling.
+Rather than conflating these patterns in a single channel, \ac{DFaaS} adopts a
+\emph{two-plane architecture} layered on the \emph{libp2p} networking stack,
+separating concerns at the transport level while exposing a unified,
+transport-agnostic message vocabulary to the strategy layer above.
+
+% -----------------------------------------------------------------------
+\subsection{Common Message Vocabulary}
+\label{subsec:msg-vocabulary}
+
+All inter-agent messages in \ac{DFaaS} share a common vocabulary defined in the
+\texttt{msgtypes} package.
+Every message embeds a \texttt{MsgHeader} structure that carries three fields:
+a type discriminator (\texttt{msg\_type}), the libp2p peer ID of the
+originating node (\texttt{sender\_id}), and a wall-clock timestamp.
+The type discriminator enables \emph{cheap type-peeking}: before full \ac{JSON}
+decoding, the receiving agent deserializes only a minimal
+\texttt{MsgEnvelope} wrapper — a two-field struct containing only the header
+— to determine the message kind, avoiding the allocation and reflection costs of
+full message deserialization for unrecognized types.
+
+The vocabulary is divided into two functional groups.
+\emph{Broadcast messages} travel over the shared \ac{GossipSub} topic~\cite{vyzovitis2020gossipsub}:
+\texttt{MsgHeartbeat} announces a node's presence, \ac{HAProxy} endpoint (host
+and port), and the list of its locally deployed function names at regular
+intervals;
+\texttt{MsgOverloadAlert} signals that one or more functions have exceeded a
+resource threshold, reporting the affected function names alongside current \ac{CPU}
+and \ac{RAM} utilization normalized to $[0, 1]$;
+and \texttt{MsgFunctionEvent} propagates immediate function lifecycle changes —
+deployment and removal — so that peers can update their routing tables without
+waiting for the next heartbeat cycle.
+\emph{Directed messages} are exchanged point-to-point over libp2p streams:
+\texttt{MsgBackpressure} is a fire-and-forget instruction sent to a peer
+forwarding excessive traffic for specific functions;
+\texttt{MsgOffloadRequest} opens a request/response negotiation in which the
+sender proposes an additional forwarding rate in requests per second for a named
+function;
+and \texttt{MsgOffloadResponse} conveys the capacity the remote peer can absorb,
+including a \texttt{correlation\_id} field echoed verbatim from the initiating
+request to enable correct matching when multiple concurrent negotiations are in
+flight.
+
+% -----------------------------------------------------------------------
+\subsection{Broadcast Plane: GossipSub}
+\label{subsec:broadcast}
+
+The broadcast plane is built on \ac{GossipSub}~\cite{vyzovitis2020gossipsub},
+an application-layer pub/sub protocol designed for unstructured, decentralized
+\ac{P2P} overlays.
+Pub/sub systems have long been recognized as a natural fit for loosely coupled
+distributed architectures~\cite{eugster2003pubsub}, and \ac{GossipSub} in
+particular provides the epidemic dissemination properties~\cite{kermarrec2007epidemic}
+needed to propagate load-state messages efficiently across a mesh whose
+membership changes as agents join and leave the network.
+\ac{GossipSub} constructs a bidirectional mesh among subscribed peers on a
+shared topic and supplements eager push propagation with lazy \texttt{IHAVE}/\texttt{IWANT}
+control messages to the fanout set, achieving reliable delivery while remaining
+resilient to peer failures through a score-based peer-selection mechanism that
+demotes poorly-performing mesh members.
+In \ac{DFaaS}, all agents subscribe to a single configurable topic; the
+\ac{GossipSub} router handles forwarding transparently, so strategies can
+broadcast a message with a single \texttt{MarshAndPublish} call and expect
+delivery to all live peers within the propagation latency of the mesh.
+
+A dedicated goroutine runs \texttt{RunReceiver}, which reads messages from the
+subscription using a blocking \texttt{Next} call and dispatches each to a
+\emph{pre-filter callback chain}.
+The outermost filter, \texttt{MakeCommonCallback}, performs two tasks on every
+incoming message regardless of the active strategy: it checks whether the message
+type belongs to the common broadcast vocabulary (via a set membership test on
+the \texttt{CommonBroadcastTypes} map), and if so, dispatches the decoded message
+to the appropriate update method on the \texttt{CommonNodeTable} before forwarding
+to the inner strategy callback.
+This layered design ensures that shared peer state is always kept current
+irrespective of which strategy is active, without requiring individual strategy
+implementations to duplicate parsing or table-management logic.
+
+% -----------------------------------------------------------------------
+\subsection{Common Node Table}
+\label{subsec:nodestbl}
+
+The \texttt{CommonNodeTable} is a thread-safe, \ac{TTL}-expiring in-memory store
+keyed by peer ID.
+Each entry records the peer's \ac{HAProxy} endpoint, the list of function names
+it can execute, and the most recent \ac{CPU} and \ac{RAM} utilization reported by
+\texttt{MsgOverloadAlert}.
+Entries are seeded by heartbeats and refined incrementally by overload alerts and
+function events; the \ac{TTL} is set to three times the heartbeat interval,
+allowing entries to survive two consecutive missed heartbeats before expiring.
+Read operations return a snapshot with deep-copied function slices to prevent
+data races between concurrent strategy consumers and the callback goroutine
+writing updates.
+
+Self-messages — a consequence of \ac{GossipSub}'s forwarding model in which
+the publishing agent may receive its own messages — are filtered at the strategy
+level rather than at the transport.
+The \texttt{MsgHeader.SenderID} field carried in every message enables strategy
+implementations to compare against the local peer's ID and discard messages they
+originated, avoiding spurious self-updates to the node table.
+
+% -----------------------------------------------------------------------
+\subsection{Directed Plane: libp2p Streams}
+\label{subsec:directed}
+
+The directed messaging plane is exposed through the \texttt{DirectMessenger}
+interface, which wraps the libp2p stream \ac{API} under the protocol identifier
+\texttt{/dfaas/msg/1.0.0}.
+The \texttt{Send} method implements a fire-and-forget pattern: a new stream is
+opened to the target peer, the serialized payload is written, and the stream is
+closed without awaiting a reply.
+The \texttt{Request} method extends this with a half-close handshake — after
+writing the request, the sender calls \texttt{CloseWrite} to signal that it has
+finished writing, then reads the response from the same open stream.
+Both operations are subject to a configurable per-call timeout injected through
+\texttt{context.WithTimeout}.
+
+Wire framing uses a 4-byte big-endian length prefix followed by the
+\ac{JSON}-encoded payload, assembled into a single buffer and issued as one
+\texttt{Write} call to avoid partial-write races on multiplexed streams.
+Typed handlers are registered via \texttt{SetHandler(msgType,~HandlerFunc)}
+before the agent begins accepting connections; upon accepting an incoming stream,
+\texttt{handleStream} peeks at the \texttt{MsgEnvelope} to identify the message
+type, dispatches to the registered handler, and — if the handler returns a
+non-nil response — writes the response back on the same stream.
+Handlers returning \texttt{nil} implement fire-and-forget semantics from the
+receiver's perspective, which is the correct behavior for \texttt{MsgBackpressure}.

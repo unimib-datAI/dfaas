@@ -139,6 +139,39 @@ privateKey: |
 In this example, the agent will attempt to connect at startup to two peer agents
 and will keep retrying until both connections are successfully established.
 
+## Vivaldi latency state
+
+The agent can optionally maintain a Vivaldi-based latency state on top of the
+existing `libp2p` peer-discovery layer. This does **not** change discovery:
+membership still comes only from Kademlia and optional mDNS, and peers are
+still identified by the same libp2p Peer IDs. When enabled, the agent simply:
+
+* broadcasts its current Vivaldi coordinate on the existing GossipSub topic;
+* measures RTT to already-connected peers using the libp2p ping protocol;
+* stores measured and estimated RTT values in the shared peer state.
+
+In this first iteration, the latency state is informative only. The current
+load-balancing strategies do not yet change their forwarding logic based on
+Vivaldi coordinates.
+
+Use the following environment variables:
+
+* `AGENT_VIVALDI_ENABLED`: enable the Vivaldi manager (`false` by default).
+* `AGENT_VIVALDI_PROBE_INTERVAL`: interval between coordinate broadcasts and
+  peer RTT probes. If unset, the agent uses `AGENT_HEARTBEAT_INTERVAL`; if that
+  is also unset, it falls back to `10s`.
+
+RTT probes reuse the timeout configured by `AGENT_DIRECT_MSG_TIMEOUT` and fall
+back to `5s` when it is not set.
+
+Example:
+
+```yaml
+config:
+  AGENT_VIVALDI_ENABLED: true
+  AGENT_VIVALDI_PROBE_INTERVAL: 10s
+```
+
 ## Forecaster
 
 The forecaster component is installed and started automatically with the agent

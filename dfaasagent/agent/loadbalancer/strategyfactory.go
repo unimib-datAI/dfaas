@@ -10,9 +10,9 @@ import (
 	"fmt"
 
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/constants"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/faasprovider"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/forecaster"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/offuncs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
 )
 
@@ -56,7 +56,17 @@ func (strategyFactory *recalcStrategyFactory) createStrategy() (Strategy, error)
 		return nil, fmt.Errorf("loading HAProxy config. template: %w", err)
 	}
 
-	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+	provider, err := faasprovider.NewFaaSProvider(
+		_config.FaaSPlatform,
+		_config.FaaSHost,
+		_config.FaaSPort,
+		_config.OpenWhiskNamespace,
+		_config.OpenWhiskAPIKey,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("creating FaaS provider: %w", err)
+	}
+	strategy.faasProvider = provider
 
 	strategy.it = 0
 
@@ -82,15 +92,32 @@ func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, er
 		return nil, err
 	}
 
-	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+	provider, err := faasprovider.NewFaaSProvider(
+		_config.FaaSPlatform,
+		_config.FaaSHost,
+		_config.FaaSPort,
+		_config.OpenWhiskNamespace,
+		_config.OpenWhiskAPIKey,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("creating FaaS provider: %w", err)
+	}
+	strategy.faasProvider = provider
 
 	strategy.forecasterClient = forecaster.Client{
 		Hostname: constants.ForecasterHost,
 		Port:     constants.ForeasterPort,
 	}
 
-	strategy.nodeInfo = nodeInfo{}
-	strategy.maxValues = make(map[string]float64)
+	strategy.nodeInfo = nodeInfo{
+		nodeType: _config.NodeType,
+		overload: false,
+	}
+	strategy.maxValues = map[string]float64{
+		cpuUsageNodeMetric:   _config.CPUThresholdNMS,
+		ramUsageNodeMetric:   _config.RAMThresholdNMS,
+		powerUsageNodeMetric: _config.PowerThresholdNMS,
+	}
 	strategy.targetNodes = make(map[string][]string)
 	strategy.weights = make(map[string]map[string]uint)
 
@@ -116,7 +143,17 @@ func (strategyFactory *staticStrategyFactory) createStrategy() (Strategy, error)
 		return nil, fmt.Errorf("loading HAProxy config. template: %w", err)
 	}
 
-	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+	provider, err := faasprovider.NewFaaSProvider(
+		_config.FaaSPlatform,
+		_config.FaaSHost,
+		_config.FaaSPort,
+		_config.OpenWhiskNamespace,
+		_config.OpenWhiskAPIKey,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("creating FaaS provider: %w", err)
+	}
+	strategy.faasProvider = provider
 
 	strategy.nodeInfo = nodeInfoStatic{}
 	strategy.targetNodes = make(map[string][]string)
@@ -141,7 +178,19 @@ func (strategyFactory *allLocalStrategyFactory) createStrategy() (Strategy, erro
 		return nil, fmt.Errorf("loading HAProxy config. template: %w", err)
 	}
 
-	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+	provider, err := faasprovider.NewFaaSProvider(
+		_config.FaaSPlatform,
+		_config.FaaSHost,
+		_config.FaaSPort,
+		_config.OpenWhiskNamespace,
+		_config.OpenWhiskAPIKey,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("creating FaaS provider: %w", err)
+	}
+	strategy.faasProvider = provider
+
+	strategy.prevFuncs = make(map[string]*uint)
 
 	return strategy, nil
 }

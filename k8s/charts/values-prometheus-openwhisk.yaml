@@ -1,0 +1,27 @@
+# Prometheus Helm values override for the OpenWhisk platform.
+#
+# Apply on top of values-prometheus.yaml:
+#   helm upgrade prometheus prometheus-community/prometheus \
+#     --values k8s/charts/values-prometheus.yaml \
+#     --values k8s/charts/values-prometheus-openwhisk.yaml
+#
+# This file adds a scrape job for the OpenWhisk controller metrics endpoint
+# and an example alert rule using OpenWhisk-specific metric names.
+
+extraScrapeConfigs: |
+  - job_name: 'openwhisk'
+    static_configs:
+      - targets: ['owdev-controller.openwhisk.svc.cluster.local:9090']
+
+serverFiles:
+  alerting_rules.yml:
+    groups:
+      - name: dfaas-openwhisk
+        rules:
+          - alert: FunctionHighInvocationRate
+            expr: rate(openwhisk_action_activations_total[1m]) > 100
+            for: 1m
+            labels:
+              severity: warning
+            annotations:
+              summary: "High invocation rate on OpenWhisk action {{ $labels.action }}"

@@ -22,8 +22,13 @@ type HACfg struct {
 	MyNodeID     string
 	NodeIP       string
 	HAProxyHost  string
-	OpenFaaSHost string
-	OpenFaaSPort uint
+	FaaSHost string
+	FaaSPort uint
+
+	// FaaSBackendPath is the URL path prefix used when forwarding requests to the
+	// local FaaS backend. For OpenFaaS: "/function". For OpenWhisk:
+	// "/api/v1/namespaces/<namespace>/actions".
+	FaaSBackendPath string
 }
 
 /////////////////// HACFG TYPES FOR RECALC STRATEGY ///////////////////

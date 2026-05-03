@@ -1,0 +1,163 @@
+% =============================================================================
+%  Section IV — Strategy Execution Models
+% =============================================================================
+
+\section{Strategy Execution Models}
+\label{sec:execution-models}
+
+Load-balancing agents in distributed edge systems must decide not only \emph{how}
+to redistribute traffic — the strategy logic — but also \emph{when} to act:
+at fixed intervals, in immediate response to peer events, or as a combination of
+both.
+Prior \ac{DFaaS} releases coupled these concerns: each strategy hosted its own
+goroutine with a hardcoded \texttt{time.Ticker}.
+While adequate for periodic recalculation, this design forced all future
+strategies into the same mold, precluding the reactive behavior that becomes
+natural once strategies have access to asynchronous peer signals such as
+\texttt{MsgOverloadAlert} and \texttt{MsgFunctionEvent}.
+This section describes the execution model abstraction introduced to decouple the
+\emph{when} from the \emph{what}, enabling a strategy developer to declare an
+execution model through Go's structural type system without modifying any
+framework code.
+
+% -----------------------------------------------------------------------
+\subsection{Interface Hierarchy}
+\label{subsec:interfaces}
+
+The execution model is expressed through three composable Go interfaces.
+\texttt{PeriodicStrategy} requires implementations to provide a
+\texttt{Period()~time.Duration} method and a
+\texttt{Tick(ctx~context.Context)~error} method; the framework invokes
+\texttt{Tick} on every ticker event and threads the request context through so
+that \texttt{Tick} bodies can respect cancellation during long operations such
+as \ac{HAProxy} configuration pushes or inter-phase pauses.
+\texttt{EventDrivenStrategy} additionally requires
+\texttt{TriggerEvents()~[]string} — returning the message type constants that
+should trigger execution — and \texttt{Debounce()~time.Duration}, which sets the
+minimum interval between consecutive \texttt{React(ctx,~StrategyEvent)} calls;
+a debounce of zero means \texttt{React} is called immediately on each trigger
+arrival.
+\texttt{HybridStrategy} embeds both constituent interfaces through Go's anonymous
+composition; because both declare \texttt{OnReceived} with identical signatures,
+the Go specification merges them into a single method requirement, so
+implementors provide exactly one \texttt{OnReceived} body.
+
+This three-level hierarchy applies the \emph{Strategy} design pattern~\cite{gamma1994patterns},
+with the execution model selected at construction time rather than hardcoded in
+each strategy.
+All three interfaces include \texttt{OnReceived(msg~*pubsub.Message)~error}.
+This method is invoked for every incoming broadcast message — including types
+not listed in \texttt{TriggerEvents} — and is intended exclusively for state
+table updates.
+Separating state updates (universally called) from decision triggers (selective)
+ensures that strategies maintain fresh peer state irrespective of their execution
+cadence.
+The \texttt{StrategyEvent} struct forwarded to \texttt{React} carries the type
+discriminator and the full wire envelope as a \texttt{json.RawMessage}, allowing
+\texttt{React} implementations to unmarshal into the concrete message type they
+expect without an additional network round-trip.
+
+% -----------------------------------------------------------------------
+\subsection{Runner Implementations}
+\label{subsec:runners}
+
+The \texttt{StrategyRunner} interface abstracts strategy lifecycle from the rest
+of the agent through two methods: \texttt{Callback()}, which returns the pubsub
+callback to register with the \ac{GossipSub} receiver, and
+\texttt{Run(ctx~context.Context)~error}, which blocks until the context is
+cancelled or a fatal error occurs.
+The \texttt{NewRunner} factory function examines the concrete type of the
+strategy via a type-switch, placing \texttt{HybridStrategy} first to prevent it
+from being spuriously matched as one of its constituent interfaces — a
+requirement that arises because Go evaluates type-switch cases in declaration
+order and \texttt{HybridStrategy} satisfies both \texttt{PeriodicStrategy} and
+\texttt{EventDrivenStrategy}.
+
+\paragraph{Periodic runner.}
+The \texttt{periodicRunner} maintains a \texttt{time.Ticker} initialized from
+\texttt{Period()} — defaulting to one minute when \texttt{Period()} returns zero
+— and blocks in a \texttt{select} loop over the ticker channel and the context's
+\texttt{Done} channel, invoking \texttt{Tick} on each tick event.
+Errors from \texttt{Tick} are logged at WARN level and do not interrupt the
+loop; transient failures in a single decision cycle — for example, a brief
+\ac{HAProxy} \ac{API} timeout — should not terminate the agent.
+
+\paragraph{Event-driven runner.}
+The \texttt{eventDrivenRunner} introduces a capacity-one channel between the
+callback goroutine and the worker goroutine.
+A shared \texttt{makeTriggerCallback} helper builds the callback closure: on
+each incoming message it calls \texttt{OnReceived}, then deserializes the
+\texttt{MsgEnvelope} header and performs a set-membership check against a
+pre-computed trigger set (built at construction from \texttt{TriggerEvents()}
+using a hash-map for $\mathcal{O}(1)$ lookup); matching events are forwarded to
+the channel with a non-blocking send, so excess events are dropped rather than
+blocking the callback goroutine.
+When debounce is configured, the worker does not invoke \texttt{React}
+immediately; instead it records the latest event as \emph{pending} and resets a
+\texttt{time.Timer} using Go's stop-then-drain-then-reset sequence to avoid
+stale firings caused by the non-atomic semantics of
+\texttt{time.Timer.Stop}.
+When the timer fires, the most recent pending event is dispatched to
+\texttt{React}, collapsing bursts of rapid arrivals into a single decision
+cycle.
+On context cancellation, any active debounce timer is explicitly stopped before
+the goroutine returns, releasing its internal timer goroutine.
+
+\paragraph{Hybrid runner.}
+The \texttt{hybridRunner} unifies both execution models in a single
+\texttt{select} statement over the ticker channel and the event channel.
+\texttt{Tick} and \texttt{React} are therefore never concurrent by construction,
+requiring no additional synchronization.
+The event-delivery policy is channel-drop rather than debounce: if a trigger
+event arrives while \texttt{Tick} or \texttt{React} is executing, it occupies
+the capacity-one buffer; subsequent events are discarded until the buffer is
+drained.
+This policy bounds memory use and prevents the callback goroutine from blocking
+on a slow worker, at the cost of potentially missing intermediate events — a
+trade-off appropriate for strategies whose \texttt{React} logic re-reads current
+system state rather than accumulating individual event payloads.
+
+% -----------------------------------------------------------------------
+\subsection{Context Propagation and Lifecycle}
+\label{subsec:context}
+
+All three runners propagate the agent's root context into every \texttt{Tick}
+and \texttt{React} invocation, enabling strategy implementations to respect
+cancellation during \ac{I/O}-bound operations.
+The root context is created with \texttt{context.WithCancel} at agent startup;
+its cancellation function is called when the process receives \texttt{SIGINT} or
+\texttt{SIGTERM}, atomically signaling shutdown to all goroutines — including the
+runner — through channel closure.
+This design replaces earlier approaches that relied on process termination to
+stop goroutines, enabling graceful shutdown of in-flight \ac{HAProxy}
+configuration updates.
+The \texttt{sleepOrCtx} helper, used by \texttt{RecalcStrategy} for the
+mandatory inter-phase pause between its two-step recalculation cycle, implements
+a context-aware \texttt{time.After} that returns the context error immediately if
+cancellation arrives during the wait, rather than forcing the runner to block for
+the full pause duration before observing shutdown.
+
+% -----------------------------------------------------------------------
+\subsection{Migration of Existing Strategies}
+\label{subsec:migration}
+
+All four production strategies — \texttt{RecalcStrategy},
+\texttt{NodeMarginStrategy}, \texttt{StaticStrategy}, and
+\texttt{AllLocalStrategy} — were migrated to the \texttt{PeriodicStrategy}
+interface with no change to their internal decision logic.
+Each migration followed the same mechanical transformation: the self-managed
+goroutine and \texttt{time.Ticker} were removed; the ticker period was promoted
+to a \texttt{Period()} method; and the loop body became the \texttt{Tick()}
+method.
+State that previously resided as locals inside the loop and needed to persist
+across invocations was promoted to struct fields initialized in the factory's
+\texttt{createStrategy()} method — most notably, the previous-tick function list
+in \texttt{AllLocalStrategy}, which detects function set changes to trigger
+incremental \ac{HAProxy} updates, and the resource threshold assignments and
+initial node classification in \texttt{NodeMarginStrategy}.
+Each migrated type carries a compile-time interface assertion
+(\texttt{var~\_~PeriodicStrategy~=~(*XStrategy)(nil)}) to guard against future
+accidental regressions caused by method-signature drift.
+The migration is fully backward-compatible at the configuration level: the
+\texttt{AGENT\_STRATEGY} environment variable continues to select among the same
+strategy names, and the observable agent behavior is unchanged.

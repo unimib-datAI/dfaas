@@ -68,7 +68,11 @@ frontend main
 {{range $funcName, $timeout := .Functions -}}
 backend function_{{$funcName}}
     http-response set-header dfaaS-node-id {{$.DFaaSNodeID}}
-    server openfaas-local {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}}
+    # Rewrite /function/<name> to the platform-specific backend path.
+    # For OpenFaaS this is a no-op; for OpenWhisk it rewrites to
+    # /api/v1/namespaces/<ns>/actions/<name>.
+    http-request replace-path ^/function/(.+)$ {{$.FaaSBackendPath}}/\1
+    server openfaas-local {{$.FaaSHost}}:{{$.FaaSPort}}
     {{- if $timeout}}
     # If the function's metadata contains dfaas.timeout_ms label, we se in the
     # HAProxy backend a timeout of dfaas.timeout_ms+1s. Note that in the

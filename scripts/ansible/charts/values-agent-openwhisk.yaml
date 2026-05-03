@@ -1,0 +1,17 @@
+# Agent Helm values overlay for OpenWhisk platform.
+#
+# Pass alongside your base values when installing the agent chart:
+#   helm install dfaas-agent ./k8s/charts/agent \
+#     --values my-values.yaml \
+#     --values scripts/ansible/charts/values-agent-openwhisk.yaml
+#
+# AGENT_OPENWHISK_API_KEY must be filled in after OpenWhisk is deployed.
+# Retrieve it with:
+#   kubectl -n openwhisk exec deploy/owdev-wskadmin -- wskadmin user get guest
+
+config:
+  AGENT_FAAS_PLATFORM: "openwhisk"
+  AGENT_FAAS_HOST: "owdev-nginx.openwhisk"
+  AGENT_FAAS_PORT: 80
+  AGENT_OPENWHISK_NAMESPACE: "guest"
+  AGENT_OPENWHISK_API_KEY: ""  # Set after retrieving via wskadmin
