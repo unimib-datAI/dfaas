@@ -1,0 +1,3 @@
+# Override parent ignore rules for required JSON files.
+!manifest.json
+!config/runtime.json
