@@ -87,7 +87,7 @@ frontend main
         # Apply the action reject, only for non forwarded requests!
         # Use custom HTTP status 560 to let clients know that this is a reject.
         # See: https://www.iana.org/assignments/http-status-codes/http-status-codes.xhtml
-        http-request deny deny_status 560 if is_{{$funcName}} !has_node_hdr reject_{{$funcName}}
+        http-request deny status 560 if is_{{$funcName}} !has_node_hdr reject_{{$funcName}}
         {{ end -}}
 
         # Use the forwarded backend if the request originates from another DFaaS
