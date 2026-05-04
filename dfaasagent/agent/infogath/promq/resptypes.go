@@ -1,4 +1,4 @@
-package ofpromq
+package promq
 
 // This file contains all structure that represents Prometheus query responses.
 // Some of them are similar to each other, but they are kept separated for

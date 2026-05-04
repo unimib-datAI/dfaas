@@ -13,6 +13,7 @@ import (
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/forecaster"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/offuncs"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/promq"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
 )
 
@@ -51,10 +52,15 @@ func (strategyFactory *recalcStrategyFactory) createStrategy() (Strategy, error)
 	// Avoid premature expiration of nodes in the table between strategy runs.
 	strategy.nodestbl = nodestbl.NewTableRecalc(_config.RecalcPeriod + (_config.RecalcPeriod / 5))
 
-	strategy.hacfgupdater = hacfgupd.Updater{}
-	if err := strategy.hacfgupdater.LoadTemplate(haproxycfgrecalcTemplate); err != nil {
-		return nil, fmt.Errorf("loading HAProxy config. template: %w", err)
+	hacfgupdater, err := hacfgupd.New(_config.DataPlaneAPIHost,
+		_config.DataPlaneAPIPort,
+		_config.DataPlaneAPIUser,
+		_config.DataPlaneAPIPassword,
+		haproxycfgrecalcTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
 	}
+	strategy.hacfgupdater = hacfgupdater
 
 	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
 
@@ -75,12 +81,15 @@ func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, er
 
 	strategy.nodestbl = nodestbl.NewTableNMS(_config.RecalcPeriod * 2)
 
-	strategy.hacfgupdater = hacfgupd.Updater{}
-
-	err := strategy.hacfgupdater.LoadTemplate(haproxycfgnmsTemplate)
+	hacfgupdater, err := hacfgupd.New(_config.DataPlaneAPIHost,
+		_config.DataPlaneAPIPort,
+		_config.DataPlaneAPIUser,
+		_config.DataPlaneAPIPassword,
+		haproxycfgnmsTemplate)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
 	}
+	strategy.hacfgupdater = hacfgupdater
 
 	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
 
@@ -110,11 +119,15 @@ func (strategyFactory *staticStrategyFactory) createStrategy() (Strategy, error)
 	// TODO: Use a custom table.
 	strategy.nodestbl = nodestbl.NewTableNMS(_config.RecalcPeriod * 2)
 
-	strategy.hacfgupdater = hacfgupd.Updater{}
-
-	if err := strategy.hacfgupdater.LoadTemplate(haproxycfgStaticTemplate); err != nil {
-		return nil, fmt.Errorf("loading HAProxy config. template: %w", err)
+	hacfgupdater, err := hacfgupd.New(_config.DataPlaneAPIHost,
+		_config.DataPlaneAPIPort,
+		_config.DataPlaneAPIUser,
+		_config.DataPlaneAPIPassword,
+		haproxycfgStaticTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
 	}
+	strategy.hacfgupdater = hacfgupdater
 
 	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
 
@@ -135,12 +148,59 @@ var haproxycfgAllLocalTemplate string
 func (strategyFactory *allLocalStrategyFactory) createStrategy() (Strategy, error) {
 	strategy := &AllLocalStrategy{}
 
-	strategy.hacfgupdater = hacfgupd.Updater{}
-
-	if err := strategy.hacfgupdater.LoadTemplate(haproxycfgAllLocalTemplate); err != nil {
-		return nil, fmt.Errorf("loading HAProxy config. template: %w", err)
+	// Set up the HAProxy config update mechanism (via HAProxy Data Plane API).
+	hacfgupdater, err := hacfgupd.New(_config.DataPlaneAPIHost,
+		_config.DataPlaneAPIPort,
+		_config.DataPlaneAPIUser,
+		_config.DataPlaneAPIPassword,
+		haproxycfgAllLocalTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
 	}
+	strategy.hacfgupdater = hacfgupdater
 
+	// Set up the wrapper to OpenFaaS Gateway API used to get the list of
+	// deployed OpenFaaS functions.
+	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+
+	return strategy, nil
+}
+
+// rlAgentStrategyFactory is the strategy factory for the RL Agent strategy.
+type rlAgentStrategyFactory struct{}
+
+//go:embed haproxycfgrlagent.tmpl
+var haproxycfgRLAgentTemplate string
+
+// createStrategy creates and returns a new RL Agent instance.
+func (strategyFactory *rlAgentStrategyFactory) createStrategy() (Strategy, error) {
+	strategy := &RLAgentStrategy{}
+
+	// Set up RL model connection info. Used to query the RL model with the
+	// observation, the response will contain the action to apply.
+	strategy.rlModelHost = _config.RLModelHost
+	strategy.rlModelPort = _config.RLModelPort
+
+	// Set up the HAProxy config update mechanism (via HAProxy Data Plane API).
+	hacfgupdater, err := hacfgupd.New(_config.DataPlaneAPIHost,
+		_config.DataPlaneAPIPort,
+		_config.DataPlaneAPIUser,
+		_config.DataPlaneAPIPassword,
+		haproxycfgRLAgentTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
+	}
+	strategy.hacfgupdater = hacfgupdater
+
+	// Set up the Prometheus client used to run PromQL queries.
+	promq, err := promq.New(_config.PrometheusHost, _config.PrometheusPort, _config.PrometheusStep)
+	if err != nil {
+		return nil, fmt.Errorf("initializing Prometheus client: %w", err)
+	}
+	strategy.promq = promq
+
+	// Set up the wrapper to OpenFaaS Gateway API used to get the list of
+	// deployed OpenFaaS functions.
 	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
 
 	return strategy, nil

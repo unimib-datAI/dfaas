@@ -67,8 +67,10 @@ k8s/scripts/libp2p-peer-id/libp2p-peer-id
 *.html
 *.pdf
 
-# Ignore HAProxy configs in the root directory.
-/*.cfg
+# Ignore HAProxy generated configurations.
+/dfaasagent/haproxy.cfg
 
 # Ignore generated binary.
 /k8s/scripts/stick-table-exporter/stick-table-exporter
+/k8s/scripts/rl-model-proxy/rl-model-proxy
+

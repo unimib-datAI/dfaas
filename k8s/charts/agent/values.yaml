@@ -58,15 +58,31 @@ config:
 
   AGENT_RECALC_PERIOD: 1m
 
-  # DNS name automatically set by Kubernetes to OpenFaaS Gateway service. If not
-  # using Kubernetes, set manually the IP/DNS.
+  # DNS name automatically set by Kubernetes to HAProxy service. If not using
+  # Kubernetes, set manually the IP/DNS.
   AGENT_HAPROXY_HOST: "haproxy.default.svc.cluster.local"
   AGENT_HAPROXY_PORT: 80
+
+  # DNS name automatically set by Kubernetes to HAProxy service. If not using
+  # Kubernetes, set manually the IP/DNS.
+  AGENT_DATAPLANEAPI_HOST: "haproxy.default.svc.cluster.local"
+  AGENT_DATAPLANEAPI_PORT: 5555
+  AGENT_DATAPLANEAPI_USER: "admin"
+  AGENT_DATAPLANEAPI_PASSWORD: "admin"
 
   # DNS name automatically set by Kubernetes to OpenFaaS Gateway service. If not
   # using Kubernetes, set manually the IP/DNS.
   AGENT_OPENFAAS_HOST: "gateway"
   AGENT_OPENFAAS_PORT: 8080
+
+  # DNS name automatically set by Kubernetes to Prometheus service. If not using
+  # Kubernetes, set manually the IP/DNS.
+  AGENT_PROMETHEUS_HOST: "prometheus.default.svc.cluster.local"
+  AGENT_PROMETHEUS_PORT: 80
+
+  # Query resolution step for Prometheus. Should be set accordingly to the
+  # scrape interval (see Prometheus config).
+  AGENT_PROMETHEUS_STEP: 5s
 
   AGENT_STRATEGY: "nodemarginstrategy"
 
@@ -77,6 +93,11 @@ config:
   AGENT_NMS_CPU_THRESHOLD: 120.0 # max cpu usage percentage
   AGENT_NMS_RAM_THRESHOLD: 5500000000.0 # max ram usage in bytes
   AGENT_NMS_POWER_THRESHOLD: 2100000.0 # max power usage in microwatts
+
+  # Set manually the IP and the port for the RL model Web service. Used only for
+  # "rlagentstrategy" strategy.
+  AGENT_RLMODEL_HOST: "localhost"
+  AGENT_RLMODEL_PORT: 6666
 
 # Agent's private key in PEM format. If empty, the agent will generate a new
 # private key and it will print to the standard output.

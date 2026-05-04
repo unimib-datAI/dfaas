@@ -82,3 +82,25 @@ alertmanager:
         webhook_configs:
           - url: http://gateway.default.svc.cluster.local:8080/system/alert
             send_resolved: true
+
+# Extra manifests to deploy as an array.
+extraManifests:
+  - |
+    # This is a utility NodePort service used to expose the Prometheus Web UI
+    # outside of the Kubernetes cluster to port 30909. Use for debugging in the
+    # PoC version.
+    apiVersion: v1
+    kind: Service
+    metadata:
+      name: prometheus-external
+    spec:
+      type: NodePort
+      selector:
+        app.kubernetes.io/component: server
+        app.kubernetes.io/instance: prometheus
+        app.kubernetes.io/name: prometheus
+      ports:
+        - name: http
+          port: 9090
+          targetPort: 9090
+          nodePort: 30909

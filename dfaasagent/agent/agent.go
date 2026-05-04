@@ -31,6 +31,8 @@ import (
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/discovery/kademlia"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/discovery/mdns"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/hasock"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/promq"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/loadbalancer"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
@@ -198,6 +200,16 @@ func runAgent(config config.Configuration) error {
 		return fmt.Errorf("error while getting strategy instance: %w", err)
 	}
 
+	////////// INFOGATH INITIALIZATION //////////
+
+	hasock.Initialize(config.DataPlaneAPIHost,
+		config.DataPlaneAPIPort,
+		config.DataPlaneAPIUser,
+		config.DataPlaneAPIPassword)
+	logger.Debug("infogath/hasock package initialization completed.")
+	promq.Initialize(config.PrometheusHost, config.PrometheusPort)
+	logger.Debug("infogath/promq package initialization completed.")
+
 	////////// PUBSUB INITIALIZATION //////////
 
 	// The PubSub initialization must be done before the Kademlia one. Otherwise
@@ -284,7 +296,7 @@ func runAgent(config config.Configuration) error {
 
 func Main() {
 	// Initializes Go random number generator.
-	rand.Seed(int64(time.Now().Nanosecond()))
+	rand.Seed(int64(time.Now().UTC().Nanosecond()))
 
 	// Load configuration.
 	_config, err := config.LoadConfig()

@@ -27,7 +27,7 @@ import (
 // evenly among them. If there are no neighbors, all requests are processed
 // locally.
 type StaticStrategy struct {
-	hacfgupdater  hacfgupd.Updater
+	hacfgupdater  *hacfgupd.Updater
 	nodestbl      *nodestbl.TableNMS
 	offuncsClient *offuncs.Client
 
@@ -57,7 +57,7 @@ func (strategy *StaticStrategy) RunStrategy() error {
 	millisInterval := int64(_config.RecalcPeriod / time.Millisecond)
 
 	for {
-		start := time.Now()
+		start := time.Now().UTC()
 
 		if err := strategy.publishNodeInfo(); err != nil {
 			logger.Error("Failed to publish node info, skipping RunStrategy iteration ", err)
@@ -81,7 +81,7 @@ func (strategy *StaticStrategy) RunStrategy() error {
 		httpserver.StrategySuccessIterations.Inc()
 		httpserver.StrategyIterationDuration.Set(duration.Seconds())
 
-		millisNow = time.Now().UnixNano() / 1000000
+		millisNow = time.Now().UTC().UnixNano() / 1000000
 		millisSleep = millisInterval - (millisNow % millisInterval)
 		time.Sleep(time.Duration(millisSleep) * time.Millisecond)
 	}
@@ -177,14 +177,6 @@ func (strategy *StaticStrategy) publishNodeInfo() error {
 	}
 
 	return nil
-
-	// Obtain our function names list
-	strategy.nodeInfo.funcs, err = strategy.offuncsClient.GetFuncsNames()
-	if err != nil {
-		return err
-	}
-
-	return nil
 }
 
 // Check which neighbour has at least a function in common and update the
@@ -241,7 +233,7 @@ func (strategy *StaticStrategy) setProxyWeights() error {
 		return nil
 	})
 
-	hacfg.Now = time.Now()
+	hacfg.Now = time.Now().UTC()
 	if err := strategy.hacfgupdater.UpdateHAConfig(hacfg); err != nil {
 		return err
 	}
@@ -310,7 +302,7 @@ func (strategy *StaticStrategy) processMsgNodeInfoStatic(sender string, msg *Msg
 			}
 			logger.Debugf("Node %s was not present and has been added to the table", sender)
 		}
-		entries[sender].TAlive = time.Now()
+		entries[sender].TAlive = time.Now().UTC()
 		entries[sender].HAProxyHost = msg.HAProxyHost
 		entries[sender].HAProxyPort = msg.HAProxyPort
 		entries[sender].Funcs = msg.Functions

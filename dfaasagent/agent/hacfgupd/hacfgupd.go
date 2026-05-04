@@ -20,7 +20,6 @@ import (
 
 	"github.com/Masterminds/sprig"
 
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/constants"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 )
 
@@ -29,25 +28,31 @@ import (
 type Updater struct {
 	// Loaded template to use for writing the HAProxy config file.
 	template *template.Template
+
+	dataplaneapi_url      string
+	dataplaneapi_username string
+	dataplaneapi_password string
 }
 
-// LoadTemplate loads the template from the given string.
-func (updater *Updater) LoadTemplate(templateContent string) error {
-	// Create a new empty template without name.
-	tmpl := template.New("")
-
-	// Add sprig functions to the template.
-	tmpl = tmpl.Funcs(sprig.TxtFuncMap())
-
-	// Parse template content.
-	tmpl, err := tmpl.Parse(templateContent)
-	if err != nil {
-		return fmt.Errorf("loading HAProxy configuration template from content: %w", err)
+func New(host string, port uint, username, password, templateRaw string) (*Updater, error) {
+	updater := Updater{
+		dataplaneapi_url:      fmt.Sprintf("http://%s:%d", host, port),
+		dataplaneapi_username: username,
+		dataplaneapi_password: password,
 	}
 
-	updater.template = tmpl
+	// Load the given template. First we create an unnamed template with sprig
+	// functions.
+	tmpl := template.New("").Funcs(sprig.TxtFuncMap())
 
-	return nil
+	// Parse template content.
+	templateCompiled, err := tmpl.Parse(templateRaw)
+	if err != nil {
+		return nil, fmt.Errorf("loading HAProxy configuration template from content: %w", err)
+	}
+	updater.template = templateCompiled
+
+	return &updater, nil
 }
 
 // UpdateHAConfig updates the HAProxy config file and posts it using an
@@ -79,13 +84,13 @@ func (updater *Updater) UpdateHAConfig(content interface{}) error {
 	}
 
 	// Create POST request.
-	url := fmt.Sprintf("%s/v3/services/haproxy/configuration/raw?skip_version=true", constants.HAProxyDataPlaneAPIOrigin)
+	url := fmt.Sprintf("%s/v3/services/haproxy/configuration/raw?skip_version=true", updater.dataplaneapi_url)
 	req, err := http.NewRequest("POST", url, bytes.NewBuffer(configData))
 	if err != nil {
 		return fmt.Errorf("creating HTTP request to Data Plane API: %w", err)
 	}
 	req.Header.Set("Content-Type", "text/plain")
-	req.SetBasicAuth(constants.HAProxyDataPlaneUsername, constants.HAProxyDataPlanePassword)
+	req.SetBasicAuth(updater.dataplaneapi_username, updater.dataplaneapi_password)
 
 	// Send POST request.
 	client := &http.Client{}

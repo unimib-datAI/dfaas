@@ -71,8 +71,23 @@ type Configuration struct {
 	HAProxyHost       string `mapstructure:"AGENT_HAPROXY_HOST"`
 	HAProxyPort       uint   `mapstructure:"AGENT_HAPROXY_PORT"`
 
+	// Connection information for the Data Plane API, an API REST for HAProxy.
+	DataPlaneAPIHost     string `mapstructure:"AGENT_DATAPLANEAPI_HOST"`
+	DataPlaneAPIPort     uint   `mapstructure:"AGENT_DATAPLANEAPI_PORT"`
+	DataPlaneAPIUser     string `mapstructure:"AGENT_DATAPLANEAPI_USER"`
+	DataPlaneAPIPassword string `mapstructure:"AGENT_DATAPLANEAPI_PASSWORD"`
+
 	OpenFaaSHost string `mapstructure:"AGENT_OPENFAAS_HOST"`
 	OpenFaaSPort uint   `mapstructure:"AGENT_OPENFAAS_PORT"`
+
+	// Connection information for Prometheus. You can skip if you use a strategy
+	// that do not use Prometheus.
+	PrometheusHost string `mapstructure:"AGENT_PROMETHEUS_HOST"`
+	PrometheusPort uint   `mapstructure:"AGENT_PROMETHEUS_PORT"`
+
+	// Query resolution step for Prometheus. Should be set accordingly to the
+	// scrape interval (see Prometheus config).
+	PrometheusStep time.Duration `mapstructure:"AGENT_PROMETHEUS_STEP"`
 
 	Strategy string `mapstructure:"AGENT_STRATEGY"`
 
@@ -83,6 +98,11 @@ type Configuration struct {
 	CPUThresholdNMS   float64 `mapstructure:"AGENT_NMS_CPU_THRESHOLD"`
 	RAMThresholdNMS   float64 `mapstructure:"AGENT_NMS_RAM_THRESHOLD"`
 	PowerThresholdNMS float64 `mapstructure:"AGENT_NMS_POWER_THRESHOLD"`
+
+	// Connection information for RL model. Used only for "rlagentstrategy"
+	// strategy.
+	RLModelHost string `mapstructure:"AGENT_RLMODEL_HOST"`
+	RLModelPort uint   `mapstructure:"AGENT_RLMODEL_PORT"`
 }
 
 // viperBindConfig binds each field of the Configuration struct with its

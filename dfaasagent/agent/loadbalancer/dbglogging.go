@@ -206,7 +206,7 @@ func debugPromRAMusagePerFunction(timeSpan time.Duration, data map[string]float6
 	logger.Debug(b.String())
 }
 
-func debugFuncs(data map[string]uint) {
+func debugFuncsWithMaxRates(data map[string]uint) {
 	if !logging.GetDebugMode() {
 		return
 	}
@@ -219,7 +219,7 @@ func debugFuncs(data map[string]uint) {
 	sort.Strings(keys)
 
 	var b strings.Builder
-	b.WriteString(fmt.Sprintf("Available functions: %d", len(keys)))
+	b.WriteString(fmt.Sprintf("Available functions (with max rate): %d", len(keys)))
 	if len(keys) > 0 {
 		b.WriteString(" (limit req/s) ")
 		for _, funcName := range keys {
@@ -543,6 +543,37 @@ func debugFuncsDiff(current, previous map[string]*uint) {
 				b.WriteString(" ")
 				b.WriteString(k)
 			}
+		}
+		if idx < len(keys)-1 {
+			b.WriteString(" ")
+		}
+	}
+
+	logging.Logger().Debug(b.String())
+}
+
+// debugFuncs is similar to debugFuncsDiff but without the previous values.
+func debugFuncs(current map[string]*uint) {
+	if !logging.GetDebugMode() {
+		return
+	}
+
+	var b strings.Builder
+	fmt.Fprintf(&b, "Detected deployed functions: (total %d) ", len(current))
+
+	keys := make([]string, 0, len(current))
+	for k := range current {
+		keys = append(keys, k)
+	}
+	sort.Strings(keys)
+
+	for idx, k := range keys {
+		b.WriteString(k)
+		if current[k] != nil {
+			b.WriteString("=")
+			b.WriteString(fmt.Sprintf("%d", *current[k]))
+		} else {
+			b.WriteString("=nil")
 		}
 		if idx < len(keys)-1 {
 			b.WriteString(" ")

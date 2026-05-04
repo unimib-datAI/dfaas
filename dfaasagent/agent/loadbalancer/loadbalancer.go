@@ -60,6 +60,8 @@ func Initialize(p2pHost host.Host, config config.Configuration) {
 		_strategyFactory = &staticStrategyFactory{}
 	case constants.AllLocalStrategy:
 		_strategyFactory = &allLocalStrategyFactory{}
+	case constants.RLAgentStrategy:
+		_strategyFactory = &rlAgentStrategyFactory{}
 	}
 }
 

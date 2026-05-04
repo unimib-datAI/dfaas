@@ -13,12 +13,6 @@ $ sudo helm install prometheus prometheus-community/prometheus --values k8s/char
 $ sudo helm install openfaas openfaas/openfaas --values k8s/charts/values-openfaas.yaml --version 14.2.128
 ```
 
-If you are running a debugging node, run also:
-
-```console
-$ sudo kubectl apply -f k8s/scripts/prometheus-nodeport-service.yaml
-```
-
 Next deploy the custom stick-table-exporter service:
 
 ```console
@@ -79,6 +73,12 @@ $ curl -i -u admin:admin 'http://localhost:30555/v3/services/haproxy/runtime/sti
 
 ```console
 $ faas-cli store deploy figlet --env exec_timeout=4s --env max_inflight=800 --label dfaas.timeout_ms=6000
+```
+
+Or with a custom function not in store:
+
+```console
+$ faas-cli deploy --image=ghcr.io/unimib-datai/dfaas-openfaas-image-classification:dev --name=mlimage --env exec_timeout=4s --env max_inflight=400 --label dfaas.timeout_ms=6000
 ```
 
 See [timeouts.md](timeouts.md) file for information about these env vars, while
