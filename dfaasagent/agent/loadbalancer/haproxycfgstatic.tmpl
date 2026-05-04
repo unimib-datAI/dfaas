@@ -62,7 +62,7 @@ frontend fe_main
     {{range $funcName, $_ := .Functions -}}
     acl is_func_{{$funcName}} path_beg /function/{{$funcName}}
     {{end}}
-    
+
     {{/* Capture some request headers in log */ -}}
     http-request capture req.hdr(Host) len 50
     http-request capture req.hdr(DFaaS-Node-ID) len 50
@@ -76,7 +76,7 @@ frontend fe_main
         * Returned message is 403 "Forbidden": The access to the resource is forbidden by this client.
     */ -}}
     http-request deny deny_status 403 if has_nodeid_hdr !is_hdr_nodeID_known
-    
+
     {{/* ########## BACKEND SELECTION ########## */ -}}
 
     use_backend be_system_funcs if is_path_system_funcs

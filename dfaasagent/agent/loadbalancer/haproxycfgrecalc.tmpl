@@ -145,7 +145,7 @@ frontend fe_main
             * A different status code is useful for testing purpose; can be changed.
     */ -}}
     http-request deny deny_status 403 if has_nodeid_hdr !is_hdr_nodeID_known
-    
+
     {{/* [NEW] Deny requests that exceed limitIn */ -}}
     {{/*
     {{range $funcName, $func := .Functions -}}
