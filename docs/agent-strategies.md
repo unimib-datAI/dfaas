@@ -9,7 +9,8 @@ Currently, there are the following strategies:
 1. Recalc (`recalcstrategy`),
 2. Node Margin (`nodemarginstrategy`),
 3. Static (`staticstrategy`),
-4. All Local (`alllocalstrategy`).
+4. All Local (`alllocalstrategy`),
+5. RL Agent (`rlagentstrategy`).
 
 > [!TIP]
 > For implementation details, refer to the code comments in the
@@ -119,3 +120,29 @@ timeouts are used (60 seconds).
 This strategy updates the proxy configuration (and reloads the proxy) only when
 there are changes to the deployed functions, such as when a new function is
 added or an existing one is removed.
+
+### RL Agent
+
+The RL Agent strategy is an experimental, Reinforcement Learning-based approach
+where request routing decisions are delegated to a trained model. Instead of
+relying on predefined heuristics, the agent queries the model to determine the
+weights for three possible actions: process locally, forward to neighbors, and
+reject.
+
+Unlike other strategies, RL Agent is event-driven rather than periodic. It
+relies on the presence of the `DFaaS-K6-Stage` header in incoming requests,
+which encodes the current stage of the workload.
+
+The strategy alternates between two phases: "All Local phase", whereequests are
+always processed locally, mirroring the behavior of the All Local strategy, and
+"RL phase", where the agent queries the RL model to obtain action weights and
+applies them to the HAProxy configuration.
+
+The active phase is determined by the stage value using modulo 4: stages `0` and
+`1` is "All Local phase", stages `2` and `3` is RL phase.
+
+This design matches how k6 structures load testing stages. If you invoke
+requests manually, ensure that the stage values follow this convention!
+
+You must configure the RL model endpoint via the `AGENT_RLMODEL_HOST` and
+`AGENT_RLMODEL_PORT` environment variables.
