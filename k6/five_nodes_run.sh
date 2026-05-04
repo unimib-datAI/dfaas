@@ -8,6 +8,8 @@ cd "$(dirname "$0")"
 
 TRACE_PATH="data/input_requests/mlimage/rlstrategy/scaled_pwr_5.json"
 
+OUTPUT_BASE_DIR="data/20260504_haproxy_status_test"
+
 run_job() {
   local NODE_NAME="$1"
   local IP="$2"
@@ -17,9 +19,9 @@ run_job() {
   echo "[START] $NODE_NAME (IP=$IP, NODE=$NODE_ID, PORT=$PORT)"
 
   export K6_WEB_DASHBOARD_PORT="$PORT"
-  export K6_WEB_DASHBOARD_EXPORT="data/k6/$NODE_NAME/k6_report.html"
+  export K6_WEB_DASHBOARD_EXPORT="$OUTPUT_BASE_DIR/k6/$NODE_NAME/k6_report.html"
 
-  mkdir -p "data/k6/$NODE_NAME"
+  mkdir -p "$OUTPUT_BASE_DIR/k6/$NODE_NAME"
 
   # Notes:
   #   - We disabled the API server.
@@ -29,11 +31,11 @@ run_job() {
   #   2. Console logs (optional) -> data/k6/X/k6_console.logs
   #   3. CSV output -> data/k6/X/k6_results.csv.gz
   #   4. HTML summary -> data/k6/X/k6_report.html
-  k6 run single_trace.js > "data/k6/$NODE_NAME/k6_stdout.logs" 2>&1 \
+  k6 run single_trace.js > "$OUTPUT_BASE_DIR/k6/$NODE_NAME/k6_stdout.logs" 2>&1 \
     --quiet \
     --address "" \
-    --out csv="data/k6/$NODE_NAME/k6_results.csv.gz" \
-    --console-output "data/k6/$NODE_NAME/k6_console.logs" \
+    --out csv="$OUTPUT_BASE_DIR/k6/$NODE_NAME/k6_results.csv.gz" \
+    --console-output "$OUTPUT_BASE_DIR/k6/$NODE_NAME/k6_console.logs" \
     --env IP_SERVER="$IP" \
     --env TRACE_PATH="$TRACE_PATH" \
     --env FUNCTION=0 \
