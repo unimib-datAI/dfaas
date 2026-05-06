@@ -151,6 +151,7 @@ def main():
         df = pd.concat([df_all_local, df_rl_agent], ignore_index=True)
 
     df.to_csv(args.output, index=False)
+    print(f"CSV saved to: {args.output}")
 
 
 if __name__ == "__main__":
