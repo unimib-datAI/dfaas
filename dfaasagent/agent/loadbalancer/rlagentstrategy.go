@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Copyright 2025 The DFaaS Authors. All rights reserved.
+// Copyright 2026 The DFaaS Authors. All rights reserved.
 // This file is licensed under the AGPL v3.0 or later license. See LICENSE and
 // AUTHORS file for more information.
 
@@ -602,6 +602,8 @@ func (strategy *RLAgentStrategy) queryRLModel(observation []byte) (map[string]ma
 	}
 
 	logger.Debugf("Action JSON from response: %s", string(body))
+
+	debugRLModelToFile("rl_model.log", string(observation), string(body))
 
 	var action map[string]map[string]float64
 	err = json.Unmarshal(body, &action)
