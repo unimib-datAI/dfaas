@@ -8,7 +8,7 @@ cd "$(dirname "$0")"
 
 TRACE_PATH="data/input_requests/mlimage/rlstrategy/scaled_pwr_5.json"
 
-OUTPUT_BASE_DIR="data/20260504_haproxy_status_test"
+OUTPUT_BASE_DIR="data/20260508_haproxy_status_test_3"
 
 run_job() {
   local NODE_NAME="$1"
@@ -39,8 +39,8 @@ run_job() {
     --env IP_SERVER="$IP" \
     --env TRACE_PATH="$TRACE_PATH" \
     --env FUNCTION=0 \
-    --env NODE="$NODE_ID" \
-    --env LIMIT=60 &
+    --env NODE="$NODE_ID" &
+#    --env LIMIT=60 &
 
   echo "[LAUNCHED] $NODE_NAME (pid=$!)"
 }
