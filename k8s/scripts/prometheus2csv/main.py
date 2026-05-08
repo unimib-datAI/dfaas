@@ -12,6 +12,7 @@
 import csv
 import gzip
 import argparse
+import re
 import sys
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -19,10 +20,16 @@ from pathlib import Path
 from prometheus_api_client import PrometheusConnect
 
 
-def stream_to_csv(prom, metric_queries, start_time, end_time, step, output_file):
+def sanitize_filename(name):
+    """Convert metric/query name into a safe filename."""
+    sanitized = re.sub(r"[^\w.-]+", "_", name)
+    return sanitized or "metric"
+
+
+def stream_to_csv(prom, metric_queries, start_time, end_time, step, output_dir):
     """
-    Stream Prometheus metrics to gzipped CSV file. Processes one metric at a
-    time.
+    Stream Prometheus metrics to separate gzipped CSV files.
+    Processes one metric/query at a time.
 
     Args:
         prom: PrometheusConnect instance.
@@ -30,42 +37,56 @@ def stream_to_csv(prom, metric_queries, start_time, end_time, step, output_file)
         start_time: Start datetime.
         end_time: End datetime.
         step: Query resolution step.
-        output_file: Output file path.
+        output_dir: Output directory path.
     """
-    output_path = Path(output_file)
+    output_path = Path(output_dir)
 
-    # Ensure parent directory exists.
-    output_path.parent.mkdir(parents=True, exist_ok=True)
+    # Ensure output directory exists.
+    output_path.mkdir(parents=True, exist_ok=True)
 
     # Fieldnames in the requested order with semicolon separator.
     fieldnames = ["metric", "type", "timestamp", "labels", "value"]
-    rows_written = 0
 
-    with gzip.open(output_path, "wt", newline="", encoding="utf-8") as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames, delimiter=";")
-        writer.writeheader()
+    total_rows_written = 0
 
-        for metric_idx, (query, metric_name, entry_type) in enumerate(metric_queries):
-            print(
-                f"Processing {entry_type} {metric_idx + 1}/{len(metric_queries)}: {metric_name}"
+    for metric_idx, (query, metric_name, entry_type) in enumerate(metric_queries):
+        print(
+            f"Processing {entry_type} {metric_idx + 1}/{len(metric_queries)}: {metric_name}"
+        )
+        print(f"  Query: {query}")
+
+        try:
+            metric_data = prom.custom_query_range(
+                query=query,
+                start_time=start_time,
+                end_time=end_time,
+                step=step,
             )
-            print(f"  Query: {query}")
+        except Exception as e:
+            print(f"Error querying metric '{metric_name}': {e}")
+            continue
 
-            try:
-                metric_data = prom.custom_query_range(
-                    query=query, start_time=start_time, end_time=end_time, step=step
-                )
-            except Exception as e:
-                print(f"Error querying metric '{metric_name}': {e}")
-                continue
+        if not metric_data:
+            print(f"  No data returned for query: {query}")
+            continue
 
-            if not metric_data:
-                print(f"  No data returned for query: {query}")
-                continue
+        # Use metric_name for query entries, otherwise use metric.
+        filename_base = metric_name if entry_type == "query" else metric_name
+
+        output_file = output_path / (f"{sanitize_filename(filename_base)}.csv.gz")
+
+        rows_written = 0
+
+        with gzip.open(output_file, "wt", newline="", encoding="utf-8") as f:
+            writer = csv.DictWriter(
+                f,
+                fieldnames=fieldnames,
+                delimiter=";",
+            )
+            writer.writeheader()
 
             # Stream each series.
             for series in metric_data:
-                # Use the provided metric_name instead of __name__ from results.
                 labels = {k: v for k, v in series["metric"].items() if k != "__name__"}
 
                 # Format labels as key=value pairs.
@@ -85,14 +106,23 @@ def stream_to_csv(prom, metric_queries, start_time, end_time, step, output_file)
 
                     writer.writerow(row)
                     rows_written += 1
+                    total_rows_written += 1
 
         if rows_written == 0:
             print(
-                "Warning: No data was written. Check your metrics and time range.",
+                f"  Warning: No rows written for {metric_name}",
                 file=sys.stderr,
             )
         else:
-            print(f"Completed! Total rows written: {rows_written}")
+            print(f"  Wrote {rows_written} rows to {output_file}")
+
+    if total_rows_written == 0:
+        print(
+            "Warning: No data was written. Check your metrics and time range.",
+            file=sys.stderr,
+        )
+    else:
+        print(f"Completed! Total rows written across all files: {total_rows_written}")
 
 
 def load_metrics_from_file(filepath):
@@ -189,30 +219,33 @@ def parse_args():
 Examples:
   # Export single metric (last minute if no time specified).
   %(prog)s -m up
-  
+
   # Export with specific time range.
   %(prog)s -m up -s "2026-01-27 00:00:00" -e "2026-01-28 00:00:00"
-  
+
   # Export multiple metrics.
   %(prog)s -m up -m 'http_requests_total{job="api"}' --step 1m
-  
+
   # Read metrics from CSV file.
   %(prog)s --metrics-file metrics.csv -s "2026-01-27" -e "2026-01-28"
-  
+
   # Provide custom name for query.
   %(prog)s -q "rate(http_requests_total[5m])" -n "http_request_rate"
+
+  # Export all CSVs into a custom directory.
+  %(prog)s -m up -o ./exports
 
 Metrics File Format:
   The metrics file should be in CSV format with semicolon (;) delimiter.
   The first line is always treated as a header and skipped.
-  
+
   Format: type;query;metric_name;comment.
-  
+
   - type: "metric" or "query" (required).
   - query: Prometheus query or metric name (required).
   - metric_name: Name to use in output (optional for metric, required for query).
   - comment: Description (optional).
-  
+
   Example:
     type;query;metric_name;comment.
     metric;up;;Simple up metric.
@@ -220,23 +253,35 @@ Metrics File Format:
     query;100 * irate(container_cpu_usage_seconds_total[1m]) / on(instance) group_left machine_cpu_cores;cpu_usage_percent;CPU usage percentage.
 
 Output CSV Format:
-  The output CSV file uses semicolon (;) as delimiter with columns:
-  metric;type;timestamp;labels;value.
-  
+  One gzipped CSV file is created per metric/query inside the output directory.
+
+  Example output files:
+    prometheus/up.csv.gz
+    prometheus/container_memory_usage_bytes.csv.gz
+    prometheus/cpu_usage_percent.csv.gz
+
+  Each CSV file uses semicolon (;) as delimiter with columns:
+    metric;type;timestamp;labels;value.
+
   - metric: The metric name (from input or specified name).
   - type: "metric" or "query" (original type from input).
   - timestamp: ISO format timestamp.
   - labels: Comma-separated key=value pairs.
   - value: The metric value.
-        """,
+    """,
     )
 
     # Prometheus connection.
     parser.add_argument(
-        "--host", default="localhost", help="Prometheus host (default: localhost)."
+        "--host",
+        default="localhost",
+        help="Prometheus host (default: localhost).",
     )
     parser.add_argument(
-        "--port", type=int, default=30909, help="Prometheus port (default: 30909)."
+        "--port",
+        type=int,
+        default=30909,
+        help="Prometheus port (default: 30909).",
     )
 
     # Metrics and time range.
@@ -245,55 +290,52 @@ Output CSV Format:
         "--metric",
         dest="metrics",
         action="append",
-        help="Simple metric name (can be specified multiple times). "
-        'e.g., "up" or "http_requests_total{job=\\"api\\"}".',
+        help="Simple metric name.",
     )
     parser.add_argument(
         "-q",
         "--query",
         dest="queries",
         action="append",
-        help="Complex PromQL query (can be specified multiple times). "
-        "Must be paired with --name flag.",
+        help="Complex PromQL query.",
     )
     parser.add_argument(
         "-n",
         "--name",
         dest="names",
         action="append",
-        help="Metric name for the corresponding --query. "
-        "Must be specified for each --query flag.",
+        help="Metric name for the corresponding --query.",
     )
     parser.add_argument(
         "--metrics-file",
         type=Path,
-        help="CSV file containing metric queries (format: type;query;metric_name;comment). "
-        "First line is treated as header and skipped.",
+        help="CSV file containing metric queries.",
     )
     parser.add_argument(
         "-s",
         "--start",
-        help='Start time (format: "2026-01-27 12:00:00" or "2026-01-27"). '
-        "Default: 1 minute ago.",
+        help="Start time.",
     )
     parser.add_argument(
         "-e",
         "--end",
-        help='End time (format: "2026-01-27 12:00:00" or "2026-01-27"). Default: now.',
+        help="End time.",
     )
     parser.add_argument(
         "--step",
         default="5s",
-        help="Query resolution step (default: 5s). Examples: 1s, 30s, 1m, 5m, 1h.",
+        help="Query resolution step (default: 5s).",
     )
 
-    # Output options.
     parser.add_argument(
         "-o",
         "--output",
         type=Path,
-        default=Path("prometheus_metrics.csv.gz"),
-        help="Output file path (default: prometheus_metrics.csv.gz).",
+        default=Path("prometheus"),
+        help=(
+            "Output directory path. One .csv.gz file will be created per "
+            "metric/query (default directory: prometheus)."
+        ),
     )
 
     args = parser.parse_args()
@@ -353,10 +395,12 @@ def main():
     # Remove duplicates while preserving order (based on metric_name).
     seen = set()
     unique_queries = []
+
     for query, name, entry_type in metric_queries:
         if name not in seen:
             seen.add(name)
             unique_queries.append((query, name, entry_type))
+
     metric_queries = unique_queries
 
     # Parse time arguments with defaults.
@@ -379,7 +423,7 @@ def main():
     print(f"Metrics/Queries to export: {len(metric_queries)}")
     print(f"Time range: {start_time} to {end_time}")
     print(f"Step: {args.step}")
-    print(f"Output file: {args.output}")
+    print(f"Output directory: {args.output}")
     print()
 
     # Create Prometheus connection.
@@ -392,15 +436,19 @@ def main():
             start_time=start_time,
             end_time=end_time,
             step=args.step,
-            output_file=args.output,
+            output_dir=args.output,
         )
-        print(f"Successfully exported to {args.output}")
+
+        print(f"Successfully exported metrics to directory: {args.output}")
         return 0
+
     except KeyboardInterrupt:
         print("Export cancelled by user.")
         return 0
+
     except Exception as e:
         print(f"Export failed: {e}")
+
         import traceback
 
         traceback.print_exc()
