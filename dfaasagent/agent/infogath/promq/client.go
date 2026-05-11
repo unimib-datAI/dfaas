@@ -104,74 +104,49 @@ func (c *Client) Replicas(start, end time.Time) (map[string]uint, error) {
 	return replicas, nil
 }
 
-// CPUUsage returns the average CPU usage (normalized in [0, 1]) per container
-// between start and end. Missing containers are set to 0 and warned.
-func (c *Client) CPUUsage(start, end time.Time, containers []string) (map[string]float32, error) {
+// CPUUsage returns the average node CPU usage (normalized in [0, 1]) between
+// start and end.
+func (c *Client) CPUUsage(start, end time.Time) (float32, error) {
 	if end.Before(start) {
-		return nil, errors.New("end time must be after start time")
-	}
-	if len(containers) == 0 {
-		return nil, errors.New("containers list cannot be empty")
+		return 0, errors.New("end time must be after start time")
 	}
 
-	// Compute range duration (same approach as other functions).
+	// Compute range duration.
 	duration := end.Sub(start)
 
-	// duration is a time.Duration. Prometheus do not supports float duration,
-	// only integer. So: convert to seconds, round, then rebuild a clean duration.
+	// Prometheus range selector duration (rounded to seconds).
 	durationStr := (time.Duration(math.Round(duration.Seconds())) * time.Second).String()
 
-	// Query mainly taken from k8s/scripts/prometheus2csv/metrics.csv
-	containerRegex := strings.Join(containers, "|")
+	// Node-level CPU usage (explicit core normalization).
 	query := fmt.Sprintf(`
-	avg by (container) (
-		rate(container_cpu_usage_seconds_total{
-			namespace="default",
-			container=~"%s",
-			container!=""
-			}[%s])
-		/ on(instance) group_left machine_cpu_cores
-	)`, containerRegex, durationStr)
+sum(rate(node_cpu_seconds_total{mode!="idle"}[%s]))
+/
+count by (cpu) (node_cpu_seconds_total{mode="idle"})
+`, durationStr)
+
 	c.logQuery(query, end)
 
 	ctx := context.Background()
 	result, warnings, err := c.promAPI.Query(ctx, query, end)
 	if err != nil {
-		return nil, fmt.Errorf("get CPU usage from Prometheus: %w", err)
+		return 0, fmt.Errorf("get CPU usage from Prometheus: %w", err)
 	}
 	if len(warnings) > 0 {
 		c.logger.Warnf("Prometheus warnings for query %q\n%s", query, strings.Join(warnings, "\n"))
 	}
 
-	// See Replicas().
 	vector, ok := result.(model.Vector)
 	if !ok {
-		return nil, fmt.Errorf("result type is %T, expected %T", result, model.Vector{})
+		return 0, fmt.Errorf("result type is %T, expected %T", result, model.Vector{})
 	}
 
-	// Initialize return value.
-	usage := make(map[string]float32, len(containers))
-	found := make(map[string]bool, len(containers))
-	for _, c := range containers {
-		usage[c] = 0
-		found[c] = false
+	if len(vector) == 0 {
+		c.logger.Warn("no CPU data returned for node in given time range")
+		return 0, nil
 	}
 
-	for _, sample := range vector {
-		// Note in this case there is no namespace in container name.
-		container := string(sample.Metric["container"])
-		usage[container] = float32(sample.Value)
-		found[container] = true
-	}
-
-	// Warn for missing containers.
-	for _, cont := range containers {
-		if !found[cont] {
-			c.logger.Warnf("no CPU data for container %q in given time range", cont)
-		}
-	}
-
-	return usage, nil
+	// Single scalar result expected
+	return float32(vector[0].Value), nil
 }
 
 // InputRPS returns the average number of incoming client requests per second

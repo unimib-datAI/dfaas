@@ -501,35 +501,21 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	}
 
 	// cpu_utilization key in observation.
-	// FIXME: Only one function is supported!
-	cpuUsage, err := strategy.promq.CPUUsage(strategy.allLocalPhaseTimestamp,
-		now,
-		[]string{"mlimage"})
+	cpuUsage, err := strategy.promq.CPUUsage(strategy.allLocalPhaseTimestamp, now)
 	if err != nil {
 		return nil, fmt.Errorf("building observation for 'cpu_utilization' key: %w", err)
 	}
-	cpuUsageSingle, err := extractSingleFunctionValue(cpuUsage)
-	if err != nil {
-		return nil, fmt.Errorf("building observation for 'cpu_utilization' key: %w", err)
-	}
-	obs["cpu_utilization"] = cpuUsageSingle
+	obs["cpu_utilization"] = cpuUsage
 
 	// previous_cpu_utilization key in observation.
 	if strategy.rlAgentPhaseTimestamp.IsZero() {
 		obs["previous_cpu_utilization"] = 0.0
 	} else {
-		// FIXME: Only one function is supported!
-		prevCPUUsage, err := strategy.promq.CPUUsage(strategy.rlAgentPhaseTimestamp,
-			strategy.allLocalPhaseTimestamp,
-			[]string{"mlimage"})
+		prevCPUUsage, err := strategy.promq.CPUUsage(strategy.rlAgentPhaseTimestamp, strategy.allLocalPhaseTimestamp)
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_cpu_utilization' key: %w", err)
 		}
-		prevCPUUsageSingle, err := extractSingleFunctionValue(prevCPUUsage)
-		if err != nil {
-			return nil, fmt.Errorf("building observation for 'previous_cpu_utilization' key: %w", err)
-		}
-		obs["previous_cpu_utilization"] = prevCPUUsageSingle
+		obs["previous_cpu_utilization"] = prevCPUUsage
 	}
 
 	// n_replicas key observation.
