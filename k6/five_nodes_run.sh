@@ -6,7 +6,7 @@ set -euo pipefail
 # Make sure the working directory is where this script is located!
 cd "$(dirname "$0")"
 
-TRACE_PATH="data/input_requests/mlimage/rlstrategy/scaled_pwr_5.json"
+TRACE_PATH="../data/input_requests/mlimage/rlstrategy/scaled_pwr_5.json"
 
 OUTPUT_BASE_DIR="../data/20260511_fix_cpu_metric"
 
@@ -39,7 +39,7 @@ run_job() {
     --env IP_SERVER="$IP" \
     --env TRACE_PATH="$TRACE_PATH" \
     --env FUNCTION=0 \
-    --env NODE="$NODE_ID"
+    --env NODE="$NODE_ID" \
     --env LIMIT=60 &
 
   echo "[LAUNCHED] $NODE_NAME (pid=$!)"

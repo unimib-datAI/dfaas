@@ -32,7 +32,7 @@ switch (FUNCTION_NAME) {
   case "mlimage":
     CONTENT_TYPE = "image/jpeg";
     (async function () {
-      BODY_CONTENT = await readAll("data/mlimage_vulture.jpg");
+      BODY_CONTENT = await readAll("mlimage_vulture.jpg");
     })();
     break;
   default:
