@@ -18,7 +18,8 @@ metric;gateway_function_invocation_started;;
 metric;gateway_function_invocation_total;;
 metric;gateway_functions_seconds_bucket;;
 metric;gateway_service_count;;
-query;100 * irate(container_cpu_usage_seconds_total{namespace="default", container!=""}[1m]) / on(instance) group_left machine_cpu_cores;cpu_usage_percent;CPU usage percentage for containers in default namespace
+query;sum(rate(node_cpu_seconds_total{mode!="idle"}[1m])) / count by (cpu) (node_cpu_seconds_total{mode="idle"});node_cpu_usage_ratio_1m;Total node CPU utilization ratio (0–1+), computed over a 1-minute window and normalized by logical CPU core count
+query;sum(rate(node_cpu_seconds_total{mode!="idle"}[10s])) / count by (cpu) (node_cpu_seconds_total{mode="idle"});node_cpu_usage_ratio_5s;Total node CPU utilization ratio (0–1+), computed over a 10-second window and normalized by logical CPU core count
 query;avg by (function_name) (avg_over_time(gateway_service_count[1m]));replicas_avg;Average number of replicas for each function over 1 minute
 query;gateway_service_count;gateway_service_count_instant;Instant/raw gateway service count metric
 query;avg by (proxy) ( rate(haproxy_backend_http_requests_total{proxy=~"function_.*",proxy!~".**forwarded"}[1m]) );input_rps;Average incoming client requests per second for each function excluding forwarded traffic
