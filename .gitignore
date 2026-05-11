@@ -79,3 +79,5 @@ k8s/scripts/libp2p-peer-id/libp2p-peer-id
 
 # Ignore generated files from experiments.
 /data
+*.png
+*.jpg
