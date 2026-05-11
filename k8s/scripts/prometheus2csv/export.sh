@@ -4,7 +4,7 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
-OUTPUT_BASE_DIR="/home/emanuele/dfaas/k6/data/20260508_haproxy_status_test_3/prom"
+OUTPUT_BASE_DIR="../../../data/20260511_fix_cpu_metric"
 
 PIDS=()
 
