@@ -21,8 +21,6 @@ metric;gateway_service_count;;
 query;100 * irate(container_cpu_usage_seconds_total{namespace="default", container!=""}[1m]) / on(instance) group_left machine_cpu_cores;cpu_usage_percent;CPU usage percentage for containers in default namespace
 query;avg by (function_name) (avg_over_time(gateway_service_count[1m]));replicas_avg;Average number of replicas for each function over 1 minute
 query;gateway_service_count;gateway_service_count_instant;Instant/raw gateway service count metric
-query;avg by (container) ( rate(container_cpu_usage_seconds_total{namespace="default",container=~"$containerRegex",container!=""}[1m]) / on(instance) group_left machine_cpu_cores );container_cpu_usage_normalized;Average normalized CPU usage per container over 1 minute
-query;container_cpu_usage_seconds_total{namespace="default",container=~"$containerRegex",container!=""};container_cpu_usage_seconds_total_raw;Raw cumulative container CPU usage counter
 query;avg by (proxy) ( rate(haproxy_backend_http_requests_total{proxy=~"function_.*",proxy!~".**forwarded"}[1m]) );input_rps;Average incoming client requests per second for each function excluding forwarded traffic
 query;haproxy_backend_http_requests_total{proxy=~"function*.*",proxy!~".**forwarded"};haproxy_backend_http_requests_total_raw;Raw HAProxy backend HTTP requests counter excluding forwarded traffic
 query;sum by (function_name) ( rate(gateway_functions_seconds_sum[1m])) / sum by (function_name) (rate(gateway_functions_seconds_count[1m]));avg_response_time_local_ms;Average local response time per function based on OpenFaaS gateway histogram
@@ -37,4 +35,3 @@ query;sum by (proxy, server) ( rate(haproxy_server_http_requests_total{proxy=~"f
 query;haproxy_server_http_responses_total{proxy=~"function*.*",proxy!~".**forwarded",code="2xx"};haproxy_server_http_responses_total_forward_2xx_raw;Raw HAProxy successful HTTP responses counter per backend server
 query;sum by (proxy, server) ( last_over_time(haproxy_server_response_time_average_seconds{proxy=~"function*.*",proxy!~".**forwarded"}[1m]) );avg_response_time_forward_ms;Average forwarded response time in milliseconds per function and DFaaS node over 1 minute
 query;haproxy_server_response_time_average_seconds{proxy=~"function*.*",proxy!~".*_forwarded"};haproxy_server_response_time_average_seconds_instant;Instant HAProxy backend response time metric
-
