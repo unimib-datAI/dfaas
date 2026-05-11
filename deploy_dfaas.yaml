@@ -171,33 +171,35 @@
     user_home: "{{ ansible_facts['user_dir'] }}"
 
   environment:
+    # Required to let Helm connect to the local k8s cluster.
     KUBECONFIG: /etc/rancher/k3s/k3s.yaml
 
   tasks:
-    - name: Install Helm charts
-      vars:
-        helm_charts:
-          - name: haproxy
-            repo: haproxytech/haproxy
-            version: "1.26.1"
-            values: "k8s/charts/values-haproxy.yaml"
-          - name: prometheus
-            repo: prometheus-community/prometheus
-            version: "27.37.0"
-            values: "k8s/charts/values-prometheus.yaml"
-          - name: openfaas
-            repo: openfaas/openfaas
-            version: "14.2.124"
-            values: "k8s/charts/values-openfaas.yaml"
+    - name: Deploy Helm charts
       block:
-        - name: "Install {{ item.name }} on K3S"
-          ansible.builtin.command: >
-            helm install {{ item.name }} {{ item.repo }}
-            --version {{ item.version }}
-            --values {{ item.values }}
-          loop: "{{ helm_charts }}"
-          args:
-            chdir: "{{ playbook_dir }}"
+        - name: Deploy HAProxy chart
+          kubernetes.core.helm:
+            name: haproxy
+            chart_ref: haproxytech/haproxy
+            chart_version: 1.26.1
+            values_files: k8s/charts/values-haproxy.yaml
+            release_namespace: default
+
+        - name: Deploy Prometheus chart
+          kubernetes.core.helm:
+            name: prometheus
+            chart_ref: prometheus-community/prometheus
+            chart_version: 27.37.0
+            values_files: k8s/charts/values-prometheus.yaml
+            release_namespace: default
+
+        - name: Deploy OpenFaaS chart
+          kubernetes.core.helm:
+            name: openfaas
+            chart_ref: openfaas/openfaas
+            chart_version: 14.2.124
+            values_files: k8s/charts/values-openfaas.yaml
+            release_namespace: default
 
     - name: Deploy OpenFaaS functions
       ansible.builtin.shell: ./k8s/scripts/deploy-functions.sh
