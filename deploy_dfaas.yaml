@@ -131,15 +131,13 @@
 
         - name: Download faas-cli
           ansible.builtin.get_url:
-            url: https://github.com/openfaas/faas-cli/releases/download/0.18.1/faas-cli
+            url: https://github.com/openfaas/faas-cli/releases/download/0.18.8/faas-cli
             dest: "/opt/bin/faas-cli"
             mode: '0755'
 
         - name: Ensure OPENFAAS_URL exists and PATH env var is updated for faas-cli
           ansible.builtin.copy:
             dest: /etc/profile.d/openfaas-faas-cli.sh
-            owner: root
-            group: root
             mode: "0644"
             content: |
               # Let faas-cli connect to local OpenFaaS gateway.
