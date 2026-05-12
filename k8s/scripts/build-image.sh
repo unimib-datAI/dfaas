@@ -1,10 +1,10 @@
 #!/usr/bin/env bash
 # SPDX-License-Identifier: AGPL-3.0-or-later
-# Copyright 2025 The DFaaS Authors. All rights reserved.
+# Copyright 2025-2026 The DFaaS Authors. All rights reserved.
 # This file is licensed under the AGPL v3.0 or later license. See LICENSE and
 # AUTHORS file for more information.
 #
-# Utility to build DFaaS Agent and DFaaS Forecaster Docker images.
+# Utility to build DFaaS Agent and DFaaS Forecaster container images.
 #
 # Must be run from the project's root directory!
 
@@ -13,7 +13,7 @@ set -euo pipefail
 
 # Show help message if no arguments are given or on -h|--help.
 if [[ $# -eq 0 || "$1" == "-h" || "$1" == "--help" ]]; then
-  echo "Usage: $0 <image_name> [<mode> ...] [--dockerfile <path>] [--skip-build]"
+  echo "Usage: $0 <image_name> [<mode> ...] [--containerfile <path>] [--skip-build]"
   echo
   echo "Arguments:"
   echo "  <image_name>   The image name (e.g., agent, forecaster)."
@@ -22,9 +22,9 @@ if [[ $# -eq 0 || "$1" == "-h" || "$1" == "--help" ]]; then
   echo "                 'tag' to only build and tag the image."
   echo
   echo "Optional flags:"
-  echo "  --dockerfile   Specify the Dockerfile path. If omitted, the default"
-  echo "                 directory is k8s/docker/."
-  echo "  --skip-build   Skip the build step."
+  echo "  --containerfile   Specify the Containerfile path. If omitted, the default"
+  echo "                    directory is k8s/containers/."
+  echo "  --skip-build      Skip the build step."
   echo
   echo "After the build, the image is tagged as 'NAME:dev' in the local"
   echo "registry. If push is specified, it is also tagged as"
@@ -37,20 +37,20 @@ if [[ $# -eq 0 || "$1" == "-h" || "$1" == "--help" ]]; then
 fi
 
 IMAGE_NAME=""
-DOCKERFILE=""
+CONTAINERFILE=""
 MODES=()
 SKIP_BUILD=false
 
 # Parse arguments and options.
 while [[ $# -gt 0 ]]; do
   case "$1" in
-    --dockerfile)
+    --containerfile)
       shift
       if [[ -z "$1" ]]; then
-        echo "Error: --dockerfile requires a path argument."
+        echo "Error: --containerfile requires a path argument."
         exit 1
       fi
-      DOCKERFILE="$1"
+      CONTAINERFILE="$1"
       shift
       ;;
     --skip-build)
@@ -68,15 +68,15 @@ while [[ $# -gt 0 ]]; do
   esac
 done
 
-if [[ -z "$DOCKERFILE" ]]; then
-  DOCKERFILE="k8s/docker/Dockerfile.${IMAGE_NAME}"
+if [[ -z "$CONTAINERFILE" ]]; then
+  CONTAINERFILE="k8s/containers/${IMAGE_NAME}"
 fi
 
 IMAGE_TAG="${IMAGE_NAME}:dev"
 
 if [[ "$SKIP_BUILD" == false ]]; then
-  echo "-- Command: buildah build -f \"${DOCKERFILE}\" -t \"${IMAGE_TAG}\" ."
-  buildah build -f "${DOCKERFILE}" -t "${IMAGE_TAG}" .
+  echo "-- Command: buildah build -f \"${CONTAINERFILE}\" -t \"${IMAGE_TAG}\" ."
+  buildah build -f "${CONTAINERFILE}" -t "${IMAGE_TAG}" .
 else
   echo "-- Skipping build step (--skip-build)."
 fi

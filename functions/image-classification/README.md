@@ -16,7 +16,7 @@ can be found in [function/handler.py](function/handler.py).
 Use the help script to build the image from the project's root directory:
 
 ```console
-$ ./k8s/scripts/build-image.sh openfaas-image-classification none --dockerfile functions/image-classification/Dockerfile
+$ ./k8s/scripts/build-image.sh openfaas-image-classification none --containerfile functions/image-classification/Dockerfile
 ```
 
 This will generate the image with `localhost/openfaas-image-classification:dev`
@@ -24,7 +24,7 @@ tag. To push the image to GitHub Container Registry (after login) with tag
 `ghcr.io/unimib-datai/dfaas-openfaas-image-classification`:
 
 ```console
-$ ./k8s/scripts/build-image.sh openfaas-image-classification push --dockerfile functions/image-classification/Dockerfile
+$ ./k8s/scripts/build-image.sh openfaas-image-classification push --containerfile functions/image-classification/Dockerfile
 ```
 
 > [!IMPORTANT]

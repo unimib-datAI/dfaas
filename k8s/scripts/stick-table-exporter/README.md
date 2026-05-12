@@ -29,7 +29,7 @@ admin credentials are `admin:admin`.
 You can build (and push the local k3s cluster) the container image with the
 [`k8s/scripts/build-image.sh`](k8s/scripts/build-image.sh) script:
 
-    $ k8s/scripts/build-image.sh stick-table-exporter k3s --dockerfile k8s/scripts/stick-table-exporter/Containerfile
+    $ k8s/scripts/build-image.sh stick-table-exporter k3s --containerfile k8s/scripts/stick-table-exporter/Containerfile
 
 Make sure to be in the project's root directory, not in
 k8s/scripts/stick-table-exporter directory!

@@ -16,7 +16,7 @@ $ sudo helm install openfaas openfaas/openfaas --values k8s/charts/values-openfa
 Next deploy the custom stick-table-exporter service:
 
 ```console
-$ ./k8s/scripts/build-image.sh stick-table-exporter k3s --dockerfile k8s/scripts/stick-table-exporter/Containerfile
+$ ./k8s/scripts/build-image.sh stick-table-exporter k3s --containerfile k8s/scripts/stick-table-exporter/Containerfile
 $ sudo helm install stick-table-exporter k8s/scripts/stick-table-exporter/helm/
 ```
 

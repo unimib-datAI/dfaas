@@ -1,4 +1,4 @@
-# Dockerfile to build the DFaaS agent.
+# Containerfile to build the DFaaS agent.
 #
 # Based on the official Go image: https://hub.docker.com/_/golang
 
@@ -39,3 +39,5 @@ COPY k8s/configs/group_list.json .
 EXPOSE 8080
 
 ENTRYPOINT ["/usr/src/dfaasagent/dfaasagent"]
+
+# vim: set filetype=dockerfile :
