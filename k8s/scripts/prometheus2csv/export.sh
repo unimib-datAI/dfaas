@@ -4,11 +4,18 @@ set -euo pipefail
 
 cd "$(dirname "$0")"
 
-OUTPUT_BASE_DIR="../../../data/20260511_fix_cpu_metric"
+if [[ $# -ne 3 ]]; then
+    echo "Usage: $0 <input_dir> <start date> <end date>"
+    exit 1
+fi
+
+OUTPUT_BASE_DIR="$1"
+START_DATE="$2"
+END_DATE="$3"
 
 PIDS=()
 
-cp metrics.csv "$OUTPUT_BASE_DIR/$NODE_NAME/metrics.csv"
+cp metrics.csv "$OUTPUT_BASE_DIR/metrics.csv"
 
 run_job() {
   local NODE_NAME="$1"
@@ -22,8 +29,8 @@ run_job() {
   /home/emanuele/ipython-env/env/bin/python main.py \
       --host "$IP" \
       --metrics-file metrics.csv \
-      --start "2026-05-08T13:41:00" \
-      --end "2026-05-08T17:03:07" \
+      --start "$START_DATE" \
+      --end "$END_DATE" \
       --output "$OUTPUT_BASE_DIR/$NODE_NAME" &
 
   local pid=$!
@@ -33,6 +40,7 @@ run_job() {
 }
 
 # Format: "name ip node_id"
+# FIXME: Make node name and IP configurable!
 JOBS=(
   "node_c 10.12.68.2 0"
   "node_d 10.12.68.3 1"
