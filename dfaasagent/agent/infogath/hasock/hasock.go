@@ -175,8 +175,8 @@ func StickTableField(client *http.Client, stickTable, field string) (int, error)
 		}
 		return 0, ErrEmpty
 	case 503:
-		return 0, errors.New("stick table not available (HTTP 503)")
+		return 0, fmt.Errorf("stick table not available (HTTP 503). Body: %s", string(body))
 	default:
-		return 0, fmt.Errorf("unexpected HTTP status code: %d", resp.StatusCode)
+		return 0, fmt.Errorf("unexpected HTTP status code %d. Body: %s", resp.StatusCode, string(body))
 	}
 }
