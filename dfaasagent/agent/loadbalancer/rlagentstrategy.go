@@ -500,13 +500,13 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 		return nil, fmt.Errorf("building observation for 'previous_avg_resp_time_fwd_to_node_X' key: found %d peers, expected 4: peers", peers)
 	}
 
-	// cpu_utilization key in observation.
+	// cpu_utilization key in observation (float32 in [0, 1]).
 	// FIXME: Remove "mlimage" function name hardcoded.
 	cpuUsage, err := strategy.promq.CPUUsage("mlimage", strategy.allLocalPhaseTimestamp, now)
 	if err != nil {
 		return nil, fmt.Errorf("building observation for 'cpu_utilization' key: %w", err)
 	}
-	obs["cpu_utilization"] = cpuUsage
+	obs["cpu_utilization"] = cpuUsage / 100
 
 	// previous_cpu_utilization key in observation.
 	if strategy.rlAgentPhaseTimestamp.IsZero() {
@@ -517,7 +517,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_cpu_utilization' key: %w", err)
 		}
-		obs["previous_cpu_utilization"] = prevCPUUsage
+		obs["previous_cpu_utilization"] = prevCPUUsage / 100
 	}
 
 	// n_replicas key observation.
