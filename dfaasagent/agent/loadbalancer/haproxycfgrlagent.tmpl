@@ -85,9 +85,8 @@ frontend main
         acl reject_{{$funcName}} var(txn.rand) -m int lt {{ index (index $.Weights $funcName) "reject" }}
 
         # Apply the action reject, only for non forwarded requests!
-        # Use custom HTTP status 560 to let clients know that this is a reject.
-        # See: https://www.iana.org/assignments/http-status-codes/http-status-codes.xhtml
-        http-request deny status 560 if is_{{$funcName}} !has_node_hdr reject_{{$funcName}}
+        # Use custom HTTP status 403 to let clients know that this is a reject.
+        http-request deny content-type "text/plain" lf-string "Rejected directly" if is_{{$funcName}} !has_node_hdr reject_{{$funcName}}
         {{ end -}}
 
         # Use the forwarded backend if the request originates from another DFaaS

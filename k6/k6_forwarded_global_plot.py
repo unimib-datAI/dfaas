@@ -35,7 +35,7 @@ def classify_request(row):
     - Forwarded:
         dfaas_forwarded_to is present
     - Rejected directly:
-        dfaas_forwarded_to is empty AND http_status == 560
+        dfaas_forwarded_to is empty AND http_status == 403
     - Local:
         dfaas_forwarded_to is empty
     """
@@ -47,7 +47,7 @@ def classify_request(row):
     if forwarded:
         return "Forwarded"
 
-    if int(row["http_status"]) == 560:
+    if int(row["http_status"]) == 403:
         return "Rejected directly"
 
     return "Local"
