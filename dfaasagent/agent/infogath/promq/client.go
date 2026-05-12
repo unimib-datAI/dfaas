@@ -104,9 +104,9 @@ func (c *Client) Replicas(start, end time.Time) (map[string]uint, error) {
 	return replicas, nil
 }
 
-// CPUUsage returns the average node CPU usage (normalized in [0, 1]) between
-// start and end.
-func (c *Client) CPUUsage(start, end time.Time) (float32, error) {
+// CPUUsage returns the node CPU usage percentage (0-100) for a specific container
+// between start and end, relative to the machine's total cores.
+func (c *Client) CPUUsage(containerName string, start, end time.Time) (float32, error) {
 	if end.Before(start) {
 		return 0, errors.New("end time must be after start time")
 	}
@@ -117,12 +117,14 @@ func (c *Client) CPUUsage(start, end time.Time) (float32, error) {
 	// Prometheus range selector duration (rounded to seconds).
 	durationStr := (time.Duration(math.Round(duration.Seconds())) * time.Second).String()
 
-	// Node-level CPU usage (explicit core normalization).
+	// Updated query: uses containerName and dynamic durationStr.
+	// Note: We use sum by (instance) to align with machine_cpu_cores labels.
 	query := fmt.Sprintf(`
-sum(rate(node_cpu_seconds_total{mode!="idle"}[%s]))
-/
-count by (cpu) (node_cpu_seconds_total{mode="idle"})
-`, durationStr)
+	100 * sum by (instance) (
+	  irate(container_cpu_usage_seconds_total{namespace="default", container="%s"}[%s])
+	) 
+	/ 
+	on(instance) machine_cpu_cores`, containerName, durationStr)
 
 	c.logQuery(query, end)
 
@@ -141,11 +143,11 @@ count by (cpu) (node_cpu_seconds_total{mode="idle"})
 	}
 
 	if len(vector) == 0 {
-		c.logger.Warn("no CPU data returned for node in given time range")
+		c.logger.Warn("no CPU data returned for container in given time range")
 		return 0, nil
 	}
 
-	// Single scalar result expected
+	// Returns the first (and only) instance's value.
 	return float32(vector[0].Value), nil
 }
 

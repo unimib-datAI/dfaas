@@ -501,7 +501,8 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	}
 
 	// cpu_utilization key in observation.
-	cpuUsage, err := strategy.promq.CPUUsage(strategy.allLocalPhaseTimestamp, now)
+	// FIXME: Remove "mlimage" function name hardcoded.
+	cpuUsage, err := strategy.promq.CPUUsage("mlimage", strategy.allLocalPhaseTimestamp, now)
 	if err != nil {
 		return nil, fmt.Errorf("building observation for 'cpu_utilization' key: %w", err)
 	}
@@ -511,7 +512,8 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	if strategy.rlAgentPhaseTimestamp.IsZero() {
 		obs["previous_cpu_utilization"] = 0.0
 	} else {
-		prevCPUUsage, err := strategy.promq.CPUUsage(strategy.rlAgentPhaseTimestamp, strategy.allLocalPhaseTimestamp)
+		// FIXME: Remove "mlimage" function name hardcoded.
+		prevCPUUsage, err := strategy.promq.CPUUsage("mlimage", strategy.rlAgentPhaseTimestamp, strategy.allLocalPhaseTimestamp)
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_cpu_utilization' key: %w", err)
 		}
