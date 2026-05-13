@@ -378,11 +378,12 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 			// Peer here is already a string with format "node_X".
 			key := fmt.Sprintf("previous_fwd_to_%s", peer)
 			obs[key] = rate
+			peers++
 		}
 	}
 	// FIXME: Remove this code (used for debugging).
 	if peers != 4 {
-		return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X' key: found %d peers, expected 4: peers", peers)
+		return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X' key: found %d peers, expected 4 peers", peers)
 	}
 
 	// previous_fwd_to_node_X_rejected key in observation.
@@ -411,11 +412,12 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 			// Peer here is already a string with format "node_X".
 			key := fmt.Sprintf("previous_fwd_to_%s_rejected", peer)
 			obs[key] = rate
+			peers++
 		}
 	}
 	// FIXME: Remove this code (used for debugging).
 	if peers != 4 {
-		return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X_rejected' key: found %d peers, expected 4: peers", peers)
+		return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X_rejected' key: found %d peers, expected 4 peers", peers)
 	}
 
 	// reject_rate key in observation.
@@ -493,13 +495,15 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 			if peer == "openfaas-local" {
 				continue
 			}
-			key := fmt.Sprintf("previous_avg_resp_time_fwd_to_node_%s", peer)
+			// peer here is a string with format "node_<id>".
+			key := fmt.Sprintf("previous_avg_resp_time_fwd_to_%s", peer)
 			obs[key] = rate
+			peers++
 		}
 	}
 	// FIXME: Remove this code (used for debugging).
 	if peers != 4 {
-		return nil, fmt.Errorf("building observation for 'previous_avg_resp_time_fwd_to_node_X' key: found %d peers, expected 4: peers", peers)
+		return nil, fmt.Errorf("building observation for 'previous_avg_resp_time_fwd_to_node_X' key: found %d peers, expected 4 peers", peers)
 	}
 
 	// cpu_utilization key in observation (float32 in [0, 1]).
