@@ -15,6 +15,8 @@ END_DATE="$3"
 
 PIDS=()
 
+mkdir -p "$OUTPUT_BASE_DIR"
+
 cp metrics.csv "$OUTPUT_BASE_DIR/metrics.csv"
 
 run_job() {
@@ -24,7 +26,7 @@ run_job() {
 
   echo "[START] $NODE_NAME (IP=$IP, NODE=$NODE_ID)"
 
-  mkdir -p "$OUTPUT_BASE_DIR/$NODE_NAME"
+  mkdir "$OUTPUT_BASE_DIR/$NODE_NAME"
 
   /home/emanuele/ipython-env/env/bin/python main.py \
       --host "$IP" \
