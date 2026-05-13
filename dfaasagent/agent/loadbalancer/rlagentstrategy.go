@@ -243,6 +243,8 @@ func (strategy *RLAgentStrategy) rlAgentPhase() error {
 		return fmt.Errorf("applying RL action for RL phase: %w", err)
 	}
 
+	strategy.rlAgentPhaseTimestamp = time.Now().UTC()
+
 	return nil
 }
 
