@@ -8,7 +8,7 @@ cd "$(dirname "$0")"
 
 TRACE_PATH="../data/input_requests/mlimage/rlstrategy/scaled_pwr_5_scaled_down_not_node_0.json"
 
-OUTPUT_BASE_DIR="../data/20260513_one_rl_agent"
+OUTPUT_BASE_DIR="../data/20260513_one_rl_agent_2"
 
 run_job() {
   local NODE_NAME="$1"
@@ -40,7 +40,7 @@ run_job() {
     --env TRACE_PATH="$TRACE_PATH" \
     --env FUNCTION=0 \
     --env NODE="$NODE_ID" \
-    --env LIMIT=90 &
+    --env LIMIT=60 &
 
   echo "[LAUNCHED] $NODE_NAME (pid=$!)"
 }
@@ -53,6 +53,8 @@ JOBS=(
   "node_f 10.12.68.5 3 30668"
   "node_g 10.12.68.6 4 30669"
 )
+
+echo "[INFO] Saving results to $(realpath $OUTPUT_BASE_DIR)"
 
 # Launch all jobs.
 for job in "${JOBS[@]}"; do
