@@ -45,34 +45,61 @@ frontend main
     # Ignore requests without the header.
     #
     # Warning: this stick table is used only for debugging purposes.
-    stick-table type string size 1 expire 5s store gpt0
+    stick-table type string size 1 expire 5s store gpt(1)
 
     # Map stick counter 0 (sc0) with the key "global". Reminder: it is mandatory
     # to first select the key and then write the value.
     http-request track-sc0 str(global)
 
-    # ACL to check if header exists and it is numeric.
+    # ACL to check if DFaaS-K6-Stage header exists and it is numeric.
     acl has_stage_hdr req.hdr(DFaaS-K6-Stage) -m reg ^[0-9]+$
 
-    # Store latest stage to gpc0 as integer for the stick counter sc0 (we know it
-    # is mapped to the "global" key).
-    http-request sc-set-gpt0(0) req.hdr(DFaaS-K6-Stage) if has_stage_hdr
+    # ACL to detect incoming forwarded requests.
+    acl has_node_hdr req.hdr(DFaaS-Node-ID) -m found
+
+    # Store latest stage to gpt0 as integer for the stick counter sc0 (we know
+    # it is mapped to the "global" key). Note we add +1 to distinguish the case
+    # where the header has not been found (default value is 0).
+    #
+    # Note: forwarded requests from other nodes are ignored!
+    http-request sc-set-gpt(0,0) req.hdr(DFaaS-K6-Stage),add(1) if has_stage_hdr !has_node_hdr
+
+    # Track for the current transaction (request-response) the DFaaS-Node-ID
+    # header (if exists), it will be added in the response for incoming
+    # forwarded requests.
+    http-request set-var(txn.dfaas_node_id) req.hdr(DFaaS-Node-ID)
 
     {{/* Create an ACL and use to select the backend if positive. */}}
     {{range $funcName, $_ := .Functions -}}
-    # Forward /function/{{$funcName}} to the respective backend
+    # Match function path (always under /function/).
     acl is_{{$funcName}} path_beg /function/{{$funcName}}
+
+    # Use the forwarded backend if the request originates from another DFaaS
+    # node, otherwise, use the local backend. This distinction is required to
+    # correctly compute statistics for both client and forwarded requests.
+    use_backend function_{{$funcName}}_forwarded if is_{{$funcName}} has_node_hdr
     use_backend function_{{$funcName}} if is_{{$funcName}}
-    {{end}}
+    {{end -}}
 
 {{range $funcName, $timeout := .Functions -}}
 backend function_{{$funcName}}
-    http-response set-header dfaaS-node-id {{$.DFaaSNodeID}}
+    http-response set-header DFaaS-Node-ID {{$.DFaaSNodeID}}
     server openfaas-local {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}}
     {{- if $timeout}}
     # If the function's metadata contains dfaas.timeout_ms label, we se in the
     # HAProxy backend a timeout of dfaas.timeout_ms+1s. Note that in the
     # OpenFaaS Gateway we have a timeout of dfaas.timeout_ms.
+    timeout connect {{$timeout}}ms
+    timeout server {{$timeout}}ms
+    {{- end}}
+
+backend function_{{$funcName}}_forwarded
+    # This is a forwarded request: we preserve original node ID and add where it
+    # was forwarded to.
+    http-response set-header DFaaS-Node-ID %[var(txn.dfaas_node_id)]
+    http-response add-header DFaaS-Forwarded-To {{$.DFaaSNodeID}}
+    server openfaas-local {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}}
+    {{- if $timeout}}
     timeout connect {{$timeout}}ms
     timeout server {{$timeout}}ms
     {{- end}}

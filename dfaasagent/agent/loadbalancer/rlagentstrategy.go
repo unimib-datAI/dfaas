@@ -180,6 +180,7 @@ func (strategy *RLAgentStrategy) RunStrategy() error {
 
 		duration := time.Since(start)
 		httpserver.StrategyIterationDuration.Set(duration.Seconds())
+		httpserver.StrategySuccessIterations.Inc()
 		logger.Infof("Iteration completed. Duration: %s", duration.String())
 	}
 

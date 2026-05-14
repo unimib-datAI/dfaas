@@ -31,17 +31,17 @@ type AllLocalStrategy struct {
 // should run in a goroutine.
 func (strategy *AllLocalStrategy) RunStrategy() error {
 	logger := logging.Logger()
+	logger.Debug("Starting All Local strategy...")
 
-	var millisNow, millisSleep int64
+	ticker := time.NewTicker(_config.RecalcPeriod)
+	defer ticker.Stop()
 
-	// Functions deployed in OpenFaaS at the previous cycle. At start is empty.
+	// Functions deployed at the previous cycle. At start is empty.
 	prevFuncs := make(map[string]*uint)
-
-	millisInterval := int64(_config.RecalcPeriod / time.Millisecond)
 
 	// This strategy is straightforward: we only need to update the HAProxy
 	// configuration when the list of functions changes, and nothing more.
-	for {
+	for range ticker.C {
 		start := time.Now().UTC()
 
 		funcs, err := strategy.offuncsClient.GetFuncsWithTimeout()
@@ -68,18 +68,12 @@ func (strategy *AllLocalStrategy) RunStrategy() error {
 		}
 
 		duration := time.Since(start)
-
-		// Metrics exposed to Prometheus.
 		httpserver.StrategySuccessIterations.Inc()
 		httpserver.StrategyIterationDuration.Set(duration.Seconds())
-
-		// Suspend the goroutine until the start of the next cycle/period.
-		// Aligns the next iteration with the fixed periodic "ticks" of
-		// millisInterval.
-		millisNow = time.Now().UTC().UnixNano() / 1000000
-		millisSleep = millisInterval - (millisNow % millisInterval)
-		time.Sleep(time.Duration(millisSleep) * time.Millisecond)
+		logger.Infof("Iteration completed. Duration: %s", duration.String())
 	}
+
+	return nil
 }
 
 // updateProxyConfiguration updates the HAProxy configuration with the provided
