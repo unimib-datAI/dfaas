@@ -1,0 +1,18 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: rejector
+  labels:
+    app: rejector
+spec:
+  # Warning: we use NodePort instead of ClusterIP to allow HAProxy to forward
+  # requests knowing only the node IP and port. If we used ClusterIP, the
+  # internal IP would not be stable, as it is not a fixed constant.
+  type: NodePort
+  selector:
+    app: rejector
+  ports:
+    - port: 8080
+      targetPort: 8080
+      name: http
+      nodePort: 30880

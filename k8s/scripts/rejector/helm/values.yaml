@@ -1,0 +1,10 @@
+# Default is the locally built image, manually imported into K3s.
+image: localhost/rejector:dev
+imagePullPolicy: Never # The image is manually imported.
+# Alternative is the latest dev version from GitHub Container Registry.
+#image: ghcr.io/unimib-datai/dfaas-rejector:dev
+#imagePullPolicy: Always # Since the dev tag is overwritten with newer versions.
+
+config:
+  # HTTP status code to return to all incoming requests. Default is 403.
+  REJECTOR_HTTP_STATUS_CODE: "403"

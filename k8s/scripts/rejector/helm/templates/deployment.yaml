@@ -1,0 +1,24 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: rejector
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rejector
+  template:
+    metadata:
+      labels:
+        app: rejector
+    spec:
+      containers:
+        - name: rejector
+          image: {{ .Values.image }}
+          imagePullPolicy: {{ .Values.imagePullPolicy }}
+          ports:
+            - containerPort: 8080
+              name: http
+          env:
+            - name: REJECTOR_HTTP_STATUS_CODE
+              value: "{{ .Values.config.REJECTOR_HTTP_STATUS_CODE }}"
