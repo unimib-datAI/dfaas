@@ -34,9 +34,9 @@ func loadMapping(path string) (map[string]string, error) {
 func main() {
 	var cfg Config
 
-	flag.StringVar(&cfg.Listen, "listen", ":8080", "listen address")
-	flag.StringVar(&cfg.Target, "target", "", "upstream target (e.g. http://localhost:9000)")
-	flag.StringVar(&cfg.Map, "map", "map.json", "JSON mapping file")
+	flag.StringVar(&cfg.Listen, "listen", ":8080", "Frontend server listen address")
+	flag.StringVar(&cfg.Target, "target", "http://localhost:9000", "Backend target address")
+	flag.StringVar(&cfg.Map, "map", "map.json", "JSON mapping file (real node IDs <-> MARL node IDs)")
 	flag.Parse()
 
 	if cfg.Target == "" {
@@ -146,7 +146,7 @@ func main() {
 //
 // Example output:
 //
-//  {"node_A":{"local":0.9999946355819702,"node_B":9.961642035705154e-7,"node_C":0.0000012219852578709833,"node_D":0.0000010784980304379133,"node_E":0.0000012444977528502932,"reject":9.146793331638037e-7}}
+//	{"node_A":{"local":0.9999946355819702,"node_B":9.961642035705154e-7,"node_C":0.0000012219852578709833,"node_D":0.0000010784980304379133,"node_E":0.0000012444977528502932,"reject":9.146793331638037e-7}}
 func updateActionFormat(body []byte) ([]byte, error) {
 	var action map[string][]float64
 	if err := json.Unmarshal(body, &action); err != nil {
@@ -180,8 +180,8 @@ func updateActionFormat(body []byte) ([]byte, error) {
 	// Each action JSON array has a dynamic index for each node. Since in the
 	// original action there is no reference to each node, we have a static list
 	// for each node, extracted from the DFaaS environment.
-    //
-    // FIXME: This is an hack and should be removed!
+	//
+	// FIXME: This is an hack and should be removed!
 	//
 	// Se __init__() from DFaaS env in Python.
 	graph := map[string][]string{
