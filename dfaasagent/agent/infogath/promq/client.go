@@ -277,7 +277,8 @@ func (c *Client) AvgRespTimeLocal(start, end time.Time) (map[string]float32, err
 }
 
 // RejectRate returns, for each function, the percentage of requests rejected by
-// the node (only rejection by the local FaaS platform).
+// the node (only rejection by the local FaaS platform and forwarded to other
+// DFaaS nodes).
 //
 // The percentage is computed over the total number of requests in the specified
 // time range.
@@ -306,29 +307,26 @@ func (c *Client) RejectRate(start, end time.Time) (map[string]float32, error) {
 	// The aggregation is done based on proxies (1 function = 1 proxy).
 	query := fmt.Sprintf(`
 	(
-		sum by (proxy) (
-		  increase(haproxy_server_http_requests_total{
-			proxy=~"function_.*",
-			proxy!~".*_forwarded",
-			server="openfaas-local"
-		  }[%[1]s])
-		)
-		-
-		sum by (proxy) (
-		  increase(haproxy_server_http_responses_total{
-			proxy=~"function_.*",
-			proxy!~".*_forwarded",
-			server="openfaas-local",
-			code="2xx"
-		  }[%[1]s])
+	  sum by (proxy) (
+		increase(haproxy_server_http_requests_total{
+		  proxy=~"function_.*",
+		  proxy!~".*_forwarded"
+		}[%[1]s])
+	  )
+	  -
+	  sum by (proxy) (
+		increase(haproxy_server_http_responses_total{
+		  proxy=~"function_.*",
+		  proxy!~".*_forwarded",
+		  code="2xx"
+		}[%[1]s])
 	  )
 	)
 	/
 	sum by (proxy) (
 	  increase(haproxy_server_http_requests_total{
 		proxy=~"function_.*",
-		proxy!~".*_forwarded",
-		server="openfaas-local"
+		proxy!~".*_forwarded"
 	  }[%[1]s])
 	)`, durationStr)
 	c.logQuery(query, end)
