@@ -80,6 +80,12 @@ type Configuration struct {
 	OpenFaaSHost string `mapstructure:"AGENT_OPENFAAS_HOST"`
 	OpenFaaSPort uint   `mapstructure:"AGENT_OPENFAAS_PORT"`
 
+	// Connection information for the rejector utility, a web server that
+	// rejects all incoming requests (used for requests deliberately rejected by
+	// the agent). Used only by strategies that can reject requests.
+	RejectorHost string `mapstructure:"AGENT_REJECTOR_HOST"`
+	RejectorPort uint   `mapstructure:"AGENT_REJECTOR_PORT"`
+
 	// Connection information for Prometheus. You can skip if you use a strategy
 	// that do not use Prometheus.
 	PrometheusHost string `mapstructure:"AGENT_PROMETHEUS_HOST"`

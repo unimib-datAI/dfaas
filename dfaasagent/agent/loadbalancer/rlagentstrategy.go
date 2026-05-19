@@ -300,6 +300,8 @@ func (strategy *RLAgentStrategy) updateProxyConfiguration(funcs map[string]*uint
 		Neighbors    map[string]map[string]string
 		OpenFaaSHost string
 		OpenFaaSPort uint
+		RejectorHost string
+		RejectorPort uint
 		Phase        string
 	}{
 		Now:          time.Now().UTC().Format("2006-01-02 15:04:05 MST"),
@@ -309,6 +311,8 @@ func (strategy *RLAgentStrategy) updateProxyConfiguration(funcs map[string]*uint
 		Neighbors:    neighbors,
 		OpenFaaSHost: _config.OpenFaaSHost,
 		OpenFaaSPort: _config.OpenFaaSPort,
+		RejectorHost: _config.RejectorHost,
+		RejectorPort: _config.RejectorPort,
 		Phase:        phase.String(),
 	}
 
@@ -372,8 +376,8 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 		}
 		for peer, rate := range prevForwardRPSSingle {
 			// ForwardRPS() always returns openfaas-local node that is the
-			// local one (not remote).
-			if peer == "openfaas-local" {
+			// local one (not remote), and also rejector.
+			if peer == "openfaas-local" || peer == "rejector" {
 				continue
 			}
 			// Peer here is already a string with format "node_X".
@@ -407,7 +411,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 		for peer, rate := range prevForwardRejectRPSSingle {
 			// ForwardRejectRPS() always returns openfaas-local node that is the
 			// local one (not remote).
-			if peer == "openfaas-local" {
+			if peer == "openfaas-local" || peer == "rejector" {
 				continue
 			}
 			// Peer here is already a string with format "node_X".
@@ -493,7 +497,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 		for peer, rate := range prevAvgRespTimeForwardSingle {
 			// AvgRespTimeForward() always returns openfaas-local node that is
 			// the local one (not remote).
-			if peer == "openfaas-local" {
+			if peer == "openfaas-local" || peer == "rejector" {
 				continue
 			}
 			// peer here is a string with format "node_<id>".
@@ -637,6 +641,7 @@ func (strategy *RLAgentStrategy) applyAction(action map[string]map[string]float6
 	if !exist {
 		return fmt.Errorf("local proportion not found in RL action: %v", action)
 	}
+
 	rejectProportion, exist := action[localNode]["reject"]
 	if !exist {
 		return fmt.Errorf("reject proportion not found in RL action: %v", action)
@@ -646,20 +651,9 @@ func (strategy *RLAgentStrategy) applyAction(action map[string]map[string]float6
 	// FIXME: Support more than functions!
 	weights["mlimage"] = make(map[string]uint)
 
+	// Forward actions are one for each neighbor.
 	weights["mlimage"]["reject"] = uint(rejectProportion * 100)
-
-	// We need to rescale local and forward proportions because in HAProxy
-	// config the reject is handled separately and the local+forward is handled
-	// as HAProxy weights.
-	usable := 1.0 - rejectProportion
-	if usable <= 0 {
-		// Should not happen.
-		return fmt.Errorf("invalid proportions: reject=%f leaves no usable capacity", rejectProportion)
-	}
-
-	rescaledLocal := localProportion / usable
-	weights["mlimage"]["local"] = uint(rescaledLocal * 100)
-
+	weights["mlimage"]["local"] = uint(localProportion * 100)
 	for _, peer := range _p2pHost.Network().Peers() {
 		forwardTo := fmt.Sprintf("node_%s", peer)
 
@@ -668,8 +662,7 @@ func (strategy *RLAgentStrategy) applyAction(action map[string]map[string]float6
 			return fmt.Errorf("peer node not found in RL action for forward: %s", forwardTo)
 		}
 
-		rescaledForward := forwardProportion / usable
-		weights["mlimage"][forwardTo] = uint(rescaledForward * 100)
+		weights["mlimage"][forwardTo] = uint(forwardProportion * 100)
 	}
 
 	if err = strategy.updateProxyConfiguration(funcs, weights, rlAgentPhase); err != nil {

@@ -67,27 +67,10 @@ frontend main
     # forwarded requests.
     http-request set-var(txn.dfaas_node_id) req.hdr(DFaaS-Node-ID)
 
-    {{ if eq .Phase "rlAgentPhase" -}}
-    # Generate a random integer number in [0, 99), will be used to check if the
-    # incoming request will be rejected by the "reject" action of the strategy.
-    # Note that a single request can be mapped to one single function.
-    http-request set-var(txn.rand) rand(100)
-    {{ end -}}
-
     {{/* Create ACLs and backend selection for each function. */}}
     {{range $funcName, $_ := .Functions -}}
         # Match function path (always under /function/).
         acl is_{{$funcName}} path_beg /function/{{$funcName}}
-
-        {{ if eq $.Phase "rlAgentPhase" -}}
-        # Get the reject action (a probability over 0-100) from the current
-        # function.
-        acl reject_{{$funcName}} var(txn.rand) -m int lt {{ index (index $.Weights $funcName) "reject" }}
-
-        # Apply the action reject, only for non forwarded requests!
-        # Use custom HTTP status 403 to let clients know that this is a reject.
-        http-request deny content-type "text/plain" lf-string "Rejected directly" if is_{{$funcName}} !has_node_hdr reject_{{$funcName}}
-        {{ end -}}
 
         # Use the forwarded backend if the request originates from another DFaaS
         # node, otherwise, use the local backend. This distinction is required to
@@ -110,13 +93,14 @@ backend function_{{$funcName}}
         # With "allLocalPhase" all incoming requests are processed locally.
         server openfaas-local {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}}
     {{- else }}
-        # With "rlAgentPhase" incoming requests are load balanced locally and with
-        # remote DFaaS nodes. Direct rejections happens in the frontend.
+        # With "rlAgentPhase" incoming requests are load balanced locally and
+        # with remote DFaaS nodes. Direct rejections happens with special
+        # "rejector" server.
         {{- range $action, $weight := (index $.Weights $funcName) }}
             {{- if eq $action "local" }}
                 server openfaas-local {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} weight {{$weight}}
             {{- else if eq $action "reject" }}
-                {{- /* Skip reject action (done in frontend). */ -}}
+                server rejector {{$.RejectorHost}}:{{$.RejectorPort}} weight {{$weight}}
             {{- else -}}
                 {{- /* Action here is the forwarding node with format "node_ID". */ -}}
                 {{ $neighborHost := (index (index $.Neighbors $action) "host") }}

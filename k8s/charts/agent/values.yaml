@@ -70,6 +70,12 @@ config:
   AGENT_DATAPLANEAPI_USER: "admin"
   AGENT_DATAPLANEAPI_PASSWORD: "admin"
 
+  # Connection information for the rejector utility, a web server that rejects
+  # all incoming requests (used for requests deliberately rejected by the
+  # agent). Used only by strategies that can reject requests.
+  AGENT_REJECTOR_HOST: "rejector.default.svc.cluster.local"
+  AGENT_REJECTOR_PORT: 8080
+
   # DNS name automatically set by Kubernetes to OpenFaaS Gateway service. If not
   # using Kubernetes, set manually the IP/DNS.
   AGENT_OPENFAAS_HOST: "gateway"

@@ -36,7 +36,7 @@ simulation/outputs/**
 !simulation/outputs/**/.gitkeep
 
 # Container images.
-*.tar
+/*.tar
 
 # JSON or YAML not directly included.
 *.json
@@ -68,7 +68,10 @@ k8s/scripts/libp2p-peer-id/libp2p-peer-id
 *.pdf
 
 # Ignore HAProxy generated configurations.
-/dfaasagent/haproxy.cfg
+/dfaasagent/haproxy*.cfg
+
+# Ignore custom DFaaS configurations.
+/dfaasagent/*.env
 
 # Ignore generated binary.
 /k8s/scripts/stick-table-exporter/stick-table-exporter
