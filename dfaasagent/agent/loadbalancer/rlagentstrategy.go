@@ -12,6 +12,7 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"strconv"
 	"time"
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -26,10 +27,12 @@ import (
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/promq"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/proxy"
 )
 
 type RLAgentStrategy struct {
 	hacfgupdater  *hacfgupd.Updater
+	runtimeapi    *proxy.RuntimeAPI
 	nodestbl      *nodestbl.TableNMS
 	offuncsClient *offuncs.Client
 	promq         *promq.Client
@@ -87,7 +90,15 @@ func strategyPhaseFromStage(stage int) (strategyPhase, error) {
 // RunStrategy handles the execution of the strategy. It is ran in a goroutine.
 func (strategy *RLAgentStrategy) RunStrategy() error {
 	logger := logging.Logger()
-	logger.Debug("Starting RL Agent strategy...")
+
+	// FIXME: We need to wait for all other neighbors to connect before doing
+	// the setup, because once the HAProxy configuration is pushed we never
+	// reconfigure HAProxy, only update the weights. Dynamic server
+	// adding/remove is not supported currently.
+	logger.Info("Waiting 1 minute before RL Agent strategy starts...")
+	time.Sleep(1 * time.Minute)
+
+	logger.Info("Starting RL Agent strategy...")
 
 	logger.Info("Initial set-up: updating proxy with the discovered functions")
 	if err := strategy.setup(); err != nil {
@@ -192,10 +203,11 @@ func (strategy *RLAgentStrategy) OnReceived(msg *pubsub.Message) error {
 	return nil
 }
 
-// setup() runs the initial setup of the strategy, mainly configuring HAProxy to
-// process all incoming requests locally.
+// setup runs the initial setup of the RL Agent strategy.
 func (strategy *RLAgentStrategy) setup() error {
-	if err := strategy.setAllLocal(); err != nil {
+	// We first set the initial proxy configuration. The allLocalPhase and
+	// rlAgentPhase will update the weights based on this configuration.
+	if err := strategy.initProxyConfig(); err != nil {
 		return fmt.Errorf("failed to configure proxy: %w", err)
 	}
 
@@ -249,8 +261,59 @@ func (strategy *RLAgentStrategy) rlAgentPhase() error {
 	return nil
 }
 
+// setAllLocal configures the proxy weights so that all incoming requests for
+// each deployed function are processed locally.
 func (strategy *RLAgentStrategy) setAllLocal() error {
-	// Most of the code is taken from alllocal.go
+	// We need the list of deployed functions becase we set the local processing
+	// action function by function.
+	functions, err := strategy.offuncsClient.GetFuncsNames()
+	if err != nil {
+		return fmt.Errorf("getting function names: %w", err)
+	}
+
+	// We need the list of neighbors for later use.
+	neighbors := []string{}
+	for _, peer := range _p2pHost.Network().Peers() {
+		// "node_ID" is the required format.
+		peerID := fmt.Sprintf("node_%s", peer)
+
+		neighbors = append(neighbors, peerID)
+	}
+
+	// For each function we process all incoming requests locally by setting
+	// weight 100 to "openfaas-local" server and weight 0 to "rejector" (used to
+	// reject requests) and all other neighbors.
+	for _, function := range functions {
+		// For each function there are two backends: one handling incoming
+		// forwarded requests and one handling incoming requests from clients.
+		//
+		// The agent currently controls only the incoming client requests
+		// backend.
+		backend := fmt.Sprintf("function_%s", function)
+
+		if err := strategy.runtimeapi.SetWeight(backend, "openfaas-local", 100); err != nil {
+			return fmt.Errorf("failed to set local action: %w", backend, err)
+		}
+		if err := strategy.runtimeapi.SetWeight(backend, "rejector", 0); err != nil {
+			return fmt.Errorf("failed to set reject action: %w", backend, err)
+		}
+
+		for _, neighborID := range neighbors {
+			if err := strategy.runtimeapi.SetWeight(backend, neighborID, 0); err != nil {
+				return fmt.Errorf("failed to set forward action: %w", backend, neighborID, err)
+			}
+		}
+	}
+
+	return nil
+}
+
+// initProxyConfig initializes the proxy configuration via the Data Plane API.
+//
+// After this call, the proxy is managed exclusively through the Runtime API,
+// where updates are performed only by changing the routing weights.
+func (strategy *RLAgentStrategy) initProxyConfig() error {
+	// Build the funcs map.
 	funcs, err := strategy.offuncsClient.GetFuncsWithTimeout()
 	if err != nil {
 		return fmt.Errorf("get function metadata: %w", err)
@@ -263,11 +326,57 @@ func (strategy *RLAgentStrategy) setAllLocal() error {
 		}
 	}
 
-	debugFuncs(funcs)
-	if err = strategy.updateProxyConfiguration(funcs, nil, allLocalPhase); err != nil {
-		return fmt.Errorf("updating proxy config: %w", err)
+	// Build neighbors info.
+	neighbors := []string{}                  // Node's ID (node_XXX)
+	neighborsPort := make(map[string]string) // Node's ID -> Node's host addr.
+	neighborsHost := make(map[string]string) // Node's ID -> Node's port numb.
+
+	for _, peer := range _p2pHost.Network().Peers() {
+		host, err := extractSingleIPv4(_p2pHost, peer)
+		if err != nil {
+			return fmt.Errorf("failed to build neighbors information: %w", err)
+		}
+
+		// "node_ID" is required format.
+		peerID := fmt.Sprintf("node_%s", peer)
+
+		neighbors = append(neighbors, peerID)
+		neighborsHost[peerID] = host
+		// FIXME: The remote proxy port may be different from local proxy port!
+		neighborsPort[peerID] = strconv.FormatUint(uint64(_config.HAProxyPort), 10)
 	}
-	return nil
+
+	// Define and populate this anonymous struct to share data to the Go
+	// template that will build the proxy configuration. See
+	// haproxycfgrlagent.tml file.
+	data := struct {
+		Now           string
+		DFaaSNodeID   string
+		Functions     map[string]*uint
+		Neighbors     []string
+		NeighborsPort map[string]string
+		NeighborsHost map[string]string
+		OpenFaaSHost  string
+		OpenFaaSPort  uint
+		RejectorHost  string
+		RejectorPort  uint
+	}{
+		Now:           time.Now().UTC().Format("2006-01-02 15:04:05 MST"),
+		DFaaSNodeID:   _p2pHost.ID().String(),
+		Functions:     funcs,
+		Neighbors:     neighbors,
+		NeighborsHost: neighborsHost,
+		NeighborsPort: neighborsPort,
+		OpenFaaSHost:  _config.OpenFaaSHost,
+		OpenFaaSPort:  _config.OpenFaaSPort,
+		RejectorHost:  _config.RejectorHost,
+		RejectorPort:  _config.RejectorPort,
+	}
+
+	// The data structure will be passed to the hacfgupdater module and a new
+	// HAProxy config. will be generated and passed to the proxy. The proxy will
+	// restart.
+	return strategy.hacfgupdater.UpdateHAConfig(data)
 }
 
 // updateProxyConfiguration updates the HAProxy configuration with the provided
@@ -613,21 +722,31 @@ func (strategy *RLAgentStrategy) queryRLModel(observation []byte) (map[string]ma
 	return action, nil
 }
 
+// applyAction applies the given agent action to the proxy by setting the
+// weights for each sub-action.
+//
+// The input map is structured with the function name as the first-level key.
+// Under each function, actions are specified as second-level keys, where the
+// action can be "local" for local processing, "reject" for direct rejection,
+// or "node_XYZ" for forwarding to a node with the corresponding ID ZYX.
+//
+// Each action key maps to a float value in the range [0, 1], representing the
+// proportion (weight) assigned to that action.
+//
+// Warning: currenlty only "mlimage" function is supported in the given map!
 func (strategy *RLAgentStrategy) applyAction(action map[string]map[string]float64) error {
-	// The initial part is similar to allLocalPhase.
-	funcs, err := strategy.offuncsClient.GetFuncsWithTimeout()
-	if err != nil {
-		return fmt.Errorf("get function metadata: %w", err)
+	// We need the list of neighbors for later use.
+	neighbors := []string{}
+	for _, peer := range _p2pHost.Network().Peers() {
+		// "node_ID" is the required format.
+		peerID := fmt.Sprintf("node_%s", peer)
+
+		neighbors = append(neighbors, peerID)
 	}
 
-	// Add 1 seconds to base timeout (if given) to all functions.
-	for _, timeout := range funcs {
-		if timeout != nil {
-			*timeout += 1000
-		}
-	}
-	debugFuncs(funcs)
-
+	// The action map should contain only one key, that's the local node ID. We
+	// need to do this check to make sure to have the right action for the right
+	// node.
 	if len(action) != 1 {
 		return fmt.Errorf("found %d node IDs in RL action, expected 1", len(action))
 	}
@@ -637,37 +756,43 @@ func (strategy *RLAgentStrategy) applyAction(action map[string]map[string]float6
 		return fmt.Errorf("local node ID not found in RL action. Node ID: %s", localNode)
 	}
 
+	// FIXME: Only a fixed function (mlimage) is now supported!
+	backend := fmt.Sprintf("function_%s", "mlimage")
+
+	// Extract and set local action.
 	localProportion, exist := action[localNode]["local"]
 	if !exist {
 		return fmt.Errorf("local proportion not found in RL action: %v", action)
 	}
 
+	weight := uint(localProportion * 100)
+	if err := strategy.runtimeapi.SetWeight(backend, "openfaas-local", weight); err != nil {
+		return fmt.Errorf("failed to set local action: %w", backend, err)
+	}
+
+	// Extract and set reject action.
 	rejectProportion, exist := action[localNode]["reject"]
 	if !exist {
 		return fmt.Errorf("reject proportion not found in RL action: %v", action)
 	}
 
-	weights := make(map[string]map[string]uint)
-	// FIXME: Support more than functions!
-	weights["mlimage"] = make(map[string]uint)
+	weight = uint(rejectProportion * 100)
+	if err := strategy.runtimeapi.SetWeight(backend, "rejector", weight); err != nil {
+		return fmt.Errorf("failed to set reject action: %w", backend, err)
+	}
 
-	// Forward actions are one for each neighbor.
-	weights["mlimage"]["reject"] = uint(rejectProportion * 100)
-	weights["mlimage"]["local"] = uint(localProportion * 100)
-	for _, peer := range _p2pHost.Network().Peers() {
-		forwardTo := fmt.Sprintf("node_%s", peer)
-
-		forwardProportion, exist := action[localNode][forwardTo]
+	for _, neighborID := range neighbors {
+		forwardProportion, exist := action[localNode][neighborID]
 		if !exist {
-			return fmt.Errorf("peer node not found in RL action for forward: %s", forwardTo)
+			return fmt.Errorf("neighbor node not found in RL action for forward: %s", neighborID)
 		}
 
-		weights["mlimage"][forwardTo] = uint(forwardProportion * 100)
+		weight = uint(forwardProportion * 100)
+		if err := strategy.runtimeapi.SetWeight(backend, neighborID, weight); err != nil {
+			return fmt.Errorf("failed to set forward action: %w", backend, neighborID, err)
+		}
 	}
 
-	if err = strategy.updateProxyConfiguration(funcs, weights, rlAgentPhase); err != nil {
-		return fmt.Errorf("updating proxy config: %w", err)
-	}
 	return nil
 }
 

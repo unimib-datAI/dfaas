@@ -1,5 +1,5 @@
 # HAProxy configuration file updated by DFaaS Agent on {{.Now}}
-# DFaaS Agent running with "RL Agent" strategy in phase {{.Phase}}.
+# DFaaS Agent running with "RL Agent" strategy.
 
 # See k8s/charts/values-haproxy.yaml for more information about global,
 # userlist, defaults, and prometheus frontend sections.
@@ -89,25 +89,12 @@ backend function_{{$funcName}}
     # managed (but possibily not processed) the request.
     http-response set-header DFaaS-Node-ID {{$.DFaaSNodeID}}
 
-    {{- if eq $.Phase "allLocalPhase" }}
-        # With "allLocalPhase" all incoming requests are processed locally.
-        server openfaas-local {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}}
-    {{- else }}
-        # With "rlAgentPhase" incoming requests are load balanced locally and
-        # with remote DFaaS nodes. Direct rejections happens with special
-        # "rejector" server.
-        {{- range $action, $weight := (index $.Weights $funcName) }}
-            {{- if eq $action "local" }}
-                server openfaas-local {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} weight {{$weight}}
-            {{- else if eq $action "reject" }}
-                server rejector {{$.RejectorHost}}:{{$.RejectorPort}} weight {{$weight}}
-            {{- else -}}
-                {{- /* Action here is the forwarding node with format "node_ID". */ -}}
-                {{ $neighborHost := (index (index $.Neighbors $action) "host") }}
-                {{ $neighborPort := (index (index $.Neighbors $action) "port") }}
-                server {{$action}} {{$neighborHost}}:{{$neighborPort}} weight {{$weight}}
-            {{- end }}
-        {{- end }}
+    # Two special servers: "openfaas-local" is the local FaaS platform,
+    # "rejector" is a dummy web server that only rejects incoming requests.
+    server openfaas-local {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} weight 100
+    server rejector {{$.RejectorHost}}:{{$.RejectorPort}} weight 0
+    {{- range $.Neighbors }}
+        server {{.}} {{index $.NeighborsHost .}}:{{index $.NeighborsPort .}} weight 0
     {{- end }}
 
     {{- if $timeout}}

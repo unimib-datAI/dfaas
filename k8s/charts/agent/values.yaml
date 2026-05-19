@@ -70,6 +70,20 @@ config:
   AGENT_DATAPLANEAPI_USER: "admin"
   AGENT_DATAPLANEAPI_PASSWORD: "admin"
 
+  # Connection information for the Runtime API TCP socket.
+  #
+  # The Runtime API is an alternative to the Data Plane API and is used when
+  # a strategy needs to modify HAProxy runtime configuration without
+  # triggering a reload, for example when adjusting server weights within a
+  # backend.
+  #
+  # The Runtime API is used only by some strategies.
+  #
+  # DNS name automatically set by Kubernetes to HAProxy service. If not using
+  # Kubernetes, set manually the IP/DNS.
+  AGENT_RUNTIMEAPI_HOST: "haproxy.default.svc.cluster.local"
+  AGENT_RUNTIMEAPI_PORT: 6666
+
   # Connection information for the rejector utility, a web server that rejects
   # all incoming requests (used for requests deliberately rejected by the
   # agent). Used only by strategies that can reject requests.

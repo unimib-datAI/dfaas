@@ -77,6 +77,17 @@ type Configuration struct {
 	DataPlaneAPIUser     string `mapstructure:"AGENT_DATAPLANEAPI_USER"`
 	DataPlaneAPIPassword string `mapstructure:"AGENT_DATAPLANEAPI_PASSWORD"`
 
+	// Connection information for the Runtime API TCP socket.
+	//
+	// The Runtime API is an alternative to the Data Plane API and is used when
+	// a strategy needs to modify HAProxy runtime configuration without
+	// triggering a reload, for example when adjusting server weights within a
+	// backend.
+	//
+	// The Runtime API is used only by some strategies.
+	RuntimeAPIHost string `mapstructure:"AGENT_RUNTIMEAPI_HOST"`
+	RuntimeAPIPort uint   `mapstructure:"AGENT_RUNTIMEAPI_PORT"`
+
 	OpenFaaSHost string `mapstructure:"AGENT_OPENFAAS_HOST"`
 	OpenFaaSPort uint   `mapstructure:"AGENT_OPENFAAS_PORT"`
 

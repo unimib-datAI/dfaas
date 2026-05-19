@@ -15,6 +15,7 @@ import (
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/offuncs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/promq"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/proxy"
 )
 
 // This file contains the implementation of the factory pattern for defining and
@@ -191,6 +192,11 @@ func (strategyFactory *rlAgentStrategyFactory) createStrategy() (Strategy, error
 		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
 	}
 	strategy.hacfgupdater = hacfgupdater
+
+	// Set up the HAProxy Runtime API client. Used to set the RL model action
+	// without reloading HAProxy (this cannot be done via Data Plane API).
+	runtimeapi_addr := fmt.Sprintf("%s:%d", _config.RuntimeAPIHost, _config.RuntimeAPIPort)
+	strategy.runtimeapi = proxy.NewRuntimeAPI(runtimeapi_addr)
 
 	// Set up the Prometheus client used to run PromQL queries.
 	promq, err := promq.New(_config.PrometheusHost, _config.PrometheusPort, _config.PrometheusStep)
