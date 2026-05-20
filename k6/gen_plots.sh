@@ -19,6 +19,7 @@ NODE_PLOTS=(
     "k6_latency_reject_plot.py:k6_latency_reject.pdf"
     "k6_rps_plot.py:k6_rps.pdf"
     "k6_status_code_plot.py:k6_status_code.pdf"
+    "k6_rejected_requests_plot.py:k6_rejected_requests.pdf"
 )
 
 GLOBAL_PLOTS=(
