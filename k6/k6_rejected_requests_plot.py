@@ -48,14 +48,31 @@ def plot_rejection_breakdown(df, node_name):
     all_local = build_table("all_local")
     rl_agent = build_table("rl_agent")
 
-    # We must have a shared Y axis to avoid misleading sub-plots.
-    global_max = max(
-        all_local.sum(axis=1).max(),
-        rl_agent.sum(axis=1).max(),
-    )
-    global_max = int(global_max * 1.1) + 1
+    # Reorder the columns before plotting and also rename them (from
+    # "direct_403" to "Direct" as example).
+    def reorder_and_rename(table):
+        rename_map = {}
+        forwarded_cols = []
+        for column in table.columns:
+            match column:
+                case "direct_403":
+                    rename_map[column] = "Direct"
+                case "local_5xx":
+                    rename_map[column] = "Local"
+                case _:
+                    rename_map[column] = f"Fwd to {column}"
+                    forwarded_cols.append(column)
 
-    # Now we can generate the plot.
+        ordered_cols = ["direct_403", "local_5xx"] + sorted(forwarded_cols)
+
+        table = table[ordered_cols]
+        return table.rename(columns=rename_map)
+
+    all_local = reorder_and_rename(all_local)
+    rl_agent = reorder_and_rename(rl_agent)
+
+    # Now we can generate the plot. We must have a shared Y axis to avoid
+    # misleading sub-plots.
     fig, (ax1, ax2) = plt.subplots(
         nrows=2, ncols=1, sharey=True, sharex=True, figsize=(14, 9)
     )
@@ -66,20 +83,6 @@ def plot_rejection_breakdown(df, node_name):
         y = [table[col].values for col in table.columns]
 
         ax.stackplot(x, y, labels=table.columns, alpha=0.8)
-
-        # Total rejection line.
-        total = table.sum(axis=1)
-
-        ax.plot(
-            x,
-            total,
-            color="red",
-            linewidth=1,
-            alpha=0.5,
-            label="total_rejected",
-        )
-
-        # ax.set_ylim(0, global_max)
 
         ax.set_title(title)
         ax.set_ylabel("Rejected requests")
