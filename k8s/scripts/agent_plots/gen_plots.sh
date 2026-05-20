@@ -9,6 +9,15 @@ fi
 
 BASE_DIR="$1"
 
+if [[ ! -d "${BASE_DIR}" ]]; then
+    echo "Input directory does not exist or is not a directory: ${BASE_DIR}" >&2
+    exit 1
+fi
+
+# Strip trailing slash, if present. This avoid problems with double slashes,
+# like when joining paths together.
+BASE_DIR="${BASE_DIR%/}"
+
 # Python executable. FIXME: make configurable!
 PYTHON_ENV="/home/emanuele/ipython-env/env/bin/python"
 
@@ -55,13 +64,13 @@ export -f run_node
 export PYTHON_ENV
 export NODE_PLOTS
 
-# Run all node_* directories in parallel
+# Run all node_* directories in parallel.
 for node_dir in "${BASE_DIR}"/node_*; do
     [[ -d "${node_dir}" ]] || continue
     run_node "${node_dir}" &
 done
 
-# Wait for all parallel jobs
+# Wait for all parallel jobs.
 wait
 
 echo "All node-level processing completed."
