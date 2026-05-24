@@ -584,6 +584,19 @@ func debugFuncs(current map[string]*uint) {
 	logging.Logger().Debug(b.String())
 }
 
+// debugRLModelToFileInit initializes the JSON log file for the given file path.
+//
+// This function should be called before using debugRLModelToFile.
+func debugRLModelToFileInit(filename string) error {
+	f, err := os.Create(filename)
+	if err != nil {
+		return fmt.Errorf("failed init JSON log file: %w", err)
+	}
+
+	// We only wanted to truncate and create the file.
+	return f.Close()
+}
+
 // debugRLModelToFile appends a single JSON log line to the given file.
 //
 // Each line is written in newline-delimited JSON format as:
@@ -591,8 +604,11 @@ func debugFuncs(current map[string]*uint) {
 //
 // Warning: the function assumes obs and action are valid non-empty JSON objects
 // encoded as string.
+//
+// Warning: make sure to all debugRLModelToFileInit once before using this
+// function!
 func debugRLModelToFile(filename, obs, action string) error {
-	f, err := os.OpenFile(filename, os.O_APPEND|os.O_CREATE|os.O_WRONLY, 0644)
+	f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0644)
 	if err != nil {
 		return fmt.Errorf("failed to open log file: %w", err)
 	}

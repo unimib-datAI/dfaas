@@ -87,6 +87,8 @@ func strategyPhaseFromStage(stage int) (strategyPhase, error) {
 	}
 }
 
+const rlModelLogPath = "rl_model.log"
+
 // RunStrategy handles the execution of the strategy. It is ran in a goroutine.
 func (strategy *RLAgentStrategy) RunStrategy() error {
 	logger := logging.Logger()
@@ -106,6 +108,10 @@ func (strategy *RLAgentStrategy) RunStrategy() error {
 	}
 	// We start with a nil phase, since we do not detected any stage.
 	var previousPhase *strategyPhase
+
+	// Wait some seconds to let HAProxy update tables, frontend and backends,
+	// otherwise the StickTableField call may fail sometimes.
+	time.Sleep(5 * time.Second)
 
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
@@ -221,6 +227,10 @@ func (strategy *RLAgentStrategy) setup() error {
 			MaxIdleConnsPerHost: 10,
 			IdleConnTimeout:     90 * time.Second,
 		},
+	}
+
+	if err := debugRLModelToFileInit(rlModelLogPath); err != nil {
+		return fmt.Errorf("failed to init log file: %w", err)
 	}
 
 	return nil
@@ -711,7 +721,7 @@ func (strategy *RLAgentStrategy) queryRLModel(observation []byte) (map[string]ma
 
 	logger.Debugf("Action JSON from response: %s", string(body))
 
-	debugRLModelToFile("rl_model.log", string(observation), string(body))
+	debugRLModelToFile(rlModelLogPath, string(observation), string(body))
 
 	var action map[string]map[string]float64
 	err = json.Unmarshal(body, &action)
