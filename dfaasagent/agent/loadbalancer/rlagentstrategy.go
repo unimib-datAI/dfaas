@@ -277,6 +277,8 @@ func (strategy *RLAgentStrategy) rlAgentPhase() error {
 // setAllLocal configures the proxy weights so that all incoming requests for
 // each deployed function are processed locally.
 func (strategy *RLAgentStrategy) setAllLocal() error {
+	logger := logging.Logger()
+
 	// We need the list of deployed functions becase we set the local processing
 	// action function by function.
 	functions, err := strategy.offuncsClient.GetFuncsNames()
@@ -293,6 +295,10 @@ func (strategy *RLAgentStrategy) setAllLocal() error {
 		neighbors = append(neighbors, peerID)
 	}
 
+	// First set all actions, then apply them. The first key is the function
+	// name/backend, the second level is the server action.
+	weights := make(map[string]map[string]uint)
+
 	// For each function we process all incoming requests locally by setting
 	// weight 100 to "openfaas-local" server and weight 0 to "rejector" (used to
 	// reject requests) and all other neighbors.
@@ -303,20 +309,24 @@ func (strategy *RLAgentStrategy) setAllLocal() error {
 		// The agent currently controls only the incoming client requests
 		// backend.
 		backend := fmt.Sprintf("function_%s", function)
+		weights[backend] = make(map[string]uint)
 
-		if err := strategy.runtimeapi.SetWeight(backend, "openfaas-local", 100); err != nil {
-			return fmt.Errorf("failed to set local action: %w", backend, err)
-		}
-		if err := strategy.runtimeapi.SetWeight(backend, "rejector", 0); err != nil {
-			return fmt.Errorf("failed to set reject action: %w", backend, err)
-		}
-
+		weights[backend]["openfaas-local"] = 100
+		weights[backend]["rejector"] = 0
 		for _, neighborID := range neighbors {
-			if err := strategy.runtimeapi.SetWeight(backend, neighborID, 0); err != nil {
-				return fmt.Errorf("failed to set forward action: %w", backend, neighborID, err)
+			weights[backend][neighborID] = 0
+		}
+	}
+
+	// Apply all weights.
+	for backend, actions := range weights {
+		for target, weight := range actions {
+			if err := strategy.runtimeapi.SetWeight(backend, target, weight); err != nil {
+				return fmt.Errorf("failed to set weight for %s on backend %s: %w", target, backend, err)
 			}
 		}
 	}
+	logger.Debugf("HAProxy updated with the following weights: %v", weights)
 
 	return nil
 }
