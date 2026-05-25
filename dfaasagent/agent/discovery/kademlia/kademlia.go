@@ -134,7 +134,7 @@ func RunDiscovery() error {
 	for {
 		logger.Debug("Current connected peers: ")
 		for _, conn := range _p2pHost.Network().Conns() {
-			logger.Debugf("  - Peer: %s, Addr: %s\n", conn.RemotePeer(), conn.RemoteMultiaddr())
+			logger.Debugf("  - Peer: %s, Addr: %s", conn.RemotePeer(), conn.RemoteMultiaddr())
 		}
 
 		logger.Debug("Searching for other peers...")
