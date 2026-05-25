@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math"
 	"net/http"
 	"strconv"
 	"time"
@@ -112,6 +113,7 @@ func (strategy *RLAgentStrategy) RunStrategy() error {
 	// Wait some seconds to let HAProxy update tables, frontend and backends,
 	// otherwise the StickTableField call may fail sometimes.
 	time.Sleep(5 * time.Second)
+	logger.Info("Strategy started")
 
 	ticker := time.NewTicker(1 * time.Second)
 	defer ticker.Stop()
@@ -129,7 +131,8 @@ func (strategy *RLAgentStrategy) RunStrategy() error {
 		stage, err := hasock.StickTableField(strategy.httpClient, "main", "gpt0")
 		if err != nil {
 			if errors.Is(err, hasock.ErrEmpty) {
-				logger.Warn("Cannot detect current stage: empty gpt0 field for stick-table main. Skipping iteration")
+				// Disable log to avoid too many useless logs (one for each second).
+				//logger.Warn("Cannot detect current stage: empty gpt0 field for stick-table main. Skipping iteration")
 				continue
 			}
 			return fmt.Errorf("reading gpt0 field in stick-table main from HAProxy: %w", err)
@@ -745,6 +748,8 @@ func (strategy *RLAgentStrategy) queryRLModel(observation []byte) (map[string]ma
 //
 // Warning: currenlty only "mlimage" function is supported in the given map!
 func (strategy *RLAgentStrategy) applyAction(action map[string]map[string]float64) error {
+	logger := logging.Logger()
+
 	// We need the list of neighbors for later use.
 	neighbors := []string{}
 	for _, peer := range _p2pHost.Network().Peers() {
@@ -769,39 +774,39 @@ func (strategy *RLAgentStrategy) applyAction(action map[string]map[string]float6
 	// FIXME: Only a fixed function (mlimage) is now supported!
 	backend := fmt.Sprintf("function_%s", "mlimage")
 
-	// Extract and set local action.
+	// First extract all actions, then apply them.
+	weights := make(map[string]uint)
+
+	// Extract local action.
 	localProportion, exist := action[localNode]["local"]
 	if !exist {
 		return fmt.Errorf("local proportion not found in RL action: %v", action)
 	}
+	weights["openfaas-local"] = uint(math.Round(localProportion * 100))
 
-	weight := uint(localProportion * 100)
-	if err := strategy.runtimeapi.SetWeight(backend, "openfaas-local", weight); err != nil {
-		return fmt.Errorf("failed to set local action: %w", backend, err)
-	}
-
-	// Extract and set reject action.
+	// Extract reject action.
 	rejectProportion, exist := action[localNode]["reject"]
 	if !exist {
 		return fmt.Errorf("reject proportion not found in RL action: %v", action)
 	}
+	weights["rejector"] = uint(math.Round(rejectProportion * 100))
 
-	weight = uint(rejectProportion * 100)
-	if err := strategy.runtimeapi.SetWeight(backend, "rejector", weight); err != nil {
-		return fmt.Errorf("failed to set reject action: %w", backend, err)
-	}
-
+	// Extract forward actions.
 	for _, neighborID := range neighbors {
 		forwardProportion, exist := action[localNode][neighborID]
 		if !exist {
 			return fmt.Errorf("neighbor node not found in RL action for forward: %s", neighborID)
 		}
+		weights[neighborID] = uint(math.Round(forwardProportion * 100))
+	}
 
-		weight = uint(forwardProportion * 100)
-		if err := strategy.runtimeapi.SetWeight(backend, neighborID, weight); err != nil {
-			return fmt.Errorf("failed to set forward action: %w", backend, neighborID, err)
+	// Apply all weights.
+	for target, weight := range weights {
+		if err := strategy.runtimeapi.SetWeight(backend, target, weight); err != nil {
+			return fmt.Errorf("failed to set weight for %s on backend %s: %w", target, backend, err)
 		}
 	}
+	logger.Debugf("HAProxy updated with the following weights: %v", weights)
 
 	return nil
 }
