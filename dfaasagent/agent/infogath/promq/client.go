@@ -276,12 +276,9 @@ func (c *Client) AvgRespTimeLocal(start, end time.Time) (map[string]float32, err
 	return resp, nil
 }
 
-// RejectRate returns, for each function, the percentage of requests rejected by
-// the node (only rejection by the local FaaS platform and forwarded to other
-// DFaaS nodes).
-//
-// The percentage is computed over the total number of requests in the specified
-// time range.
+// RejectRate returns, for each function, the ratio of requests rejected by
+// the node (only rejection by the local FaaS platform) over the total incoming
+// requests in the given time range.
 func (c *Client) RejectRate(start, end time.Time) (map[string]float32, error) {
 	if end.Before(start) {
 		return nil, errors.New("end time must be after start time")
@@ -298,8 +295,8 @@ func (c *Client) RejectRate(start, end time.Time) (map[string]float32, error) {
 	// We use increase because the rate is calculated over a custom time window,
 	// not per second (as with rate()).
 	//
-	// We exclude incoming forwarded traffic and consider rejected requests as
-	// requests with no response or with response not in 2xx status code.
+	// We consider only local processed requests and consider rejected requests
+	// as requests with no response or with response not in 2xx status code.
 	//
 	// HAProxy is configured without retries or request replays, so each request
 	// is expected to generate at most one response.
@@ -318,6 +315,7 @@ func (c *Client) RejectRate(start, end time.Time) (map[string]float32, error) {
 		increase(haproxy_server_http_responses_total{
 		  proxy=~"function_.*",
 		  proxy!~".*_forwarded",
+		  server="openfaas-local",
 		  code="2xx"
 		}[%[1]s])
 	  )
@@ -361,7 +359,7 @@ func (c *Client) RejectRate(start, end time.Time) (map[string]float32, error) {
 			value = 0
 		}
 
-		// Must be a percentage.
+		// Must be a ratio.
 		if value < 0 || value > 1 {
 			return nil, fmt.Errorf("reject rate for function %q is not in [0, 1], but %f", function, value)
 		}
