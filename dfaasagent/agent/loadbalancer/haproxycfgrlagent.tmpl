@@ -89,6 +89,10 @@ backend function_{{$funcName}}
     # managed (but possibily not processed) the request.
     http-response set-header DFaaS-Node-ID {{$.DFaaSNodeID}}
 
+    # With low traffic and small iteration window is better roundrobin load
+    # balancing strategy instead of random because the first is deterministic.
+    balance roundrobin
+
     # Two special servers: "openfaas-local" is the local FaaS platform,
     # "rejector" is a dummy web server that only rejects incoming requests.
     server openfaas-local {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} weight 100
