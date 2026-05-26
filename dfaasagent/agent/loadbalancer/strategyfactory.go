@@ -62,8 +62,12 @@ func (strategyFactory *recalcStrategyFactory) createStrategy() (Strategy, error)
 	}
 	strategy.hacfgupdater = hacfgupdater
 
-	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
-
+	if _config.Provider == "openfaas" {
+        	strategy.offuncsClient = offuncs.NewOpenFaaSClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+	}
+	if _config.Provider == "openwhisk" {
+		strategy.offuncsClient = offuncs.NewOpenWhiskClient(_config.OpenWhiskHost, _config.OpenWhiskPort, _config.OpenWhiskAuth, _config.OpenWhiskNamespace)
+	}
 	strategy.it = 0
 
 	return strategy, nil
@@ -91,7 +95,12 @@ func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, er
 	}
 	strategy.hacfgupdater = hacfgupdater
 
-	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+	if _config.Provider == "openfaas" {
+                strategy.offuncsClient = offuncs.NewOpenFaaSClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+        }
+        if _config.Provider == "openwhisk" {
+                strategy.offuncsClient = offuncs.NewOpenWhiskClient(_config.OpenWhiskHost, _config.OpenWhiskPort, _config.OpenWhiskAuth, _config.OpenWhiskNamespace)
+        }
 
 	strategy.forecasterClient = forecaster.Client{
 		Hostname: constants.ForecasterHost,
@@ -129,7 +138,12 @@ func (strategyFactory *staticStrategyFactory) createStrategy() (Strategy, error)
 	}
 	strategy.hacfgupdater = hacfgupdater
 
-	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+        if _config.Provider == "openfaas" {
+                strategy.offuncsClient = offuncs.NewOpenFaaSClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+        }
+        if _config.Provider == "openwhisk" {
+                strategy.offuncsClient = offuncs.NewOpenWhiskClient(_config.OpenWhiskHost, _config.OpenWhiskPort, _config.OpenWhiskAuth, _config.OpenWhiskNamespace)
+        }
 
 	strategy.nodeInfo = nodeInfoStatic{}
 	strategy.targetNodes = make(map[string][]string)
@@ -158,7 +172,12 @@ func (strategyFactory *allLocalStrategyFactory) createStrategy() (Strategy, erro
 	}
 	strategy.hacfgupdater = hacfgupdater
 
-	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+        if _config.Provider == "openfaas" {
+                strategy.offuncsClient = offuncs.NewOpenFaaSClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+        }
+        if _config.Provider == "openwhisk" {
+                strategy.offuncsClient = offuncs.NewOpenWhiskClient(_config.OpenWhiskHost, _config.OpenWhiskPort, _config.OpenWhiskAuth, _config.OpenWhiskNamespace)
+        }
 
 	return strategy, nil
 }
@@ -189,7 +208,12 @@ func (strategyFactory *rlAgentStrategyFactory) createStrategy() (Strategy, error
 	}
 	strategy.promq = promq
 
-	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+        if _config.Provider == "openfaas" {
+                strategy.offuncsClient = offuncs.NewOpenFaaSClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+        }
+        if _config.Provider == "openwhisk" {
+                strategy.offuncsClient = offuncs.NewOpenWhiskClient(_config.OpenWhiskHost, _config.OpenWhiskPort, _config.OpenWhiskAuth, _config.OpenWhiskNamespace)
+        }
 
 	strategy.targetNodes = make(map[string][]string)
 	strategy.weights = make(map[string]map[string]uint)

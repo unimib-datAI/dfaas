@@ -6,6 +6,7 @@
 package loadbalancer
 
 import (
+	"encoding/base64"
 	"fmt"
 	"time"
 
@@ -24,7 +25,7 @@ type AllLocalStrategy struct {
 	hacfgupdater *hacfgupd.Updater
 
 	// OpenFaaS Gateway client to retrive deployed functions.
-	offuncsClient *offuncs.Client
+	offuncsClient offuncs.Client
 }
 
 // RunStrategy handles the periodic execution of the recalculation function. It
@@ -87,21 +88,57 @@ func (strategy *AllLocalStrategy) RunStrategy() error {
 func (strategy *AllLocalStrategy) updateProxyConfiguration(funcs map[string]*uint) error {
 	// Define and populate this anonymous struct to pass data to the Go
 	// template.
-	data := struct {
-		Now          string
-		DFaaSNodeID  string
-		Functions    map[string]*uint
-		OpenFaaSHost string
-		OpenFaaSPort uint
-	}{
-		Now:          time.Now().Format("2006-01-02 15:04:05"),
-		DFaaSNodeID:  _p2pHost.ID().String(),
-		Functions:    funcs,
-		OpenFaaSHost: _config.OpenFaaSHost,
-		OpenFaaSPort: _config.OpenFaaSPort,
+
+	if _config.Provider == "openfaas" {
+		data := struct {
+			Provider	string
+	                Now          	string
+                	DFaaSNodeID  	string
+                	Functions    	map[string]*uint
+                	OpenFaaSHost 	string
+                	OpenFaaSPort 	uint
+       		 }{
+			Provider:		_config.Provider,
+                	Now:          		time.Now().Format("2006-01-02 15:04:05"),
+                	DFaaSNodeID:  		_p2pHost.ID().String(),
+                	Functions:    		funcs,
+                	OpenFaaSHost: 		_config.OpenFaaSHost,
+                	OpenFaaSPort: 		_config.OpenFaaSPort,
+        	}
+
+                return strategy.hacfgupdater.UpdateHAConfig(data)
+
 	}
 
-	return strategy.hacfgupdater.UpdateHAConfig(data)
+        if _config.Provider == "openwhisk" {
+
+		encodedAuth := base64.StdEncoding.EncodeToString([]byte(_config.OpenWhiskAuth))
+
+		data := struct {
+                        Provider	 	string
+			Now          		string
+			DFaaSNodeID  		string
+			Functions    		map[string]*uint
+			OpenWhiskHost 		string
+			OpenWhiskPort 		uint
+			OpenWhiskAuth 		string
+			OpenWhiskNamespace 	string
+		}{
+                        Provider:        	_config.Provider,
+			Now:          		time.Now().Format("2006-01-02 15:04:05"),
+			DFaaSNodeID:  		_p2pHost.ID().String(),
+			Functions:    		funcs,
+			OpenWhiskHost:		_config.OpenWhiskHost,
+			OpenWhiskPort: 		_config.OpenWhiskPort,
+			OpenWhiskAuth: 		encodedAuth,
+			OpenWhiskNamespace: 	_config.OpenWhiskNamespace,
+		}
+
+		return strategy.hacfgupdater.UpdateHAConfig(data)
+	}
+
+	return fmt.Errorf("unsupported provider: %s", _config.Provider)
+
 }
 
 // OnReceived is executed every time a message from a peer is received. In this

@@ -60,15 +60,28 @@ frontend main
 
     {{/* Create an ACL and use to select the backend if positive. */}}
     {{range $funcName, $_ := .Functions -}}
-    # Forward /function/{{$funcName}} to the respective backend
-    acl is_{{$funcName}} path_beg /function/{{$funcName}}
+    {{if eq $.Provider "openfaas"}}
+        acl is_{{$funcName}} path_beg /function/{{$funcName}}
+    {{end}}
+    {{if eq $.Provider "openwhisk"}}
+        acl is_{{$funcName}} path_beg /api/v1/namespaces/{{$.OpenWhiskNamespace}}/actions/{{$funcName}}
+    {{end}}
     use_backend function_{{$funcName}} if is_{{$funcName}}
     {{end}}
 
 {{range $funcName, $timeout := .Functions -}}
 backend function_{{$funcName}}
     http-response set-header dfaaS-node-id {{$.DFaaSNodeID}}
-    server openfaas-local {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}}
+    {{if eq $.Provider "openwhisk"}}
+        http-request add-header Authorization "Basic {{ $.OpenWhiskAuth }}" if !{ req.hdr(Authorization) -m found }
+        # Force synchronous OpenWhisk invocation for every request overwriting any query:
+        http-request set-query blocking=true&result=true
+
+        server openfaas-local {{$.OpenWhiskHost}}:{{$.OpenWhiskPort}}
+    {{end}}
+    {{if eq $.Provider "openfaas"}}
+        server openfaas-local {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}}
+    {{end}}
     {{- if $timeout}}
     # If the function's metadata contains dfaas.timeout_ms label, we se in the
     # HAProxy backend a timeout of dfaas.timeout_ms+1s. Note that in the

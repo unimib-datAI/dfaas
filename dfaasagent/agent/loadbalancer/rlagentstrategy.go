@@ -26,7 +26,7 @@ import (
 type RLAgentStrategy struct {
 	hacfgupdater  *hacfgupd.Updater
 	nodestbl      *nodestbl.TableNMS
-	offuncsClient *offuncs.Client
+	offuncsClient offuncs.Client
 	promq         *promq.Client
 	httpClient    *http.Client
 

@@ -19,11 +19,18 @@ type HACfg struct {
 	// This is set by the updateHAProxyConfig function at the moment of writing
 	Now time.Time
 
+	Provider     string
 	MyNodeID     string
 	NodeIP       string
 	HAProxyHost  string
+
 	OpenFaaSHost string
 	OpenFaaSPort uint
+
+	OpenWhiskHost      string
+	OpenWhiskPort      uint
+	OpenWhiskAuth      string
+	OpenWhiskNamespace string
 }
 
 /////////////////// HACFG TYPES FOR RECALC STRATEGY ///////////////////

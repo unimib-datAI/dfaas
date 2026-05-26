@@ -54,14 +54,27 @@ frontend fe_main
     http-request capture str(hdrID:),concat(,req.hdrcnt_nodeid,) len 10 {{- /* e.g. "hdrID:5" */}}
 
     {{/* Path ACLs */ -}}
-    acl is_path_healthz path /healthz
     acl is_path_haproxy path_beg /haproxy
-    acl is_path_system_funcs path /system/functions
-    acl is_path_function path_beg /function/
+    {{if eq .Provider "openfaas"}}
+        acl is_path_system_funcs path /system/functions
+        acl is_path_function path_beg /function/
+    {{end}}
+    {{if eq .Provider "openwhisk"}}
+        acl is_path_system_funcs path /api/v1/namespaces/{{$.OpenWhiskNamespace}}/actions
+        acl is_path_function path_beg /api/v1/namespaces/{{$.OpenWhiskNamespace}}/actions
+    {{end}}
 
     {{/* ACLs is_func_XXX */ -}}
-    {{range $funcName, $_ := .Functions -}}
-    acl is_func_{{$funcName}} path_beg /function/{{$funcName}}
+    {{if eq .Provider "openfaas"}}
+        {{range $funcName, $_ := .Functions -}}
+        acl is_func_{{$funcName}} path_beg /function/{{$funcName}}
+        {{end}}
+    {{end}}
+
+    {{if eq .Provider "openwhisk"}}
+        {{range $funcName, $_ := .Functions -}}
+        acl is_func_{{$funcName}} path_beg /api/v1/namespaces/{{$.OpenWhiskNamespace}}/actions/{{$funcName}}
+        {{end}}
     {{end}}
     
     {{/* Capture some request headers in log */ -}}
@@ -71,7 +84,7 @@ frontend fe_main
     {{/* Deny requests which are not directed to a function or / (root) or the
     stats page (note: the root path is needed for health checks by
     other nodes) or to /healthz */ -}}
-    http-request deny unless is_path_healthz or is_path_haproxy or is_path_system_funcs or is_path_function
+    http-request deny unless is_path_haproxy or is_path_system_funcs or is_path_function
 
     {{/* If a hdr DFaaS-Node-ID is present AND is not known deny request. 
         * Returned message is 403 "Forbidden": The access to the resource is forbidden by this client.
@@ -80,7 +93,6 @@ frontend fe_main
     
     {{/* ########## BACKEND SELECTION ########## */ -}}
 
-    use_backend be_healthz if is_path_healthz
     use_backend be_system_funcs if is_path_system_funcs
 
     # For each deployed function, forward the incoming request to be_myself if
@@ -91,34 +103,23 @@ frontend fe_main
     use_backend be_{{$funcName}} if is_func_{{$funcName}} !has_nodeid_hdr
     {{end}}
 
-# Backend for health check.
-backend be_healthz
-    # Let HAProxy to perform HTTP health checks and remove the backend if not
-    # available.
-    option httpchk GET /healthz
-
-    # Enable HTTP connection closing on the server side. This provides the
-    # lowest latency on the client side (slow network) and the fastest session
-    # reuse on the server side to save server resources.
-    option http-server-close
-
-    # Forward requests to dfaas-agent.
-    server healthz dfaas-agent:80 check
-
-# Backend for managing the functions in self OpenFaaS instance.
-#
-# It is mostly similar to the be_healthz backend.
+# Backend for managing the functions in self .Provider instance.
 backend be_system_funcs
     option httpchk GET /
     option http-server-close
-    server system_funcs {{.OpenFaaSHost}}:{{.OpenFaaSPort}} check
 
-# Backend for forwarding function requests to the self OpenFaaS Instance.
+    {{if eq .Provider "openfaas"}}
+        server system_funcs {{.OpenFaaSHost}}:{{.OpenFaaSPort}} check
+    {{end}}
+
+    {{if eq .Provider "openwhisk"}}
+        server system_funcs {{.OpenWhiskHost}}:{{.OpenWhiskPort}} check
+    {{end}}
+
+# Backend for forwarding function requests to the self .Provider Instance.
 #
 # This backend is used for requests coming from other DFaaS nodes.
 backend be_myself
-    option httpchk GET /healthz
-
     # Enable insertion of the X-Forwarded-For header to requests sent to
     # servers.
     option forwardfor
@@ -133,19 +134,22 @@ backend be_myself
     http-response set-header X-Server %s
     http-response set-header DFaaS-Node-ID {{$.MyNodeID}}
 
-    server {{$.NodeIP}} {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} check
+    {{if eq .Provider "openfaas"}}
+        server {{$.NodeIP}} {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} check
+    {{end}}
+    {{if eq .Provider "openwhisk"}}
+        server {{$.NodeIP}} {{$.OpenWhiskHost}}:{{$.OpenWhiskPort}} check
+    {{end}}
 
-# Backends for each deployed OpenFaaS function.
+# Backends for each deployed .Provider function.
 #
 # These backends are used for incoming requests from clients, not from other
 # DFaaS nodes.
-
 {{range $funcName, $func := .Functions -}}
 backend be_{{$funcName}}
     # Enable load-balancing using custom weights.
     balance roundrobin
 
-    option httpchk GET /healthz
     option forwardfor
     option http-server-close
 
@@ -153,9 +157,19 @@ backend be_{{$funcName}}
 
     http-response set-header X-Server %s
 
+    # Add auth header if openwhisk is the provider
+    {{if eq $.Provider "openwhisk"}}
+        http-request add-header Authorization "Basic {{ $.OpenWhiskAuth }}" if !{ req.hdr(Authorization) -m found }
+    {{end}}
+
     {{range $nodeID, $weight := $func.Weights -}}
     {{if (eq $nodeID $.MyNodeID) -}}
-    server {{$.NodeIP}} {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} weight {{$weight}} check
+        {{if eq $.Provider "openfaas"}}
+            server {{$.NodeIP}} {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} weight {{$weight}} check
+        {{end}}
+        {{if eq $.Provider "openwhisk"}}
+            server {{$.NodeIP}} {{$.OpenWhiskHost}}:{{$.OpenWhiskPort}} weight {{$weight}} check
+        {{end}}
     {{else -}}
     server {{(index $.Nodes $nodeID).HAProxyHost}} {{(index $.Nodes $nodeID).HAProxyHost}}:{{(index $.Nodes $nodeID).HAProxyPort}} weight {{$weight}} check
     {{end -}}

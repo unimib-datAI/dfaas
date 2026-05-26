@@ -38,7 +38,7 @@ import (
 type RecalcStrategy struct {
 	hacfgupdater  *hacfgupd.Updater
 	nodestbl      *nodestbl.TableRecalc
-	offuncsClient *offuncs.Client
+	offuncsClient offuncs.Client
 
 	// The following variables are specific to the Recalc algorithm.
 	nodeIDs   []peer.ID          // IDs of the connected p2p nodes

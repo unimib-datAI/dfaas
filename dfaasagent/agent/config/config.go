@@ -21,6 +21,8 @@ type Configuration struct {
 	DateTime  bool `mapstructure:"AGENT_LOG_DATETIME"`
 	LogColors bool `mapstructure:"AGENT_LOG_COLORS"`
 
+	Provider string `mapstructure:"AGENT_PROVIDER"`
+
 	// IP address of the node where the agent runs. Used by other DFaaS agents
 	// to forward requests to this node. Kubernetes automatically injects this
 	// variable.
@@ -78,7 +80,12 @@ type Configuration struct {
 	DataPlaneAPIPassword string `mapstructure:"AGENT_DATAPLANEAPI_PASSWORD"`
 
 	OpenFaaSHost string `mapstructure:"AGENT_OPENFAAS_HOST"`
-	OpenFaaSPort uint   `mapstructure:"AGENT_OPENFAAS_PORT"`
+        OpenFaaSPort uint   `mapstructure:"AGENT_OPENFAAS_PORT"`
+
+	OpenWhiskHost string `mapstructure:"AGENT_OPENWHISK_HOST"`
+	OpenWhiskPort uint   `mapstructure:"AGENT_OPENWHISK_PORT"`
+        OpenWhiskAuth string `mapstructure:"AGENT_OPENWHISK_AUTH"`
+        OpenWhiskNamespace string `mapstructure:"AGENT_OPENWHISK_NAMESPACE"`
 
 	// Connection information for Prometheus. You can skip if you use a strategy
 	// that do not use Prometheus.

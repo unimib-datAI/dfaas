@@ -6,6 +6,7 @@
 package loadbalancer
 
 import (
+	"encoding/base64"
 	"encoding/json"
 	"fmt"
 	"math"
@@ -29,7 +30,7 @@ import (
 type StaticStrategy struct {
 	hacfgupdater  *hacfgupd.Updater
 	nodestbl      *nodestbl.TableNMS
-	offuncsClient *offuncs.Client
+	offuncsClient offuncs.Client
 
 	nodeInfo nodeInfoStatic
 	// Map of target nodes, with node ID of a common neighbour as key,
@@ -225,8 +226,6 @@ func (strategy *StaticStrategy) setProxyWeights() error {
 	strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryNMS) error {
 		hacfg = strategy.createHACfgObject(
 			myID,
-			_config.OpenFaaSHost,
-			_config.OpenFaaSPort,
 			entries,
 			strategy.weights,
 		)
@@ -244,19 +243,35 @@ func (strategy *StaticStrategy) setProxyWeights() error {
 // updateHAProxyConfig to update the HAProxy configuration.
 func (strategy *StaticStrategy) createHACfgObject(
 	myNodeID string,
-	openFaaSHost string,
-	openFaaSPort uint,
 	entries map[string]*nodestbl.EntryNMS,
 	funcsWeights map[string]map[string]uint,
 ) *HACfgStatic {
-	hacfg := &HACfgStatic{
-		HACfg: HACfg{
+	var baseCfg HACfg
+
+	if _config.Provider == "openfaas" {
+		baseCfg = HACfg{
+			Provider:     _config.Provider,
 			MyNodeID:     myNodeID,
 			NodeIP:       _config.NodeIP,
 			HAProxyHost:  _config.HAProxyHost,
-			OpenFaaSHost: openFaaSHost,
-			OpenFaaSPort: openFaaSPort,
-		},
+			OpenFaaSHost: _config.OpenFaaSHost,
+			OpenFaaSPort: _config.OpenFaaSPort,
+		}
+	} else if _config.Provider == "openwhisk" {
+		baseCfg = HACfg{
+			Provider:           _config.Provider,
+			MyNodeID:           myNodeID,
+			NodeIP:             _config.NodeIP,
+			HAProxyHost:        _config.HAProxyHost,
+			OpenWhiskHost:      _config.OpenWhiskHost,
+			OpenWhiskPort:      _config.OpenWhiskPort,
+			OpenWhiskAuth:      base64.StdEncoding.EncodeToString([]byte(_config.OpenWhiskAuth)),
+			OpenWhiskNamespace: _config.OpenWhiskNamespace,
+		}
+	}
+
+	hacfg := &HACfgStatic{
+		HACfg: baseCfg,
 
 		Nodes:     map[string]*HACfgNodeStatic{},
 		Functions: map[string]*HACfgFuncStatic{},
