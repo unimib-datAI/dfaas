@@ -8,9 +8,8 @@ def main():
     parser = argparse.ArgumentParser(
         description=(
             "Modify a trace JSON file:\n"
-            "- node '0' keeps the original trace\n"
-            "- each trace value is duplicated (100 -> 200 samples)\n"
-            "- nodes '1'..'9' are replaced with constant value 5"
+            "- node '0' keeps the original trace (duplicated)\n"
+            "- nodes '1'..'9' are replaced with a constant value\n"
         ),
         formatter_class=argparse.RawTextHelpFormatter,
     )
@@ -18,25 +17,33 @@ def main():
     parser.add_argument("input", help="Input JSON file")
     parser.add_argument("output", help="Output JSON file")
 
+    parser.add_argument(
+        "--fixed-value",
+        type=float,
+        default=4,
+        help="Constant value used for nodes 1..9 (default: 4)",
+    )
+
     args = parser.parse_args()
 
     with open(args.input) as f:
         data = json.load(f)
 
-    # Get original trace of node "0"
+    # Get original trace of node "0".
     trace0 = data["0"]["0"]
 
-    # Duplicate each item:
-    # [1, 2, 3] -> [1, 1, 2, 2, 3, 3]
-    # This changes the trace length from 100 to 200
+    # Duplicate each item (100 -> 200 samples).
     trace0 = [x for x in trace0 for _ in range(2)]
 
-    # Create new traces:
-    # - node "0" keeps the duplicated original trace
-    # - nodes "1".."9" contain only constant value 5
-    data["0"] = {"0": trace0, **{str(i): [5] * len(trace0) for i in range(1, 10)}}
+    # Always use nodes 1..9.
+    nodes = [str(i) for i in range(1, 10)]
 
-    # Save modified JSON
+    # Build constant traces.
+    fixed_traces = {node: [args.fixed_value] * len(trace0) for node in nodes}
+
+    # Rebuild node "0".
+    data["0"] = {"0": trace0, **fixed_traces}
+
     with open(args.output, "w") as f:
         json.dump(data, f, indent=2)
 
