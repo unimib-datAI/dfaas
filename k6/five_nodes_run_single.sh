@@ -6,9 +6,12 @@ set -euo pipefail
 # Make sure the working directory is where this script is located!
 cd "$(dirname "$0")"
 
-TRACE_PATH="../data/input_requests/mlimage/rlstrategy/scaled_pwr_5_scaled_down_not_node_0.json"
+DEFAULT_TRACE_PATH="../data/input_requests/mlimage/rlstrategy/scaled_pwr_40_only_0_other_constant_4.json"
+DEFAULT_OUTPUT_BASE_DIR="../data/20260525_one_rl_agent"
 
-OUTPUT_BASE_DIR="../data/20260513_one_rl_agent_2"
+# Allow to overwrite these options via environment variables.
+TRACE_PATH="${TRACE_PATH:-$DEFAULT_TRACE_PATH}"
+OUTPUT_BASE_DIR="${OUTPUT_BASE_DIR:-$DEFAULT_OUTPUT_BASE_DIR}"
 
 run_job() {
   local NODE_NAME="$1"
@@ -39,11 +42,19 @@ run_job() {
     --env IP_SERVER="$IP" \
     --env TRACE_PATH="$TRACE_PATH" \
     --env FUNCTION=0 \
-    --env NODE="$NODE_ID" \
-    --env LIMIT=60 &
+    --env NODE="$NODE_ID" &
+#    --env LIMIT=90 &
 
   echo "[LAUNCHED] $NODE_NAME (pid=$!)"
 }
+
+TRACE_NAME="$(basename "$TRACE_PATH")"
+echo "[INFO] Using trace $TRACE_NAME from $(realpath "$TRACE_PATH")"
+
+# Save a copy of the input trace in the result dir.
+mkdir -p "$OUTPUT_BASE_DIR/k6/"
+cp -a "$TRACE_PATH" "$OUTPUT_BASE_DIR/k6/"
+echo "[INFO] Saved trace path to $(realpath "$OUTPUT_BASE_DIR/k6/$TRACE_NAME")"
 
 # Format: "name ip node_id port".
 JOBS=(
@@ -54,7 +65,7 @@ JOBS=(
   "node_g 10.12.68.6 4 30669"
 )
 
-echo "[INFO] Saving results to $(realpath $OUTPUT_BASE_DIR)"
+echo "[INFO] Saving results to $(realpath "$OUTPUT_BASE_DIR")"
 
 # Launch all jobs.
 for job in "${JOBS[@]}"; do
