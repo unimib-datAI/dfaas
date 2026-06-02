@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# vim: set tabstop=2 shiftwidth=2 softtabstop=2 expandtab:
 set -euo pipefail
 
 SCRIPT="five_nodes_run_single.sh"

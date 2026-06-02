@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# vim: set tabstop=2 shiftwidth=2 softtabstop=2 expandtab:
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright 2026 The DFaaS Authors. All rights reserved.
 # This file is licensed under the AGPL v3.0 or later license. See LICENSE and

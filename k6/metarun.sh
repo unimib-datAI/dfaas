@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+# vim: set tabstop=2 shiftwidth=2 softtabstop=2 expandtab:
 
 # Exit on error.
 set -euo pipefail
