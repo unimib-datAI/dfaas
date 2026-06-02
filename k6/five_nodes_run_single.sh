@@ -6,6 +6,8 @@ set -euo pipefail
 # Make sure the working directory is where this script is located!
 cd "$(dirname "$0")"
 
+echo "[INFO] Start at $(date '+%Y-%m-%dT%H:%M:%S%z [%Z] epoch=%s')"
+
 # SSH connection info. It assumes that each DFaaS node can be accessed using the
 # provided private key, and that the corresponding public key has been added to
 # the authorized_keys file for the "user" account.
@@ -126,5 +128,7 @@ for job in "${JOBS[@]}"; do
 done
 
 echo "[INFO] All (if available) rl_model.log files collected."
+
+echo "[INFO] End at $(date '+%Y-%m-%dT%H:%M:%S%z [%Z] epoch=%s')"
 
 exit $(( failures > 0 ? 1 : 0 ))
