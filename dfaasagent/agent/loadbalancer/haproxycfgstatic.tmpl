@@ -157,9 +157,11 @@ backend be_{{$funcName}}
 
     http-response set-header X-Server %s
 
-    # Add auth header if openwhisk is the provider
+    # Add auth header and force synchronous if openwhisk is the provider
     {{if eq $.Provider "openwhisk"}}
         http-request add-header Authorization "Basic {{ $.OpenWhiskAuth }}" if !{ req.hdr(Authorization) -m found }
+        # Force synchronous OpenWhisk invocation for every request overwriting any query:
+        http-request set-query blocking=true&result=true
     {{end}}
 
     {{range $nodeID, $weight := $func.Weights -}}
