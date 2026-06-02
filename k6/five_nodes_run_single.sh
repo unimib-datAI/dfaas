@@ -6,6 +6,16 @@ set -euo pipefail
 # Make sure the working directory is where this script is located!
 cd "$(dirname "$0")"
 
+# SSH connection info. It assumes that each DFaaS node can be accessed using the
+# provided private key, and that the corresponding public key has been added to
+# the authorized_keys file for the "user" account.
+SSH_OPTS=(
+  -i ~/.ssh/id_ed25519
+  -o StrictHostKeyChecking=no
+  -o UserKnownHostsFile=/dev/null
+  -o LogLevel=QUIET
+)
+
 DEFAULT_TRACE_PATH="../data/input_requests/mlimage/rlstrategy/scaled_pwr_40_only_0_other_constant_4.json"
 DEFAULT_OUTPUT_BASE_DIR="../data/20260525_one_rl_agent"
 
@@ -87,4 +97,34 @@ done
 
 echo "[INFO] All jobs finished. Failures: $failures"
 
-exit $failures
+echo "[INFO] Collecting rl_model.log file from DFaaS nodes..."
+
+collect_rl_model() {
+  local NODE_NAME="$1"
+  local IP="$2"
+
+  local readonly RL_MODEL_PATH_SRC="dfaas-rl/dfaasagent/rl_model.log"
+  local readonly RL_MODEL_PATH_DST="$OUTPUT_BASE_DIR/other/$NODE_NAME/rl_model.log"
+
+  mkdir -p "$OUTPUT_BASE_DIR/other/$NODE_NAME"
+
+  # $RL_MODEL_PATH_SRC may not exist because that DFaaS agent is not executing
+  # the RL Agent strategy.
+  if ssh "${SSH_OPTS[@]}" user@"$IP" "test -f '$RL_MODEL_PATH_SRC'"; then
+    if scp "${SSH_OPTS[@]}" user@"$IP:$RL_MODEL_PATH_SRC" "$RL_MODEL_PATH_DST"; then
+      echo "[INFO] Collected rl_model.log from $NODE_NAME (IP=$IP)"
+    else
+      echo "[WARN] Failed to copy rl_model.log from $NODE_NAME (IP=$IP)"
+    fi
+  else
+    echo "[INFO] No rl_model.log found on $NODE_NAME (IP=$IP)"
+  fi
+}
+
+for job in "${JOBS[@]}"; do
+  collect_rl_model $job
+done
+
+echo "[INFO] All (if available) rl_model.log files collected."
+
+exit $(( failures > 0 ? 1 : 0 ))
