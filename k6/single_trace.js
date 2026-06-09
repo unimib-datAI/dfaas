@@ -8,7 +8,7 @@ import http from 'k6/http';
 import { tagWithCurrentStageIndex, getCurrentStageIndex } from 'https://jslib.k6.io/k6-utils/1.6.0/index.js';
 
 // Required to store only a single copy of an image for mlimage function.
-import { readAll } from "./utils.js";
+import { readAll, stagesBuild } from "./utils.js";
 
 // Required to create a custom counter metric.
 import { Counter } from 'k6/metrics';
@@ -76,18 +76,10 @@ if (LIMIT > 0) {
   nodeTrace = nodeTrace.slice(0, LIMIT)
 }
 
-// Build stages with 5s transitions and 55s constant rate.
-let stages = [];
-for (let i = 0; i < nodeTrace.length; i++) {
-  stages.push({
-    duration: '5s', // 5-second transition to new rate.
-    target: Math.round(nodeTrace[i]),
-  });
-  stages.push({
-    duration: '55s', // Keep a constant rate for the remainder of the minute.
-    target: Math.round(nodeTrace[i]),
-  });
-}
+// Build stages according to STAGE_BUILDER env variable. See stagesBuild()
+// function inside utils.js for more options.
+const STAGE_BUILDER = __ENV.STAGE_BUILDER || "OneMinuteWindow";
+const stages = stagesBuild(nodeTrace, STAGE_BUILDER);
 
 export let options = {
   scenarios: {
@@ -108,8 +100,10 @@ export let options = {
 export default function () {
   // Tag each request with its corresponding stage index (e.g., stage 0, 1, 2,
   // ...). This makes it possible to map each request to its stage and, in turn,
-  // to the trace iteration. Note that each trace iteration consists of two
-  // stages, so the stage index must be divided by two.
+  // to the trace iteration.
+  //
+  // The mapping between stage index and trace iteration depends on the selected
+  // STAGE_BUILDER.
   //
   // See: https://grafana.com/docs/k6/latest/using-k6/tags-and-groups/
   tagWithCurrentStageIndex();

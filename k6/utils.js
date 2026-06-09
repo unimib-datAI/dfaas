@@ -19,3 +19,66 @@ export async function readAll(path) {
 
   return buffer;
 }
+
+export function stagesBuild(trace, builder) {
+  switch (builder) {
+    case "OneMinuteWindow":
+      return stagesOneMinuteWindow(trace);
+
+    case "WithCooldown":
+      return stagesWithCooldown(trace);
+
+    default:
+      throw new Error(`Unknown stage builder '${builder}'`);
+  }
+}
+
+export function stagesOneMinuteWindow(trace) {
+  let stages = [];
+
+  for (const rate of trace) {
+    const target = Math.round(rate);
+
+    stages.push({
+      duration: '5s', // 5-second transition to new rate.
+      target,
+    });
+    stages.push({
+      duration: '55s', // Keep a constant rate for the remainder of the minute.
+      target,
+    });
+  }
+
+  return stages;
+}
+
+export function stagesWithCooldown(trace) {
+  let stages = [];
+
+  for (const rate of trace) {
+    const target = Math.round(rate);
+
+    // Same as stagesOneMinuteWindow(): an initial transition to new rate, then
+    // constant rate.
+    stages.push({
+      duration: '10s',
+      target,
+    });
+    stages.push({
+      duration: '110s',
+      target,
+    });
+
+    // Create a "cooldown" period to let the VM rest.
+    stages.push({
+      duration: '5s',
+      target: 0,
+    });
+    stages.push({
+      duration: '15s',
+      target: 0,
+    });
+  }
+
+  return stages;
+}
