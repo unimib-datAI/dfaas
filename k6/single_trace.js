@@ -29,6 +29,10 @@ switch (FUNCTION_NAME) {
     CONTENT_TYPE = "text/plain";
     BODY_CONTENT = "Hello World!";
     break;
+  case "sentimentanalysis":
+    CONTENT_TYPE = "text/plain";
+    BODY_CONTENT = "I like Python, but sometimes its syntax feels awkward and its error messages can be unclear.";
+    break;
   case "mlimage":
     CONTENT_TYPE = "image/jpeg";
     (async function () {
