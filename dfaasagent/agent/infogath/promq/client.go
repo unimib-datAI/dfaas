@@ -122,7 +122,7 @@ func (c *Client) CPUUsage(containerName string, start, end time.Time) (float32, 
 	// instance (1 k8s node) in the cluster.
 	query := fmt.Sprintf(`
 	100 * sum by (instance) (
-	  irate(container_cpu_usage_seconds_total{namespace="default", container="%s"}[%s])
+	  rate(container_cpu_usage_seconds_total{namespace="default", container="%s"}[%s])
 	) / on(instance) machine_cpu_cores`, containerName, durationStr)
 
 	c.logQuery(query, end)
