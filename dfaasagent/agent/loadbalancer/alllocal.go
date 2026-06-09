@@ -23,55 +23,79 @@ type AllLocalStrategy struct {
 	// HAProxy client to update configuration.
 	hacfgupdater *hacfgupd.Updater
 
-	// OpenFaaS Gateway client to retrive deployed functions.
+	// OpenFaaS Gateway client to retrieve deployed functions.
 	offuncsClient *offuncs.Client
+
+	// AllLocalStrategy is an iteration-based strategy, where a method is
+	// executed every N seconds to check the current deployment state. If the
+	// latest deployment differs from the expected state, the proxy
+	// configuration is updated accordingly. This is why we need prevFuncs: it
+	// stores metadata of the latest deployment to detect changes between
+	// iterations.
+	prevFuncs map[string]*uint
 }
 
-// RunStrategy handles the periodic execution of the recalculation function. It
-// should run in a goroutine.
+// RunStrategy handles the periodic execution of the strategy's iteration
+// function. It should run in a goroutine.
 func (strategy *AllLocalStrategy) RunStrategy() error {
 	logger := logging.Logger()
 	logger.Debug("Starting All Local strategy...")
 
+	// prevFuncs starts as empty since no deploy has been done.
+	strategy.prevFuncs = make(map[string]*uint)
+
+	// Avoid waiting the first ticker's iteration.
+	if err := strategy.runIteration(); err != nil {
+		return fmt.Errorf("running first strategy iteration: %w", err)
+	}
+
 	ticker := time.NewTicker(_config.RecalcPeriod)
 	defer ticker.Stop()
-
-	// Functions deployed at the previous cycle. At start is empty.
-	prevFuncs := make(map[string]*uint)
-
-	// This strategy is straightforward: we only need to update the HAProxy
-	// configuration when the list of functions changes, and nothing more.
 	for range ticker.C {
-		start := time.Now().UTC()
-
-		funcs, err := strategy.offuncsClient.GetFuncsWithTimeout()
-		if err != nil {
-			return fmt.Errorf("get function metadata: %w", err)
+		if err := strategy.runIteration(); err != nil {
+			return fmt.Errorf("running strategy iteration: %w", err)
 		}
-
-		// Add 1 seconds to base timeout (if given) to all functions.
-		for _, timeout := range funcs {
-			if timeout != nil {
-				*timeout += 1000
-			}
-		}
-
-		// Update the configuration and reload HAProxy if changes are detected.
-		equal := funcsMetadataEqual(funcs, prevFuncs) && funcsMetadataEqual(prevFuncs, funcs)
-		if !equal {
-			debugFuncsDiff(funcs, prevFuncs)
-			logger.Info("Updating proxy due to new/deleted functions or changed timeouts")
-			if err = strategy.updateProxyConfiguration(funcs); err != nil {
-				return fmt.Errorf("updating proxy config: %w", err)
-			}
-			prevFuncs = funcs
-		}
-
-		duration := time.Since(start)
-		httpserver.StrategySuccessIterations.Inc()
-		httpserver.StrategyIterationDuration.Set(duration.Seconds())
-		logger.Infof("Iteration completed. Duration: %s", duration.String())
 	}
+
+	return nil
+}
+
+// runIteration runs a single iteration of the strategy: it updates the HAProxy
+// configuration when the list of functions changes (or the first time), and
+// nothing more.
+func (strategy *AllLocalStrategy) runIteration() error {
+	logger := logging.Logger()
+
+	start := time.Now().UTC()
+
+	// GetFuncsWithTimeout always returns a new map.
+	funcs, err := strategy.offuncsClient.GetFuncsWithTimeout()
+	if err != nil {
+		return fmt.Errorf("get function metadata: %w", err)
+	}
+
+	// Add 1 seconds to base timeout (if given) to all functions.
+	for _, timeout := range funcs {
+		if timeout != nil {
+			*timeout += 1000
+		}
+	}
+
+	// Update the configuration and reload HAProxy if changes are detected.
+	equal := funcsMetadataEqual(funcs, strategy.prevFuncs) && funcsMetadataEqual(strategy.prevFuncs, funcs)
+	if !equal {
+		debugFuncsDiff(funcs, strategy.prevFuncs)
+		logger.Info("Updating proxy due to new/deleted functions or changed timeouts")
+		if err = strategy.updateProxyConfiguration(funcs); err != nil {
+			return fmt.Errorf("updating proxy config: %w", err)
+		}
+		strategy.prevFuncs = funcs
+	}
+
+	duration := time.Since(start)
+	httpserver.StrategySuccessIterations.Inc()
+	httpserver.StrategyIterationDuration.Set(duration.Seconds())
+	logger.Infof("Iteration completed. Duration: %s", duration.String())
 
 	return nil
 }
@@ -104,7 +128,8 @@ func (strategy *AllLocalStrategy) OnReceived(msg *pubsub.Message) error {
 	return nil
 }
 
-// funcsMetadataEqual returns true if the given a and b maps are equal.
+// funcsMetadataEqual returns true if the given a and b maps are equal. This is
+// not a symmetric operation.
 func funcsMetadataEqual(a, b map[string]*uint) bool {
 	if len(a) != len(b) {
 		return false
