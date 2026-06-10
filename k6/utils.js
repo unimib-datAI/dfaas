@@ -58,14 +58,14 @@ export function stagesWithCooldown(trace) {
   for (const rate of trace) {
     const target = Math.round(rate);
 
-    // Same as stagesOneMinuteWindow(): an initial transition to new rate, then
-    // constant rate.
+    // Similar to stagesOneMinuteWindow(): an initial transition to new rate,
+    // then constant rate.
     stages.push({
-      duration: '10s',
+      duration: '20s',
       target,
     });
     stages.push({
-      duration: '110s',
+      duration: '160s',
       target,
     });
 
