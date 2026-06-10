@@ -142,12 +142,22 @@ func (c *Client) CPUUsage(containerName string, start, end time.Time) (float32, 
 	}
 
 	if len(vector) == 0 {
-		c.logger.Warn("no CPU data returned for container in given time range")
+		c.logger.Warn("CPU query result is empty, return 0 by default")
 		return 0, nil
 	}
 
-	// Returns the first (and only) instance's value.
-	return float32(vector[0].Value), nil
+	// We expect a single value in [0, 100]. The RL model expects float32, not
+	// float64!
+	value := float32(vector[0].Value)
+	if value < 0 {
+		c.logger.Warnf("CPU query result expected to be >=0, found %.2f, will be clamped!", value)
+		return 0, nil
+	}
+	if value > 100 {
+		c.logger.Warnf("CPU query result expected <=100, found %.2f, will be clamped!", value)
+		return 100, nil
+	}
+	return value, nil
 }
 
 // InputRPS returns the average number of incoming client requests per second

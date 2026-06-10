@@ -50,6 +50,10 @@ type RLAgentStrategy struct {
 	// typically at the beginning of the strategy.
 	allLocalPhaseTimestamp time.Time
 	rlAgentPhaseTimestamp  time.Time
+
+	// targetFunction stores the function's name used in the RL Agent strategy
+	// (the strategy currently supports only one deployed function)
+	targetFunction string
 }
 
 // strategyPhase represents the two possibile phases of the RL Agent strategy.
@@ -214,6 +218,20 @@ func (strategy *RLAgentStrategy) OnReceived(msg *pubsub.Message) error {
 
 // setup runs the initial setup of the RL Agent strategy.
 func (strategy *RLAgentStrategy) setup() error {
+	logger := logging.Logger()
+
+	// Strategy currently supports only one deployed function.
+	funcs, err := strategy.offuncsClient.GetFuncsNames()
+	if err != nil {
+		return fmt.Errorf("failed to check deployed functions: %w")
+	}
+	if len(funcs) == 0 || len(funcs) > 1 {
+		logger.Errorf("Strategy requires exactly one deployed function, found %d functions", len(funcs))
+		return fmt.Errorf("exactly one function required, found %d", len(funcs))
+	}
+	strategy.targetFunction = funcs[0]
+	logger.Infof("Target function of RL Agent strategy is %q", strategy.targetFunction)
+
 	// We first set the initial proxy configuration. The allLocalPhase and
 	// rlAgentPhase will update the weights based on this configuration.
 	if err := strategy.initProxyConfig(); err != nil {
@@ -350,7 +368,7 @@ func (strategy *RLAgentStrategy) initProxyConfig() error {
 	}
 
 	// Build neighbors info.
-	neighbors := []string{}                  // Node's ID (node_XXX)
+	neighbors := []string{}                  // Node's ID (node_XXX).
 	neighborsPort := make(map[string]string) // Node's ID -> Node's host addr.
 	neighborsHost := make(map[string]string) // Node's ID -> Node's port numb.
 
@@ -468,7 +486,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 		return nil, fmt.Errorf("building observation for 'input_rate' key: %w", err)
 	}
 	// Because we currently support only one function!
-	inputRPSSingle, err := extractSingleFunctionValue(inputRPS)
+	inputRPSSingle, err := extractSingleFunctionValue(inputRPS, strategy.targetFunction)
 	if err != nil {
 		return nil, fmt.Errorf("building observation for 'input_rate' key: %w", err)
 	}
@@ -482,7 +500,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_input_rate' key: %w", err)
 		}
-		inputRPSSingle, err := extractSingleFunctionValue(inputRPS)
+		inputRPSSingle, err := extractSingleFunctionValue(inputRPS, strategy.targetFunction)
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_input_rate' key: %w", err)
 		}
@@ -502,7 +520,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X' key: %w", err)
 		}
-		prevForwardRPSSingle, err := extractSingleFunctionValue(prevForwardRPS)
+		prevForwardRPSSingle, err := extractSingleFunctionValue(prevForwardRPS, strategy.targetFunction)
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X' key: %w", err)
 		}
@@ -536,7 +554,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X_rejected' key: %w", err)
 		}
-		prevForwardRejectRPSSingle, err := extractSingleFunctionValue(prevForwardRejectRPS)
+		prevForwardRejectRPSSingle, err := extractSingleFunctionValue(prevForwardRejectRPS, strategy.targetFunction)
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X_rejected' key: %w", err)
 		}
@@ -562,7 +580,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("building observation for 'reject_rate' key: %w", err)
 	}
-	rejectRateSingle, err := extractSingleFunctionValue(rejectRate)
+	rejectRateSingle, err := extractSingleFunctionValue(rejectRate, strategy.targetFunction)
 	if err != nil {
 		return nil, fmt.Errorf("building observation for 'reject_rate' key: %w", err)
 	}
@@ -576,7 +594,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_reject_rate' key: %w", err)
 		}
-		prevRejectRateSingle, err := extractSingleFunctionValue(prevRejectRate)
+		prevRejectRateSingle, err := extractSingleFunctionValue(prevRejectRate, strategy.targetFunction)
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_reject_rate' key: %w", err)
 		}
@@ -588,7 +606,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("building observation for 'avg_resp_time_loc' key: %w", err)
 	}
-	avgRespTimeSingle, err := extractSingleFunctionValue(avgRespTime)
+	avgRespTimeSingle, err := extractSingleFunctionValue(avgRespTime, strategy.targetFunction)
 	if err != nil {
 		return nil, fmt.Errorf("building observation for 'avg_resp_time_loc' key: %w", err)
 	}
@@ -602,7 +620,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_avg_resp_time_loc' key: %w", err)
 		}
-		prevAvgRespTimeSingle, err := extractSingleFunctionValue(prevAvgRespTime)
+		prevAvgRespTimeSingle, err := extractSingleFunctionValue(prevAvgRespTime, strategy.targetFunction)
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_avg_resp_time_loc' key: %w", err)
 		}
@@ -622,7 +640,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_avg_resp_time_fwd_to_node_X' key: %w", err)
 		}
-		prevAvgRespTimeForwardSingle, err := extractSingleFunctionValue(prevAvgRespTimeForward)
+		prevAvgRespTimeForwardSingle, err := extractSingleFunctionValue(prevAvgRespTimeForward, strategy.targetFunction)
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_avg_resp_time_fwd_to_node_X' key: %w", err)
 		}
@@ -644,8 +662,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	}
 
 	// cpu_utilization key in observation (float32 in [0, 1]).
-	// FIXME: Remove "mlimage" function name hardcoded.
-	cpuUsage, err := strategy.promq.CPUUsage("mlimage", strategy.allLocalPhaseTimestamp, now)
+	cpuUsage, err := strategy.promq.CPUUsage(strategy.targetFunction, strategy.allLocalPhaseTimestamp, now)
 	if err != nil {
 		return nil, fmt.Errorf("building observation for 'cpu_utilization' key: %w", err)
 	}
@@ -655,8 +672,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	if strategy.rlAgentPhaseTimestamp.IsZero() {
 		obs["previous_cpu_utilization"] = 0.0
 	} else {
-		// FIXME: Remove "mlimage" function name hardcoded.
-		prevCPUUsage, err := strategy.promq.CPUUsage("mlimage", strategy.rlAgentPhaseTimestamp, strategy.allLocalPhaseTimestamp)
+		prevCPUUsage, err := strategy.promq.CPUUsage(strategy.targetFunction, strategy.rlAgentPhaseTimestamp, strategy.allLocalPhaseTimestamp)
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_cpu_utilization' key: %w", err)
 		}
@@ -668,7 +684,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	if err != nil {
 		return nil, fmt.Errorf("building observation for 'n_replicas' key: %w", err)
 	}
-	replicasSingle, err := extractSingleFunctionValue(replicas)
+	replicasSingle, err := extractSingleFunctionValue(replicas, strategy.targetFunction)
 	if err != nil {
 		return nil, fmt.Errorf("building observation for 'n_replicas' key: %w", err)
 	}
@@ -682,7 +698,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_n_replicas' key: %w", err)
 		}
-		prevReplicasSingle, err := extractSingleFunctionValue(prevReplicas)
+		prevReplicasSingle, err := extractSingleFunctionValue(prevReplicas, strategy.targetFunction)
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_n_replicas' key: %w", err)
 		}
@@ -756,7 +772,8 @@ func (strategy *RLAgentStrategy) queryRLModel(observation []byte) (map[string]ma
 // Each action key maps to a float value in the range [0, 1], representing the
 // proportion (weight) assigned to that action.
 //
-// Warning: currenlty only "mlimage" function is supported in the given map!
+// Warning: currenlty only one function is supported in the given map,
+// controlled by strategy.targetFunction.
 func (strategy *RLAgentStrategy) applyAction(action map[string]map[string]float64) error {
 	logger := logging.Logger()
 
@@ -781,8 +798,7 @@ func (strategy *RLAgentStrategy) applyAction(action map[string]map[string]float6
 		return fmt.Errorf("local node ID not found in RL action. Node ID: %s", localNode)
 	}
 
-	// FIXME: Only a fixed function (mlimage) is now supported!
-	backend := fmt.Sprintf("function_%s", "mlimage")
+	backend := fmt.Sprintf("function_%s", strategy.targetFunction)
 
 	// First extract all actions, then apply them.
 	weights := make(map[string]uint)
@@ -821,12 +837,12 @@ func (strategy *RLAgentStrategy) applyAction(action map[string]map[string]float6
 	return nil
 }
 
-// FIXME: Remove this! Use because currently we support observations for the RL
-// model with only a single function.
-func extractSingleFunctionValue[T any](funcs map[string]T) (T, error) {
-	// FIXME: Make configurable!
-	name := "mlimage"
-
+// extractSingleFunctionValue extracts data related to the given function name
+// from the funcs map.
+//
+// Required by the RL Agent strategy because it supports only one deployed
+// function.
+func extractSingleFunctionValue[T any](funcs map[string]T, name string) (T, error) {
 	value, exists := funcs[name]
 	if !exists {
 		var zero T
