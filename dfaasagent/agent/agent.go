@@ -135,11 +135,11 @@ func runAgent(config config.Configuration) error {
 		return fmt.Errorf("converting string list to multiaddr list: %w", err)
 	}
 
+	logger.Debug("Creating libp2p host structure...")
 	if prvKeyExist {
-		logger.Info("Creating libp2p host with a given private key...")
 		_p2pHost, err = libp2p.New(libp2p.ListenAddrs(_addresses...), libp2p.Identity(prvKey))
 	} else {
-		logger.Info("Creating libp2p host with a generated private key...")
+		logger.Info("libp2p's host private key not found. Generating a new key...")
 		_p2pHost, err = libp2p.New(libp2p.ListenAddrs(_addresses...))
 	}
 	if err != nil {
@@ -172,9 +172,9 @@ func runAgent(config config.Configuration) error {
 
 			// Get PEM as string and print to logger.
 			pemString := buf.String()
-			logger.Info(fmt.Sprintf("Libp2p generated private key (PEM):\n%s", pemString))
+			logger.Info(fmt.Sprintf("libp2p generated private key (PEM):\n%s", pemString))
 		} else {
-			logger.Warn("Libp2p host has no private key in Peerstore")
+			logger.Warn("libp2p host has no private key in Peerstore")
 		}
 	}
 
@@ -183,7 +183,7 @@ func runAgent(config config.Configuration) error {
 	if err != nil {
 		return fmt.Errorf("error while building the p2p host's multiaddress: %w", err)
 	}
-	logger.Info("Libp2p host started. You can connect to this host by using the following multiaddresses:")
+	logger.Info("libp2p host started. You can connect to this host by using the following multiaddresses:")
 	for i, addr := range myMAddrs {
 		logger.Info("  ", i+1, ". ", addr)
 	}
