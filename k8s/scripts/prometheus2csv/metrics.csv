@@ -13,25 +13,28 @@ metric;haproxy_backend_http_responses_total;;
 query;increase(haproxy_backend_http_responses_total[10s]);custom_haproxy_responses_total;Number of HTTP responses returned by each HAProxy backend over the last 10 seconds
 metric;haproxy_backend_http_requests_total;;
 metric;haproxy_backend_response_time_average_seconds;;
-query;irate(haproxy_backend_http_requests_total{proxy="function_mlimage"}[1m]);custom_haproxy_requests_rate;Number of requests per second over the last minute
+query;"irate(haproxy_backend_http_requests_total{proxy=""function_mlimage""}[1m])";custom_haproxy_requests_rate;Number of requests per second over the last minute
 metric;gateway_function_invocation_started;;
 metric;gateway_function_invocation_total;;
 metric;gateway_functions_seconds_bucket;;
 metric;gateway_service_count;;
-query;100 * sum by (instance) (irate(container_cpu_usage_seconds_total{namespace="default", container="mlimage"}[1m])) / on(instance) machine_cpu_cores;mlimage_cpu_usage_percent_1m;Percentage of host CPU cores used by mlimage containers
+query;"100 * sum by (instance) (irate(container_cpu_usage_seconds_total{namespace=""default"", container=""mlimage""}[1m])) / on(instance) machine_cpu_cores";mlimage_cpu_usage_percent_1m;Percentage of host CPU cores used by mlimage containers
 query;avg by (function_name) (avg_over_time(gateway_service_count[1m]));replicas_avg;Average number of replicas for each function over 1 minute
 query;gateway_service_count;gateway_service_count_instant;Instant/raw gateway service count metric
-query;avg by (proxy) ( rate(haproxy_backend_http_requests_total{proxy=~"function_.*",proxy!~".**forwarded"}[1m]) );input_rps;Average incoming client requests per second for each function excluding forwarded traffic
-query;haproxy_backend_http_requests_total{proxy=~"function*.*",proxy!~".**forwarded"};haproxy_backend_http_requests_total_raw;Raw HAProxy backend HTTP requests counter excluding forwarded traffic
+query;"avg by (proxy) ( rate(haproxy_backend_http_requests_total{proxy=~""function_.*"",proxy!~"".**forwarded""}[1m]) )";input_rps;Average incoming client requests per second for each function excluding forwarded traffic
+query;"haproxy_backend_http_requests_total{proxy=~""function*.*"",proxy!~"".**forwarded""}";haproxy_backend_http_requests_total_raw;Raw HAProxy backend HTTP requests counter excluding forwarded traffic
 query;sum by (function_name) ( rate(gateway_functions_seconds_sum[1m])) / sum by (function_name) (rate(gateway_functions_seconds_count[1m]));avg_response_time_local_ms;Average local response time per function based on OpenFaaS gateway histogram
 query;gateway_functions_seconds_sum;gateway_functions_seconds_sum_raw;Raw OpenFaaS response time histogram sum
 query;gateway_functions_seconds_count;gateway_functions_seconds_count_raw;Raw OpenFaaS response time histogram count
-query;( sum by (proxy) ( increase(haproxy_server_http_requests_total{proxy=~"function*.*",proxy!~".**forwarded",server="openfaas-local"}[1m]) ) - sum by (proxy) ( increase(haproxy_server_http_responses_total{proxy=~"function*.*",proxy!~".**forwarded",server="openfaas-local",code="2xx"}[1m]) ) ) / sum by (proxy) ( increase(haproxy_server_http_requests_total{proxy=~"function*.*",proxy!~".**forwarded",server="openfaas-local"}[1m]) );reject_rate;Percentage of locally rejected requests per function over 1 minute
-query;haproxy_server_http_requests_total{proxy=~"function*.*",proxy!~".**forwarded",server="openfaas-local"};haproxy_server_http_requests_total_raw;Raw HAProxy server HTTP requests counter for local OpenFaaS
-query;haproxy_server_http_responses_total{proxy=~"function*.*",proxy!~".**forwarded",server="openfaas-local",code="2xx"};haproxy_server_http_responses_total_2xx_raw;Raw HAProxy successful HTTP responses counter for local OpenFaaS
-query;sum by (proxy, server) ( rate(haproxy_server_http_requests_total{proxy=~"function*.*",proxy!~".**forwarded"}[1m]) );forward_rps;Average incoming client requests per second to each DFaaS node per function
-query;haproxy_server_http_requests_total{proxy=~"function*.*",proxy!~".**forwarded"};haproxy_server_http_requests_total_forward_raw;Raw HAProxy server HTTP requests counter per backend server
-query;sum by (proxy, server) ( rate(haproxy_server_http_requests_total{proxy=~"function*.*",proxy!~".**forwarded"}[1m]) ) - sum by (proxy, server) ( rate(haproxy_server_http_responses_total{proxy=~"function*.*",proxy!~".**forwarded",code="2xx"}[1m]) );forward_reject_rps;Average rejected client requests per second to each DFaaS node per function
-query;haproxy_server_http_responses_total{proxy=~"function*.*",proxy!~".**forwarded",code="2xx"};haproxy_server_http_responses_total_forward_2xx_raw;Raw HAProxy successful HTTP responses counter per backend server
-query;sum by (proxy, server) ( last_over_time(haproxy_server_response_time_average_seconds{proxy=~"function*.*",proxy!~".**forwarded"}[1m]) );avg_response_time_forward_ms;Average forwarded response time in milliseconds per function and DFaaS node over 1 minute
-query;haproxy_server_response_time_average_seconds{proxy=~"function*.*",proxy!~".*_forwarded"};haproxy_server_response_time_average_seconds_instant;Instant HAProxy backend response time metric
+query;"( sum by (proxy) ( increase(haproxy_server_http_requests_total{proxy=~""function*.*"",proxy!~"".**forwarded"",server=""openfaas-local""}[1m]) ) - sum by (proxy) ( increase(haproxy_server_http_responses_total{proxy=~""function*.*"",proxy!~"".**forwarded"",server=""openfaas-local"",code=""2xx""}[1m]) ) ) / sum by (proxy) ( increase(haproxy_server_http_requests_total{proxy=~""function*.*"",proxy!~"".**forwarded"",server=""openfaas-local""}[1m]) )";reject_rate;Percentage of locally rejected requests per function over 1 minute
+query;"haproxy_server_http_requests_total{proxy=~""function*.*"",proxy!~"".**forwarded"",server=""openfaas-local""}";haproxy_server_http_requests_total_raw;Raw HAProxy server HTTP requests counter for local OpenFaaS
+query;"haproxy_server_http_responses_total{proxy=~""function*.*"",proxy!~"".**forwarded"",server=""openfaas-local"",code=""2xx""}";haproxy_server_http_responses_total_2xx_raw;Raw HAProxy successful HTTP responses counter for local OpenFaaS
+query;"sum by (proxy, server) ( rate(haproxy_server_http_requests_total{proxy=~""function*.*"",proxy!~"".**forwarded""}[1m]) )";forward_rps;Average incoming client requests per second to each DFaaS node per function
+query;"haproxy_server_http_requests_total{proxy=~""function*.*"",proxy!~"".**forwarded""}";haproxy_server_http_requests_total_forward_raw;Raw HAProxy server HTTP requests counter per backend server
+query;"sum by (proxy, server) ( rate(haproxy_server_http_requests_total{proxy=~""function*.*"",proxy!~"".**forwarded""}[1m]) ) - sum by (proxy, server) ( rate(haproxy_server_http_responses_total{proxy=~""function*.*"",proxy!~"".**forwarded"",code=""2xx""}[1m]) )";forward_reject_rps;Average rejected client requests per second to each DFaaS node per function
+query;"haproxy_server_http_responses_total{proxy=~""function*.*"",proxy!~"".**forwarded"",code=""2xx""}";haproxy_server_http_responses_total_forward_2xx_raw;Raw HAProxy successful HTTP responses counter per backend server
+query;"sum by (proxy, server) ( last_over_time(haproxy_server_response_time_average_seconds{proxy=~""function*.*"",proxy!~"".**forwarded""}[1m]) )";avg_response_time_forward_ms;Average forwarded response time in milliseconds per function and DFaaS node over 1 minute
+query;"haproxy_server_response_time_average_seconds{proxy=~""function*.*"",proxy!~"".*_forwarded""}";haproxy_server_response_time_average_seconds_instant;Instant HAProxy backend response time metric
+query;haproxy_server_http_responses_total{proxy=~"function*.*",proxy!~".**forwarded",server="openfaas-local"};dfaas_local_faas_responses;Number of responses by HTTP status code for local FaaS platform
+query;haproxy_server_http_responses_total{proxy=~"function*.*",proxy!~".**forwarded",server="rejector"};dfaas_reject_responses;Number of responses by HTTP status code for directly rejected requests
+query;haproxy_server_http_responses_total{proxy=~"function*.*",proxy!~".**forwarded",server=~"node_.*"};dfaas_forwarded_faas_responses;Number of responses by HTTP status code for forwarded requests
