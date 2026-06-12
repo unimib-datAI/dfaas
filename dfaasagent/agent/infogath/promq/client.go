@@ -60,7 +60,7 @@ func New(host string, port uint, step time.Duration) (*Client, error) {
 // given time range, always rounding up.
 func (c *Client) Replicas(start, end time.Time) (map[string]uint, error) {
 	if end.Before(start) {
-		return nil, errors.New("end time must be after start time")
+		return nil, fmt.Errorf("end time (%d) must be after start time (%d)", end.Unix(), start.Unix())
 	}
 
 	// Compute range duration (same approach as other functions).
@@ -108,7 +108,7 @@ func (c *Client) Replicas(start, end time.Time) (map[string]uint, error) {
 // container between start and end, relative to the machine's total cores.
 func (c *Client) CPUUsage(containerName string, start, end time.Time) (float32, error) {
 	if end.Before(start) {
-		return 0, errors.New("end time must be after start time")
+		return 0, fmt.Errorf("end time (%d) must be after start time (%d)", end.Unix(), start.Unix())
 	}
 
 	// Compute range duration.
@@ -165,7 +165,7 @@ func (c *Client) CPUUsage(containerName string, start, end time.Time) (float32, 
 // other nodes (forwarded) are not included.
 func (c *Client) InputRPS(start, end time.Time) (map[string]float32, error) {
 	if end.Before(start) {
-		return nil, errors.New("end time must be after start time")
+		return nil, fmt.Errorf("end time (%d) must be after start time (%d)", end.Unix(), start.Unix())
 	}
 
 	// Compute range duration (same approach as other functions).
@@ -225,7 +225,7 @@ func (c *Client) InputRPS(start, end time.Time) (map[string]float32, error) {
 // time range).
 func (c *Client) AvgRespTimeLocal(start, end time.Time) (map[string]float32, error) {
 	if end.Before(start) {
-		return nil, errors.New("end time must be after start time")
+		return nil, fmt.Errorf("end time (%d) must be after start time (%d)", end.Unix(), start.Unix())
 	}
 
 	// Compute range duration (same approach as other functions).
@@ -291,7 +291,7 @@ func (c *Client) AvgRespTimeLocal(start, end time.Time) (map[string]float32, err
 // requests in the given time range.
 func (c *Client) RejectRate(start, end time.Time) (map[string]float32, error) {
 	if end.Before(start) {
-		return nil, errors.New("end time must be after start time")
+		return nil, fmt.Errorf("end time (%d) must be after start time (%d)", end.Unix(), start.Unix())
 	}
 	// Compute range duration (same approach as other functions).
 	duration := end.Sub(start)
@@ -392,7 +392,7 @@ func (c *Client) RejectRate(start, end time.Time) (map[string]float32, error) {
 // Note that requests coming from other nodes (forwarded) are not included.
 func (c *Client) ForwardRPS(start, end time.Time) (map[string]map[string]float32, error) {
 	if end.Before(start) {
-		return nil, errors.New("end time must be after start time")
+		return nil, fmt.Errorf("end time (%d) must be after start time (%d)", end.Unix(), start.Unix())
 	}
 	// Compute range duration (same approach as other functions).
 	duration := end.Sub(start)
@@ -477,7 +477,7 @@ func (c *Client) ForwardRPS(start, end time.Time) (map[string]map[string]float32
 // Rejected requests coming from other nodes (forwarded) are not included.
 func (c *Client) ForwardRejectRPS(start, end time.Time) (map[string]map[string]float32, error) {
 	if end.Before(start) {
-		return nil, errors.New("end time must be after start time")
+		return nil, fmt.Errorf("end time (%d) must be after start time (%d)", end.Unix(), start.Unix())
 	}
 	// Compute range duration (same approach as other functions).
 	duration := end.Sub(start)
@@ -577,7 +577,7 @@ func (c *Client) ForwardRejectRPS(start, end time.Time) (map[string]map[string]f
 // Note that requests coming from other nodes (forwarded) are not included.
 func (c *Client) AvgRespTimeForward(start, end time.Time) (map[string]map[string]float32, error) {
 	if end.Before(start) {
-		return nil, errors.New("end time must be after start time")
+		return nil, fmt.Errorf("end time (%d) must be after start time (%d)", end.Unix(), start.Unix())
 	}
 	// Compute range duration (same approach as other functions).
 	duration := end.Sub(start)
