@@ -13,23 +13,27 @@ def load_jsonl(path):
         for i, line in enumerate(f):
             record = json.loads(line)
 
-            # timestamp
-            ts = record.get("timestamp", i)
-            timestamps.append(ts)
+            # Extract timestamp.
+            try:
+                timestamp = record["timestamp"]
+                timestamps.append(timestamp)
+            except KeyError:
+                print(
+                    f"Failed to get timestamp key at line {i} for file {path}. Maybe it is empty?"
+                )
+                continue
 
-            # -------------------
-            # OBSERVATIONS
-            # -------------------
+            # Extract observations.
+            #
             # structure: observation -> observation -> node_id -> metrics
             obs_dict = record["observation"]["observation"]
 
-            # flatten: assume single node per line (as in your example)
+            # We assume there is only one node per observation.
             node_data = next(iter(obs_dict.values()))
             obs_rows.append(node_data)
 
-            # -------------------
-            # ACTIONS
-            # -------------------
+            # Extract actions.
+            #
             # structure: action -> node_id -> actions
             act_dict = record["action"]
             node_action = next(iter(act_dict.values()))
@@ -63,11 +67,21 @@ def main():
 
     observations, actions = load_jsonl(args.input)
 
-    observations.to_csv(args.obs_output, index=False)
-    actions.to_csv(args.act_output, index=False)
+    if observations.shape[0] > 0:
+        observations.to_csv(args.obs_output, index=False)
+        print(f"Observations saved to: {args.obs_output}")
+    else:
+        print(
+            f"Skipping saving {args.obs_output}, given empty input JSON-L file: {args.input}"
+        )
 
-    print(f"Observations saved to: {args.obs_output}")
-    print(f"Actions saved to: {args.act_output}")
+    if actions.shape[0] > 0:
+        actions.to_csv(args.act_output, index=False)
+        print(f"Actions saved to: {args.act_output}")
+    else:
+        print(
+            f"Skipping saving {args.act_output}, given empty input JSON-L file: {args.input}"
+        )
 
 
 if __name__ == "__main__":
