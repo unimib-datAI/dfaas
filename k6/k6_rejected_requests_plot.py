@@ -16,12 +16,22 @@ def plot_rejection_breakdown(df, node_name):
 
     # Rejection flags.
     df["rejected"] = df["http_req_failed"] == 1
-    df["direct_403"] = df["rejected"] & (df["http_status"] == 403)
-    df["local_5xx"] = (
+
+    # Rejected requests directly by the DFaaS Agent. Note these requests have
+    # not been forwarded to other nodes.
+    df["direct_403"] = (
+        df["rejected"] & (df["http_status"] == 403) & df["dfaas_forwarded_to"].isna()
+    )
+
+    # Rejected requests by the local FaaS platform. Note these requests have not
+    # been forwarded to other nodes.
+    df["local_faas"] = (
         df["rejected"]
-        & df["http_status"].isin([500, 504])
+        & df["http_status"].isin([408, 429, 500, 504])
         & df["dfaas_forwarded_to"].isna()
     )
+
+    # Rejected requests by the other nodes.
     df["forwarded_rejected"] = df["rejected"] & df["dfaas_forwarded_to"].notna()
 
     # Split the "all_local" and "rl_agent" phase in different dataframes.
@@ -31,7 +41,7 @@ def plot_rejection_breakdown(df, node_name):
         result = pd.DataFrame()
 
         direct = phase_df.groupby("iteration")["direct_403"].sum().rename("direct_403")
-        local = phase_df.groupby("iteration")["local_5xx"].sum().rename("local_5xx")
+        local = phase_df.groupby("iteration")["local_faas"].sum().rename("local_faas")
         result = pd.concat([direct, local], axis=1)
         forwarded = phase_df[phase_df["forwarded_rejected"]]
 
@@ -57,13 +67,13 @@ def plot_rejection_breakdown(df, node_name):
             match column:
                 case "direct_403":
                     rename_map[column] = "Direct"
-                case "local_5xx":
+                case "local_faas":
                     rename_map[column] = "Local"
                 case _:
                     rename_map[column] = f"Fwd to {column}"
                     forwarded_cols.append(column)
 
-        ordered_cols = ["direct_403", "local_5xx"] + sorted(forwarded_cols)
+        ordered_cols = ["direct_403", "local_faas"] + sorted(forwarded_cols)
 
         table = table[ordered_cols]
         return table.rename(columns=rename_map)
@@ -106,9 +116,9 @@ def main():
             " requests for a single DFaaS node. It has two subplots: one for "
             "the All Local strategy and one for the RL agent strategy. The "
             "causes of rejection are three: 1) explicit rejection (HTTP code "
-            "403), 2) rejection by the local FaaS platform (HTTP code 5xx), "
-            "3) forwarding to another DFaaS node followed by rejection (HTTP "
-            "code 5xx)."
+            "403), 2) rejection by the local FaaS platform (HTTP code 408, 429,"
+            " and 5xx), 3) forwarding to another DFaaS node followed by "
+            "rejection (HTTP code 5xx)."
         )
     )
 
