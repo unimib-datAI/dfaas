@@ -64,6 +64,8 @@ export -f run_node
 export PYTHON_ENV
 export NODE_PLOTS
 
+echo "Base dir: $BASE_DIR"
+
 # Run all node_* directories in parallel.
 for node_dir in "${BASE_DIR}"/node_*; do
     [[ -d "${node_dir}" ]] || continue
