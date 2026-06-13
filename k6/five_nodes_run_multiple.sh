@@ -4,8 +4,10 @@ set -euo pipefail
 
 SCRIPT="five_nodes_run_single.sh"
 
-export TRACE_PATH=../data/input_requests/mlimage/rlstrategy/sinusoidal_78_scaled_pwr_25.json
-export OUTPUT_BASE_DIR=../data/20260601_one_rl_agent_sinusoidal
+export FUNCTION_NAME="sentimentanalysis"
+
+export TRACE_PATH=../data/input_requests/sentimentanalysis/rlstrategy/rate_mean_8_only_0.json
+export OUTPUT_BASE_DIR=../data/20260602_sentiment_one_rl_rate_08
 ./"$SCRIPT"
 
 sleep 200
@@ -13,24 +15,11 @@ echo
 echo
 echo
 
-export TRACE_PATH=../data/input_requests/mlimage/rlstrategy/scaled_pwr_3.json
-export OUTPUT_BASE_DIR=../data/20260601_one_rl_agent_pwr_3
+export TRACE_PATH=../data/input_requests/sentimentanalysis/rlstrategy/rate_mean_10_only_0.json
+export OUTPUT_BASE_DIR=../data/20260602_sentiment_one_rl_rate_10
 ./"$SCRIPT"
 
 sleep 200
 echo
 echo
 echo
-
-export TRACE_PATH=../data/input_requests/mlimage/rlstrategy/scaled_pwr_5.json
-export OUTPUT_BASE_DIR=../data/20260601_one_rl_agent_pwr_5
-./"$SCRIPT"
-
-sleep 200
-echo
-echo
-echo
-
-export TRACE_PATH=../data/input_requests/mlimage/rlstrategy/scaled_pwr_40_only_0_other_constant_4.json
-export OUTPUT_BASE_DIR=../data/20260601_one_rl_agent_pwr_4
-./"$SCRIPT"
