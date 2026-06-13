@@ -24,6 +24,8 @@ NODE_PLOTS=(
     "k6_rps_plot.py:k6_rps.pdf"
     "k6_status_code_plot.py:k6_status_code.pdf"
     "k6_rejected_requests_plot.py:k6_rejected_requests.pdf"
+    "k6_rejected_requests_plot.py:k6_rejected_requests.pdf"
+    "k6_latency_probability_density_plot.py:k6_latency_probability_density.pdf"
 )
 
 GLOBAL_PLOTS=(
@@ -31,6 +33,7 @@ GLOBAL_PLOTS=(
     "k6_forwarded_global_plot.py:k6_forwarded.pdf"
     "k6_latency_reject_global_plot.py:k6_latency_reject.pdf"
     "k6_rps_global_plot.py:k6_rps.pdf"
+    "k6_latency_reject_global_plot.py:k6_latency_reject_global.pdf"
 )
 
 run_node() {
