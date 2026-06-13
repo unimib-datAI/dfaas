@@ -33,7 +33,7 @@ GLOBAL_PLOTS=(
     "k6_forwarded_global_plot.py:k6_forwarded.pdf"
     "k6_latency_reject_global_plot.py:k6_latency_reject.pdf"
     "k6_rps_global_plot.py:k6_rps.pdf"
-    "k6_latency_reject_global_plot.py:k6_latency_reject_global.pdf"
+    "k6_latency_probability_density_global_plot.py:k6_latency_probability_density_global.pdf"
 )
 
 run_node() {
