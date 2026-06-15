@@ -181,7 +181,7 @@
           kubernetes.core.helm:
             name: haproxy
             chart_ref: haproxytech/haproxy
-            chart_version: 1.26.1
+            chart_version: 1.28.1
             values_files: k8s/charts/values-haproxy.yaml
             release_namespace: default
 
