@@ -123,11 +123,11 @@ service:
 shareProcessNamespace:
   enabled: true
 
-# Start the Data Plane API in a dedicated container. The API connects to the
-# master CLI UNIX socket exposed by HAProxy through the custom shared path between
-# the two containers. Reload operations are performed via UNIX signals, which
-# is why `shareProcessNamespace` is set to `true`.
 sidecarContainers:
+  # Start the Data Plane API in a dedicated container. The API connects to the
+  # master CLI UNIX socket exposed by HAProxy through the custom shared path
+  # between the two containers. Reload operations are performed via UNIX
+  # signals, which is why `shareProcessNamespace` is set to `true`.
   - name: dataplaneapi
     image: docker.io/haproxytech/haproxy-alpine:3.2.6
     # We cannot run the Data Plane API directly, as we observed that it crashes
@@ -152,6 +152,18 @@ sidecarContainers:
     volumeMounts:
       - name: haproxy-config-writable
         mountPath: /usr/local/etc/haproxy/config
+
+  # Start also a custom service that extracts timing data from HAProxy logs and
+  # exposes them to Prometheus. See k8s/scripts/haproxy-metrics-exporter/ for
+  # more information.
+  - name: metrics-exporter
+    image: ghcr.io/unimib-datai/dfaas-haproxy-metrics-exporter:dev
+    ports:
+      - containerPort: 5014
+        name: haproxy-logs
+        protocol: UDP
+      - containerPort: 2112
+        name: metrics
 
 # These ports will be automatically included in the service object and exposed
 # for external access (because we selected NodePort service type).
