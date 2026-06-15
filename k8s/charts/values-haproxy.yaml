@@ -162,6 +162,7 @@ sidecarContainers:
   # more information.
   - name: metrics-exporter
     image: ghcr.io/unimib-datai/dfaas-haproxy-metrics-exporter:dev
+    imagePullPolicy: Always
     ports:
       - containerPort: 5014
         name: haproxy-logs
