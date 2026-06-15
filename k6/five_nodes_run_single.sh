@@ -32,10 +32,6 @@ run_job() {
   local NODE_ID="$3"
   local PORT="$4"
 
-  local readonly RL_MODEL_PATH_SRC="dfaas-rl/dfaasagent/rl_model.log"
-  ssh "${SSH_OPTS[@]}" user@$IP "rm --force '$RL_MODEL_PATH_SRC'"
-  echo "[INFO] $NODE_NAME Deleted $RL_MODEL_PATH_SRC (if exists)"
-
   echo "[START] $NODE_NAME (IP=$IP, NODE=$NODE_ID, PORT=$PORT)"
 
   export K6_WEB_DASHBOARD_PORT="$PORT"
@@ -59,8 +55,8 @@ run_job() {
     --env IP_SERVER="$IP" \
     --env TRACE_PATH="$TRACE_PATH" \
     --env FUNCTION=0 \
-    --env NODE="$NODE_ID" \
-    --env LIMIT=40 &
+    --env NODE="$NODE_ID" &
+#    --env LIMIT=90 &
 
   echo "[LAUNCHED] $NODE_NAME (pid=$!)"
 }
