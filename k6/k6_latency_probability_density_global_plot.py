@@ -6,8 +6,10 @@ import numpy as np
 import matplotlib.pyplot as plt
 
 
-def load_data(input_dir: Path):
-    """Load and concatenate all node_*/k6_results_processed.csv files."""
+def load_data(input_dir):
+    """Returns a merged DataFrame containing data from all
+    'node_*/k6_results_processed.csv' files found within the specified directory
+    path."""
     csv_files = list(input_dir.glob("node_*/k6_results_processed.csv"))
 
     if not csv_files:
@@ -16,9 +18,9 @@ def load_data(input_dir: Path):
         )
 
     dfs = []
-    for f in csv_files:
-        df = pd.read_csv(f)
-        df["source_file"] = str(f)
+    for file in csv_files:
+        df = pd.read_csv(file)
+        df["node_name"] = file.parent.name
         dfs.append(df)
 
     return pd.concat(dfs, ignore_index=True)
@@ -173,6 +175,8 @@ def main():
         raise NotADirectoryError(f"{input_path} is not a valid directory")
 
     df = load_data(input_path)
+    nodes = df["node_name"].unique().tolist()
+    print(f"Found the following {len(nodes)} nodes under {input_path}: {nodes}")
 
     fig = plot_latency_probability_density(df)
 
