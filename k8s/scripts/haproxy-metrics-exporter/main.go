@@ -98,7 +98,7 @@ func main() {
 	defer conn.Close()
 	log.Printf("Started UDP syslog server on :%d", *logsPort)
 
-	// We hardcoded the max line size to 8192 chars.
+	// We hardcoded the max line size to 8192 bytes, should be enough.
 	buf := make([]byte, 8192)
 	for {
 		n, _, err := conn.ReadFromUDP(buf)
@@ -110,7 +110,7 @@ func main() {
 		line := string(buf[:n])
 		entry, err := parseHAProxy(line)
 		if err != nil {
-			log.Println("Failed to parse HAProxy log line from UDP datagram:", err)
+			log.Println("Failed to parse HAProxy raw log %q:", line, err)
 			continue
 		}
 
