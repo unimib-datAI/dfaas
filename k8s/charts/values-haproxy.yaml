@@ -30,7 +30,11 @@ config: |
     # See: https://www.haproxy.com/documentation/haproxy-data-plane-api/installation/install-on-haproxy/
     # See: https://www.haproxy.com/documentation/haproxy-runtime-api/installation/
     stats socket ipv4@*:6666 mode 660 level admin expose-fd listeners
+
+    # Duplicate logs: one for stdout/k8s logs, one for haproxy-metrics-exporter, a
+    # sidecar container in the same pod.
     log stdout format raw local0
+    log localhost:5014 local0
 
   # An user is required by Dataplane API to work.
   userlist dataplaneapi

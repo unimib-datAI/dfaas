@@ -8,7 +8,11 @@ global
   stats socket /var/run/haproxy.sock mode 660 level admin expose-fd listeners
   insecure-fork-wanted
   expose-deprecated-directives
+
+  # Duplicate logs: one for stdout/k8s logs, one for haproxy-metrics-exporter, a
+  # sidecar container in the same pod.
   log stdout format raw local0
+  log localhost:5014 local0
 
 userlist dataplaneapi
   user admin insecure-password admin
