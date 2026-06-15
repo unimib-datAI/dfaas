@@ -1,0 +1,25 @@
+# This is the Service object for the haproxy-metrics-exporter in Kubernetes.
+# The haproxy-metrics-exporter runs as a sidecar container inside the HAProxy
+# Pod, which is why there is no dedicated Deployment manifest for it.
+#
+# This Service is required to allow Prometheus to scrape metrics exposed by the
+# sidecar container.
+apiVersion: v1
+kind: Service
+metadata:
+  name: haproxy-metrics-exporter
+  # Let Prometheus to automatically scrape metrics.
+  # See: https://github.com/prometheus-community/helm-charts/tree/main/charts/prometheus#scraping-pod-metrics-via-annotations
+  annotations:
+    prometheus.io/scrape: "true"
+    prometheus.io/path: /metrics
+    prometheus.io/port: "2112"
+spec:
+  type: ClusterIP
+  selector:
+    app.kubernetes.io/instance: haproxy
+    app.kubernetes.io/name: haproxy
+  ports:
+    - name: metrics
+      port: 2112
+      targetPort: 2112
