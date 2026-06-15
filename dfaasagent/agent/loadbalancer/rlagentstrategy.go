@@ -114,6 +114,10 @@ func (strategy *RLAgentStrategy) RunStrategy() error {
 	// We start with a nil phase, since we do not detected any stage.
 	var previousPhase *strategyPhase
 
+	// We also keep track of the previous stage, but this information is only
+	// used for debugging purposes.
+	previousStage := -1
+
 	// Wait some seconds to let HAProxy update tables, frontend and backends,
 	// otherwise the StickTableField call may fail sometimes.
 	time.Sleep(5 * time.Second)
@@ -151,6 +155,18 @@ func (strategy *RLAgentStrategy) RunStrategy() error {
 			stage--
 		}
 		logger.Infof("Current detected stage: %d", stage)
+
+		if previousStage != stage {
+			// We initialize the debug file every time the stage restart from 0.
+			if stage == 0 {
+				if err := debugRLModelToFileInit(rlModelLogPath); err != nil {
+					return fmt.Errorf("failed to init log file: %w", err)
+				}
+			}
+
+			// Also make sure to update previousStage!
+			previousStage = stage
+		}
 
 		// From the current stage, we determine the strategy phase. The RL agent
 		// operates in two phases:
@@ -248,10 +264,6 @@ func (strategy *RLAgentStrategy) setup() error {
 			MaxIdleConnsPerHost: 10,
 			IdleConnTimeout:     90 * time.Second,
 		},
-	}
-
-	if err := debugRLModelToFileInit(rlModelLogPath); err != nil {
-		return fmt.Errorf("failed to init log file: %w", err)
 	}
 
 	return nil
