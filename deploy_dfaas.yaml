@@ -185,6 +185,10 @@
             values_files: k8s/charts/values-haproxy.yaml
             release_namespace: default
 
+        # This is a sidecar service exposed along with HAProxy.
+        - name: Ensure haproxy-metrics-exporter service manifest is applied
+          ansible.builtin.command: kubectl apply -f ./k8s/scripts/haproxy-metrics-exporter/service.yaml
+
         - name: Deploy Prometheus chart
           kubernetes.core.helm:
             name: prometheus
