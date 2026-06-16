@@ -127,7 +127,7 @@ func (strategy *NodeMarginStrategy) RunStrategy() error {
 
 		strategy.updateCommonNeighbours()
 
-		strategy.nodeInfo.funcsRates, err = strategy.getFunctionsRates()
+		strategy.nodeInfo.funcsRates, _ = strategy.getFunctionsRates()
 
 		strategy.funcsGroups, err = GetFuncsGroups()
 		if err != nil {
@@ -260,7 +260,7 @@ func (strategy *NodeMarginStrategy) updateCommonNeighbours() {
 			}
 			if common {
 				commonNeighbours += 1
-				neighbour, _ := entries[neighbourID]
+				neighbour := entries[neighbourID]
 				neighbour.CommonNeighbour = true
 				entries[neighbourID] = neighbour
 				targetNodes[neighbourID] = commonFuncs
@@ -374,7 +374,7 @@ func (strategy *NodeMarginStrategy) calculateNodeUsagePercentage(metricsPredicti
 	var metricsPercentage = make(map[string]float64)
 	var nodeUsagePercentage = 0.0
 
-	for metric, _ := range metricsPredictions {
+	for metric := range metricsPredictions {
 		metricsPercentage[metric] = (metricsPredictions[metric] * 100) / thresholds[metric]
 	}
 
@@ -470,7 +470,7 @@ func (strategy *NodeMarginStrategy) calculateWeights() (map[string]map[string]ui
 
 	err := strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryNMS) error {
 		// Init fwdRequests
-		for neighID, _ := range entries {
+		for neighID := range entries {
 			fwdRequests[neighID] = make(map[string]float64)
 			for i := 0; i < len(strategy.nodeInfo.funcs); i++ {
 				fwdRequests[neighID][strategy.nodeInfo.funcs[i]] = 0.0
@@ -486,14 +486,14 @@ func (strategy *NodeMarginStrategy) calculateWeights() (map[string]map[string]ui
 
 		// Init iterator to select nodeTo and funcTo at each iteration
 		iterator["targetIndex"] = -1
-		for targetID, _ := range strategy.targetNodes {
+		for targetID := range strategy.targetNodes {
 			iterator[targetID] = 0
 		}
 
 		for overload && (len(strategy.targetNodes) > 0) {
 			// Generate array of indexes to select different nodeTo at each iteration
 			var targetKeys []string
-			for targetID, _ := range strategy.targetNodes {
+			for targetID := range strategy.targetNodes {
 				targetKeys = append(targetKeys, targetID)
 			}
 
@@ -642,7 +642,7 @@ func (strategy *NodeMarginStrategy) calculateWeights() (map[string]map[string]ui
 				weights[fun][myNodeID] = uint(math.Round((mainteined[fun] / totalReq) * constants.HAProxyMaxWeight))
 			}
 			// Weights for neighbours
-			for neighID, _ := range entries {
+			for neighID := range entries {
 				if totalReq == 0.0 {
 					weights[fun][neighID] = 0
 				} else {

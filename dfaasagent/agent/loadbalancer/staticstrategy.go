@@ -201,7 +201,7 @@ func (strategy *StaticStrategy) updateCommonNeighbours() {
 			}
 			if common {
 				commonNeighbours += 1
-				neighbour, _ := entries[neighbourID]
+				neighbour := entries[neighbourID]
 				neighbour.CommonNeighbour = true
 				entries[neighbourID] = neighbour
 				targetNodes[neighbourID] = commonFuncs
