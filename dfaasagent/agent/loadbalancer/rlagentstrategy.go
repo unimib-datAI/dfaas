@@ -27,14 +27,12 @@ import (
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/offuncs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/promq"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/proxy"
 )
 
 type RLAgentStrategy struct {
 	hacfgupdater  *hacfgupd.Updater
 	runtimeapi    *proxy.RuntimeAPI
-	nodestbl      *nodestbl.TableNMS
 	offuncsClient *offuncs.Client
 	promq         *promq.Client
 	httpClient    *http.Client
