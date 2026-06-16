@@ -432,55 +432,6 @@ func (strategy *RLAgentStrategy) initProxyConfig() error {
 	return strategy.hacfgupdater.UpdateHAConfig(data)
 }
 
-// updateProxyConfiguration updates the HAProxy configuration with the provided
-// list of deployed functions. HAProxy will always be reloaded after the update.
-//
-// weights can be nil if phase is allLocalPhase.
-func (strategy *RLAgentStrategy) updateProxyConfiguration(funcs map[string]*uint, weights map[string]map[string]uint, phase strategyPhase) error {
-	neighbors := make(map[string]map[string]string)
-	for _, peer := range _p2pHost.Network().Peers() {
-		host, err := extractSingleIPv4(_p2pHost, peer)
-		if err != nil {
-			return fmt.Errorf("failed to build neighbors information: %w", err)
-		}
-
-		// "node_ID" is required format.
-		peerID := fmt.Sprintf("node_%s", peer)
-		neighbors[peerID] = make(map[string]string)
-		neighbors[peerID]["host"] = host
-		// FIXME: The remote port may change!
-		neighbors[peerID]["port"] = fmt.Sprintf("%d", _config.HAProxyPort)
-	}
-
-	// Define and populate this anonymous struct to pass data to the Go
-	// template.
-	data := struct {
-		Now          string
-		DFaaSNodeID  string
-		Functions    map[string]*uint
-		Weights      map[string]map[string]uint
-		Neighbors    map[string]map[string]string
-		OpenFaaSHost string
-		OpenFaaSPort uint
-		RejectorHost string
-		RejectorPort uint
-		Phase        string
-	}{
-		Now:          time.Now().UTC().Format("2006-01-02 15:04:05 MST"),
-		DFaaSNodeID:  _p2pHost.ID().String(),
-		Functions:    funcs,
-		Weights:      weights,
-		Neighbors:    neighbors,
-		OpenFaaSHost: _config.OpenFaaSHost,
-		OpenFaaSPort: _config.OpenFaaSPort,
-		RejectorHost: _config.RejectorHost,
-		RejectorPort: _config.RejectorPort,
-		Phase:        phase.String(),
-	}
-
-	return strategy.hacfgupdater.UpdateHAConfig(data)
-}
-
 func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	if strategy.allLocalPhaseTimestamp.IsZero() {
 		return nil, errors.New("allLocalPhaseTimestamp is not set, but is required for rlAgentPhase")
