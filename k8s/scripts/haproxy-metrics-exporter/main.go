@@ -110,7 +110,7 @@ func main() {
 		line := string(buf[:n])
 		entry, err := parseHAProxy(line)
 		if err != nil {
-			log.Println("Failed to parse HAProxy raw log %q:", line, err)
+			log.Printf("Skipping parsing of HAProxy raw log %q:", line, err)
 			continue
 		}
 
