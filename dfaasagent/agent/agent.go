@@ -13,11 +13,9 @@ import (
 	"encoding/pem"
 	"fmt"
 	"log"
-	"math/rand"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"github.com/multiformats/go-multiaddr"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/config"
@@ -294,9 +292,6 @@ func runAgent(config config.Configuration) error {
 //////////////////// MAIN FUNCTION ////////////////////
 
 func Main() {
-	// Initializes Go random number generator.
-	rand.Seed(int64(time.Now().UTC().Nanosecond()))
-
 	// Load configuration.
 	_config, err := config.LoadConfig()
 	if err != nil {
