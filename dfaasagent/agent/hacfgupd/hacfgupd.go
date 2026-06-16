@@ -12,7 +12,7 @@ package hacfgupd
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -101,7 +101,7 @@ func (updater *Updater) UpdateHAConfig(content interface{}) error {
 	defer resp.Body.Close()
 
 	// Get response.
-	rawBody, err := ioutil.ReadAll(resp.Body)
+	rawBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return fmt.Errorf("reading Data Plane API response: %w", err)
 	}

@@ -10,7 +10,7 @@ package forecaster
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"net/http"
 	"strings"
 
@@ -70,7 +70,7 @@ func (client *Client) doRequest(payload string, endpoint string) (string, error)
 		return "", errors.Wrap(err, "Error while performing an HTTP request to the Forecaster endpoint")
 	}
 	defer resp.Body.Close()
-	respBody, err := ioutil.ReadAll(resp.Body)
+	respBody, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return "", errors.Wrap(err, "Error while reading the content of an HTTP response from the Forecaster endpoint")
 	}

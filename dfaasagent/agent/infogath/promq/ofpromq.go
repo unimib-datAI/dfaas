@@ -8,7 +8,7 @@ package promq
 import (
 	"encoding/json"
 	"fmt"
-	"io/ioutil"
+	"io"
 	"math"
 	"net/http"
 	"strconv"
@@ -63,7 +63,7 @@ func Query(query string) (string, error) {
 
 	logger.Debug("Prometheus query response status: ", resp.Status)
 
-	body, err := ioutil.ReadAll(resp.Body)
+	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		logger.Error("Failed to read HTTP response body: ", err)
 		return "", fmt.Errorf("reading response body: %w", err)

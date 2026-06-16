@@ -6,7 +6,7 @@
 package maddrhelp
 
 import (
-	"io/ioutil"
+	"os"
 	"strings"
 
 	"github.com/multiformats/go-multiaddr"
@@ -42,7 +42,7 @@ func ParseMAddrComma(list string) ([]multiaddr.Multiaddr, error) {
 
 // ParseMAddrFile parses a newline-separated list of multiaddresses from a file
 func ParseMAddrFile(filepath string) ([]multiaddr.Multiaddr, error) {
-	bytes, err := ioutil.ReadFile(filepath)
+	bytes, err := os.ReadFile(filepath)
 	if err != nil {
 		return nil, err
 	}

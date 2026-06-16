@@ -7,7 +7,7 @@ package loadbalancer
 
 import (
 	"encoding/json"
-	"io/ioutil"
+	"io"
 	"os"
 
 	"github.com/pkg/errors"
@@ -48,12 +48,12 @@ type Groups struct {
 func GetFuncsGroups() (Groups, error) {
 	groupListFile := _config.GroupListFileName
 
-	// TODO: use os.ReadFile instead of os.Open, ioutil.ReadAll and io.Close.
+	// TODO: use os.ReadFile instead of os.Open, io.ReadAll and io.Close.
 	jsonGroupsFile, err := os.Open(groupListFile)
 	if err != nil {
 		return Groups{}, errors.Wrap(err, "Error while reading group list json file")
 	}
-	jsonGroups, err := ioutil.ReadAll(jsonGroupsFile)
+	jsonGroups, err := io.ReadAll(jsonGroupsFile)
 	if err != nil {
 		return Groups{}, errors.Wrap(err, "Error while converting group list json file into byte array")
 	}
