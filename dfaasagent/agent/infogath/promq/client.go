@@ -277,7 +277,12 @@ func (c *Client) AvgRespTimeLocal(start, end time.Time) (map[string]float32, err
 		// Ignore invalid Prometheus outputs like NaN or Inf. This means that
 		// the metric for this function could not be computed.
 		if math.IsNaN(float64(value)) || math.IsInf(float64(value), 0) {
-			continue
+			value = 0
+		}
+
+		// Guard against negative approximation errors.
+		if value < 0 {
+			value = 0
 		}
 
 		resp[function] = value
@@ -565,16 +570,13 @@ func (c *Client) ForwardRejectRPS(start, end time.Time) (map[string]map[string]f
 }
 
 // AvgRespTimeForward returns, for each function, the average response time (in
-// milliseconds) of requests forwarded to other DFaaS nods over the given time
+// milliseconds) of requests forwarded to other DFaaS nodes over the given time
 // range.
 //
 // The return type is a map with function names as the first level key and the
-// DFaaS node as second level key.
+// DFaaS node as second level key (with format "node_X", where X is its ID).
 //
-// Note that the return map contains also the local DFaaS node names as
-// "openfaas-local". Other nodes are named with "node_X", where X is its ID.
-//
-// Note that requests coming from other nodes (forwarded) are not included.
+// Requests received from other nodes (forwarded to) are excluded.
 func (c *Client) AvgRespTimeForward(start, end time.Time) (map[string]map[string]float32, error) {
 	if end.Before(start) {
 		return nil, fmt.Errorf("end time (%d) must be after start time (%d)", end.Unix(), start.Unix())
@@ -587,22 +589,27 @@ func (c *Client) AvgRespTimeForward(start, end time.Time) (map[string]map[string
 	durationStr := (time.Duration(math.Round(duration.Seconds())) * time.Second).String()
 
 	// As with other queries, each function exposes two backends: function_X and
-	// function_X_forwarded. We focus only on the function_X backend. This
-	// backend has multiple servers: the default openfaas-local instance, plus
-	// zero or more node_ID servers.
+	// function_X_forwarded. The latter is used for incoming requests from other
+	// nodes. Even if the query considers both backends, we focus only on the
+	// function_X backend. This backend is served by multiple servers: two
+	// predefined ones (openfaas-local for local processing and rejector for
+	// direct rejection), plus zero or more node_ID servers.
 	//
 	// Metrics are aggregated by proxy/backend and server, since HAProxy may
-	// restart within the selected time range, which can lead to duplicated time
-	// series.
+	// restart within the selected time range, which can result in duplicated
+	// time series. Note that we do not distinguish HTTP status codes.
+	//
+	// We may have NaN values when, within the selected time range, there are no
+	// forwarded requests at all.
 	query := fmt.Sprintf(`
-	sum by (proxy, server) (
-	  last_over_time(
-	    haproxy_server_response_time_average_seconds{
-	      proxy=~"function_.*",
-	      proxy!~".*_forwarded"
-	    }[%s]
-	  )
-	)`, durationStr)
+	sum by (backend, server) (
+	  rate(haproxy_custom_total_request_duration_seconds_sum{server=~"^node_.*"}[%[1]s])
+	)
+	/
+	sum by (backend, server) (
+	  rate(haproxy_custom_total_request_duration_seconds_count{server=~"^node_.*"}[%[1]s])
+	)
+	`, durationStr)
 	c.logQuery(query, end)
 
 	ctx := context.Background()
@@ -619,23 +626,27 @@ func (c *Client) AvgRespTimeForward(start, end time.Time) (map[string]map[string
 		return nil, fmt.Errorf("result type is %T, expected %T", result, model.Vector{})
 	}
 
-	// Structure: function name, node name and finally the response time (ms).
+	// Structure: function name -> node name -> response time (ms).
 	resp := make(map[string]map[string]float32)
 
 	for _, sample := range vector {
-		proxy := string(sample.Metric["proxy"])
-		server := string(sample.Metric["server"])
+		// Consider only "function_<name>" backends.
+		backend := string(sample.Metric["backend"])
+		if strings.HasSuffix(backend, "_forwarded") {
+			continue
+		}
+		function := strings.TrimPrefix(backend, "function_")
 
-		// Proxy format is "function_<name>".
-		function := strings.TrimPrefix(proxy, "function_")
-
+		// Initialize, only once, the map for this function.
 		if _, exists := resp[function]; !exists {
 			resp[function] = make(map[string]float32)
 		}
 
+		node := string(sample.Metric["server"])
 		value := float32(sample.Value) * 1000
 
-		// Ignore invalid values.
+		// The metrics may be missing, due to no forwarded requests in the given
+		// time range.
 		if math.IsNaN(float64(value)) || math.IsInf(float64(value), 0) {
 			value = 0
 		}
@@ -645,7 +656,7 @@ func (c *Client) AvgRespTimeForward(start, end time.Time) (map[string]map[string
 			value = 0
 		}
 
-		resp[function][server] = value
+		resp[function][node] = value
 	}
 
 	return resp, nil

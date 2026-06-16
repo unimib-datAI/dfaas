@@ -239,7 +239,7 @@ func (strategy *RLAgentStrategy) setup() error {
 	// Strategy currently supports only one deployed function.
 	funcs, err := strategy.offuncsClient.GetFuncsNames()
 	if err != nil {
-		return fmt.Errorf("failed to check deployed functions: %w")
+		return fmt.Errorf("failed to check deployed functions: %w", err)
 	}
 	if len(funcs) == 0 || len(funcs) > 1 {
 		logger.Errorf("Strategy requires exactly one deployed function, found %d functions", len(funcs))
@@ -657,12 +657,8 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 			return nil, fmt.Errorf("building observation for 'previous_avg_resp_time_fwd_to_node_X' key: %w", err)
 		}
 		for peer, rate := range prevAvgRespTimeForwardSingle {
-			// AvgRespTimeForward() always returns openfaas-local node that is
-			// the local one (not remote).
-			if peer == "openfaas-local" || peer == "rejector" {
-				continue
-			}
-			// peer here is a string with format "node_<id>".
+			// peer here is a string with format "node_<id>", returned by the
+			// PromQL query.
 			key := fmt.Sprintf("previous_avg_resp_time_fwd_to_%s", peer)
 			obs[key] = rate
 			peers++
