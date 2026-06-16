@@ -91,7 +91,7 @@ func queryAFETrate(query string) (map[string]float64, error) {
 	var respObj afetResponse
 	err = json.Unmarshal([]byte(strJSON), &respObj)
 	if err != nil {
-		return nil, fmt.Errorf("Error while deserializing a JSON string from the Prometheus API endpoint: %w", err)
+		return nil, fmt.Errorf("error while deserializing a JSON string from the Prometheus API endpoint: %w", err)
 	}
 
 	result := map[string]float64{}
@@ -124,7 +124,7 @@ func queryInvocRate(query string) (map[string]map[string]float64, error) {
 	var respObj invocRateResponse
 	err = json.Unmarshal([]byte(strJSON), &respObj)
 	if err != nil {
-		return nil, fmt.Errorf("Error while deserializing a JSON string from the Prometheus API endpoint: %w", err)
+		return nil, fmt.Errorf("error while deserializing a JSON string from the Prometheus API endpoint: %w", err)
 	}
 
 	result := map[string]map[string]float64{}
@@ -167,7 +167,7 @@ func queryServiceCount(query string) (map[string]int, error) {
 	var respObj serviceCountResponse
 	err = json.Unmarshal([]byte(strJSON), &respObj)
 	if err != nil {
-		return nil, fmt.Errorf("Error while deserializing a JSON string from the Prometheus API endpoint: %w", err)
+		return nil, fmt.Errorf("error while deserializing a JSON string from the Prometheus API endpoint: %w", err)
 	}
 
 	result := map[string]int{}
@@ -197,7 +197,7 @@ func queryCPUusage(query string) (map[string]float64, error) {
 	var respObj cpuUsageResponse
 	err = json.Unmarshal([]byte(strJSON), &respObj)
 	if err != nil {
-		return nil, fmt.Errorf("Error while deserializing a JSON string from the Prometheus API endpoint: %w", err)
+		return nil, fmt.Errorf("error while deserializing a JSON string from the Prometheus API endpoint: %w", err)
 	}
 
 	result := map[string]float64{}
@@ -225,7 +225,7 @@ func queryRAMusage(query string) (map[string]float64, error) {
 	var respObj ramUsageResponse
 	err = json.Unmarshal([]byte(strJSON), &respObj)
 	if err != nil {
-		return nil, fmt.Errorf("Error while deserializing a JSON string from the Prometheus API endpoint: %w", err)
+		return nil, fmt.Errorf("error while deserializing a JSON string from the Prometheus API endpoint: %w", err)
 	}
 
 	result := map[string]float64{}
@@ -255,7 +255,7 @@ func queryCPUusagePerFunction(query string) (map[string]float64, error) {
 	var respObj perFunctionCpuUsageResponse
 	err = json.Unmarshal([]byte(strJSON), &respObj)
 	if err != nil {
-		return nil, fmt.Errorf("Error while deserializing a JSON string from the Prometheus API endpoint: %w", err)
+		return nil, fmt.Errorf("error while deserializing a JSON string from the Prometheus API endpoint: %w", err)
 	}
 
 	result := map[string]float64{}
@@ -283,7 +283,7 @@ func queryRAMusagePerFunction(query string) (map[string]float64, error) {
 	var respObj perFunctionRamUsageResponse
 	err = json.Unmarshal([]byte(strJSON), &respObj)
 	if err != nil {
-		return nil, fmt.Errorf("Error while deserializing a JSON string from the Prometheus API endpoint: %w", err)
+		return nil, fmt.Errorf("error while deserializing a JSON string from the Prometheus API endpoint: %w", err)
 	}
 
 	result := map[string]float64{}

@@ -57,14 +57,14 @@ func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig Bootstra
 	// automatically.
 	kadDHT, err := dht.New(ctx, p2pHost, dht.Mode(dht.ModeServer))
 	if err != nil {
-		return fmt.Errorf("Error while starting the DHT for Kademlia peer discovery: %w", err)
+		return fmt.Errorf("error while starting the DHT for Kademlia peer discovery: %w", err)
 	}
 
 	// Bootstrap the DHT. In the default configuration, this spawns a Background
 	// thread that will refresh the peer table every five minutes.
 	err = kadDHT.Bootstrap(ctx)
 	if err != nil {
-		return fmt.Errorf("Error while bootstrapping the DHT for Kademlia peer discovery: %w", err)
+		return fmt.Errorf("error while bootstrapping the DHT for Kademlia peer discovery: %w", err)
 	}
 
 	// Let's connect to the bootstrap nodes. They will tell us about the other
@@ -79,7 +79,7 @@ func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig Bootstra
 	for _, peerAddr := range bootstrapNodes {
 		peerInfo, err := peer.AddrInfoFromP2pAddr(peerAddr)
 		if err != nil {
-			return fmt.Errorf("Error while getting information from the bootstrap node's address \"%s\": %w", peerAddr.String(), err)
+			return fmt.Errorf("error while getting information from the bootstrap node's address \"%s\": %w", peerAddr.String(), err)
 		}
 
 		wg.Add(1)
@@ -94,7 +94,7 @@ func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig Bootstra
 					return
 				}
 				logger.Errorf("Connection failed to a bootstrap node: %s", err)
-				errWrap := fmt.Errorf("Connection failed to a bootstrap node: %w", err)
+				errWrap := fmt.Errorf("connection failed to a bootstrap node: %w", err)
 
 				if bootstrapConfig.BootstrapForce {
 					logger.Infof("Waiting 5 second before retrying to connect to bootstrap node: %s", peerAddr.String())

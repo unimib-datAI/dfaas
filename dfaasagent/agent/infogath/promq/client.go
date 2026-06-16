@@ -47,7 +47,7 @@ func New(host string, port uint, step time.Duration) (*Client, error) {
 	client.promAPI = v1.NewAPI(promClient)
 
 	if step == 0 {
-		return nil, errors.New("Prometheus step must be non zero")
+		return nil, errors.New("prometheus step must be non zero")
 	}
 	client.promStep = step
 

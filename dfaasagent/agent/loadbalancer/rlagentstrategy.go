@@ -436,7 +436,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	}
 	now := time.Now().UTC()
 	if now.Before(strategy.allLocalPhaseTimestamp) {
-		return nil, errors.New("allLocalPhaseTimestamp cannot be greater than time.Now()!")
+		return nil, errors.New("allLocalPhaseTimestamp cannot be greater than time.Now()")
 	}
 
 	obs := make(map[string]any)

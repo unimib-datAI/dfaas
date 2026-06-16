@@ -117,21 +117,21 @@ func (strategy *RecalcStrategy) RunStrategy() error {
 func (strategy *RecalcStrategy) OnReceived(msg *pubsub.Message) error {
 	var msgForType struct{ MsgType string }
 	if err := json.Unmarshal(msg.GetData(), &msgForType); err != nil {
-		return fmt.Errorf("Error while deserializing a message from the PubSub subscription: %w", err)
+		return fmt.Errorf("error while deserializing a message from the PubSub subscription: %w", err)
 	}
 
 	switch msgForType.MsgType {
 	case StrMsgTextType:
 		var objMsg MsgText
 		if err := json.Unmarshal(msg.GetData(), &objMsg); err != nil {
-			return fmt.Errorf("Error while deserializing a message from the PubSub subscription: %w", err)
+			return fmt.Errorf("error while deserializing a message from the PubSub subscription: %w", err)
 		}
 
 		processMsgText(msg.GetFrom().String(), &objMsg)
 	case StrMsgNodeInfoTypeRecalc:
 		var objMsg MsgNodeInfoRecalc
 		if err := json.Unmarshal(msg.GetData(), &objMsg); err != nil {
-			return fmt.Errorf("Error while deserializing a message from the PubSub subscription: %w", err)
+			return fmt.Errorf("error while deserializing a message from the PubSub subscription: %w", err)
 		}
 
 		strategy.processMsgNodeInfoRecalc(msg.GetFrom().String(), &objMsg)
@@ -180,7 +180,7 @@ func (strategy *RecalcStrategy) recalcStep1() error {
 		stContent, err := hasock.ReadStickTable(stName)
 
 		if err != nil {
-			logger.Error(fmt.Errorf("Error while reading the stick-table %q from the HAProxy socket: %w", stName, err))
+			logger.Error(fmt.Errorf("error while reading the stick-table %q from the HAProxy socket: %w", stName, err))
 			logger.Warnf("Not changing userRates for stick-table %q but this should be ok", stName)
 			continue
 		}
@@ -420,7 +420,7 @@ func (strategy *RecalcStrategy) recalcStep2() error {
 	})
 
 	if err := strategy.updateHAProxyConfig(hacfg); err != nil {
-		return fmt.Errorf("Updating HAProxy config: %w", err)
+		return fmt.Errorf("updating HAProxy config: %w", err)
 	}
 
 	return nil
