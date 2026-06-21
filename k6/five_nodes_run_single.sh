@@ -109,11 +109,11 @@ collect_rl_model() {
   local readonly RL_MODEL_PATH_SRC="dfaas-rl/dfaasagent/rl_model.log"
   local readonly RL_MODEL_PATH_DST="$OUTPUT_BASE_DIR/other/$NODE_NAME/rl_model.log"
 
-  mkdir -p "$OUTPUT_BASE_DIR/other/$NODE_NAME"
-
   # $RL_MODEL_PATH_SRC may not exist because that DFaaS agent is not executing
   # the RL Agent strategy.
   if ssh "${SSH_OPTS[@]}" user@"$IP" "test -f '$RL_MODEL_PATH_SRC'"; then
+    mkdir -p "$OUTPUT_BASE_DIR/other/$NODE_NAME"
+
     if scp "${SSH_OPTS[@]}" user@"$IP:$RL_MODEL_PATH_SRC" "$RL_MODEL_PATH_DST"; then
       echo "[INFO] Collected rl_model.log from $NODE_NAME (IP=$IP)"
     else
