@@ -17,25 +17,32 @@ import pandas as pd
 
 def main():
     parser = argparse.ArgumentParser(
-        description="Print stats data about traces from JSON file"
+        description="Print stats data about traces from one or more JSON files."
     )
-    parser.add_argument("traces", help="traces path in JSON format")
+    parser.add_argument(
+        "traces_file", nargs="+", type=Path, help="traces path in JSON format"
+    )
     args = parser.parse_args()
 
-    data = json.loads(Path(args.traces).read_text())
+    for file in args.traces_file:
+        print("\n\n----------------------------")
+        print(f"Trace file: {file.absolute().as_posix()}")
+        print("----------------------------")
 
-    percentiles = [0.25, 0.5, 0.75, 0.8, 0.9, 0.95]
+        data = json.loads(file.read_text())
 
-    for function, nodes in data.items():
-        stats_per_node = {}
-        for node, values in nodes.items():
-            s = pd.Series(values)
-            stats_per_node[f"Node {node}"] = s.describe(percentiles=percentiles)
+        percentiles = [0.25, 0.5, 0.75, 0.8, 0.9, 0.95]
 
-        stats_df = pd.DataFrame(stats_per_node)
-        print(f"Function: {function!r}")
-        print(stats_df.round(2))
-        print()
+        for function, nodes in data.items():
+            stats_per_node = {}
+            for node, values in nodes.items():
+                s = pd.Series(values)
+                stats_per_node[f"Node {node}"] = s.describe(percentiles=percentiles)
+
+            stats_df = pd.DataFrame(stats_per_node)
+            print(f"Function: {function!r}")
+            print(stats_df.round(2))
+            print()
 
 
 if __name__ == "__main__":
