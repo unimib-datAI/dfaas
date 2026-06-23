@@ -29,18 +29,22 @@ def plot(df):
 
     fig, ax = plt.subplots(figsize=(10, 6))
 
+    # Initialize Y-axis bounds, with +-inf any real data will update them.
+    y_min, y_max = float("inf"), float("-inf")
+
     # Plot each phase data with a dedicated color.
     colors = iter(rcParams["axes.prop_cycle"].by_key()["color"])
     for phase in phases:
         color = next(colors)
 
+        y = success_rate_iter[phase].reindex(iterations)
+
+        # Update global Y-axis bounds.
+        y_min = min(y_min, y.min())
+        y_max = max(y_max, y.max())
+
         # If there are NaN or holes, just plot an hole for a specific iteration!
-        ax.plot(
-            iterations,
-            success_rate_iter[phase].reindex(iterations),
-            color=color,
-            label=phase,
-        )
+        ax.plot(iterations, y, color=color, label=phase)
 
         ax.axhline(
             y=success_rate_total[phase], color=color, linestyle="dashed", linewidth=2
@@ -53,7 +57,10 @@ def plot(df):
     ax.set_ylabel("Served requests")
 
     ax.set_xlim(0, 100)
-    ax.set_ylim(0, 1)
+
+    # Without margin, lines may sit exactly on the plot border.
+    margin = 0.05
+    ax.set_ylim(y_min - margin, y_max + margin)
 
     # Values are in the range [0, 1].
     ax.yaxis.set_major_formatter(PercentFormatter(1.0))
