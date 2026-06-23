@@ -21,10 +21,13 @@ SSH_OPTS=(
 
 DEFAULT_TRACE_PATH="../data/input_requests/mlimage/rlstrategy/scaled_pwr_40_only_0_other_constant_4.json"
 DEFAULT_OUTPUT_BASE_DIR="../data/20260525_one_rl_agent"
+DEFAULT_STAGE_BUILDER="OneMinuteWindow"
 
-# Allow to overwrite these options via environment variables.
+# Allow to overwrite these options via environment variables. See
+# single_trace.js for more information about the env vars.
 TRACE_PATH="${TRACE_PATH:-$DEFAULT_TRACE_PATH}"
 OUTPUT_BASE_DIR="${OUTPUT_BASE_DIR:-$DEFAULT_OUTPUT_BASE_DIR}"
+STAGE_BUILDER="${STAGE_BUILDER:-$DEFAULT_STAGE_BUILDER}"
 
 run_job() {
   local NODE_NAME="$1"
@@ -55,7 +58,8 @@ run_job() {
     --env IP_SERVER="$IP" \
     --env TRACE_PATH="$TRACE_PATH" \
     --env FUNCTION=0 \
-    --env NODE="$NODE_ID" &
+    --env NODE="$NODE_ID" \
+    --env STAGE_BUILDER="$STAGE_BUILDER" &
 #    --env LIMIT=90 &
 
   echo "[LAUNCHED] $NODE_NAME (pid=$!)"

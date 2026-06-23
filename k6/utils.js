@@ -25,6 +25,12 @@ export function stagesBuild(trace, builder) {
     case "OneMinuteWindow":
       return stagesOneMinuteWindow(trace);
 
+    case "TwoMinuteWindow":
+      return stagesTwoMinuteWindow(trace);
+
+    case "ThreeMinuteWindow":
+      return stagesThreeMinuteWindow(trace);
+
     case "WithCooldown":
       return stagesWithCooldown(trace);
 
@@ -45,6 +51,46 @@ export function stagesOneMinuteWindow(trace) {
     });
     stages.push({
       duration: '55s', // Keep a constant rate for the remainder of the minute.
+      target,
+    });
+  }
+
+  return stages;
+}
+
+export function stagesTwoMinuteWindow(trace) {
+  let stages = [];
+
+  for (const rate of trace) {
+    const target = Math.round(rate);
+
+    // Similar to stagesOneMinuteWindow() but with duration of 2 minutes.
+    stages.push({
+      duration: '10s',
+      target,
+    });
+    stages.push({
+      duration: '110s',
+      target,
+    });
+  }
+
+  return stages;
+}
+
+export function stagesThreeMinuteWindow(trace) {
+  let stages = [];
+
+  for (const rate of trace) {
+    const target = Math.round(rate);
+
+    // Similar to stagesOneMinuteWindow() but with duration of 3 minutes.
+    stages.push({
+      duration: '15s',
+      target,
+    });
+    stages.push({
+      duration: '165s',
       target,
     });
   }
