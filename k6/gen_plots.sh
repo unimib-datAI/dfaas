@@ -10,8 +10,23 @@ if [[ $# -ne 1 ]]; then
 fi
 
 BASE_DIR="$(realpath "$1")"
-
 echo "[INFO] Base directory for k6 plots: $BASE_DIR..."
+
+# Default iteration duration is 60 seconds. We automatically detect if the
+# duration is different and append "--iter-duration" option to all Python
+# scripts.
+ITER_DURATION_ARGS=()
+ITER_DURATION_FILE="${BASE_DIR}/iter_duration_seconds"
+
+if [[ -f "${ITER_DURATION_FILE}" ]]; then
+    ITER_DURATION_VALUE="$(< "${ITER_DURATION_FILE}")"
+    ITER_DURATION_VALUE="${ITER_DURATION_VALUE//[[:space:]]/}" # Trim whitespace.
+
+    if [[ -n "${ITER_DURATION_VALUE}" ]]; then
+        ITER_DURATION_ARGS=(--iter-duration "${ITER_DURATION_VALUE}")
+        echo "[INFO] Using iter-duration=${ITER_DURATION_VALUE} for all nodes"
+    fi
+fi
 
 # Python executables. FIXME: remove hardcoded paths!
 PARSER_PY="/home/emanuele/ipython-env/env/bin/python"
@@ -63,9 +78,11 @@ run_node() {
   for entry in "${NODE_PLOTS[@]}"; do
       IFS=":" read -r script output <<< "${entry}"
 
+      # Note ITER_DURATION_ARGS may be empty!
       "${PYTHON}" "${script}" \
           --input "${processed_csv}" \
-          --output "${node_dir}/${output}"
+          --output "${node_dir}/${output}" \
+          "${ITER_DURATION_ARGS[@]}"
   done
 
   echo "[INFO] Finished ${node_name}"
@@ -99,7 +116,8 @@ for entry in "${GLOBAL_PLOTS[@]}"; do
 
     "${PYTHON}" "${script}" \
         --input "${BASE_DIR}" \
-        --output "${GLOBAL_DIR}/${output}"
+        --output "${GLOBAL_DIR}/${output}" \
+        "${ITER_DURATION_ARGS[@]}"
 done
 
 echo "[INFO] Global plots completed."

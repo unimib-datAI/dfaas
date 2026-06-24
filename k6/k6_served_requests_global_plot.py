@@ -44,6 +44,7 @@ def main():
         help="Path to input directory containing node_* subdirectories",
     )
     parser.add_argument("--output", required=True, type=Path, help="Path to output PDF")
+    parser.add_argument("--iter-duration", help="Ignored, kept for compatibility")
 
     args = parser.parse_args()
 
