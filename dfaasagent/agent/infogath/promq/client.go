@@ -56,7 +56,7 @@ func New(host string, port uint, step time.Duration) (*Client, error) {
 	return &client, nil
 }
 
-// Replicas returns the average number of replicas for each function in the
+// Replicas returns the last number of replicas for each function in the
 // given time range, always rounding up.
 func (c *Client) Replicas(start, end time.Time) (map[string]uint, error) {
 	if end.Before(start) {
@@ -67,10 +67,11 @@ func (c *Client) Replicas(start, end time.Time) (map[string]uint, error) {
 	duration := end.Sub(start)
 
 	// duration is a time.Duration. Prometheus do not supports float duration,
-	// only integer. So: convert to seconds, round, then rebuild a clean duration.
+	// only integer. So: convert to seconds, round, then rebuild a clean
+	// duration.
 	durationStr := (time.Duration(math.Round(duration.Seconds())) * time.Second).String()
 
-	query := fmt.Sprintf(`avg by (function_name) (avg_over_time(gateway_service_count[%s]))`, durationStr)
+	query := fmt.Sprintf(`avg by (function_name) (last_over_time(gateway_service_count[%s]))`, durationStr)
 	c.logQuery(query, end)
 
 	// Run query.
@@ -322,7 +323,8 @@ func (c *Client) RejectRate(start, end time.Time) (map[string]float32, error) {
 	  sum by (proxy) (
 		increase(haproxy_server_http_requests_total{
 		  proxy=~"function_.*",
-		  proxy!~".*_forwarded"
+		  proxy!~".*_forwarded",
+		  server="openfaas-local"
 		}[%[1]s])
 	  )
 	  -
@@ -339,7 +341,8 @@ func (c *Client) RejectRate(start, end time.Time) (map[string]float32, error) {
 	sum by (proxy) (
 	  increase(haproxy_server_http_requests_total{
 		proxy=~"function_.*",
-		proxy!~".*_forwarded"
+		proxy!~".*_forwarded",
+		server="openfaas-local"
 	  }[%[1]s])
 	)`, durationStr)
 	c.logQuery(query, end)
