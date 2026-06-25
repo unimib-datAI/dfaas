@@ -53,7 +53,7 @@ const TRACE_PATH = __ENV.TRACE_PATH;
 const TRACES = JSON.parse(open(TRACE_PATH));
 
 const FUNCTION = __ENV.FUNCTION || "0";
-const NODE = __ENV.NODE || "0";
+const NODE = __ENV.NODE || "node_c";
 const LIMIT = parseInt(__ENV.LIMIT) || 0;
 
 // We must validate FUNCTION, NODE and LIMIT because JavaScript won't throw a

@@ -32,10 +32,9 @@ STAGE_BUILDER="${STAGE_BUILDER:-$DEFAULT_STAGE_BUILDER}"
 run_job() {
   local NODE_NAME="$1"
   local IP="$2"
-  local NODE_ID="$3"
-  local PORT="$4"
+  local PORT="$3"
 
-  echo "[START] $NODE_NAME (IP=$IP, NODE=$NODE_ID, PORT=$PORT)"
+  echo "[START] $NODE_NAME (IP=$IP, PORT=$PORT)"
 
   export K6_WEB_DASHBOARD_PORT="$PORT"
   export K6_WEB_DASHBOARD_EXPORT="$OUTPUT_BASE_DIR/k6/$NODE_NAME/k6_report.html"
@@ -58,7 +57,7 @@ run_job() {
     --env IP_SERVER="$IP" \
     --env TRACE_PATH="$TRACE_PATH" \
     --env FUNCTION=0 \
-    --env NODE="$NODE_ID" \
+    --env NODE="$NODE_NAME" \
     --env STAGE_BUILDER="$STAGE_BUILDER" &
 #    --env LIMIT=90 &
 
@@ -73,13 +72,13 @@ mkdir -p "$OUTPUT_BASE_DIR/k6/"
 cp -a "$TRACE_PATH" "$OUTPUT_BASE_DIR/k6/"
 echo "[INFO] Saved trace path to $(realpath "$OUTPUT_BASE_DIR/k6/$TRACE_NAME")"
 
-# Format: "name ip node_id port".
+# Format: "node_name ip port".
 JOBS=(
-  "node_c 10.12.68.2 0 30665"
-  "node_d 10.12.68.3 1 30666"
-  "node_e 10.12.68.4 2 30667"
-  "node_f 10.12.68.5 3 30668"
-  "node_g 10.12.68.6 4 30669"
+  "node_c 10.12.68.2 30665"
+  "node_d 10.12.68.3 30666"
+  "node_e 10.12.68.4 30667"
+  "node_f 10.12.68.5 30668"
+  "node_g 10.12.68.6 30669"
 )
 
 echo "[INFO] Saving results to $(realpath "$OUTPUT_BASE_DIR")"
