@@ -52,6 +52,11 @@ type RLAgentStrategy struct {
 	// targetFunction stores the function's name used in the RL Agent strategy
 	// (the strategy currently supports only one deployed function)
 	targetFunction string
+
+	// The list of neighbors in the "node_ID" format. It will be initialized
+	// during the setup, then will be used in the RL Agent phase to iterate over
+	// neighbors' metrics.
+	neighbors []string
 }
 
 // strategyPhase represents the two possibile phases of the RL Agent strategy.
@@ -314,15 +319,6 @@ func (strategy *RLAgentStrategy) setAllLocal() error {
 		return fmt.Errorf("getting function names: %w", err)
 	}
 
-	// We need the list of neighbors for later use.
-	neighbors := []string{}
-	for _, peer := range _p2pHost.Network().Peers() {
-		// "node_ID" is the required format.
-		peerID := fmt.Sprintf("node_%s", peer)
-
-		neighbors = append(neighbors, peerID)
-	}
-
 	// First set all actions, then apply them. The first key is the function
 	// name/backend, the second level is the server action.
 	weights := make(map[string]map[string]uint)
@@ -341,7 +337,7 @@ func (strategy *RLAgentStrategy) setAllLocal() error {
 
 		weights[backend]["openfaas-local"] = 100
 		weights[backend]["rejector"] = 0
-		for _, neighborID := range neighbors {
+		for _, neighborID := range strategy.neighbors {
 			weights[backend][neighborID] = 0
 		}
 	}
@@ -378,7 +374,7 @@ func (strategy *RLAgentStrategy) initProxyConfig() error {
 	}
 
 	// Build neighbors info.
-	neighbors := []string{}                  // Node's ID (node_XXX).
+	strategy.neighbors = nil                 // Node's ID (node_XXX).
 	neighborsPort := make(map[string]string) // Node's ID -> Node's host addr.
 	neighborsHost := make(map[string]string) // Node's ID -> Node's port numb.
 
@@ -391,7 +387,7 @@ func (strategy *RLAgentStrategy) initProxyConfig() error {
 		// "node_ID" is required format.
 		peerID := fmt.Sprintf("node_%s", peer)
 
-		neighbors = append(neighbors, peerID)
+		strategy.neighbors = append(strategy.neighbors, peerID)
 		neighborsHost[peerID] = host
 		// FIXME: The remote proxy port may be different from local proxy port!
 		neighborsPort[peerID] = strconv.FormatUint(uint64(_config.HAProxyPort), 10)
@@ -415,7 +411,7 @@ func (strategy *RLAgentStrategy) initProxyConfig() error {
 		Now:           time.Now().UTC().Format("2006-01-02 15:04:05 MST"),
 		DFaaSNodeID:   _p2pHost.ID().String(),
 		Functions:     funcs,
-		Neighbors:     neighbors,
+		Neighbors:     strategy.neighbors,
 		NeighborsHost: neighborsHost,
 		NeighborsPort: neighborsPort,
 		OpenFaaSHost:  _config.OpenFaaSHost,
@@ -469,71 +465,43 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	}
 
 	// previous_fwd_to_node_X key in observation.
-	peers := 0
 	if strategy.rlAgentPhaseTimestamp.IsZero() {
-		for _, peer := range _p2pHost.Network().Peers() {
-			key := fmt.Sprintf("previous_fwd_to_node_%s", peer.String())
+		peers := 0
+		for _, peer := range strategy.neighbors {
+			key := fmt.Sprintf("previous_fwd_to_node_%s", peer)
 			obs[key] = 0
 			peers++
+		}
+		// FIXME: Remove this code (used for debugging).
+		if peers != 4 {
+			return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X' key: found %d peers, expected 4 peers", peers)
 		}
 	} else {
 		prevForwardRPS, err := strategy.promq.ForwardRPS(strategy.rlAgentPhaseTimestamp, strategy.allLocalPhaseTimestamp)
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X' key: %w", err)
 		}
-		prevForwardRPSSingle, err := extractSingleFunctionValue(prevForwardRPS, strategy.targetFunction)
-		if err != nil {
-			return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X' key: %w", err)
-		}
-		for peer, rate := range prevForwardRPSSingle {
-			// ForwardRPS() always returns openfaas-local node that is the
-			// local one (not remote), and also rejector.
-			if peer == "openfaas-local" || peer == "rejector" {
-				continue
-			}
-			// Peer here is already a string with format "node_X".
-			key := fmt.Sprintf("previous_fwd_to_%s", peer)
-			obs[key] = rate
-			peers++
-		}
-	}
-	// FIXME: Remove this code (used for debugging).
-	if peers != 4 {
-		return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X' key: found %d peers, expected 4 peers", peers)
+		strategy.applyPromQLNeighborMetric(obs, prevForwardRPS, "previous_fwd_to_%s")
 	}
 
 	// previous_fwd_to_node_X_rejected key in observation.
-	peers = 0
 	if strategy.rlAgentPhaseTimestamp.IsZero() {
-		for _, peer := range _p2pHost.Network().Peers() {
-			key := fmt.Sprintf("previous_fwd_to_node_%s_rejected", peer.String())
+		peers := 0
+		for _, peer := range strategy.neighbors {
+			key := fmt.Sprintf("previous_fwd_to_node_%s_rejected", peer)
 			obs[key] = 0
 			peers++
+		}
+		// FIXME: Remove this code (used for debugging).
+		if peers != 4 {
+			return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X_rejected' key: found %d peers, expected 4 peers", peers)
 		}
 	} else {
 		prevForwardRejectRPS, err := strategy.promq.ForwardRejectRPS(strategy.rlAgentPhaseTimestamp, strategy.allLocalPhaseTimestamp)
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X_rejected' key: %w", err)
 		}
-		prevForwardRejectRPSSingle, err := extractSingleFunctionValue(prevForwardRejectRPS, strategy.targetFunction)
-		if err != nil {
-			return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X_rejected' key: %w", err)
-		}
-		for peer, rate := range prevForwardRejectRPSSingle {
-			// ForwardRejectRPS() always returns openfaas-local node that is the
-			// local one (not remote).
-			if peer == "openfaas-local" || peer == "rejector" {
-				continue
-			}
-			// Peer here is already a string with format "node_X".
-			key := fmt.Sprintf("previous_fwd_to_%s_rejected", peer)
-			obs[key] = rate
-			peers++
-		}
-	}
-	// FIXME: Remove this code (used for debugging).
-	if peers != 4 {
-		return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X_rejected' key: found %d peers, expected 4 peers", peers)
+		strategy.applyPromQLNeighborMetric(obs, prevForwardRejectRPS, "previous_fwd_to_%s_rejected")
 	}
 
 	// reject_rate key in observation.
@@ -589,33 +557,23 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	}
 
 	// previous_avg_resp_time_fwd_to_node_X key in observation.
-	peers = 0
 	if strategy.rlAgentPhaseTimestamp.IsZero() {
-		for _, peer := range _p2pHost.Network().Peers() {
-			key := fmt.Sprintf("previous_avg_resp_time_fwd_to_node_%s", peer.String())
+		peers := 0
+		for _, peer := range strategy.neighbors {
+			key := fmt.Sprintf("previous_avg_resp_time_fwd_to_node_%s", peer)
 			obs[key] = 0
 			peers++
+		}
+		// FIXME: Remove this code (used for debugging).
+		if peers != 4 {
+			return nil, fmt.Errorf("building observation for 'previous_avg_resp_time_fwd_to_node_X' key: found %d peers, expected 4 peers", peers)
 		}
 	} else {
 		prevAvgRespTimeForward, err := strategy.promq.AvgRespTimeForward(strategy.rlAgentPhaseTimestamp, strategy.allLocalPhaseTimestamp)
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_avg_resp_time_fwd_to_node_X' key: %w", err)
 		}
-		prevAvgRespTimeForwardSingle, err := extractSingleFunctionValue(prevAvgRespTimeForward, strategy.targetFunction)
-		if err != nil {
-			return nil, fmt.Errorf("building observation for 'previous_avg_resp_time_fwd_to_node_X' key: %w", err)
-		}
-		for peer, rate := range prevAvgRespTimeForwardSingle {
-			// peer here is a string with format "node_<id>", returned by the
-			// PromQL query.
-			key := fmt.Sprintf("previous_avg_resp_time_fwd_to_%s", peer)
-			obs[key] = rate
-			peers++
-		}
-	}
-	// FIXME: Remove this code (used for debugging).
-	if peers != 4 {
-		return nil, fmt.Errorf("building observation for 'previous_avg_resp_time_fwd_to_node_X' key: found %d peers, expected 4 peers", peers)
+		strategy.applyPromQLNeighborMetric(obs, prevAvgRespTimeForward, "previous_avg_resp_time_fwd_to_%s")
 	}
 
 	// cpu_utilization key in observation (float32 in [0, 1]).
@@ -734,15 +692,6 @@ func (strategy *RLAgentStrategy) queryRLModel(observation []byte) (map[string]ma
 func (strategy *RLAgentStrategy) applyAction(action map[string]map[string]float64) error {
 	logger := logging.Logger()
 
-	// We need the list of neighbors for later use.
-	neighbors := []string{}
-	for _, peer := range _p2pHost.Network().Peers() {
-		// "node_ID" is the required format.
-		peerID := fmt.Sprintf("node_%s", peer)
-
-		neighbors = append(neighbors, peerID)
-	}
-
 	// The action map should contain only one key, that's the local node ID. We
 	// need to do this check to make sure to have the right action for the right
 	// node.
@@ -775,7 +724,7 @@ func (strategy *RLAgentStrategy) applyAction(action map[string]map[string]float6
 	weights["rejector"] = uint(math.Round(rejectProportion * 100))
 
 	// Extract forward actions.
-	for _, neighborID := range neighbors {
+	for _, neighborID := range strategy.neighbors {
 		forwardProportion, exist := action[localNode][neighborID]
 		if !exist {
 			return fmt.Errorf("neighbor node not found in RL action for forward: %s", neighborID)
@@ -792,6 +741,45 @@ func (strategy *RLAgentStrategy) applyAction(action map[string]map[string]float6
 	logger.Debugf("HAProxy updated with the following weights: %v", weights)
 
 	return nil
+}
+
+// applyPromQLNeighborMetric populates the observation map with per-neighbor
+// metrics. It takes the PromQL result map and writes values into `obs` using a
+// formatted key.
+//
+// `obs_fmt_key` defines the key pattern used for each neighbor (e.g.
+// "previous_fwd_to_%s_rejected", which will be rendered as
+// "previous_fwd_to_node_XXX_rejected").
+func (strategy *RLAgentStrategy) applyPromQLNeighborMetric(obs map[string]any, metric map[string]map[string]float32, obs_fmt_key string) {
+	// We have two problems: 1) the metric may not exist, and 2) the metric may
+	// exist but not the series for a specific neighbor. In both cases we set by
+	// default 0.
+
+	logger := logging.Logger()
+	dummy_node := fmt.Sprintf(obs_fmt_key, "node_X") // Used only for warnings.
+
+	metricFunc, err := extractSingleFunctionValue(metric, strategy.targetFunction)
+	if err != nil {
+		logger.Warnf("for key %q, function %q not found in metrics result, setting 0 by default to all neighbors", dummy_node, strategy.targetFunction)
+	}
+
+	for _, peer := range strategy.neighbors {
+		key := fmt.Sprintf(obs_fmt_key, peer)
+		value := float32(0) // Default value.
+
+		if err == nil {
+			// With err == nil we are sure extractSingleFunctionValue has
+			// extracted something!
+			metricValue, exists := metricFunc[peer]
+			if exists {
+				value = metricValue
+			} else {
+				logger.Warnf("for key %q and peer %q, function %q not found in metrics result, setting 0 by default to this neighbor", dummy_node, peer, strategy.targetFunction)
+			}
+		}
+
+		obs[key] = value
+	}
 }
 
 // extractSingleFunctionValue extracts data related to the given function name
