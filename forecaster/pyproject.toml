@@ -1,0 +1,35 @@
+[project]
+name = "dfaas-forecaster"
+version = "0.1.0"
+description = "DFaaS forecaster service."
+requires-python = ">=3.12"
+dependencies = [
+    "fastapi[all]",
+    "joblib",
+    "lightgbm",
+    "numpy",
+    "pandas",
+    "scikit-learn",
+    "uvicorn",
+]
+
+[dependency-groups]
+dev = [
+    "pytest",
+    "pytest-cov",
+    "httpx",
+    "ruff",
+]
+
+[tool.uv]
+python-preference = "only-managed"
+
+[tool.ruff]
+line-length = 88
+target-version = "py312"
+
+[tool.pytest.ini_options]
+markers = [
+    "e2e: end-to-end tests that require apple/container",
+    "e2e_k3s: full VM-based k3s end-to-end tests",
+]
