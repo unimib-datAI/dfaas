@@ -102,6 +102,7 @@ func (strategy *AllLocalStrategy) updateProxyConfiguration(funcs map[string]*uin
 			Functions    map[string]*uint
 			OpenFaaSHost string
 			OpenFaaSPort uint
+			WebPaths     map[string]string //field needed for the template
 		}{
 			Provider:     _config.Provider,
 			Now:          time.Now().Format("2006-01-02 15:04:05"),
@@ -109,6 +110,7 @@ func (strategy *AllLocalStrategy) updateProxyConfiguration(funcs map[string]*uin
 			Functions:    funcs,
 			OpenFaaSHost: _config.OpenFaaSHost,
 			OpenFaaSPort: _config.OpenFaaSPort,
+			WebPaths:     webPaths,
 		}
 
 		return strategy.hacfgupdater.UpdateHAConfig(data)

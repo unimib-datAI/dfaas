@@ -263,6 +263,7 @@ func (strategy *StaticStrategy) createHACfgObject(
 			HAProxyHost:  _config.HAProxyHost,
 			OpenFaaSHost: _config.OpenFaaSHost,
 			OpenFaaSPort: _config.OpenFaaSPort,
+			WebPaths:     webPaths,		// needed for template
 		}
 	} else if _config.Provider == "openwhisk" {
 		baseCfg = HACfg{
