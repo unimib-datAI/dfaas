@@ -50,6 +50,11 @@ func (strategy *AllLocalStrategy) RunStrategy() error {
 			return fmt.Errorf("get function metadata: %w", err)
 		}
 
+		webPaths, err := strategy.offuncsClient.GetWebActionPaths()
+		if err != nil {
+			return fmt.Errorf("get web action paths: %w", err)
+		}
+
 		// Add 1 seconds to base timeout (if given) to all functions.
 		for _, timeout := range funcs {
 			if timeout != nil {
@@ -62,7 +67,7 @@ func (strategy *AllLocalStrategy) RunStrategy() error {
 		if !equal {
 			debugFuncsDiff(funcs, prevFuncs)
 			logger.Info("Updating proxy due to new/deleted functions or changed timeouts")
-			if err = strategy.updateProxyConfiguration(funcs); err != nil {
+			if err = strategy.updateProxyConfiguration(funcs, webPaths); err != nil {
 				return fmt.Errorf("updating proxy config: %w", err)
 			}
 			prevFuncs = funcs
@@ -85,53 +90,55 @@ func (strategy *AllLocalStrategy) RunStrategy() error {
 
 // updateProxyConfiguration updates the HAProxy configuration with the provided
 // list of deployed functions. HAProxy will always be reloaded after the update.
-func (strategy *AllLocalStrategy) updateProxyConfiguration(funcs map[string]*uint) error {
+func (strategy *AllLocalStrategy) updateProxyConfiguration(funcs map[string]*uint, webPaths map[string]string) error {
 	// Define and populate this anonymous struct to pass data to the Go
 	// template.
 
 	if _config.Provider == "openfaas" {
 		data := struct {
-			Provider	string
-	                Now          	string
-                	DFaaSNodeID  	string
-                	Functions    	map[string]*uint
-                	OpenFaaSHost 	string
-                	OpenFaaSPort 	uint
-       		 }{
-			Provider:		_config.Provider,
-                	Now:          		time.Now().Format("2006-01-02 15:04:05"),
-                	DFaaSNodeID:  		_p2pHost.ID().String(),
-                	Functions:    		funcs,
-                	OpenFaaSHost: 		_config.OpenFaaSHost,
-                	OpenFaaSPort: 		_config.OpenFaaSPort,
-        	}
+			Provider     string
+			Now          string
+			DFaaSNodeID  string
+			Functions    map[string]*uint
+			OpenFaaSHost string
+			OpenFaaSPort uint
+		}{
+			Provider:     _config.Provider,
+			Now:          time.Now().Format("2006-01-02 15:04:05"),
+			DFaaSNodeID:  _p2pHost.ID().String(),
+			Functions:    funcs,
+			OpenFaaSHost: _config.OpenFaaSHost,
+			OpenFaaSPort: _config.OpenFaaSPort,
+		}
 
-                return strategy.hacfgupdater.UpdateHAConfig(data)
+		return strategy.hacfgupdater.UpdateHAConfig(data)
 
 	}
 
-        if _config.Provider == "openwhisk" {
+	if _config.Provider == "openwhisk" {
 
 		encodedAuth := base64.StdEncoding.EncodeToString([]byte(_config.OpenWhiskAuth))
 
 		data := struct {
-                        Provider	 	string
-			Now          		string
-			DFaaSNodeID  		string
-			Functions    		map[string]*uint
-			OpenWhiskHost 		string
-			OpenWhiskPort 		uint
-			OpenWhiskAuth 		string
-			OpenWhiskNamespace 	string
+			Provider           string
+			Now                string
+			DFaaSNodeID        string
+			Functions          map[string]*uint
+			WebPaths           map[string]string
+			OpenWhiskHost      string
+			OpenWhiskPort      uint
+			OpenWhiskAuth      string
+			OpenWhiskNamespace string
 		}{
-                        Provider:        	_config.Provider,
-			Now:          		time.Now().Format("2006-01-02 15:04:05"),
-			DFaaSNodeID:  		_p2pHost.ID().String(),
-			Functions:    		funcs,
-			OpenWhiskHost:		_config.OpenWhiskHost,
-			OpenWhiskPort: 		_config.OpenWhiskPort,
-			OpenWhiskAuth: 		encodedAuth,
-			OpenWhiskNamespace: 	_config.OpenWhiskNamespace,
+			Provider:           _config.Provider,
+			Now:                time.Now().Format("2006-01-02 15:04:05"),
+			DFaaSNodeID:        _p2pHost.ID().String(),
+			Functions:          funcs,
+			WebPaths:           webPaths,
+			OpenWhiskHost:      _config.OpenWhiskHost,
+			OpenWhiskPort:      _config.OpenWhiskPort,
+			OpenWhiskAuth:      encodedAuth,
+			OpenWhiskNamespace: _config.OpenWhiskNamespace,
 		}
 
 		return strategy.hacfgupdater.UpdateHAConfig(data)

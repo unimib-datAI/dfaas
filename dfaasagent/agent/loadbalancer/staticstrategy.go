@@ -222,12 +222,18 @@ func (strategy *StaticStrategy) updateCommonNeighbours() {
 func (strategy *StaticStrategy) setProxyWeights() error {
 	myID := _p2pHost.ID().String()
 
+	webPaths, err := strategy.offuncsClient.GetWebActionPaths()
+	if err != nil {
+		return fmt.Errorf("getting web action paths: %w", err)
+	}
+
 	var hacfg *HACfgStatic
 	strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryNMS) error {
 		hacfg = strategy.createHACfgObject(
 			myID,
 			entries,
 			strategy.weights,
+			webPaths,
 		)
 		return nil
 	})
@@ -245,6 +251,7 @@ func (strategy *StaticStrategy) createHACfgObject(
 	myNodeID string,
 	entries map[string]*nodestbl.EntryNMS,
 	funcsWeights map[string]map[string]uint,
+	webPaths map[string]string,
 ) *HACfgStatic {
 	var baseCfg HACfg
 
@@ -267,6 +274,7 @@ func (strategy *StaticStrategy) createHACfgObject(
 			OpenWhiskPort:      _config.OpenWhiskPort,
 			OpenWhiskAuth:      base64.StdEncoding.EncodeToString([]byte(_config.OpenWhiskAuth)),
 			OpenWhiskNamespace: _config.OpenWhiskNamespace,
+			WebPaths:           webPaths,
 		}
 	}
 

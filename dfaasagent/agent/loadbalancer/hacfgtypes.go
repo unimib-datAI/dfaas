@@ -31,6 +31,8 @@ type HACfg struct {
 	OpenWhiskPort      uint
 	OpenWhiskAuth      string
 	OpenWhiskNamespace string
+
+	WebPaths           map[string]string
 }
 
 /////////////////// HACFG TYPES FOR RECALC STRATEGY ///////////////////

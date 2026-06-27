@@ -62,6 +62,8 @@ frontend fe_main
     {{if eq .Provider "openwhisk"}}
         acl is_path_system_funcs path /api/v1/namespaces/{{$.OpenWhiskNamespace}}/actions
         acl is_path_function path_beg /api/v1/namespaces/{{$.OpenWhiskNamespace}}/actions
+
+        acl is_path_web_function path_beg /api/v1/web/{{$.OpenWhiskNamespace}}/default/
     {{end}}
 
     {{/* ACLs is_func_XXX */ -}}
@@ -73,7 +75,12 @@ frontend fe_main
 
     {{if eq .Provider "openwhisk"}}
         {{range $funcName, $_ := .Functions -}}
-        acl is_func_{{$funcName}} path_beg /api/v1/namespaces/{{$.OpenWhiskNamespace}}/actions/{{$funcName}}
+        {{- $webPath := index $.WebPaths $funcName -}}
+        {{if $webPath}}
+            acl is_func_{{$funcName}} path_beg {{$webPath}}
+        {{else}}
+            acl is_func_{{$funcName}} path_beg /api/v1/namespaces/{{$.OpenWhiskNamespace}}/actions/{{$funcName}}
+        {{end}}
         {{end}}
     {{end}}
     
@@ -84,7 +91,7 @@ frontend fe_main
     {{/* Deny requests which are not directed to a function or / (root) or the
     stats page (note: the root path is needed for health checks by
     other nodes) or to /healthz */ -}}
-    http-request deny unless is_path_haproxy or is_path_system_funcs or is_path_function
+    http-request deny unless is_path_haproxy or is_path_system_funcs or is_path_function or is_path_web_function
 
     {{/* If a hdr DFaaS-Node-ID is present AND is not known deny request. 
         * Returned message is 403 "Forbidden": The access to the resource is forbidden by this client.
@@ -159,9 +166,12 @@ backend be_{{$funcName}}
 
     # Add auth header and force synchronous if openwhisk is the provider
     {{if eq $.Provider "openwhisk"}}
-        http-request add-header Authorization "Basic {{ $.OpenWhiskAuth }}" if !{ req.hdr(Authorization) -m found }
-        # Force synchronous OpenWhisk invocation for every request overwriting any query:
-        http-request set-query blocking=true&result=true
+        {{- $webPath := index $.WebPaths $funcName -}}
+        {{if not $webPath}}
+            http-request add-header Authorization "Basic {{ $.OpenWhiskAuth }}" if !{ req.hdr(Authorization) -m found }
+            # Force synchronous OpenWhisk invocation for every request overwriting any query:
+            http-request set-query blocking=true&result=true
+        {{end}}
     {{end}}
 
     {{range $nodeID, $weight := $func.Weights -}}

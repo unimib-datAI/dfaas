@@ -64,7 +64,14 @@ frontend main
         acl is_{{$funcName}} path_beg /function/{{$funcName}}
     {{end}}
     {{if eq $.Provider "openwhisk"}}
+        {{- $webPath := index $.WebPaths $funcName -}}
+        {{if $webPath}}
+        # Web Action ACL
+        acl is_{{$funcName}} path_beg {{$webPath}}
+        {{else}}
+        # Standard Action ACL
         acl is_{{$funcName}} path_beg /api/v1/namespaces/{{$.OpenWhiskNamespace}}/actions/{{$funcName}}
+        {{end}}
     {{end}}
     use_backend function_{{$funcName}} if is_{{$funcName}}
     {{end}}
@@ -73,9 +80,12 @@ frontend main
 backend function_{{$funcName}}
     http-response set-header dfaaS-node-id {{$.DFaaSNodeID}}
     {{if eq $.Provider "openwhisk"}}
+        {{- $webPath := index $.WebPaths $funcName -}}
+        {{if not $webPath}}
+        # Le Action standard richiedono Auth e query parametri per essere sincrone
         http-request add-header Authorization "Basic {{ $.OpenWhiskAuth }}" if !{ req.hdr(Authorization) -m found }
-        # Force synchronous OpenWhisk invocation for every request overwriting any query:
         http-request set-query blocking=true&result=true
+        {{end}}
 
         server openfaas-local {{$.OpenWhiskHost}}:{{$.OpenWhiskPort}}
     {{end}}
