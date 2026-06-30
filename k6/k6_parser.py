@@ -109,6 +109,10 @@ def build_request_table(df):
     # "metrics_value" column (float).
     df["k6_stage"] = df["k6_stage"].astype(int)
 
+    # Add the "iteration" column that merges 2 k6_stage at time. This column
+    # will be overwritten if --rl-strategy is given.
+    df["iteration"] = df["k6_stage"] // 2
+
     return df
 
 
