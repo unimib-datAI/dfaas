@@ -12,7 +12,7 @@ set -euo pipefail
 PROXY_SESSION="rl-model-proxy"
 SERVE_SESSION="rl-model-serve"
 
-PROXY_DIR="dfaas/k8s/scripts/rl-model-proxy"
+PROXY_DIR="~/dfaas/k8s/scripts/rl-model-proxy"
 CONTAINER_NAME="rl-agent"
 
 # Create the PROXY_SESSION.
@@ -23,7 +23,7 @@ else
 
     # Start the proxy server.
     tmux send-keys -t "$PROXY_SESSION" "cd $PROXY_DIR" C-m
-    tmux send-keys -t "$PROXY_SESSION" "./rl-model-proxy -listen :8001 -target http://localhost:8000" C-m
+    tmux send-keys -t "$PROXY_SESSION" "./rl-model-proxy -listen :8080 -target http://localhost:8000" C-m
 
     echo "Started $PROXY_SESSION"
 fi
