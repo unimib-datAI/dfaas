@@ -390,8 +390,8 @@ func (strategy *RLAgentStrategy) initProxyConfig() error {
 			return fmt.Errorf("failed to build neighbors information: %w", err)
 		}
 
-		// "node_ID" is required format.
-		peerID := fmt.Sprintf("node_%s", peer)
+		// Peer ID is already formatted as "node_ID".
+		peerID := string(peer)
 
 		strategy.neighbors = append(strategy.neighbors, peerID)
 		neighborsHost[peerID] = host
