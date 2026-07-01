@@ -177,10 +177,10 @@ var haproxycfgRLAgentTemplate string
 func (strategyFactory *rlAgentStrategyFactory) createStrategy() (Strategy, error) {
 	strategy := &RLAgentStrategy{}
 
-	// Set up RL model connection info. Used to query the RL model with the
-	// observation, the response will contain the action to apply.
+	// Set up RL model config info.
 	strategy.rlModelHost = _config.RLModelHost
 	strategy.rlModelPort = _config.RLModelPort
+	strategy.rlModelExplore = _config.RLModelExplore
 
 	// Set up the HAProxy config update mechanism (via HAProxy Data Plane API).
 	hacfgupdater, err := hacfgupd.New(_config.DataPlaneAPIHost,

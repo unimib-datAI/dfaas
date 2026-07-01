@@ -42,6 +42,12 @@ type RLAgentStrategy struct {
 	rlModelHost string
 	rlModelPort uint
 
+	// Wheter the query for the RL model should ask for exploration of the
+	// action space. If set to false, the same observation will return almost
+	// the same action. If set to true, the same observation may return
+	// different actions.
+	rlModelExplore bool
+
 	// The RL Agent strategy consists of two cycling phases.
 	// allLocalPhaseTimestamp and rlAgentPhaseTimestamp store the timestamps
 	// indicating when each phase starts. They may be zero if not yet set,
@@ -622,7 +628,8 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 
 	node_id := fmt.Sprintf("node_%s", _p2pHost.ID().String())
 	payload := map[string]any{
-		"observation": map[string]any{node_id: obs},
+		"observation":      map[string]any{node_id: obs},
+		"agent_parameters": map[string]any{"explore": strategy.rlModelExplore},
 	}
 
 	data, err := json.Marshal(payload)

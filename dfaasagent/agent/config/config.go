@@ -120,6 +120,12 @@ type Configuration struct {
 	// strategy.
 	RLModelHost string `mapstructure:"AGENT_RLMODEL_HOST"`
 	RLModelPort uint   `mapstructure:"AGENT_RLMODEL_PORT"`
+
+	// Wheter the query for the RL model should ask for exploration of the
+	// action space. By default it is set to false, meaning that the same
+	// observation will return almost the same action. If set to true, the same
+	// observation may return different actions.
+	RLModelExplore bool `mapstructure:"AGENT_RLMODEL_EXPLORE"`
 }
 
 // viperBindConfig binds each field of the Configuration struct with its

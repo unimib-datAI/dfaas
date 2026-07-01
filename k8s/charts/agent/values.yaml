@@ -119,6 +119,13 @@ config:
   AGENT_RLMODEL_HOST: "localhost"
   AGENT_RLMODEL_PORT: 6666
 
+  # Wheter the query for the RL model should ask for exploration of the action
+  # space. By default it is set to false, meaning that the same observation will
+  # return almost the same action. If set to true, the same observation may
+  # return different actions.
+  AGENT_RLMODEL_EXPLORE: false
+
+
 # Agent's private key in PEM format. If empty, the agent will generate a new
 # private key and it will print to the standard output.
 privateKey: ""
