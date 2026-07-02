@@ -392,6 +392,7 @@ func (strategy *RLAgentStrategy) initProxyConfig() error {
 
 		// "node_ID" is required format.
 		peerID := fmt.Sprintf("node_%s", peer)
+		fmt.Printf("Detected node: %q", peerID)
 
 		strategy.neighbors = append(strategy.neighbors, peerID)
 		neighborsHost[peerID] = host
@@ -474,7 +475,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	if strategy.rlAgentPhaseTimestamp.IsZero() {
 		peers := 0
 		for _, peer := range strategy.neighbors {
-			key := fmt.Sprintf("previous_fwd_to_node_%s", peer)
+			key := fmt.Sprintf("previous_fwd_to_%s", peer)
 			obs[key] = 0
 			peers++
 		}
@@ -494,7 +495,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	if strategy.rlAgentPhaseTimestamp.IsZero() {
 		peers := 0
 		for _, peer := range strategy.neighbors {
-			key := fmt.Sprintf("previous_fwd_to_node_%s_rejected", peer)
+			key := fmt.Sprintf("previous_fwd_to_%s_rejected", peer)
 			obs[key] = 0
 			peers++
 		}
@@ -566,7 +567,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	if strategy.rlAgentPhaseTimestamp.IsZero() {
 		peers := 0
 		for _, peer := range strategy.neighbors {
-			key := fmt.Sprintf("previous_avg_resp_time_fwd_to_node_%s", peer)
+			key := fmt.Sprintf("previous_avg_resp_time_fwd_to_%s", peer)
 			obs[key] = 0
 			peers++
 		}
