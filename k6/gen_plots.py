@@ -5,28 +5,25 @@ from pathlib import Path
 from concurrent.futures import ThreadPoolExecutor, as_completed
 
 
-# Node-level plot scripts
+# Node-level plot scripts.
 NODE_PLOTS = [
-    ("k6_forwarded_plot.py", "k6_forwarded.pdf"),
-    ("k6_latency_reject_plot.py", "k6_latency_reject.pdf"),
-    ("k6_rps_plot.py", "k6_rps.pdf"),
-    ("k6_status_code_plot.py", "k6_status_code.pdf"),
-    ("k6_rejected_requests_plot.py", "k6_rejected_requests.pdf"),
-    ("k6_latency_probability_density_plot.py", "k6_latency_probability_density.pdf"),
-    ("k6_served_requests_plot.py", "k6_served_requests_plot.pdf"),
+    ("plots.forwarded", "k6_forwarded.pdf"),
+    ("plots.latency_reject", "k6_latency_reject.pdf"),
+    ("plots.rps", "k6_rps.pdf"),
+    ("plots.status_code", "k6_status_code.pdf"),
+    ("plots.rejected_requests", "k6_rejected_requests.pdf"),
+    ("plots.latency_probability", "k6_latency_probability_density.pdf"),
+    ("plots.served_requests", "k6_served_requests.pdf"),
 ]
 
 # Global plot scripts
 GLOBAL_PLOTS = [
-    ("k6_status_code_global_plot.py", "k6_status_code.pdf"),
-    ("k6_forwarded_global_plot.py", "k6_forwarded.pdf"),
-    ("k6_latency_reject_global_plot.py", "k6_latency_reject.pdf"),
-    ("k6_rps_global_plot.py", "k6_rps.pdf"),
-    (
-        "k6_latency_probability_density_global_plot.py",
-        "k6_latency_probability_density_global.pdf",
-    ),
-    ("k6_served_requests_global_plot.py", "k6_served_requests_global_plot.pdf"),
+    ("plots.global.status_code", "k6_status_code.pdf"),
+    ("plots.global.forwarded", "k6_forwarded.pdf"),
+    ("plots.global.latency_reject", "k6_latency_reject.pdf"),
+    ("plots.global.rps", "k6_rps.pdf"),
+    ("plots.global.latency_probability_density", "k6_latency_probability_density.pdf"),
+    ("plots.global.served_requests", "k6_served_requests.pdf"),
 ]
 
 
@@ -54,11 +51,12 @@ def run_k6_parser(input_csv, output_csv):
     )
 
 
-def run_plot(script, input_path, output_path, iter_args):
+def run_plot(module, input_path, output_path, iter_args):
     subprocess.run(
         [
             sys.executable,
-            script,
+            "-m",
+            module,
             "--input",
             str(input_path),
             "--output",

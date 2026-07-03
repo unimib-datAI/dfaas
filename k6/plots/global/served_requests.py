@@ -1,7 +1,7 @@
 import argparse
 from pathlib import Path
 
-import k6_served_requests_plot
+import plots.served_requests
 
 import pandas as pd
 
@@ -57,7 +57,7 @@ def main():
     nodes = df["node_name"].unique().tolist()
     print(f"Found the following {len(nodes)} nodes under {input_path}: {nodes}")
 
-    fig = k6_served_requests_plot.plot(df)
+    fig = plots.served_requests.plot(df)
     fig.savefig(args.output, bbox_inches="tight")
 
     print(f"Saved plot to {args.output.as_posix()}")

@@ -47,10 +47,6 @@ simulation/outputs/**
 *.env/
 env/
 
-# Ignore generated or downloaded data for k6 runs.
-k6/plots
-k6/data
-
 # Ignore generated files by
 # metrics_predictions/samples_generator/samples-generator.py and
 # samples-generator-profiler.py Python scripts.
