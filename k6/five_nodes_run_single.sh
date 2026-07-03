@@ -74,11 +74,11 @@ echo "[INFO] Saved trace path to $(realpath "$OUTPUT_BASE_DIR/k6/$TRACE_NAME")"
 
 # Format: "node_name ip port".
 JOBS=(
-  "node_c 10.12.68.2 30665"
-  "node_d 10.12.68.3 30666"
-  "node_e 10.12.68.4 30667"
-  "node_f 10.12.68.5 30668"
-  "node_g 10.12.68.6 30669"
+  "node_c 10.12.68.2  30665"
+  "node_d 10.12.68.3  30666"
+  "node_e 10.12.68.11 30667"
+  "node_f 10.12.68.5  30668"
+  "node_g 10.12.68.6  30669"
 )
 
 echo "[INFO] Saving results to $(realpath "$OUTPUT_BASE_DIR")"
