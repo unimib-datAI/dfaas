@@ -105,11 +105,18 @@
         architectures: [amd64]
         signed_by: https://packages.buildkite.com/helm-linux/helm-debian/gpgkey
 
-    - name: Install Helm
+    - name: Install Helm v3
       ansible.builtin.apt:
-        name: helm
+        # We need to pin Helm to version v3 because v4 is not backward
+        # compatible and is not supported by DFaaS and the Ansible module.
+        name: helm=3.20.2-1
         state: present
         update_cache: yes
+
+    - name: Ensure Helm package won't be updated to v4
+      ansible.builtin.dpkg_selections:
+        name: helm
+        selection: hold
 
     - name: Ensure KUBECONFIG env var exists for all users
       ansible.builtin.copy:
