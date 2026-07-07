@@ -65,10 +65,49 @@ def plot_latency_and_rejections(df, iter_duration=60):
     return fig
 
 
+def plot_latency_and_rejections_no_phase(df, iter_duration=60):
+    # Latency per iteration.
+    lat = df.groupby(["iteration"])["http_req_duration"].mean().reset_index()
+
+    # Rejections per iteration
+    df = df.copy()
+    df["rejected"] = df["http_status"] != 200
+
+    rej = df.groupby(["iteration"])["rejected"].sum().reset_index()
+
+    # The figure has two plots vertically arranged.
+    fig = plt.figure(figsize=(10, 8))
+    ax1 = fig.add_subplot(2, 1, 1)
+    ax2 = fig.add_subplot(2, 1, 2, sharex=ax1)
+
+    # Latency plot.
+    ax1.plot(lat["iteration"], lat["http_req_duration"], color="blue")
+    ax1.set_ylabel("Avg HTTP duration (ms)")
+    ax1.set_title("Latency per iteration")
+    ax1.grid(True)
+
+    # Rejections plots.
+    ax2.plot(rej["iteration"], rej["rejected"], color="blue")
+
+    ax2.set_xlabel("Iteration")  # X axis shared with both plots.
+    ax2.set_ylabel("Rejected requests")
+    ax2.set_title("Rejections per iteration (HTTP != 200)")
+    ax2.grid(True)
+
+    plt.tight_layout()
+
+    return fig
+
+
 def main():
-    parser = argparse.ArgumentParser(
-        description="Plot latency and rejects from processed k6 metrics. Make sure the input are CSV metrics processed with k6_parsed.py and the DFaaS agent strategy is RL agent"
+    description = (
+        "Plot latency and rejected requests from processed k6 metrics. The "
+        "input CSV must be the preprocessed raw k6 metrics. The plot script "
+        "supports both experiments with any load balancing strategy, including "
+        "RL Agent Strategy (that have the column 'phase' in the CSV file)."
     )
+
+    parser = argparse.ArgumentParser(description=description)
 
     parser.add_argument("--input", required=True, help="Path to input CSV")
     parser.add_argument("--output", required=True, help="Path to output PDF")
@@ -83,7 +122,10 @@ def main():
 
     df = pd.read_csv(args.input)
 
-    fig = plot_latency_and_rejections(df, iter_duration=args.iter_duration)
+    if "phase" in df.columns:
+        fig = plot_latency_and_rejections(df, iter_duration=args.iter_duration)
+    else:
+        fig = plot_latency_and_rejections_no_phase(df, iter_duration=args.iter_duration)
 
     fig.savefig(args.output, format="pdf", bbox_inches="tight")
     print(f"Saved plot to {args.output}")
