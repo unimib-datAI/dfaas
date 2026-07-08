@@ -32,6 +32,13 @@ server:
       - name: openfaas
         port: 9090
 
+  # Lifecycle is already enabled by default, allow live reloading on config
+  # change. Admin API is disabled by default and it's needed to manually create
+  # data snapshots.
+  extraFlags:
+    - web.enable-admin-api
+    - web.enable-lifecycle
+
 serverFiles:
   alerting_rules.yml:
     # Copied from official OpenFaaS Helm chart.
