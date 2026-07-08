@@ -12,7 +12,7 @@ server:
     scrape_timeout: 4s
 
   # Decrease the default retention time. This is enough for the DFaaS prototype.
-  retention: "2d"
+  retention: "1d"
 
   # Enable retention size to 85% of the allocated Persistent Volume.
   retentionSize: "5.1GB"
