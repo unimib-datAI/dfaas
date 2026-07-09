@@ -1,0 +1,9 @@
+.git
+.gitignore
+.venv
+.uv-cache
+.pytest_cache
+__pycache__
+htmlcov
+.ruff_cache
+.coverage
