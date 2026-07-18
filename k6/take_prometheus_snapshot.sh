@@ -87,9 +87,11 @@ echo "Pod: $POD_NAME"
 # Make sure to remove any existing older snapshot from the user's home
 # directory. This is why the `rm` command is required before running `kubectl
 # cp`.
+#
+# sudo is required also for rm because kubectl cp preserve root permissions.
 echo "Copying snapshot from pod to remote host..."
 ssh "$SSH" "set -e
-    rm --recursive --force tsdb tsdb.tar.zst
+    sudo rm --recursive --force tsdb tsdb.tar.zst
     sudo kubectl cp --container=prometheus-server ${POD_NAME}:/data/snapshots/${SNAPSHOT_NAME} tsdb"
 
 # Required to prevent the volume inside the pod from filling up. Note the rm
@@ -104,7 +106,6 @@ ssh "$SSH" "tar --create --zstd --file=tsdb.tar.zst tsdb"
 echo "Downloading archive..."
 scp "$SSH:tsdb.tar.zst" "${DEST_DIR}/tsdb.tar.zst"
 
-# sudo is required because kubectl cp preserve root permissions.
 echo "Cleaning remote files..."
 ssh "$SSH" "sudo rm --recursive --force tsdb tsdb.tar.zst"
 
