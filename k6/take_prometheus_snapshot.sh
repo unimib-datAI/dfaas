@@ -84,6 +84,9 @@ if [[ -z "$POD_NAME" ]]; then
 fi
 echo "Pod: $POD_NAME"
 
+# Wait some seconds to let snapshost creation.
+sleep 60s
+
 # Make sure to remove any existing older snapshot from the user's home
 # directory. This is why the `rm` command is required before running `kubectl
 # cp`.
