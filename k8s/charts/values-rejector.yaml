@@ -1,0 +1,6 @@
+# Configuration for the rejector component. See k8s/scripts/rejector directory
+# for more information about this file.
+
+# Latest dev version from GitHub Container Registry.
+image: ghcr.io/unimib-datai/dfaas-rejector:dev
+imagePullPolicy: Always # Since the dev tag is overwritten with newer versions.

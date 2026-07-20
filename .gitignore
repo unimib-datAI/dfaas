@@ -38,11 +38,6 @@ simulation/outputs/**
 # Container images.
 /*.tar
 
-# JSON or YAML not directly included.
-*.json
-*.yaml
-*.json.gz
-
 # Ignore Python virtual environment directories.
 *.env/
 env/
