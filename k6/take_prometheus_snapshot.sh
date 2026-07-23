@@ -65,6 +65,14 @@ mkdir -p "$DEST_DIR"
 SSH_USER="user"
 SSH="${SSH_USER}@${REMOTE_IP}"
 
+# SSH options: we disable strict host key checking because the remote hosts are
+# VMs that are frequently recreated, and we operate in an isolated test bed
+# environment.
+SSH_OPTS=(
+  -o StrictHostKeyChecking=no
+  -o UserKnownHostsFile=/dev/null
+)
+
 echo "Creating Prometheus snapshot..."
 SNAPSHOT_JSON=$(curl --fail --silent --show-error --request POST "http://${REMOTE_IP}:30909/api/v1/admin/tsdb/snapshot")
 
@@ -77,7 +85,7 @@ fi
 echo "Snapshot: $SNAPSHOT_NAME"
 
 echo "Finding Prometheus pod..."
-POD_NAME=$(ssh "$SSH" "sudo kubectl get pods --no-headers -o custom-columns=:metadata.name | grep '^prometheus-' | head -n1")
+POD_NAME=$(ssh "${SSH_OPTS[@]}" "$SSH" "sudo kubectl get pods --no-headers -o custom-columns=:metadata.name | grep '^prometheus-' | head -n1")
 if [[ -z "$POD_NAME" ]]; then
     echo "Could not determine Prometheus pod."
     exit 1
@@ -93,7 +101,7 @@ sleep 60s
 #
 # sudo is required also for rm because kubectl cp preserve root permissions.
 echo "Copying snapshot from pod to remote host..."
-ssh "$SSH" "set -e
+ssh "${SSH_OPTS[@]}" "$SSH" "set -e
     sudo rm --recursive --force tsdb tsdb.tar.zst
     sudo kubectl cp --container=prometheus-server ${POD_NAME}:/data/snapshots/${SNAPSHOT_NAME} tsdb"
 
@@ -101,16 +109,16 @@ ssh "$SSH" "set -e
 # command inside the pod is the BusyBox implementation, it supports only short
 # arguments!
 echo "Removing snapshot from Prometheus pod..."
-ssh "$SSH" "sudo kubectl exec --container=prometheus-server ${POD_NAME} -- rm -rf /data/snapshots/${SNAPSHOT_NAME}"
+ssh "${SSH_OPTS[@]}" "$SSH" "sudo kubectl exec --container=prometheus-server ${POD_NAME} -- rm -rf /data/snapshots/${SNAPSHOT_NAME}"
 
 echo "Compressing snapshot on remote host..."
-ssh "$SSH" "tar --create --zstd --file=tsdb.tar.zst tsdb"
+ssh "${SSH_OPTS[@]}" "$SSH" "tar --create --zstd --file=tsdb.tar.zst tsdb"
 
 echo "Downloading archive..."
 scp "$SSH:tsdb.tar.zst" "${DEST_DIR}/tsdb.tar.zst"
 
 echo "Cleaning remote files..."
-ssh "$SSH" "sudo rm --recursive --force tsdb tsdb.tar.zst"
+ssh "${SSH_OPTS[@]}" "$SSH" "sudo rm --recursive --force tsdb tsdb.tar.zst"
 
 echo
 echo "Completed. Prometheus TSDB archive stored at: $(realpath "${DEST_DIR}/tsdb.tar.zst")"
