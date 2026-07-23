@@ -85,7 +85,7 @@ fi
 echo "Snapshot: $SNAPSHOT_NAME"
 
 echo "Finding Prometheus pod..."
-POD_NAME=$(ssh "${SSH_OPTS[@]}" "$SSH" "sudo kubectl get pods --no-headers -o custom-columns=:metadata.name | grep '^prometheus-' | head -n1")
+POD_NAME=$(ssh "${SSH_OPTS[@]}" "$SSH" "sudo kubectl get pods -l app.kubernetes.io/name=prometheus --no-headers -o custom-columns=:metadata.name")
 if [[ -z "$POD_NAME" ]]; then
     echo "Could not determine Prometheus pod."
     exit 1
