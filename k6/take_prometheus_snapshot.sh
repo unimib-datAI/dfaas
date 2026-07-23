@@ -116,7 +116,7 @@ echo "Compressing snapshot on remote host..."
 ssh "${SSH_OPTS[@]}" "$SSH" "tar --create --zstd --file=tsdb.tar.zst tsdb"
 
 echo "Downloading archive..."
-scp "$SSH:tsdb.tar.zst" "${DEST_DIR}/tsdb.tar.zst"
+scp "${SSH_OPTS[@]}" "$SSH:tsdb.tar.zst" "${DEST_DIR}/tsdb.tar.zst"
 
 echo "Cleaning remote files..."
 ssh "${SSH_OPTS[@]}" "$SSH" "sudo rm --recursive --force tsdb tsdb.tar.zst"
