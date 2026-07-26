@@ -11,6 +11,7 @@ from threading import Thread
 from .strategy import Strategy
 from configuration.config_manager import ConfigManager
 
+
 # Enum for metric relation type:
 #   - DIRECT: high value --> high weight
 #   - INVERT: high value --> low weight
@@ -18,8 +19,8 @@ class MetricType(Enum):
     DIRECT = 1
     INVERT = 2
 
+
 class EmpiricalStrategy(Strategy):
-    
     # Each analytic has its own relation type
     ANALYTICS = {
         "service_count": MetricType.DIRECT,
@@ -56,14 +57,14 @@ class EmpiricalStrategy(Strategy):
         "ram_xfunc": 1,
         "cpu_xfunc": 1,
     }
-    
+
     def __init__(self, config_json):
         self._config_json = config_json
         self._config_manager = ConfigManager()
-    
+
     def run(self) -> dict:
         return self.loop()
-    
+
     def loop(self) -> dict:
         """
         M(E)APE control loop
@@ -83,8 +84,8 @@ class EmpiricalStrategy(Strategy):
 
     def monitor(self):
         """
-        Mocked: instead of reading informations directly 
-        from the cluster read info from a json file with the 
+        Mocked: instead of reading informations directly
+        from the cluster read info from a json file with the
         complete configuration.
         """
         self._logger.debug("=======================")
@@ -167,8 +168,7 @@ class EmpiricalStrategy(Strategy):
 
         self._logger.debug("======== Final Weights Sum ========")
         for func, val in w.items():
-            self._logger.debug("Sum for func " + func +
-                              " = " + str(sum(val.values())))
+            self._logger.debug("Sum for func " + func + " = " + str(sum(val.values())))
 
         return w
 
@@ -176,7 +176,7 @@ class EmpiricalStrategy(Strategy):
         """
         Not mocked: write weights in a file for logging purposes (not on a HA-proxy config file).
         Weights are multiply by 100 to obtain a percentage score that sum to 100.
-        Note that to weights array are added also 0% weights toward nodes that can 
+        Note that to weights array are added also 0% weights toward nodes that can
         not help for a specific function.
         """
         self._logger.debug("=======================")
@@ -210,9 +210,8 @@ class EmpiricalStrategy(Strategy):
 
         self._logger.debug("======== Final Weights Sum ========")
         for func, val in w.items():
-            self._logger.debug("Sum for func " + func +
-                              " = " + str(sum(val.values())))
-            
+            self._logger.debug("Sum for func " + func + " = " + str(sum(val.values())))
+
         return w
 
     def analytics_weights(self):
@@ -229,7 +228,10 @@ class EmpiricalStrategy(Strategy):
 
         # For each "overloaded" func on this node
         for func in self._data[self._id]["functions"]:
-            if func["name"] in self._config_manager.FUNCTION_NAMES and func["state"] == "Overload":
+            if (
+                func["name"] in self._config_manager.FUNCTION_NAMES
+                and func["state"] == "Overload"
+            ):
                 self._logger.debug("FUNC: " + func["name"] + " is OVERLOADED")
                 helpers = {}
 
@@ -260,8 +262,8 @@ class EmpiricalStrategy(Strategy):
             else:
                 self._logger.debug("FUNC: " + func["name"] + " is UNDERLOADED")
 
-        #self._logger.debug("======== WS MAP ========")
-        #self._logger.debug(ws)  # Three nested map
+        # self._logger.debug("======== WS MAP ========")
+        # self._logger.debug(ws)  # Three nested map
         return ws
 
     def compute_weight(self, functions):
@@ -270,8 +272,7 @@ class EmpiricalStrategy(Strategy):
         all other nodes and for each analytics.
             - "functions" param represent the map containing info of helpers functions.
         """
-        self._logger.debug(
-            "======== Helpers functions on other nodes: ========")
+        self._logger.debug("======== Helpers functions on other nodes: ========")
         self._logger.debug(functions)
 
         ws = {}  # Map that has as key node_id and as values a nested map
@@ -304,8 +305,9 @@ class EmpiricalStrategy(Strategy):
                         # Note: if invocation rate is 0 the next division is not correct
                         # because 1 as default value is used. Instead need to be used
                         # 1 (default) / max_rate. This is only in case of "invoc_rate" metric
-                        w_metric[node] = self.ANALYTICS_DEFAULT_VALUES[metric] / \
-                            values["max_rate"]
+                        w_metric[node] = (
+                            self.ANALYTICS_DEFAULT_VALUES[metric] / values["max_rate"]
+                        )
 
                         # Print useful for debug
                         # if self._id == "node_0":
@@ -334,8 +336,10 @@ class EmpiricalStrategy(Strategy):
                 # Note: there will be an error for metrics that has value = 0
                 # Use default value if v == 0 or if v < of default value
                 # Removed: and v >= self.ANALYTICS_DEFAULT_VALUES[metric]
-                w_metric = {k: 1 / v if v != 0 else 1 /
-                            self.ANALYTICS_DEFAULT_VALUES[metric] for k, v in w_metric.items()}
+                w_metric = {
+                    k: 1 / v if v != 0 else 1 / self.ANALYTICS_DEFAULT_VALUES[metric]
+                    for k, v in w_metric.items()
+                }
                 den = sum(w_metric.values())
                 w_metric = {k: v / den for k, v in w_metric.items()}
 
@@ -357,20 +361,23 @@ class EmpiricalStrategy(Strategy):
             weights[func] = {}  # Initialize a map for each func-node tuple
 
             for node in values:
-                #h = np.ones((1, len(values[node].values())))        # h could be used to different weigthing of features
-                #weights[func][node] = sum([i*j for i, j in zip(values[node].values(), h[0])])
+                # h = np.ones((1, len(values[node].values())))        # h could be used to different weigthing of features
+                # weights[func][node] = sum([i*j for i, j in zip(values[node].values(), h[0])])
                 weights[func][node] = sum(
-                    [v*self.METRIC_WEIGHTS[k] for k, v in values[node].items()])
+                    [v * self.METRIC_WEIGHTS[k] for k, v in values[node].items()]
+                )
 
         # Probability distribution
         for func in weights:
-            weights[func] = {k: v / sum(weights[func].values())
-                             for k, v in weights[func].items()}
+            weights[func] = {
+                k: v / sum(weights[func].values()) for k, v in weights[func].items()
+            }
 
         self._logger.debug(weights)
         for func, val in weights.items():
-            self._logger.debug("Sum for function " + func +
-                              " = " + str(sum(val.values())))
+            self._logger.debug(
+                "Sum for function " + func + " = " + str(sum(val.values()))
+            )
         return weights
 
     def recalc_distribution(self, w):

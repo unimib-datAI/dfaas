@@ -5,14 +5,13 @@
 
 from .strategy import Strategy
 
-class BaseStrategy(Strategy):
 
+class BaseStrategy(Strategy):
     def __init__(self, config_json):
         super().__init__(config_json)
 
     def run(self) -> dict:
         return self.loop()
-
 
     def loop(self) -> dict:
         """
@@ -22,12 +21,14 @@ class BaseStrategy(Strategy):
         weights = {}
 
         # Extract loads data of the node from the config file
-        original_requests_groups, original_requests_functions = self._get_load_for_groups_and_functions(self._config_json)
+        original_requests_groups, original_requests_functions = (
+            self._get_load_for_groups_and_functions(self._config_json)
+        )
 
         for fun in original_requests_functions.keys():
             weights[fun] = {}
             weights[fun][self._id] = 1
-        
+
         for func, val in weights.items():
             self._logger.info("Weights for func {}: {}".format(func, val))
 

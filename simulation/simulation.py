@@ -46,7 +46,7 @@ def xfunc_request_table(max_rate_table, invoc_rate_table, weights_table):
     # print("============= WEIGHTS TABLE ==============")
     # print(weights_table)
     # print("==========================================")
-    
+
     fwd_requests = {}
     for node_from, weights_x_func in weights_table.items():
         fwd_requests[node_from] = {}
@@ -58,8 +58,11 @@ def xfunc_request_table(max_rate_table, invoc_rate_table, weights_table):
                 # with weights set as probability distribution
                 choiches = np.random.choice(
                     list(weights_x_node.keys()),
-                    size=(int(invoc_rate_table[node_from][func]) - int(max_rate_table[node_from][func])),
-                    p=[w/100 for w in list(weights_x_node.values())]
+                    size=(
+                        int(invoc_rate_table[node_from][func])
+                        - int(max_rate_table[node_from][func])
+                    ),
+                    p=[w / 100 for w in list(weights_x_node.values())],
                 )
 
                 for node_to in choiches:
@@ -69,7 +72,7 @@ def xfunc_request_table(max_rate_table, invoc_rate_table, weights_table):
                         fwd_requests[node_from][func][node_to] += 1
                     else:
                         fwd_requests[node_from][func][node_to] = 1
- 
+
     # Fill forwarding table with missing values
     for node_from, weights_x_func in fwd_requests.items():
         for f in config_manager.FUNCTION_NAMES:
@@ -90,9 +93,13 @@ def xfunc_request_table(max_rate_table, invoc_rate_table, weights_table):
                     if node not in list(weights_x_node.keys()):
                         fwd_requests[node_from][func][node] = 0
                 if invoc_rate_table[node_from][func] < max_rate_table[node_from][func]:
-                    fwd_requests[node_from][func][node_from] = invoc_rate_table[node_from][func]
+                    fwd_requests[node_from][func][node_from] = invoc_rate_table[
+                        node_from
+                    ][func]
                 else:
-                    fwd_requests[node_from][func][node_from] = max_rate_table[node_from][func]
+                    fwd_requests[node_from][func][node_from] = max_rate_table[
+                        node_from
+                    ][func]
 
     # Utility prints
     # print("============= FORWARDING TABLE TABLE ==============")
@@ -105,21 +112,25 @@ def xfunc_request_table(max_rate_table, invoc_rate_table, weights_table):
 def create_tables(fwd_requests, invoc_rate, max_rate, minute, strategy_type):
     """
     Starting by forwarding requests create a table and export it in a CSV file
-    Also invocation rate and max rate table are create and exported in the same 
+    Also invocation rate and max rate table are create and exported in the same
     format
     """
-    path = config_manager.SIMULATION_TABLES_OUTPUT_PATH.joinpath(strategy_type, "minute_" + str(minute))
+    path = config_manager.SIMULATION_TABLES_OUTPUT_PATH.joinpath(
+        strategy_type, "minute_" + str(minute)
+    )
     nodes_set = sorted(set(fwd_requests.keys()))
 
     # Foreach function and for each node create a dataframe with forwarded requests
     for func in config_manager.FUNCTION_NAMES:
         df_x_func = pd.DataFrame([], index=nodes_set)
         for node_from in fwd_requests:
-            df_x_func[node_from] = [fwd_requests[node_from][func][k]
-                                    for k in sorted(fwd_requests[node_from][func].keys())]
+            df_x_func[node_from] = [
+                fwd_requests[node_from][func][k]
+                for k in sorted(fwd_requests[node_from][func].keys())
+            ]
         # Invert rows and columns
         df_x_func = df_x_func.T
-        df_x_func.to_csv(path.joinpath(func + ".csv"), sep='\t', encoding='utf-8')
+        df_x_func.to_csv(path.joinpath(func + ".csv"), sep="\t", encoding="utf-8")
 
         print("     > FWD_TABLE FOR FUNC {}".format(func))
         print(df_x_func)
@@ -132,15 +143,17 @@ def create_tables(fwd_requests, invoc_rate, max_rate, minute, strategy_type):
     print("     > INVOC_RATE_TABLE")
     print(df_invoc)
 
-    df_invoc.to_csv(path.joinpath("invoc_rates.csv"), sep='\t', encoding='utf-8')
+    df_invoc.to_csv(path.joinpath("invoc_rates.csv"), sep="\t", encoding="utf-8")
 
     # Create dataframe for max_rates
-    df_max_rates = pd.DataFrame([], index=config_manager.FUNCTION_NAMES, columns=nodes_set)
+    df_max_rates = pd.DataFrame(
+        [], index=config_manager.FUNCTION_NAMES, columns=nodes_set
+    )
     for node in max_rate:
         df_max_rates[node] = [max_rate[node][f] for f in config_manager.FUNCTION_NAMES]
 
     df_max_rates = df_max_rates.T
-    df_max_rates.to_csv(path.joinpath("max_rates.csv"), sep='\t', encoding='utf-8')
+    df_max_rates.to_csv(path.joinpath("max_rates.csv"), sep="\t", encoding="utf-8")
     print("     > MAX_RATE_TABLE")
     print(df_max_rates)
 
@@ -181,7 +194,7 @@ def simulation(nodes_number, config_file):
 
         # Dictionaries used for analysis
         simulation_weights_table = {}
-        simulation_invoc_rate_table = {}        
+        simulation_invoc_rate_table = {}
         simulation_max_rate_table = {}
 
         # Forwarding requests dictionary
@@ -206,13 +219,12 @@ def simulation(nodes_number, config_file):
                         FunctionRequest(
                             func["name"],
                             config_file[key]["replicas"][func["name"]],
-                            func["invoc_rate"]
+                            func["invoc_rate"],
                         )
                     )
 
             config_request = ConfigRequest(
-                config_file[key]["node_type"],
-                function_requests
+                config_file[key]["node_type"], function_requests
             )
 
             print("--------------------- CONFIG REQUEST ---------------------")
@@ -222,8 +234,8 @@ def simulation(nodes_number, config_file):
             df_node, df_func = dl.get_metric_for_configuration(config_request)
 
             # Debug print on file
-            #df_node.to_csv("df_node.csv")
-            #df_func.to_csv("df_func.csv")
+            # df_node.to_csv("df_node.csv")
+            # df_func.to_csv("df_func.csv")
 
             print("----------------------------------------------------------")
 
@@ -234,8 +246,17 @@ def simulation(nodes_number, config_file):
             # Parse function metrics
             for func in final_config[key]["functions"]:
                 if func["name"] in config_manager.FUNCTION_NAMES:
-                    tmp_df = df_func[["MetricName", "AVG(Value)", "FunctionName", "MaxRate",
-                                      "NumReplicas", "Margin", "State"]]
+                    tmp_df = df_func[
+                        [
+                            "MetricName",
+                            "AVG(Value)",
+                            "FunctionName",
+                            "MaxRate",
+                            "NumReplicas",
+                            "Margin",
+                            "State",
+                        ]
+                    ]
                     tmp_df = tmp_df[tmp_df["FunctionName"] == func["name"]]
                     for _, metric in tmp_df.T.to_dict().items():
                         func[metric["MetricName"]] = metric["AVG(Value)"]
@@ -267,8 +288,13 @@ def simulation(nodes_number, config_file):
                     simulation_max_rate_table[node][f] = 0
 
         # Write configuration on json file for logging
-        with open(config_manager.SIMULATION_COMPLETE_CONFIGURATION_OUTPUT_PATH.joinpath(
-                  'config{}.json'.format(minute)), 'w', encoding='utf-8') as f:
+        with open(
+            config_manager.SIMULATION_COMPLETE_CONFIGURATION_OUTPUT_PATH.joinpath(
+                "config{}.json".format(minute)
+            ),
+            "w",
+            encoding="utf-8",
+        ) as f:
             json.dump(final_config, f, ensure_ascii=False, indent=4)
 
         # Call agent loop for each config that has been previously built
@@ -278,20 +304,21 @@ def simulation(nodes_number, config_file):
         for id in range(0, nodes_number):
             key = config_manager.NODE_KEY_PREFIX + str(id)
             config_with_neigh = {}
-            config_with_neigh[key] = final_config[key] # Add this node
+            config_with_neigh[key] = final_config[key]  # Add this node
             neighbours = config_file[key]["neighbours"]
 
             # Create configuration file with only neighbours
             for neighbour in neighbours:
                 config_with_neigh[neighbour] = final_config[neighbour]
 
-            #print(config_with_neigh)
+            # print(config_with_neigh)
 
             logger = get_logger(
                 "agent" + str(id) + "_minute_" + str(minute),
-                config_manager.SIMULATION_AGENT_LOGGING_BASE_PATH.joinpath("agent_" +
-                str(id) + ".log"),
-                logging.INFO
+                config_manager.SIMULATION_AGENT_LOGGING_BASE_PATH.joinpath(
+                    "agent_" + str(id) + ".log"
+                ),
+                logging.INFO,
             )
 
             logger.info("\n")
@@ -302,21 +329,17 @@ def simulation(nodes_number, config_file):
                 # Build correct strategy
                 strategy = StrategyFactory.create_strategy(s, config_with_neigh)
                 logger.info("   > STRATEGY: {} <".format(s))
-                agent = Agent(
-                    id,
-                    logger,
-                    strategy
-                )
-                #agent.disable_logging() # Disable logging for speed
+                agent = Agent(id, logger, strategy)
+                # agent.disable_logging() # Disable logging for speed
                 weights, execution_time = run_agent(agent)
                 execution_times[s].append(execution_time)
                 simulation_weights_table[s][key] = weights
 
         for s in config_manager.STRATEGIES:
             fwd_requests[s] = xfunc_request_table(
-                simulation_max_rate_table, 
+                simulation_max_rate_table,
                 simulation_invoc_rate_table,
-                simulation_weights_table[s]
+                simulation_weights_table[s],
             )
 
         print("> START MINUTE {}".format(minute))
@@ -324,7 +347,13 @@ def simulation(nodes_number, config_file):
         for s in config_manager.STRATEGIES:
             # Create and export tables for three algorithms
             print(" > {}".format(s))
-            create_tables(fwd_requests[s], simulation_invoc_rate_table, simulation_max_rate_table, minute, s)
+            create_tables(
+                fwd_requests[s],
+                simulation_invoc_rate_table,
+                simulation_max_rate_table,
+                minute,
+                s,
+            )
             print("------------------------------------------------")
 
         print("> END MINUTE {}".format(minute))
@@ -335,7 +364,7 @@ def simulation(nodes_number, config_file):
 def main(instance_file=""):
     if instance_file == "":
         instance_file = config_manager.OUTPUT_INSTANCE_JSON_FILE_PATH
-        
+
     f = open(instance_file)
     config_file = json.load(f)
     simulation(config_file["nodes_number"], config_file)

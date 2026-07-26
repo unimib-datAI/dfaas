@@ -3,6 +3,7 @@
 # This file is licensed under the AGPL v3.0 or later license. See LICENSE and
 # AUTHORS file for more information.
 
+
 class FunctionRequest:
     """
     This class represents the request of a specific function.
@@ -35,7 +36,9 @@ class FunctionRequest:
         return self.__wl
 
     def __str__(self):
-        return "( Name: {} -- Replicas: {} -- Workload: {} )".format(self.__name, self.__replicas_num, self.__wl)
+        return "( Name: {} -- Replicas: {} -- Workload: {} )".format(
+            self.__name, self.__replicas_num, self.__wl
+        )
 
     def __repr__(self):
         return str(self)

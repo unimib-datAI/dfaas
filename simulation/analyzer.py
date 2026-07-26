@@ -11,6 +11,7 @@ from utils.utils import flatten
 
 config_manager = ConfigManager()
 
+
 def calculate_rates(table, func, max_rates, invoc_rates):
     """
     This function calculate success and reject rate for [func] function
@@ -30,26 +31,31 @@ def calculate_rates(table, func, max_rates, invoc_rates):
     tot_invoc_rate = invoc_rates.sum(axis=0)
     reject_num = tot_invoc_rate - success_rate
 
-    print("====> Success req. ({}) + Rejected req. ({}) == {}: {}".format(
+    print(
+        "====> Success req. ({}) + Rejected req. ({}) == {}: {}".format(
             success_rate,
             reject_num,
             tot_invoc_rate,
-            success_rate + reject_num == tot_invoc_rate
+            success_rate + reject_num == tot_invoc_rate,
         )
     )
 
-    success_rate = (success_rate / tot_invoc_rate) if tot_invoc_rate > 0 and success_rate <= tot_invoc_rate else 1.0
+    success_rate = (
+        (success_rate / tot_invoc_rate)
+        if tot_invoc_rate > 0 and success_rate <= tot_invoc_rate
+        else 1.0
+    )
     reject_rate = 1.0 - success_rate
 
     print("Success rate for func {} is {}".format(func, success_rate))
     print("Reject rate for func {} is {}".format(func, reject_rate))
-    
+
     # print("====> SR + RR == 1: {}".format(success_rate+reject_rate == 1))
-    
+
     # Reject num is multiplied by 60 that are seconds between each agent execution
-    # Note: This is based on the assumption that the traffic will be more or less 
+    # Note: This is based on the assumption that the traffic will be more or less
     # constant during this minute
-    return success_rate, reject_rate, reject_num*60
+    return success_rate, reject_rate, reject_num * 60
 
 
 def export_for_minute_rates(func, rates):
@@ -58,12 +64,16 @@ def export_for_minute_rates(func, rates):
     """
     # Plot configurations
     plt.figure(figsize=(20, 10))
-    plt.title("Success rate for function {} during 6 minutes of experiment".format(func))
+    plt.title(
+        "Success rate for function {} during 6 minutes of experiment".format(func)
+    )
     plt.xlabel("Minute")
     plt.ylabel("Success rate")
 
-    df = pd.DataFrame(data=rates, index=[i for i in range(0, config_manager.SIMULATION_MINUTES)])
-    #print(df)
+    df = pd.DataFrame(
+        data=rates, index=[i for i in range(0, config_manager.SIMULATION_MINUTES)]
+    )
+    # print(df)
 
     for column in df.columns:
         plt.plot(df.index, df[column], label="Success rate for {}".format(column))
@@ -72,14 +82,16 @@ def export_for_minute_rates(func, rates):
     plt.legend(loc="lower left")
     plt.grid()
 
-    plt.savefig(config_manager.ANALYZER_OUTPUT_PATH.joinpath("comparison_{}.png".format(func)))
+    plt.savefig(
+        config_manager.ANALYZER_OUTPUT_PATH.joinpath("comparison_{}.png".format(func))
+    )
 
 
 def export_index_comparison_table(df):
     """
     Export index comparison table of different strategies as CSV file
     """
-    df.to_csv(config_manager.INDEX_COMPARISON_FILE, sep='\t', encoding='utf-8')
+    df.to_csv(config_manager.INDEX_COMPARISON_FILE, sep="\t", encoding="utf-8")
 
 
 def main():
@@ -103,44 +115,62 @@ def main():
             x_func_reject_rate[func] = []
             x_func_reject_num[func] = []
 
-        print("-------------------------- ALGO {} --------------------------".format(algo))
+        print(
+            "-------------------------- ALGO {} --------------------------".format(algo)
+        )
 
-        # Create path for recover tables        
+        # Create path for recover tables
         base_path = config_manager.SIMULATION_TABLES_OUTPUT_PATH.joinpath(algo)
 
         for minute in range(0, config_manager.SIMULATION_MINUTES):
             print("MINUTE {}".format(minute))
-            print(">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>")
+            print(
+                ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+            )
 
             # Complete path for load tables
             path = base_path.joinpath("minute_" + str(minute))
 
             # For each minute load invocaion_rate and max_rate table
-            df_invoc_rate = pd.read_csv(path.joinpath("invoc_rates.csv"), delimiter='\t', header=0, index_col=0)
+            df_invoc_rate = pd.read_csv(
+                path.joinpath("invoc_rates.csv"), delimiter="\t", header=0, index_col=0
+            )
             print("================ INVOCATION RATES ==================")
             print(df_invoc_rate)
             print("====================================================")
 
-            df_max_rate = pd.read_csv(path.joinpath("max_rates.csv"), delimiter='\t', header=0, index_col=0)
+            df_max_rate = pd.read_csv(
+                path.joinpath("max_rates.csv"), delimiter="\t", header=0, index_col=0
+            )
             print("================ MAX RATES =========================")
             print(df_max_rate)
             print("====================================================")
 
             # For each minute and foreach function load dataframe
             for func in config_manager.FUNCTION_NAMES:
-                df = pd.read_csv(path.joinpath(func + ".csv"), delimiter='\t', header=0, index_col=0)
+                df = pd.read_csv(
+                    path.joinpath(func + ".csv"), delimiter="\t", header=0, index_col=0
+                )
 
-                print("================ FORWARDED REQUESTS for {} ================".format(func))
+                print(
+                    "================ FORWARDED REQUESTS for {} ================".format(
+                        func
+                    )
+                )
                 print(df)
                 print("==========================================================")
 
-                sr, rr, rn = calculate_rates(df, func, df_max_rate[func], df_invoc_rate[func])
+                sr, rr, rn = calculate_rates(
+                    df, func, df_max_rate[func], df_invoc_rate[func]
+                )
                 x_func_success_rate[func].append(sr)
                 x_func_reject_rate[func].append(rr)
                 x_func_reject_num[func].append(rn)
                 rates_for_algo[func][algo] = x_func_success_rate[func]
 
-            print("<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<")
+            print(
+                "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+            )
 
         print("STATS FOR ALGO {}".format(algo))
 
@@ -160,19 +190,20 @@ def main():
         # print(" > Rejected requests for ocr: {}".format(np.sum(ocr_reject_num)))
 
         # TEST
-        #print(x_func_success_rate)
-        #print(x_func_reject_rate)
-        #print(x_func_reject_num)
+        # print(x_func_success_rate)
+        # print(x_func_reject_rate)
+        # print(x_func_reject_num)
 
         # Metrics prints
 
         ##### SUCCESS RATES METRICS #####
         # Mean success rate
-        mean_success_rate = np.mean([np.mean(srates) for k, srates in x_func_success_rate.items()]) * 100
-        print("     > Mean success rate: {:0.2f}%".format(
-            mean_success_rate
-        ))
-        
+        mean_success_rate = (
+            np.mean([np.mean(srates) for k, srates in x_func_success_rate.items()])
+            * 100
+        )
+        print("     > Mean success rate: {:0.2f}%".format(mean_success_rate))
+
         # Success rate variance
         flat_list = [i * 100 for i in flatten(list(x_func_success_rate.values()))]
         success_rate_variance = np.var(flat_list)
@@ -185,48 +216,66 @@ def main():
 
         # Success rate percentile
         flat_list = flatten(list(x_func_success_rate.values()))
-        success_rate_percentile = np.percentile(flat_list, config_manager.ANALYSIS_PERCENTILE) * 100
-        print("     > Success rate {}% percentile: {:0.2f}%".format(
-                config_manager.ANALYSIS_PERCENTILE,
-                success_rate_percentile
+        success_rate_percentile = (
+            np.percentile(flat_list, config_manager.ANALYSIS_PERCENTILE) * 100
+        )
+        print(
+            "     > Success rate {}% percentile: {:0.2f}%".format(
+                config_manager.ANALYSIS_PERCENTILE, success_rate_percentile
             )
         )
 
         ##### SUCCESS RATES (STRESS PERIOD) METRICS #####
         # Mean success rate calculated during high traffic period (minutes from 1 to 5)
-        mean_success_rate_stress_period = np.mean([np.mean(srates[1:6]) for k, srates in x_func_success_rate.items()]) * 100
-        print("         > Mean success rate during stress period (from minute 1 to 5): {:0.2f}%".format(
-            mean_success_rate_stress_period
-        ))
+        mean_success_rate_stress_period = (
+            np.mean([np.mean(srates[1:6]) for k, srates in x_func_success_rate.items()])
+            * 100
+        )
+        print(
+            "         > Mean success rate during stress period (from minute 1 to 5): {:0.2f}%".format(
+                mean_success_rate_stress_period
+            )
+        )
 
         # Success rate variance (stress period)
-        flat_list = [i * 100 for i in flatten([item[1:6] for item in list(x_func_success_rate.values())])]
+        flat_list = [
+            i * 100
+            for i in flatten([item[1:6] for item in list(x_func_success_rate.values())])
+        ]
         success_rate_stress_period_variance = np.var(flat_list)
-        print("         > Success rate variance during stress period (from minute 1 to 5): {:0.2f}"
-            .format(success_rate_stress_period_variance))
+        print(
+            "         > Success rate variance during stress period (from minute 1 to 5): {:0.2f}".format(
+                success_rate_stress_period_variance
+            )
+        )
 
         # Success rate median (stress period)
         flat_list = flatten([item[1:6] for item in list(x_func_success_rate.values())])
         success_rate_stress_period_median = np.median(flat_list) * 100
-        print("         > Success rate median during stress period (from minute 1 to 5): {:0.2f}%"
-            .format(success_rate_stress_period_median))
+        print(
+            "         > Success rate median during stress period (from minute 1 to 5): {:0.2f}%".format(
+                success_rate_stress_period_median
+            )
+        )
 
         # Success rate percentile (stress period)
         flat_list = flatten([item[1:6] for item in list(x_func_success_rate.values())])
-        success_rate_stress_period_percentile = np.percentile(flat_list, config_manager.ANALYSIS_PERCENTILE) * 100
-        print("         > Success rate {}% percentile during stress period (from minute 1 to 5): {:0.2f}%"
-            .format(
+        success_rate_stress_period_percentile = (
+            np.percentile(flat_list, config_manager.ANALYSIS_PERCENTILE) * 100
+        )
+        print(
+            "         > Success rate {}% percentile during stress period (from minute 1 to 5): {:0.2f}%".format(
                 config_manager.ANALYSIS_PERCENTILE,
-                success_rate_stress_period_percentile
+                success_rate_stress_period_percentile,
             )
         )
 
         ##### REJECT RATES METRICS #####
         # Total rejected requests num calculated for each algorithm across minutes
-        total_reject_requests = np.sum([np.sum(rejnums) for k, rejnums in x_func_reject_num.items()])
-        print("     > Total rejected requests: {} req".format(
-            total_reject_requests
-        ))
+        total_reject_requests = np.sum(
+            [np.sum(rejnums) for k, rejnums in x_func_reject_num.items()]
+        )
+        print("     > Total rejected requests: {} req".format(total_reject_requests))
 
         # Reject number variance
         flat_list = flatten(list(x_func_reject_num.values()))
@@ -240,14 +289,18 @@ def main():
 
         # Reject number percentile
         flat_list = flatten(list(x_func_reject_num.values()))
-        reject_number_percentile = np.percentile(flat_list, config_manager.ANALYSIS_PERCENTILE)
-        print("     > Reject num {}% percentile: {:0.2f}".format(
-                config_manager.ANALYSIS_PERCENTILE,
-                reject_number_percentile
+        reject_number_percentile = np.percentile(
+            flat_list, config_manager.ANALYSIS_PERCENTILE
+        )
+        print(
+            "     > Reject num {}% percentile: {:0.2f}".format(
+                config_manager.ANALYSIS_PERCENTILE, reject_number_percentile
             )
         )
 
-        print("----------------------------------------------------------------------------")
+        print(
+            "----------------------------------------------------------------------------"
+        )
 
         index_comparison[algo] = [
             mean_success_rate,

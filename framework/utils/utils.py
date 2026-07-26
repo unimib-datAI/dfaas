@@ -7,16 +7,14 @@ import os
 import shutil
 from datetime import datetime
 
+
 def create_timestamp_folder(base_path):
     """
     This function create a directory with timestamp as name
     """
-    dir_path = base_path.joinpath(datetime.now().strftime('%Y-%m-%d_%H-%M-%S'))
+    dir_path = base_path.joinpath(datetime.now().strftime("%Y-%m-%d_%H-%M-%S"))
 
-    mydir = os.path.join(
-        os.getcwd(),
-        dir_path
-    )
+    mydir = os.path.join(os.getcwd(), dir_path)
     try:
         os.makedirs(mydir)
     except OSError as e:
@@ -74,6 +72,7 @@ def zip_foulder(dir, out_path, format="zip"):
     Default format is "zip"
     """
     shutil.make_archive(out_path, format, dir)
+
 
 def flatten(t):
     """

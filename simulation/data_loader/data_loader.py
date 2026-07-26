@@ -12,6 +12,7 @@ import json
 from configuration.config_manager import ConfigManager
 from database_manager.exp_db_manager import ExpDbManager
 
+
 class DataLoader:
     """
     This class is used to populate database with experiments data
@@ -40,7 +41,9 @@ class DataLoader:
         else:
             print("DB file already exist")
 
-    def get_metric_for_configuration(self, config_request) -> pd.DataFrame and pd.DataFrame:
+    def get_metric_for_configuration(
+        self, config_request
+    ) -> pd.DataFrame and pd.DataFrame:
         """
         This method returns all metrics gathered for a specific configuration of a node
         :config_request: configuration request
@@ -49,7 +52,9 @@ class DataLoader:
         df_node, df_func = self.__db_manager.get_metrics(config_request)
 
         if df_node.empty and df_func.empty:
-            print("Experiment with this type of configuration does not exist in the database...")
+            print(
+                "Experiment with this type of configuration does not exist in the database..."
+            )
 
         return df_node, df_func
 
@@ -73,36 +78,58 @@ class DataLoader:
                 now = datetime.datetime.now()
                 timestamp = datetime.datetime(now.year, now.month, now.day, 0, 0, idx)
 
-            exp_instant_id = self.__db_manager.insert_exp_instant(timestamp, self.__nodes_ids[node_type])
+            exp_instant_id = self.__db_manager.insert_exp_instant(
+                timestamp, self.__nodes_ids[node_type]
+            )
 
             self.__db_manager.insert_metric(
-                "ram_usage", "node", self.__config_manager.NODES_METRICS_UNIT["ram_usage"],
-                round(node_ram_usage*100, 2), self.__config_manager.NODES_METRICS["ram_usage"],
-                exp_instant_id, node_id=self.__nodes_ids[node_type]
+                "ram_usage",
+                "node",
+                self.__config_manager.NODES_METRICS_UNIT["ram_usage"],
+                round(node_ram_usage * 100, 2),
+                self.__config_manager.NODES_METRICS["ram_usage"],
+                exp_instant_id,
+                node_id=self.__nodes_ids[node_type],
             )
             self.__db_manager.insert_metric(
-                "cpu_usage", "node", self.__config_manager.NODES_METRICS_UNIT["cpu_usage"],
-                round(node_cpu_usage * 100, 2), self.__config_manager.NODES_METRICS["cpu_usage"],
-                exp_instant_id, node_id=self.__nodes_ids[node_type]
+                "cpu_usage",
+                "node",
+                self.__config_manager.NODES_METRICS_UNIT["cpu_usage"],
+                round(node_cpu_usage * 100, 2),
+                self.__config_manager.NODES_METRICS["cpu_usage"],
+                exp_instant_id,
+                node_id=self.__nodes_ids[node_type],
             )
 
             for _, func in enumerate(json_file["output"][idx]["functions"]):
                 func_name = func["name"]
                 if func_name in self.__config_manager.FUNCTION_NAMES:
                     self.__db_manager.insert_deploy(
-                        exp_instant_id, self.__functions_ids[func_name], func["max_rate"],
-                        func["service_count"], func["invoc_rate"], func["margin"], func["state"]
+                        exp_instant_id,
+                        self.__functions_ids[func_name],
+                        func["max_rate"],
+                        func["service_count"],
+                        func["invoc_rate"],
+                        func["margin"],
+                        func["state"],
                     )
 
                     for key, value in func.items():
-                        if key != "name" and key not in self.__config_manager.DEPLOY_DATA:
+                        if (
+                            key != "name"
+                            and key not in self.__config_manager.DEPLOY_DATA
+                        ):
                             if key in ["ram_xfunc", "cpu_xfunc"]:
                                 value = round(value * 100, 2)
 
                             self.__db_manager.insert_metric(
-                                key, "func", self.__config_manager.FUNCTION_METRICS_UNIT[key],
-                                value, self.__config_manager.FUNCTION_METRICS[key], exp_instant_id,
-                                function_id=self.__functions_ids[func_name]
+                                key,
+                                "func",
+                                self.__config_manager.FUNCTION_METRICS_UNIT[key],
+                                value,
+                                self.__config_manager.FUNCTION_METRICS[key],
+                                exp_instant_id,
+                                function_id=self.__functions_ids[func_name],
                             )
 
     def _load_data(self) -> None:
@@ -128,15 +155,14 @@ class DataLoader:
             node_id = self.__db_manager.insert_node(
                 node_type,
                 self.__config_manager.NODE_CONFIGURATIONS[node_type]["ram"],
-                self.__config_manager.NODE_CONFIGURATIONS[node_type]["cpu"]
+                self.__config_manager.NODE_CONFIGURATIONS[node_type]["cpu"],
             )
             self.__nodes_ids[node_type] = node_id
 
         # Load function's data
         for func_name in self.__config_manager.FUNCTION_NAMES:
             function_id = self.__db_manager.insert_function(
-                func_name,
-                self.__config_manager.FUNCTIONS_DESCRPTION[func_name]
+                func_name, self.__config_manager.FUNCTIONS_DESCRPTION[func_name]
             )
             self.__functions_ids[func_name] = function_id
 

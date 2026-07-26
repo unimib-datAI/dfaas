@@ -17,9 +17,10 @@ async def app_lifespan(app: FastAPI):
     load_models()
     yield
 
+
 load_dotenv()
 app = FastAPI(lifespan=app_lifespan)
-model_proxy = ModelProxy(os.getenv('MODELS_TYPE'))
+model_proxy = ModelProxy(os.getenv("MODELS_TYPE"))
 
 
 @app.get("/")
@@ -30,22 +31,25 @@ async def root():
 @app.get("/cpu_usage_node")
 async def cpu_usage_node_prediction(request: Request):
     input_data_json = await request.json()
-    return model_proxy.get_predictions(input_data_json,
-                                       config_constants.CPU_USAGE_METRIC, True)
+    return model_proxy.get_predictions(
+        input_data_json, config_constants.CPU_USAGE_METRIC, True
+    )
 
 
 @app.get("/ram_usage_node")
 async def ram_usage_node_prediction(request: Request):
     input_data_json = await request.json()
-    return model_proxy.get_predictions(input_data_json,
-                                       config_constants.RAM_USAGE_METRIC, True)
+    return model_proxy.get_predictions(
+        input_data_json, config_constants.RAM_USAGE_METRIC, True
+    )
 
 
 @app.get("/power_usage_node")
 async def power_usage_node_prediction(request: Request):
     input_data_json = await request.json()
-    return model_proxy.get_predictions(input_data_json,
-                                       config_constants.POWER_USAGE_METRIC, True)
+    return model_proxy.get_predictions(
+        input_data_json, config_constants.POWER_USAGE_METRIC, True
+    )
 
 
 @app.get("/node_usage")
@@ -61,4 +65,3 @@ def load_models():
 
 if __name__ == "__main__":
     uvicorn.run(app)
-

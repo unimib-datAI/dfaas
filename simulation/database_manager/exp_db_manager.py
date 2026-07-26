@@ -43,7 +43,15 @@ class ExpDbManager(DbManager):
         Method used to populate a dict that maps for each function a list of experiment ids that contain this function
         """
         for func in self.__config_manager.FUNCTION_NAMES:
-            query = Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("select_exp_ids_for_func.sql")).read_text().format(func)
+            query = (
+                Path(
+                    self.__config_manager.SQL_FILE_PATH_DIR.joinpath(
+                        "select_exp_ids_for_func.sql"
+                    )
+                )
+                .read_text()
+                .format(func)
+            )
 
             conn = sqlite3.connect(self._DbManager__path)
             c = conn.cursor()
@@ -53,15 +61,50 @@ class ExpDbManager(DbManager):
             id_list = [str(el[0]) for el in c.fetchall()]
             self.__exp_ids_for_func[func] = id_list
 
-
     def create_tables(self) -> None:
-        """ Create tables for experiment database """
-        self.__execute_insert_create_query(Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("create_table_node.sql")).read_text())
-        self.__execute_insert_create_query(Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("create_table_function_type.sql")).read_text())
-        self.__execute_insert_create_query(Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("create_table_function.sql")).read_text())
-        self.__execute_insert_create_query(Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("create_table_exp_instant.sql")).read_text())
-        self.__execute_insert_create_query(Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("create_table_metric.sql")).read_text())
-        self.__execute_insert_create_query(Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("create_table_deploy.sql")).read_text())
+        """Create tables for experiment database"""
+        self.__execute_insert_create_query(
+            Path(
+                self.__config_manager.SQL_FILE_PATH_DIR.joinpath(
+                    "create_table_node.sql"
+                )
+            ).read_text()
+        )
+        self.__execute_insert_create_query(
+            Path(
+                self.__config_manager.SQL_FILE_PATH_DIR.joinpath(
+                    "create_table_function_type.sql"
+                )
+            ).read_text()
+        )
+        self.__execute_insert_create_query(
+            Path(
+                self.__config_manager.SQL_FILE_PATH_DIR.joinpath(
+                    "create_table_function.sql"
+                )
+            ).read_text()
+        )
+        self.__execute_insert_create_query(
+            Path(
+                self.__config_manager.SQL_FILE_PATH_DIR.joinpath(
+                    "create_table_exp_instant.sql"
+                )
+            ).read_text()
+        )
+        self.__execute_insert_create_query(
+            Path(
+                self.__config_manager.SQL_FILE_PATH_DIR.joinpath(
+                    "create_table_metric.sql"
+                )
+            ).read_text()
+        )
+        self.__execute_insert_create_query(
+            Path(
+                self.__config_manager.SQL_FILE_PATH_DIR.joinpath(
+                    "create_table_deploy.sql"
+                )
+            ).read_text()
+        )
 
     def insert_node(self, name: str, ram: float, cpu: float) -> int:
         """
@@ -72,7 +115,9 @@ class ExpDbManager(DbManager):
         :return: last inserted id
         """
         last_id = self.__execute_insert_create_query(
-            Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("insert_node.sql")).read_text().format(name, ram, cpu)
+            Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("insert_node.sql"))
+            .read_text()
+            .format(name, ram, cpu)
         )
         return last_id
 
@@ -84,7 +129,11 @@ class ExpDbManager(DbManager):
         :return: last inserted id
         """
         last_id = self.__execute_insert_create_query(
-            Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("insert_function.sql")).read_text().format(name, description)
+            Path(
+                self.__config_manager.SQL_FILE_PATH_DIR.joinpath("insert_function.sql")
+            )
+            .read_text()
+            .format(name, description)
         )
         return last_id
 
@@ -96,12 +145,27 @@ class ExpDbManager(DbManager):
         :return: last inserted id
         """
         last_id = self.__execute_insert_create_query(
-            Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("insert_exp_instant.sql")).read_text().format(ts, node_id)
+            Path(
+                self.__config_manager.SQL_FILE_PATH_DIR.joinpath(
+                    "insert_exp_instant.sql"
+                )
+            )
+            .read_text()
+            .format(ts, node_id)
         )
         return last_id
 
-    def insert_metric(self, name: str, type: str, unit: str, val: float, desc: str,
-                      exp_instant_id: int, function_id = None, node_id = None) -> int:
+    def insert_metric(
+        self,
+        name: str,
+        type: str,
+        unit: str,
+        val: float,
+        desc: str,
+        exp_instant_id: int,
+        function_id=None,
+        node_id=None,
+    ) -> int:
         """
         Insert metric to METRIC table
         :name: metric name
@@ -116,19 +180,39 @@ class ExpDbManager(DbManager):
         """
         if function_id is not None and node_id is None:
             last_id = self.__execute_insert_create_query(
-                Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("insert_metric_func.sql")).read_text().format(name, type, unit, val, desc, exp_instant_id, function_id)
+                Path(
+                    self.__config_manager.SQL_FILE_PATH_DIR.joinpath(
+                        "insert_metric_func.sql"
+                    )
+                )
+                .read_text()
+                .format(name, type, unit, val, desc, exp_instant_id, function_id)
             )
         elif node_id is not None and function_id is None:
             last_id = self.__execute_insert_create_query(
-                Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("insert_metric_node.sql")).read_text().format(name, type, unit, val, desc, exp_instant_id, node_id)
+                Path(
+                    self.__config_manager.SQL_FILE_PATH_DIR.joinpath(
+                        "insert_metric_node.sql"
+                    )
+                )
+                .read_text()
+                .format(name, type, unit, val, desc, exp_instant_id, node_id)
             )
         else:
             print("Params function_id and node_id cannot be both not None")
 
         return last_id
 
-    def insert_deploy(self, exp_instant_id: int, function_id: int, max_rate: int,
-                      num_replicas: int, wl: int, margin: int, state: str) -> None:
+    def insert_deploy(
+        self,
+        exp_instant_id: int,
+        function_id: int,
+        max_rate: int,
+        num_replicas: int,
+        wl: int,
+        margin: int,
+        state: str,
+    ) -> None:
         """
         Insert deploy information on DEPLOY table
         :exp_instant_id: experiment instant id
@@ -140,7 +224,11 @@ class ExpDbManager(DbManager):
         :state: state ("Overloaded", "Underloaded") for this function deployed in this experiment instant
         """
         last_id = self.__execute_insert_create_query(
-            Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("insert_deploy.sql")).read_text().format(exp_instant_id, function_id, max_rate, num_replicas, wl, margin, state)
+            Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath("insert_deploy.sql"))
+            .read_text()
+            .format(
+                exp_instant_id, function_id, max_rate, num_replicas, wl, margin, state
+            )
         )
         return last_id
 
@@ -161,24 +249,25 @@ class ExpDbManager(DbManager):
         conn = sqlite3.connect(self._DbManager__path)
         c = conn.cursor()
 
-        c.execute('''
+        c.execute("""
                 SELECT e.ID
                 FROM EXPERIMENT_INSTANT e
                 JOIN DEPLOY             d ON e.ID = d.ExpInstantID
                 GROUP BY e.ID
                 HAVING COUNT(d.FunctionID) = 2
-        ''')
+        """)
 
         fetch_data = c.fetchall()
         experiments_id_list = [str(el[0]) for el in fetch_data]
-        #print(type(fetch_data)) # List type
-        #print(fetch_data)
+        # print(type(fetch_data)) # List type
+        # print(fetch_data)
 
         df = pd.DataFrame(fetch_data, columns=["e.ID"])
         print(df)
         df.to_csv("prova.csv")
 
-        c.execute('''
+        c.execute(
+            """
             SELECT e.ID
             FROM NODE n
             JOIN EXPERIMENT_INSTANT e ON n.ID = e.NodeID
@@ -193,14 +282,16 @@ class ExpDbManager(DbManager):
             )
             GROUP BY e.ID
             HAVING COUNT(f.Name) = 2
-        '''.format(",".join(experiments_id_list)))
+        """.format(",".join(experiments_id_list))
+        )
 
         fetch_data = c.fetchall()
         df = pd.DataFrame(fetch_data, columns=["e.ID"])
         print(df)
         experiments_id_list = [str(el[0]) for el in fetch_data]
 
-        c.execute('''
+        c.execute(
+            """
             SELECT  m.Name, m.type, f.Name, n.Name, AVG(m.Value), d.MaxRate, d.NumReplicas, d.Margin, 
                     d.State
             FROM METRIC m
@@ -210,14 +301,27 @@ class ExpDbManager(DbManager):
                                       f.ID = d.FunctionID
             WHERE m.ExpInstantID IN ({})
             GROUP BY m.Name, m.type, f.Name, d.MaxRate, d.NumReplicas, d.Margin, d.State, n.Name
-        '''.format(",".join(experiments_id_list)))
+        """.format(",".join(experiments_id_list))
+        )
 
         fetch_data = c.fetchall()
         # print(type(fetch_data)) # List type
         # print(fetch_data)
 
-        df = pd.DataFrame(fetch_data, columns=["m.Name", "m.type", "f.Name", "n.Name", "AVG(m.Value)",
-                                               "d.MaxRate", "d.NumReplicas", "d.Margin", "d.State"])
+        df = pd.DataFrame(
+            fetch_data,
+            columns=[
+                "m.Name",
+                "m.type",
+                "f.Name",
+                "n.Name",
+                "AVG(m.Value)",
+                "d.MaxRate",
+                "d.NumReplicas",
+                "d.Margin",
+                "d.State",
+            ],
+        )
         print(df)
 
         end = time.perf_counter()
@@ -232,7 +336,7 @@ class ExpDbManager(DbManager):
         conn = sqlite3.connect(self._DbManager__path)
         c = conn.cursor()
 
-        c.execute('''
+        c.execute("""
                     SELECT e.ID
                     FROM NODE n
                     JOIN EXPERIMENT_INSTANT e ON n.ID = e.NodeID
@@ -246,7 +350,7 @@ class ExpDbManager(DbManager):
                     )
                     GROUP BY e.ID
                     HAVING COUNT(f.Name) = 2
-                ''')
+                """)
 
         fetch_data = c.fetchall()
         experiments_id_list = [str(el[0]) for el in fetch_data]
@@ -257,23 +361,26 @@ class ExpDbManager(DbManager):
         print(df)
         df.to_csv("prova.csv")
 
-        c.execute('''
+        c.execute("""
                     SELECT d.ExpInstantID
                     FROM DEPLOY             d 
                     JOIN FUNCTION           f ON d.FunctionID = f.ID
                     WHERE f.Name = "funca" 
-                ''')
+                """)
 
         fetch_data = c.fetchall()
         df = pd.DataFrame(fetch_data, columns=["e.ID"])
         print(df)
         experiments_id_list_funca = [str(el[0]) for el in fetch_data]
 
-        final_list = [el for el in experiments_id_list if el not in experiments_id_list_funca]
+        final_list = [
+            el for el in experiments_id_list if el not in experiments_id_list_funca
+        ]
 
         print(final_list)
 
-        c.execute('''
+        c.execute(
+            """
                     SELECT  m.Name, m.type, f.Name, n.Name, AVG(m.Value), d.MaxRate, d.NumReplicas, d.Margin, 
                             d.State
                     FROM METRIC m
@@ -283,14 +390,27 @@ class ExpDbManager(DbManager):
                                               f.ID = d.FunctionID
                     WHERE m.ExpInstantID IN ({})
                     GROUP BY m.Name, m.type, f.Name, d.MaxRate, d.NumReplicas, d.Margin, d.State, n.Name
-                '''.format(",".join(final_list)))
+                """.format(",".join(final_list))
+        )
 
         fetch_data = c.fetchall()
         # print(type(fetch_data)) # List type
         # print(fetch_data)
 
-        df = pd.DataFrame(fetch_data, columns=["m.Name", "m.type", "f.Name", "n.Name", "AVG(m.Value)",
-                                               "d.MaxRate", "d.NumReplicas", "d.Margin", "d.State"])
+        df = pd.DataFrame(
+            fetch_data,
+            columns=[
+                "m.Name",
+                "m.type",
+                "f.Name",
+                "n.Name",
+                "AVG(m.Value)",
+                "d.MaxRate",
+                "d.NumReplicas",
+                "d.Margin",
+                "d.State",
+            ],
+        )
         print(df)
 
         end = time.perf_counter()
@@ -321,15 +441,24 @@ class ExpDbManager(DbManager):
                     f.Name = '{}'      AND \
                     d.Workload = {}    AND \
                     d.NumReplicas = {}     \
-                )".format(func_req.get_name(), func_req.get_wl(), func_req.get_replicas_num())
+                )".format(
+                    func_req.get_name(), func_req.get_wl(), func_req.get_replicas_num()
+                )
 
                 if idx != func_count - 1:
                     where_condition += " OR "
 
             where_condition += ")"
 
-        query = Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath(
-                     "select_exp_id_for_config.sql")).read_text().format(where_condition, func_count)
+        query = (
+            Path(
+                self.__config_manager.SQL_FILE_PATH_DIR.joinpath(
+                    "select_exp_id_for_config.sql"
+                )
+            )
+            .read_text()
+            .format(where_condition, func_count)
+        )
 
         conn = sqlite3.connect(self._DbManager__path)
         c = conn.cursor()
@@ -344,28 +473,55 @@ class ExpDbManager(DbManager):
         # Solution: exclude experiments id's referred to functions not included in the ConfigRequest
         for func in self.__config_manager.FUNCTION_NAMES:
             if func not in [f.get_name() for f in conf_request.get_functions()]:
-                experiments_id_list = [el for el in experiments_id_list if el not in self.__exp_ids_for_func[func]]
+                experiments_id_list = [
+                    el
+                    for el in experiments_id_list
+                    if el not in self.__exp_ids_for_func[func]
+                ]
 
         # Select all metrics for this specific config request
-        query = Path(self.__config_manager.SQL_FILE_PATH_DIR.joinpath(
-                     "select_metrics_by_exp_ids.sql")).read_text().format(",".join(experiments_id_list))
+        query = (
+            Path(
+                self.__config_manager.SQL_FILE_PATH_DIR.joinpath(
+                    "select_metrics_by_exp_ids.sql"
+                )
+            )
+            .read_text()
+            .format(",".join(experiments_id_list))
+        )
         c.execute(query)
 
         print("Metrics for Experiments {}".format(experiments_id_list))
-        print("------------------------------------------------------------------------------")
-        df = pd.DataFrame(c.fetchall(),
-                          columns=["MetricName", "Type", "FunctionName", "NodeName",
-                                   "AVG(Value)", "MaxRate", "NumReplicas", "Margin", "State"])
+        print(
+            "------------------------------------------------------------------------------"
+        )
+        df = pd.DataFrame(
+            c.fetchall(),
+            columns=[
+                "MetricName",
+                "Type",
+                "FunctionName",
+                "NodeName",
+                "AVG(Value)",
+                "MaxRate",
+                "NumReplicas",
+                "Margin",
+                "State",
+            ],
+        )
 
-        df_node_metrics = df[df["Type"] == "node"].drop(columns=["FunctionName", "MaxRate",
-                                                                 "NumReplicas", "Margin", "State"])
+        df_node_metrics = df[df["Type"] == "node"].drop(
+            columns=["FunctionName", "MaxRate", "NumReplicas", "Margin", "State"]
+        )
         df_func_metrics = df[df["Type"] == "func"].drop(columns=["NodeName"])
 
         for col in ["MaxRate", "NumReplicas", "Margin"]:
             df_func_metrics[col] = df_func_metrics[col].astype(int)
 
         print(df_node_metrics)
-        print("------------------------------------------------------------------------------")
+        print(
+            "------------------------------------------------------------------------------"
+        )
         print(df_func_metrics)
 
         return df_node_metrics, df_func_metrics

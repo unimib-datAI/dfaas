@@ -3,6 +3,7 @@
 # This file is licensed under the AGPL v3.0 or later license. See LICENSE and
 # AUTHORS file for more information.
 
+
 class ConfigRequest:
     """
     Class that represents a configuration request by the simulator.

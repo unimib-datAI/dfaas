@@ -27,7 +27,7 @@ logging.basicConfig(
 FUNCTION_NAMES = [
     "figlet",
     "shasum",
-    #"nmap",
+    # "nmap",
     "env",
     "curl",
     "qrcode-go",
@@ -35,7 +35,7 @@ FUNCTION_NAMES = [
     "face-detect-pigo",
     "face-blur",
     "coherent-line-drawing",
-    #"certinfo",
+    # "certinfo",
     "markdown",
     "openfaas-youtube-dl",
     "openfaas-text-to-speech",
@@ -99,8 +99,8 @@ def main():
     cpu_overload_percentage = (max_cpu_percentage * 80) / 100
 
     logging.info(f"Profiled functions: {FUNCTION_NAMES}")
-    #function_combinations = utils.generate_functions_combinations(FUNCTION_NAMES, 1, 2)
-    #function_combinations = utils.generate_functions_combinations(FUNCTION_NAMES, 3, 4)
+    # function_combinations = utils.generate_functions_combinations(FUNCTION_NAMES, 1, 2)
+    # function_combinations = utils.generate_functions_combinations(FUNCTION_NAMES, 3, 4)
     function_combinations = utils.generate_functions_combinations(FUNCTION_NAMES, 2, 3)
     logging.info(
         f"Nr. of func. combinations (without rate): {len(function_combinations)}"

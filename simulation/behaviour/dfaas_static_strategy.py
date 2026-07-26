@@ -9,7 +9,6 @@ from configuration.config_manager import ConfigManager
 
 
 class DFaasStaticStrategy(Strategy):
-
     def __init__(self, config_json):
         self._config_json = config_json
         self._config_manager = ConfigManager()
@@ -80,9 +79,15 @@ class DFaasStaticStrategy(Strategy):
             for func in metrics["functions"]:
                 if func["name"] in self._config_manager.FUNCTION_NAMES:
                     neigh_num = self.__neighbours_with_this_func(node, func["name"])
-                    margin = func["max_rate"] - func["invoc_rate"] if func["state"] == "Underload" else 0
+                    margin = (
+                        func["max_rate"] - func["invoc_rate"]
+                        if func["state"] == "Underload"
+                        else 0
+                    )
                     # Calculate how much request can be served for neighbours
-                    self._limit_in[node][func["name"]] = margin / neigh_num if neigh_num > 0 else 0
+                    self._limit_in[node][func["name"]] = (
+                        margin / neigh_num if neigh_num > 0 else 0
+                    )
 
             self._logger.debug("Limits_in: {}".format(self._limit_in))
 
@@ -132,19 +137,26 @@ class DFaasStaticStrategy(Strategy):
         """
         w = {}
 
-        #for func in self._config_manager.FUNCTION_NAMES:
+        # for func in self._config_manager.FUNCTION_NAMES:
         #    w[func] = {}
 
         # For the specified node calculate weights
         for func in self._config_json[self._id]["functions"]:
-            if func["name"] in self._config_manager.FUNCTION_NAMES and func["state"] == "Overload":
+            if (
+                func["name"] in self._config_manager.FUNCTION_NAMES
+                and func["state"] == "Overload"
+            ):
                 w[func["name"]] = {}
                 for node, limit_out in self._limit_out[func["name"]].items():
                     if sum(self._limit_out[func["name"]].values()) > 0:
                         # Calculate weights for HA-proxy, based on limit_out, number
                         # of requests that can be forwarded to other nodes
                         # limits_out correspond to limit_in received after phase1() (calculated in exchange)
-                        w[func["name"]][node] = limit_out / sum(self._limit_out[func["name"]].values()) * 100
+                        w[func["name"]][node] = (
+                            limit_out
+                            / sum(self._limit_out[func["name"]].values())
+                            * 100
+                        )
                     else:
                         w[func["name"]][node] = 0.0
 

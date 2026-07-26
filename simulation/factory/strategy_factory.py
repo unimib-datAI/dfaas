@@ -10,7 +10,7 @@ from behaviour.dfaas_static_strategy import DFaasStaticStrategy
 from configuration.config_manager import ConfigManager
 
 
-class StrategyFactory():
+class StrategyFactory:
     @staticmethod
     def create_strategy(strategy_type, config_file):
         """
@@ -25,5 +25,5 @@ class StrategyFactory():
             return EmpiricalStrategy(config_file)
         elif strategy_type == config_manager.DFAAS_STATIC_STRATEGY:
             return DFaasStaticStrategy(config_file)
-        else: # Default behaviour
+        else:  # Default behaviour
             return BaseStrategy(config_file)

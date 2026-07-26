@@ -8,6 +8,7 @@ import numpy as np
 from .strategy import Strategy
 from configuration.config_manager import ConfigManager
 
+
 class RandomStrategy(Strategy):
     def __init__(self, config_json):
         self._config_json = config_json
@@ -18,29 +19,37 @@ class RandomStrategy(Strategy):
 
     def loop(self) -> dict:
         self._data = self._config_json
-        
+
         weights = {}
         for func in self._data[self._id]["functions"]:
-            if func["name"] in self._config_manager.FUNCTION_NAMES and func["state"] == "Overload":
+            if (
+                func["name"] in self._config_manager.FUNCTION_NAMES
+                and func["state"] == "Overload"
+            ):
                 self._logger.debug("FUNC: " + func["name"] + " is OVERLOADED")
-                
+
                 weights[func["name"]] = {}
                 for node, val in self._data.items():
                     if node != self._id:
                         weights[func["name"]][node] = np.random.randint(1, 101)
-                
-                #self._logger.debug("Weights not normalized for func {}".format(func["name"]))
-                #self._logger.debug(weights[func["name"]])
-                
+
+                # self._logger.debug("Weights not normalized for func {}".format(func["name"]))
+                # self._logger.debug(weights[func["name"]])
+
                 weights[func["name"]] = self.recalc_distribution(weights[func["name"]])
 
-                self._logger.debug("Weights normalized for func {}".format(func["name"]))
+                self._logger.debug(
+                    "Weights normalized for func {}".format(func["name"])
+                )
                 self._logger.debug(weights[func["name"]])
-                
-                #self._logger.info("Weights normalized for func {}".format(func["name"]))
-                #self._logger.info(weights[func["name"]])
-                self._logger.info("Weights normalized for func {}: {}".format(
-                    func["name"], weights[func["name"]]))
+
+                # self._logger.info("Weights normalized for func {}".format(func["name"]))
+                # self._logger.info(weights[func["name"]])
+                self._logger.info(
+                    "Weights normalized for func {}: {}".format(
+                        func["name"], weights[func["name"]]
+                    )
+                )
 
         return weights
 
@@ -52,5 +61,4 @@ class RandomStrategy(Strategy):
         self._logger = logger
 
     def recalc_distribution(self, w):
-        return {k: (v / sum(w.values()))*100 for k, v in w.items()}
-        
+        return {k: (v / sum(w.values())) * 100 for k, v in w.items()}

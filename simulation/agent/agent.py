@@ -5,10 +5,10 @@
 
 from behaviour.strategy import Strategy
 
-class Agent(): # Inherit by Thread in () bratches
 
+class Agent:  # Inherit by Thread in () bratches
     _json_path = ""
-    
+
     def __init__(self, id, logger, behaviour: Strategy):
         super().__init__()
         self._id = id
@@ -19,9 +19,9 @@ class Agent(): # Inherit by Thread in () bratches
 
     # Used when this class extends Thread
     def run(self) -> dict:
-        #self.loop()
+        # self.loop()
         w = self._behaviour.run()
-        #print(w)
+        # print(w)
         return w
 
     @property
@@ -43,5 +43,5 @@ class Agent(): # Inherit by Thread in () bratches
         self._behaviour = _behaviour
 
     def disable_logging(self):
-        #self._logger.isEnabledFor(50) # Used to do not print and gain in speed.
+        # self._logger.isEnabledFor(50) # Used to do not print and gain in speed.
         self._logger.disabled = True

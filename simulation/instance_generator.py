@@ -28,7 +28,7 @@ def gather_configurations():
         exp_files_path[node_type] = []
         for path, subdirs, files in os.walk(data_dir.joinpath(node_type)):
             for name in files:
-                if name.endswith('.json'):
+                if name.endswith(".json"):
                     exp_files_path[node_type].append(os.path.join(path, name))
 
     return exp_files_path
@@ -52,37 +52,37 @@ def load_configurations(nodes_number):
     for choice in choiches:
         config = np.random.choice(config_files[choice])
         configurations.append(config)
-    #print(configurations)
+    # print(configurations)
 
     # Mock loaded files [TO BE REMOVED]
-    #configurations = [
-        # "exp-comparison/case4/node_1.json",
-        # "exp-comparison/case4/node_2.json",
-        # "exp-comparison/case4/node_3.json",
-        # "exp-comparison/case4/node4.json",
-        # "exp-comparison/case4/node5.json",
-        #config_manager.DATA_DIR.joinpath("node_1", "node1.json"),
-        #config_manager.DATA_DIR.joinpath("node_1", "node2.json"),
-        #config_manager.DATA_DIR.joinpath("node_1", "node3.json"),
-        #config_manager.DATA_DIR.joinpath("node_1", "node4.json"),
-        #config_manager.DATA_DIR.joinpath("node_1", "node5.json"),
-        # "exp-comparison/exp_pool/node6.json",
-        # "exp-comparison/exp_pool/node7.json",
-        # "exp-comparison/exp_pool/node8.json",
-        # "exp-comparison/exp_pool/node9.json",
-        # "exp-comparison/exp_pool/node10.json",
-        # "exp-comparison/exp_pool/node11.json",
-        # "exp-comparison/exp_pool/node12.json",
-        # "exp-comparison/exp_pool/node13.json",
-        # "exp-comparison/exp_pool/node14.json",
-        # "exp-comparison/exp_pool/node15.json",
-        # "exp-comparison/exp_pool/node16.json",
-        # "exp-comparison/exp_pool/node17.json",
-        # "exp-comparison/exp_pool/node18.json",
-        # "exp-comparison/exp_pool/node19.json",
-        # "exp-comparison/exp_pool/node20.json",
-    #]
-    #print(configurations)
+    # configurations = [
+    # "exp-comparison/case4/node_1.json",
+    # "exp-comparison/case4/node_2.json",
+    # "exp-comparison/case4/node_3.json",
+    # "exp-comparison/case4/node4.json",
+    # "exp-comparison/case4/node5.json",
+    # config_manager.DATA_DIR.joinpath("node_1", "node1.json"),
+    # config_manager.DATA_DIR.joinpath("node_1", "node2.json"),
+    # config_manager.DATA_DIR.joinpath("node_1", "node3.json"),
+    # config_manager.DATA_DIR.joinpath("node_1", "node4.json"),
+    # config_manager.DATA_DIR.joinpath("node_1", "node5.json"),
+    # "exp-comparison/exp_pool/node6.json",
+    # "exp-comparison/exp_pool/node7.json",
+    # "exp-comparison/exp_pool/node8.json",
+    # "exp-comparison/exp_pool/node9.json",
+    # "exp-comparison/exp_pool/node10.json",
+    # "exp-comparison/exp_pool/node11.json",
+    # "exp-comparison/exp_pool/node12.json",
+    # "exp-comparison/exp_pool/node13.json",
+    # "exp-comparison/exp_pool/node14.json",
+    # "exp-comparison/exp_pool/node15.json",
+    # "exp-comparison/exp_pool/node16.json",
+    # "exp-comparison/exp_pool/node17.json",
+    # "exp-comparison/exp_pool/node18.json",
+    # "exp-comparison/exp_pool/node19.json",
+    # "exp-comparison/exp_pool/node20.json",
+    # ]
+    # print(configurations)
 
     # Load selected files
     loaded_json = []
@@ -90,15 +90,15 @@ def load_configurations(nodes_number):
         f = open(config)
         json_doc = json.load(f)  # Return json file as a dictionary
         loaded_json.append(json_doc)
-    
+
     return loaded_json
 
 
 def gnp_random_connected_graph(n, p):
     """
-    Generates a random undirected graph, similarly to an Erdős-Rényi 
+    Generates a random undirected graph, similarly to an Erdős-Rényi
     graph, but enforcing that the resulting graph is conneted
-    
+
     See: https://stackoverflow.com/questions/61958360/how-to-create-random-graph-where-each-node-has-at-least-1-edge-using-networkx
     """
     edges = combinations([el[0] for el in n], 2)
@@ -123,9 +123,7 @@ def plot_graph(G):
     Plot graph and export on file
     """
     plt.figure(figsize=(10, 6))
-    nx.draw(G, node_color='lightblue',
-            with_labels=True,
-            node_size=2000)
+    nx.draw(G, node_color="lightblue", with_labels=True, node_size=2000)
     plt.savefig(config_manager.OUTPUT_INSTANCE_GRAPH_FILE_PATH)
 
 
@@ -141,7 +139,7 @@ def create_node_representation(key, start_config, G):
     """
     Create node json representation in new format of instance file
     """
-    node_config = {}   
+    node_config = {}
 
     # Move all fields for replicas num inner "replicas" key
     node_config["replicas"] = {}
@@ -159,10 +157,7 @@ def create_node_representation(key, start_config, G):
         node_config["exp_history"][idx]["functions"] = []
         for _, func in enumerate(minute["functions"]):
             node_config["exp_history"][idx]["functions"].append(
-                {
-                    "name": func["name"],
-                    "invoc_rate": func["invoc_rate"]
-                }
+                {"name": func["name"], "invoc_rate": func["invoc_rate"]}
             )
 
     return node_config
@@ -186,7 +181,9 @@ def build_output_json(seed, nodes_num, edge_prob, G):
 
 
 def export_instance_file(instance):
-    with open(config_manager.OUTPUT_INSTANCE_JSON_FILE_PATH, 'w', encoding='utf-8') as f:
+    with open(
+        config_manager.OUTPUT_INSTANCE_JSON_FILE_PATH, "w", encoding="utf-8"
+    ) as f:
         json.dump(instance, f, ensure_ascii=False, indent=4)
 
 

@@ -16,11 +16,15 @@ class DbManager:
         self.__path = db_path
 
     def create_connection(self):
-        """ Create a database connection to a SQLite database """
+        """Create a database connection to a SQLite database"""
         conn = None
         try:
             conn = sqlite3.connect(self.__path)
-            print("Connection successfully completed to version: {}".format(sqlite3.version))
+            print(
+                "Connection successfully completed to version: {}".format(
+                    sqlite3.version
+                )
+            )
         except Error as e:
             print(e)
         finally:
