@@ -46,20 +46,18 @@ run_job() {
   #
   # Output:
   #   1. Stdout and stderr (with final summary) -> data/k6/X/k6_stdout.logs
-  #   2. Console logs (optional) -> data/k6/X/k6_console.logs
   #   3. CSV output -> data/k6/X/k6_results.csv.gz
   #   4. HTML summary -> data/k6/X/k6_report.html
   k6 run single_trace.js > "$OUTPUT_BASE_DIR/k6/$NODE_NAME/k6_stdout.logs" 2>&1 \
     --quiet \
+    --no-color \
     --address "" \
     --out csv="$OUTPUT_BASE_DIR/k6/$NODE_NAME/k6_results.csv.gz" \
-    --console-output "$OUTPUT_BASE_DIR/k6/$NODE_NAME/k6_console.logs" \
     --env IP_SERVER="$IP" \
     --env TRACE_PATH="$TRACE_PATH" \
     --env FUNCTION=0 \
     --env NODE="$NODE_NAME" \
     --env STAGE_BUILDER="$STAGE_BUILDER" &
-#    --env LIMIT=90 &
 
   echo "[LAUNCHED] $NODE_NAME (pid=$!)"
 }
@@ -74,11 +72,11 @@ echo "[INFO] Saved trace path to $(realpath "$OUTPUT_BASE_DIR/k6/$TRACE_NAME")"
 
 # Format: "node_name ip port".
 JOBS=(
-  "node_c 10.12.68.2  30665"
-  "node_d 10.12.68.3  30666"
-  "node_e 10.12.68.11 30667"
-  "node_f 10.12.68.5  30668"
-  "node_g 10.12.68.6  30669"
+  "node_a dfaas-node-a.local  30665"
+  "node_b dfaas-node-b.local  30666"
+  "node_c dfaas-node-c.local  30667"
+  "node_f dfaas-node-f.local  30668"
+  "node_g dfaas-node-g.local  30669"
 )
 
 echo "[INFO] Saving results to $(realpath "$OUTPUT_BASE_DIR")"
@@ -132,6 +130,37 @@ for job in "${JOBS[@]}"; do
 done
 
 echo "[INFO] All (if available) rl_model.log files collected."
+
+echo "[INFO] Collecting Prometheus snapshot from DFaaS nodes..."
+
+collect_prometheus_snapshot() {
+  local readonly NODE_NAME="$1"
+  local readonly IP="$2"
+
+  mkdir -p "$OUTPUT_BASE_DIR/prom/$NODE_NAME"
+
+  if ./take_prometheus_snapshot.sh "$IP" "$OUTPUT_BASE_DIR/prom/$NODE_NAME"; then
+    echo "[INFO] Collected Prometheus snapshot from $NODE_NAME (IP=$IP)"
+  else
+    echo "[WARN] Failed to collect Prometheus snapshot from $NODE_NAME (IP=$IP)"
+  fi
+}
+
+prom_failures=0
+
+# Launch and wait all snapshot collections in parallel, same as for k6 jobs.
+for job in "${JOBS[@]}"; do
+  collect_prometheus_snapshot $job &
+done
+
+for pid in $(jobs -rp); do
+  if ! wait "$pid"; then
+    echo "[WARN] Prometheus snapshot job with PID $pid failed"
+    ((prom_failures++))
+  fi
+done
+
+echo "[INFO] Prometheus snapshots collected. Failures: $prom_failures"
 
 echo "[INFO] End at $(date '+%Y-%m-%dT%H:%M:%S%z [%Z] epoch=%s')"
 
