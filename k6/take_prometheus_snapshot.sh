@@ -60,6 +60,8 @@ fi
 REMOTE_IP="$1"
 DEST_DIR="$2"
 
+LOG_PREFIX="[${REMOTE_IP}]"
+
 mkdir -p "$DEST_DIR"
 
 SSH_USER="user"
@@ -74,24 +76,24 @@ SSH_OPTS=(
   -o LogLevel=ERROR
 )
 
-echo "Creating Prometheus snapshot..."
+echo "${LOG_PREFIX} Creating Prometheus snapshot..."
 SNAPSHOT_JSON=$(curl --fail --silent --show-error --request POST "http://${REMOTE_IP}:30909/api/v1/admin/tsdb/snapshot")
 
 SNAPSHOT_NAME=$(printf '%s\n' "$SNAPSHOT_JSON" | jq --raw-output '.data.name')
 if [[ -z "$SNAPSHOT_NAME" || "$SNAPSHOT_NAME" == "null" ]]; then
-    echo "Prometheus did not return a snapshot name."
+    echo "${LOG_PREFIX} Prometheus did not return a snapshot name."
     printf '%s\n' "$SNAPSHOT_JSON"
     exit 1
 fi
-echo "Snapshot: $SNAPSHOT_NAME"
+echo "${LOG_PREFIX} Snapshot: $SNAPSHOT_NAME"
 
-echo "Finding Prometheus pod..."
+echo "${LOG_PREFIX} Finding Prometheus pod..."
 POD_NAME=$(ssh "${SSH_OPTS[@]}" "$SSH" "sudo kubectl get pods -l app.kubernetes.io/name=prometheus --no-headers -o custom-columns=:metadata.name")
 if [[ -z "$POD_NAME" ]]; then
-    echo "Could not determine Prometheus pod."
+    echo "${LOG_PREFIX} Could not determine Prometheus pod."
     exit 1
 fi
-echo "Pod: $POD_NAME"
+echo "${LOG_PREFIX} Pod: $POD_NAME"
 
 # Wait some seconds to let snapshost creation.
 sleep 60s
@@ -101,7 +103,7 @@ sleep 60s
 # cp`.
 #
 # sudo is required also for rm because kubectl cp preserve root permissions.
-echo "Copying snapshot from pod to remote host..."
+echo "${LOG_PREFIX} Copying snapshot from pod to remote host..."
 ssh "${SSH_OPTS[@]}" "$SSH" "set -e
     sudo rm --recursive --force tsdb tsdb.tar.zst
     sudo kubectl cp --container=prometheus-server ${POD_NAME}:/data/snapshots/${SNAPSHOT_NAME} tsdb"
@@ -109,18 +111,17 @@ ssh "${SSH_OPTS[@]}" "$SSH" "set -e
 # Required to prevent the volume inside the pod from filling up. Note the rm
 # command inside the pod is the BusyBox implementation, it supports only short
 # arguments!
-echo "Removing snapshot from Prometheus pod..."
+echo "${LOG_PREFIX} Removing snapshot from Prometheus pod..."
 ssh "${SSH_OPTS[@]}" "$SSH" "sudo kubectl exec --container=prometheus-server ${POD_NAME} -- rm -rf /data/snapshots/${SNAPSHOT_NAME}"
 
-echo "Compressing snapshot on remote host..."
+echo "${LOG_PREFIX} Compressing snapshot on remote host..."
 ssh "${SSH_OPTS[@]}" "$SSH" "tar --create --zstd --file=tsdb.tar.zst tsdb"
 
-echo "Downloading archive..."
+echo "${LOG_PREFIX} Downloading archive..."
 scp "${SSH_OPTS[@]}" "$SSH:tsdb.tar.zst" "${DEST_DIR}/tsdb.tar.zst"
 
-echo "Cleaning remote files..."
+echo "${LOG_PREFIX} Cleaning remote files..."
 ssh "${SSH_OPTS[@]}" "$SSH" "sudo rm --recursive --force tsdb tsdb.tar.zst"
 
-echo
-echo "Completed. Prometheus TSDB archive stored at: $(realpath "${DEST_DIR}/tsdb.tar.zst")"
+echo "${LOG_PREFIX} Completed. Prometheus TSDB archive stored at: $(realpath "${DEST_DIR}/tsdb.tar.zst")"
 
