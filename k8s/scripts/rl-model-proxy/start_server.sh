@@ -4,16 +4,19 @@
 # for the model server. It assumes the servers are already configured (for
 # example, the container running the model server has already been created).
 #
-# This is a simple, experimental deployment that uses tmux purely for
-# convenience and testing purposes.
+# This is an experimental deployment that uses tmux purely for convenience and
+# testing purposes.
 
 set -euo pipefail
 
-PROXY_SESSION="rl-model-proxy"
-SERVE_SESSION="rl-model-serve"
+# Use := parameter expansion: it assigns the default value to the variable if
+# the environment variable is unset or empty. Also with the ":" no op command,
+# we can have a one-line expression.
+: "${PROXY_SESSION:=rl-model-proxy}"
+: "${SERVE_SESSION:=rl-model-serve}"
 
-PROXY_DIR="~/dfaas/k8s/scripts/rl-model-proxy"
-CONTAINER_NAME="rl-agent"
+: "${PROXY_DIR:=$HOME/dfaas/k8s/scripts/rl-model-proxy}"
+: "${CONTAINER_NAME:=rl-agent-v2}"
 
 # Create the PROXY_SESSION.
 if tmux has-session -t "$PROXY_SESSION" 2>/dev/null; then
@@ -23,7 +26,7 @@ else
 
     # Start the proxy server.
     tmux send-keys -t "$PROXY_SESSION" "cd $PROXY_DIR" C-m
-    tmux send-keys -t "$PROXY_SESSION" "./rl-model-proxy -listen :8080 -target http://localhost:8000" C-m
+    tmux send-keys -t "$PROXY_SESSION" "./rl-model-proxy -listen :8080 -target http://localhost:7999" C-m
 
     echo "Started $PROXY_SESSION"
 fi
