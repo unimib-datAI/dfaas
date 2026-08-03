@@ -57,7 +57,7 @@ def main():
     nodes = df["node_name"].unique().tolist()
     print(f"Found the following {len(nodes)} nodes under {input_path}: {nodes}")
 
-    fig = plots.served_requests.plot(df)
+    fig = plots.served_requests.plot_single_run(df)
     fig.savefig(args.output, bbox_inches="tight")
 
     print(f"Saved plot to {args.output.as_posix()}")
