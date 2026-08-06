@@ -212,6 +212,15 @@
             values_files: k8s/charts/values-openfaas.yaml
             release_namespace: default
 
+        - name: Deploy rejector chart
+          kubernetes.core.helm:
+            name: rejector
+            # Must be an absolute URL when passing a path!
+            chart_ref: "{{ playbook_dir }}/k8s/scripts/rejector/helm"
+            chart_version: 0.1.0
+            values_files: k8s/charts/values-rejector.yaml
+            release_namespace: default
+
     - name: Deploy OpenFaaS functions
       ansible.builtin.shell: ./k8s/scripts/deploy-functions.sh
       args:
