@@ -8,8 +8,8 @@
 #
 # Run the script with the --help flag for more details.
 
-import json
 import argparse
+import json
 from pathlib import Path
 
 

@@ -1,11 +1,11 @@
 import argparse
 from pathlib import Path
 
-import pandas as pd
-import matplotlib.pyplot as plt
-from matplotlib import rcParams
-from matplotlib.ticker import PercentFormatter, MultipleLocator
 import matplotlib.lines as mlines
+import matplotlib.pyplot as plt
+import pandas as pd
+from matplotlib import rcParams
+from matplotlib.ticker import MultipleLocator, PercentFormatter
 
 
 def compute_run_success_rate(df):

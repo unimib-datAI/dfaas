@@ -1,9 +1,13 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 The DFaaS Authors. All rights reserved.
+# This file is licensed under the AGPL v3.0 or later license. See LICENSE and
+# AUTHORS file for more information.
 import argparse
 from pathlib import Path
 
-import plots.served_requests
-
 import pandas as pd
+
+import plots.served_requests
 
 
 def load_data(input_dir):

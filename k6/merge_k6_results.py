@@ -17,8 +17,9 @@
 # The generated CSV contains all rows from all nodes and an additional
 # "node" column identifying the source node.
 
-from pathlib import Path
 import argparse
+from pathlib import Path
+
 import pandas as pd
 
 

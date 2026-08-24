@@ -1,18 +1,17 @@
-#!/usr/bin/env python3
 # SPDX-License-Identifier: AGPL-3.0-or-later
 # Copyright 2021-2025 The DFaaS Authors. All rights reserved.
 # This file is licensed under the AGPL v3.0 or later license. See LICENSE and
 # AUTHORS file for more information.
-
 import argparse
-from pathlib import Path
-from functools import cached_property
 import inspect
+import sys
+from functools import cached_property
+from pathlib import Path
 
-import pandas as pd
 import matplotlib.pyplot as plt
-from matplotlib.patches import Patch
 import numpy as np
+import pandas as pd
+from matplotlib.patches import Patch
 
 
 class Plots:
@@ -504,9 +503,9 @@ def main():
 
     try:
         df = pd.read_json(args.result, lines=True, compression="gzip")
-    except Exception as e:
+    except Exception as e:  # noqa: BLE001
         print(f"Failed to read or parse {args.result.as_posix()}: {e}")
-        exit(1)
+        sys.exit(1)
 
     print("WARNING: This script is tailored for the single node test!")
 

@@ -1,9 +1,8 @@
 import argparse
-import sys
 import subprocess
-from pathlib import Path
+import sys
 from concurrent.futures import ThreadPoolExecutor, as_completed
-
+from pathlib import Path
 
 # Node-level plot scripts.
 NODE_PLOTS = [
@@ -98,7 +97,7 @@ def process_node(node_dir, iter_args):
             script = futures[future]
             try:
                 future.result()
-            except Exception as e:
+            except Exception as e:  # noqa: BLE001
                 print(f"[ERROR] Plot failed ({script}) in {node_name}: {e}")
 
     print(f"[INFO] Finished {node_name}")
@@ -166,7 +165,7 @@ def main():
                 script = futures[future]
                 try:
                     future.result()
-                except Exception as e:
+                except Exception as e:  # noqa: BLE001
                     print(f"[ERROR] Global plot failed ({script}): {e}")
 
         print("[INFO] Global plots completed.")

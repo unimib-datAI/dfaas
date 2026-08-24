@@ -6,8 +6,8 @@
 #
 # See --help message for more informatio about this script.
 
-import json
 import argparse
+import json
 from pathlib import Path
 
 

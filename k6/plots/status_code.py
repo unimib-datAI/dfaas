@@ -1,7 +1,7 @@
 import argparse
 
-import pandas as pd
 import matplotlib.pyplot as plt
+import pandas as pd
 
 
 def plot_status_stackplots(df, iter_duration=60):

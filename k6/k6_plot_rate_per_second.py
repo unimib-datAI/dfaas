@@ -8,9 +8,9 @@
 # "k6_results.csv.gz" and "input_requests_traces.json".
 import json
 
-import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
+import pandas as pd
 
 # Load k6 CSV metrics.
 df = pd.read_csv("k6_results.csv.gz")

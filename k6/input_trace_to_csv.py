@@ -27,9 +27,9 @@
 #
 # Where top-level keys are the function identifiers, second-level keys are not
 # identifiers.
-import json
-import csv
 import argparse
+import csv
+import json
 
 
 def main():
