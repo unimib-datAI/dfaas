@@ -30,11 +30,13 @@
           Defaults:%sudo env_keep += "KUBECONFIG"
           Defaults !always_set_home
 
+    # sudo apt install -y buildah
     - name: Install buildah
       ansible.builtin.apt:
         name: buildah
         state: present
 
+    # sudo ufw disable
     - name: Disable UFW firewall
       community.general.ufw:
         state: disabled
@@ -84,12 +86,15 @@
           # tracking (used by Kubernetes for service NAT/routing).
           net.netfilter.nf_conntrack_max = 262144
 
+    # sudo -i
+    # curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable traefik" sh -
     - name: Install K3S
       ansible.builtin.shell: curl -sfL https://get.k3s.io | INSTALL_K3S_EXEC="--disable traefik" sh -
       args:
         executable: /bin/bash
         creates: /usr/local/bin/k3s  # Prevents re-installation if already installed
 
+    # sudo systemctl enable --now k3s
     - name: Ensure k3s service is running
       ansible.builtin.systemd_service:
         name: k3s
@@ -105,6 +110,7 @@
         architectures: [amd64]
         signed_by: https://packages.buildkite.com/helm-linux/helm-debian/gpgkey
 
+    # sudo apt update && sudo apt install -y helm=3.20.2-1
     - name: Install Helm v3
       ansible.builtin.apt:
         # We need to pin Helm to version v3 because v4 is not backward
@@ -113,6 +119,7 @@
         state: present
         update_cache: yes
 
+    # echo "helm hold" | sudo dpkg --set-selections
     - name: Ensure Helm package won't be updated to v4
       ansible.builtin.dpkg_selections:
         name: helm
@@ -130,15 +137,17 @@
 
     - name: Install faas-cli
       block:
+        # sudo mkdir -p /opt/bin && sudo chmod 0755 /opt/bin
         - name: Ensure /opt/bin directory exists
           ansible.builtin.file:
             path: /opt/bin/
             state: directory
             mode: '0755'
 
+        # sudo curl -fL https://github.com/openfaas/faas-cli/releases/download/0.18.12/faas-cli -o /opt/bin/faas-cli && sudo chmod 0755 /opt/bin/faas-cli
         - name: Download faas-cli
           ansible.builtin.get_url:
-            url: https://github.com/openfaas/faas-cli/releases/download/0.18.8/faas-cli
+            url: https://github.com/openfaas/faas-cli/releases/download/0.18.12/faas-cli
             dest: "/opt/bin/faas-cli"
             mode: '0755'
 
@@ -153,16 +162,19 @@
               # Let all users run binaries in /opt/bin.
               export PATH="/opt/bin:$PATH"
 
+    # sudo helm repo add haproxytech https://haproxytech.github.io/helm-charts
     - name: Ensure HAProxy's Helm repository is present
       kubernetes.core.helm_repository:
         name: haproxytech
         repo_url: https://haproxytech.github.io/helm-charts
 
+    # sudo helm repo add prometheus-community https://prometheus-community.github.io/helm-charts
     - name: Ensure Prometheus's Helm repository is present
       kubernetes.core.helm_repository:
         name: prometheus-community
         repo_url: https://prometheus-community.github.io/helm-charts
 
+    # sudo helm repo add openfaas https://openfaas.github.io/faas-netes/
     - name: Ensure OpenFaaS's Helm repository is present
       kubernetes.core.helm_repository:
         name: openfaas
@@ -184,6 +196,7 @@
   tasks:
     - name: Deploy Helm charts
       block:
+        # sudo helm upgrade --install haproxy haproxytech/haproxy --version 1.28.1 --values k8s/charts/values-haproxy.yaml
         - name: Deploy HAProxy chart
           kubernetes.core.helm:
             name: haproxy
@@ -193,10 +206,12 @@
             release_namespace: default
 
         # This is a sidecar service exposed along with HAProxy.
+        # sudo kubectl apply -f ./k8s/scripts/haproxy-metrics-exporter/service.yaml
         - name: Ensure haproxy-metrics-exporter service manifest is applied
           ansible.builtin.command: kubectl apply -f ./k8s/scripts/haproxy-metrics-exporter/service.yaml
 
         - name: Deploy Prometheus chart
+          # sudo helm upgrade --install prometheus prometheus-community/prometheus --version 27.37.0 --values k8s/charts/values-prometheus.yaml
           kubernetes.core.helm:
             name: prometheus
             chart_ref: prometheus-community/prometheus
@@ -205,6 +220,7 @@
             release_namespace: default
 
         - name: Deploy OpenFaaS chart
+          # sudo helm upgrade --install openfaas openfaas/openfaas --version 14.2.124 --values k8s/charts/values-openfaas.yaml
           kubernetes.core.helm:
             name: openfaas
             chart_ref: openfaas/openfaas
@@ -213,6 +229,7 @@
             release_namespace: default
 
         - name: Deploy rejector chart
+          # sudo helm upgrade --install rejector {{ playbook_dir }}/k8s/scripts/rejector/helm --version 0.1.0 --values k8s/charts/values-rejector.yaml
           kubernetes.core.helm:
             name: rejector
             # Must be an absolute URL when passing a path!
@@ -221,6 +238,7 @@
             values_files: k8s/charts/values-rejector.yaml
             release_namespace: default
 
+    # OPENFAAS_URL=http://127.0.0.1:31112 PATH="$PATH:$HOME/.local/bin" ./k8s/scripts/deploy-functions.sh
     - name: Deploy OpenFaaS functions
       ansible.builtin.shell: ./k8s/scripts/deploy-functions.sh
       args:
