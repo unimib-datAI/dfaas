@@ -152,3 +152,39 @@ forecaster:
 
 The image pulling rules that apply to the forecaster are the same as those for
 the agent.
+
+## Manual agent startup
+
+If you want to run the DFaaS agent manually as a standalone binary, outside the
+Kubernetes cluster, follow the steps below:
+
+1. Clone the DFaaS repository into your home directory, then move to the
+   `dfaas/dfaasagent` directory.
+
+2. Build the DFaaS agent binary using Go with `$ go build .`. This produces the
+   `dfaasagent` executable.
+
+3. Each agent requires an Ed25519 private key to maintain a persistent Peer ID.
+   Generate or obtain a private key in PEM format as described in the [Agent
+   identity](#agent-identity) section.
+
+4. Create an agent configuration file (`config.env`) for each node. The file
+   must contain the environment variables required by the agent, including the
+   private key path and the configuration needed to connect to other agents.
+   Make sure that the private key file is named `privatekey.pem`, or that
+   `AGENT_PRIVATE_KEY_FILE` points to the correct file; `config.env` is stored
+   in the same directory as the `dfaasagent` executable; and the configuration
+   contains the correct IP address and Peer ID information for the nodes in your
+   deployment.
+
+5. To connect multiple agents, choose one node to act as the initial bootstrap
+   node. Other agents will connect to this node when they start. For example,
+   suppose node A is the bootstrap node. On node A, disable bootstrap
+   connections by setting `AGENT_BOOTSTRAP_NODES=false`. On the other nodes,
+   enable bootstrap connections and specify node A in
+   `AGENT_BOOTSTRAP_NODES_LIST`, for example, with the value
+   `/ip4/IP_NODE_A/tcp/31600/p2p/PEER_ID_NODE_A`. If necessary, you can specify
+   multiple bootstrap nodes by providing a comma-separated list of multiaddrs.
+
+6. Start the bootstrap node first with `$ ./dfaasagent -config config.env`. Then
+   start the remaining nodes using their respective `config.env` files.
