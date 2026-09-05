@@ -1,0 +1,44 @@
+# Example topology configuration.
+#
+# SSH settings (host/user/key) are used to connect to each VM.
+# network_ip is the IP address used for VM traffic.
+#
+# Links are bidirectional. A single link vm1 <-> vm2 configures both vm1 -> vm2
+# and vm2 -> vm1.
+#
+# Link parameters:
+#   delay:  artificial one-way delay (default: 0ms)
+#   jitter: variation in delay (default: 0ms)
+#   loss:   packet loss percentage (default: 0%)
+#
+# See the tc documentation for more information: https://man7.org/linux/man-pages/man8/tc.8.html
+vms:
+  dfaas-node-a:
+    host: 10.12.68.9
+    user: user
+    key: ~/.ssh/id_ed25519
+
+  dfaas-node-b:
+    host: 10.12.68.10
+    user: user
+    key: ~/.ssh/id_ed25519
+
+  dfaas-node-c:
+    host: 10.12.68.2
+    user: user
+    key: ~/.ssh/id_ed25519
+
+links:
+  # 100 ms delay, no jitter, no packet loss.
+  - endpoints: [dfaas-node-a, dfaas-node-b]
+    delay: 100ms
+
+  # 250 ms delay with 10 ms jitter, no packet loss.
+  - endpoints: [dfaas-node-b, dfaas-node-c]
+    delay: 250ms
+    jitter: 10ms
+
+  # 50 ms delay with 0.5% packet loss, no jitter.
+  - endpoints: [dfaas-node-c, dfaas-node-a]
+    delay: 50ms
+    loss: 0.5%
