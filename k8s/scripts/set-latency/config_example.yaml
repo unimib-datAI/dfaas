@@ -1,7 +1,7 @@
 # Example topology configuration.
 #
-# SSH settings (host/user/key) are used to connect to each VM.
-# network_ip is the IP address used for VM traffic.
+# SSH settings (host/user/key) are used to connect to each VM. The host is used
+# also for the links. Warning: only IPv4 is currently supported!
 #
 # Links are bidirectional. A single link vm1 <-> vm2 configures both vm1 -> vm2
 # and vm2 -> vm1.
