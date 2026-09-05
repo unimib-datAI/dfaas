@@ -125,6 +125,15 @@ config:
   # return different actions.
   AGENT_RLMODEL_EXPLORE: false
 
+  # Starting seed for the pseudo-random number generator. If set to -1, a random
+  # seed is used. Used only for "randomstrategy".
+  AGENT_RANDOM_SEED: -1
+
+  # If true, the random strategy can also randomly reject requests. If false,
+  # requests can only be processed locally or forwarded to neighbors. Used only
+  # for "randomstrategy".
+  AGENT_RANDOM_REJECT: false
+
 
 # Agent's private key in PEM format. If empty, the agent will generate a new
 # private key and it will print to the standard output.

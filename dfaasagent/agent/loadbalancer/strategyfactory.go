@@ -211,3 +211,40 @@ func (strategyFactory *rlAgentStrategyFactory) createStrategy() (Strategy, error
 
 	return strategy, nil
 }
+
+// randomStrategyFactory is the strategy factory for the Random strategy.
+type randomStrategyFactory struct{}
+
+//go:embed haproxycfgrandom.tmpl
+var haproxycfgRandomTemplate string
+
+// createStrategy creates and returns a new RandomStrategy instance.
+func (strategyFactory *randomStrategyFactory) createStrategy() (Strategy, error) {
+	strategy := &RandomStrategy{}
+
+	// Set up random strategy configuration.
+	strategy.randomSeed = _config.RandomSeed
+	strategy.randomReject = _config.RandomReject
+
+	// Set up the HAProxy config update mechanism (via HAProxy Data Plane API).
+	hacfgupdater, err := hacfgupd.New(_config.DataPlaneAPIHost,
+		_config.DataPlaneAPIPort,
+		_config.DataPlaneAPIUser,
+		_config.DataPlaneAPIPassword,
+		haproxycfgRandomTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
+	}
+	strategy.hacfgupdater = hacfgupdater
+
+	// Set up the HAProxy Runtime API client. Used to update HAProxy runtime
+	// configuration without reloading HAProxy.
+	runtimeapiAddr := fmt.Sprintf("%s:%d", _config.RuntimeAPIHost, _config.RuntimeAPIPort)
+	strategy.runtimeapi = proxy.NewRuntimeAPI(runtimeapiAddr)
+
+	// Set up the wrapper to OpenFaaS Gateway API used to get the list of
+	// deployed OpenFaaS functions.
+	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+
+	return strategy, nil
+}

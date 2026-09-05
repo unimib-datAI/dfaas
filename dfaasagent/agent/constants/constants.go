@@ -13,6 +13,7 @@ const (
 	StaticStrategy     = "staticstrategy"
 	AllLocalStrategy   = "alllocalstrategy"
 	RLAgentStrategy    = "rlagentstrategy"
+	RandomStrategy     = "randomstrategy"
 
 	// HAProxyMaxWeight is the maximum possible weight value that should be used
 	// in the HAProxy configuration file

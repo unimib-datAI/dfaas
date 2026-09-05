@@ -1,0 +1,94 @@
+# HAProxy configuration file updated by DFaaS Agent on {{.Now}}
+# DFaaS Agent running with "Random" strategy.
+
+# See k8s/charts/values-haproxy.yaml for more information about global,
+# userlist, defaults, and prometheus frontend sections.
+global
+  master-worker
+  stats socket ipv4@*:6666 mode 660 level admin expose-fd listeners
+  log stdout format raw local0
+
+  # Duplicate logs: one for stdout/k8s logs, one for haproxy-metrics-exporter, a
+  # sidecar container in the same pod.
+  log stdout format raw local0
+  log localhost:5014 local0
+
+userlist dataplaneapi
+  user admin insecure-password admin
+
+defaults
+  mode http
+  option httplog
+  option forwardfor
+  option http-server-close
+  log global
+  timeout client 60s
+  timeout connect 60s
+  timeout server 60s
+
+frontend prometheus
+  bind :8405
+  http-request use-service prometheus-exporter
+  no log
+
+# The configuration is generated and changed by the DFaaS agent from this point
+# on.
+
+frontend main
+    bind :80
+
+    # Track the DFaaS node that originally received the request. This header is
+    # added by the backend before a request is forwarded to another node.
+    http-request set-var(txn.dfaas_node_id) req.hdr(DFaaS-Node-ID)
+
+    {{/* Create ACLs and backend selection for each function. */}}
+    {{range $funcName, $_ := .Functions -}}
+        # Match function path (always under /function/).
+        acl is_{{$funcName}} path_beg /function/{{$funcName}}
+
+        # Use the forwarded backend if the request originates from another DFaaS
+        # node. Otherwise, use the local backend.
+        use_backend function_{{$funcName}}_forwarded if is_{{$funcName}} { req.hdr(DFaaS-Node-ID) -m found }
+        use_backend function_{{$funcName}} if is_{{$funcName}}
+    {{end}}
+
+{{- range $funcName, $timeout := .Functions }}
+backend function_{{$funcName}}
+    # Mark the request with the current DFaaS-Node-ID. This allows the receiving
+    # node to determine that the request has been forwarded.
+    http-request set-header DFaaS-Node-ID {{$.DFaaSNodeID}}
+
+    # Mark the response with the DFaaS-Node-ID to let the client know which
+    # DFaaS node managed the request.
+    http-response set-header DFaaS-Node-ID {{$.DFaaSNodeID}}
+
+    # Roundrobin provides deterministic selection when traffic is low and
+    # random percentages are used by the DFaaS agent.
+    balance roundrobin
+
+    # "openfaas-local" is the local FaaS platform and "rejector" is a dummy
+    # web server that rejects incoming requests.
+    server openfaas-local {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} weight 100
+    server rejector {{$.RejectorHost}}:{{$.RejectorPort}} weight 0
+    {{- range $.Neighbors }}
+        server {{.}} {{index $.NeighborsHost .}}:{{index $.NeighborsPort .}} weight 0
+    {{- end }}
+
+    {{- if $timeout}}
+    timeout connect {{$timeout}}ms
+    timeout server {{$timeout}}ms
+    {{- end}}
+
+backend function_{{$funcName}}_forwarded
+    # This is a forwarded request: preserve the original node ID and add the
+    # node to which the request was forwarded.
+    http-response set-header DFaaS-Node-ID %[var(txn.dfaas_node_id)]
+    http-response add-header DFaaS-Forwarded-To {{$.DFaaSNodeID}}
+
+    server openfaas-local {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}}
+
+    {{- if $timeout}}
+    timeout connect {{$timeout}}ms
+    timeout server {{$timeout}}ms
+    {{- end}}
+{{end}}

@@ -10,7 +10,8 @@ Currently, there are the following strategies:
 2. Node Margin (`nodemarginstrategy`),
 3. Static (`staticstrategy`),
 4. All Local (`alllocalstrategy`),
-5. RL Agent (`rlagentstrategy`).
+5. RL Agent (`rlagentstrategy`),
+6. Random (`randomstrategy`).
 
 > [!TIP]
 > For implementation details, refer to the code comments in the
@@ -146,3 +147,34 @@ requests manually, ensure that the stage values follow this convention!
 
 You must configure the RL model endpoint via the `AGENT_RLMODEL_HOST` and
 `AGENT_RLMODEL_PORT` environment variables.
+
+### Random
+
+The random strategy randomly selects how incoming requests are distributed
+between the local node and the neighbors.
+
+The strategy uses two options:
+
+* `AGENT_RANDOM_SEED`: starting seed for the pseudo-random number generator. If
+  set to `-1`, a random seed is used. The default value is `-1`.
+* `AGENT_RANDOM_REJECT`: if set to `true`, the strategy can randomly reject
+  requests instead of processing them locally or forwarding them to neighbors.
+  The default value is `false`.
+
+The strategy randomly generates a percentage of requests for each available
+action:
+
+* process requests locally;
+* forward requests to neighbors, if available;
+* reject requests, if `AGENT_RANDOM_REJECT` is set to `true`.
+
+Each neighbor receives its own randomly generated percentage. The generated
+percentages are then used as HAProxy weights. Therefore, different neighbors
+can receive different amounts of incoming requests.
+
+A new set of percentages is generated after every `AGENT_RECALC_PERIOD` for the
+local node, each available neighbor, and, if enabled, the reject action.
+
+If there are no neighbors and `AGENT_RANDOM_REJECT` is set to `false`, all
+requests are processed locally. In this case, 100% of the requests are assigned
+to the local node.

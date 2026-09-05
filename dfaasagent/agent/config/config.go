@@ -126,6 +126,15 @@ type Configuration struct {
 	// observation will return almost the same action. If set to true, the same
 	// observation may return different actions.
 	RLModelExplore bool `mapstructure:"AGENT_RLMODEL_EXPLORE"`
+
+	// RandomSeed is the starting seed for the pseudo-random number generator.
+	// If set to -1, a random seed is used. Used only for "randomstrategy".
+	RandomSeed int64 `mapstructure:"AGENT_RANDOM_SEED"`
+
+	// If true, the random strategy can also randomly reject requests. If false,
+	// requests can only be processed locally or forwarded to neighbors. Used
+	// only for "randomstrategy".
+	RandomReject bool `mapstructure:"AGENT_RANDOM_REJECT"`
 }
 
 // viperBindConfig binds each field of the Configuration struct with its
