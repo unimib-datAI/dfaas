@@ -103,18 +103,20 @@ def build_tc_command(interface, links):
 
     Traffic is classified by destination IPv4 address.
 
-    Example:
+    Band 1 is intentionally left as the default band, so traffic that does not
+    match any configured destination receives no artificial delay or packet
+    loss.
 
+    Example:
         VM1 -> VM2 = 100ms
         VM1 -> VM3 = 250ms
 
-    becomes:
-
-        destination VM2 -> netem 100ms
-        destination VM3 -> netem 250ms
-        everything else -> no delay
+    Becomes:
+        destination VM2 -> band 2 -> netem 100ms
+        destination VM3 -> band 3 -> netem 250ms
+        everything else -> band 1 -> no delay
     """
-
+    # Band 1 is reserved for unmatched/default traffic.
     bands = len(links) + 1
 
     commands = [
@@ -128,8 +130,9 @@ def build_tc_command(interface, links):
         ),
     ]
 
-    # Create one netem qdisc for every destination.
-    for index, link in enumerate(links, start=1):
+    # Create one netem qdisc for every configured destination. Start at band 2
+    # because band 1 is the no-delay default band.
+    for index, link in enumerate(links, start=2):
         delay = link.get("delay", "0ms")
         jitter = link.get("jitter", "0ms")
         loss = link.get("loss", "0%")
@@ -151,8 +154,9 @@ def build_tc_command(interface, links):
             f"parent {TC_ROOT_HANDLE}{index} " + " ".join(options)
         )
 
-    # Classify packets based on destination IP.
-    for index, link in enumerate(links, start=1):
+    # Classify packets based on destination IP. Use the same band numbering as
+    # the netem qdiscs above.
+    for index, link in enumerate(links, start=2):
         destination = link["destination"]
 
         commands.append(
@@ -163,6 +167,17 @@ def build_tc_command(interface, links):
             f"flower dst_ip {quote(destination)} "
             f"flowid {TC_ROOT_HANDLE}{index}"
         )
+
+    # Explicitly send all unmatched IPv4 traffic to band 1. Band 1 has no netem
+    # qdisc, so unmatched traffic gets no artificial latency or packet loss.
+    commands.append(
+        f"tc filter add dev {quote(interface)} "
+        "protocol ip "
+        f"parent {TC_ROOT_HANDLE} "
+        f"prio {TC_FILTER_PRIO_BASE + len(links) + 1} "
+        "flower "
+        f"flowid {TC_ROOT_HANDLE}1"
+    )
 
     # Execute all commands through sudo.
     return " && ".join(f"sudo -n {command}" for command in commands)
