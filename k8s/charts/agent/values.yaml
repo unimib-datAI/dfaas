@@ -134,6 +134,11 @@ config:
   # for "randomstrategy".
   AGENT_RANDOM_REJECT: false
 
+  # Neighbours with an RTT latency higher than this value are excluded from
+  # forwarding. Must be non-negative. The default value is 0, meaning that only
+  # local processing is performed. Used only for "latencythresholdstrategy".
+  AGENT_LATENCY_THRESHOLD_MS: "10.5"
+
 
 # Agent's private key in PEM format. If empty, the agent will generate a new
 # private key and it will print to the standard output.

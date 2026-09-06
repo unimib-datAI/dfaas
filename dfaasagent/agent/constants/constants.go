@@ -8,12 +8,13 @@ package constants
 
 const (
 	// Names of the different strategies supported by the DFaaS agent.
-	RecalcStrategy     = "recalcstrategy"
-	NodeMarginStrategy = "nodemarginstrategy"
-	StaticStrategy     = "staticstrategy"
-	AllLocalStrategy   = "alllocalstrategy"
-	RLAgentStrategy    = "rlagentstrategy"
-	RandomStrategy     = "randomstrategy"
+	RecalcStrategy           = "recalcstrategy"
+	NodeMarginStrategy       = "nodemarginstrategy"
+	StaticStrategy           = "staticstrategy"
+	AllLocalStrategy         = "alllocalstrategy"
+	RLAgentStrategy          = "rlagentstrategy"
+	RandomStrategy           = "randomstrategy"
+	LatencyThresholdStrategy = "latencythresholdstrategy"
 
 	// HAProxyMaxWeight is the maximum possible weight value that should be used
 	// in the HAProxy configuration file

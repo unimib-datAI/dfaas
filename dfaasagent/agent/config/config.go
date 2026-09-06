@@ -135,6 +135,12 @@ type Configuration struct {
 	// requests can only be processed locally or forwarded to neighbors. Used
 	// only for "randomstrategy".
 	RandomReject bool `mapstructure:"AGENT_RANDOM_REJECT"`
+
+	// Neighbours with an RTT latency higher than this value are excluded from
+	// forwarding. Must be non-negative. The default value is 0, meaning that
+	// only local processing is performed. Used only for
+	// "latencythresholdstrategy".
+	LatencyThresholdMs float64 `mapstructure:"AGENT_LATENCY_THRESHOLD_MS"`
 }
 
 // viperBindConfig binds each field of the Configuration struct with its

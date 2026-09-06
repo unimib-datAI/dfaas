@@ -11,7 +11,8 @@ Currently, there are the following strategies:
 3. Static (`staticstrategy`),
 4. All Local (`alllocalstrategy`),
 5. RL Agent (`rlagentstrategy`),
-6. Random (`randomstrategy`).
+6. Random (`randomstrategy`),
+7. Latency Threshold (`latencythresholdstrategy`).
 
 > [!TIP]
 > For implementation details, refer to the code comments in the
@@ -178,3 +179,20 @@ local node, each available neighbor, and, if enabled, the reject action.
 If there are no neighbors and `AGENT_RANDOM_REJECT` is set to `false`, all
 requests are processed locally. In this case, 100% of the requests are assigned
 to the local node.
+
+### Latency Threshold
+
+The latency threshold strategy is a latency-aware strategy that selects
+neighbors with a Round-Trip Time (RTT) lower than a user-configured threshold
+and forwards requests to them instead of processing all requests locally. The
+requests are divided equally between the local node and the selected neighbors.
+If there are no suitable neighbors, all requests are processed locally.
+
+The strategy uses the `AGENT_LATENCY_THRESHOLD_MS` option as the latency
+threshold when evaluating neighbors. The latency is measured using an RTT ping
+to each neighbor. Three pings are performed and their results are averaged to
+get a more stable latency value. This process is repeated every
+`AGENT_RECALC_PERIOD`.
+
+When `AGENT_LATENCY_THRESHOLD_MS` is set to 0ms, the strategy behaves exactly as
+the All Local strategy.

@@ -1,5 +1,5 @@
 # HAProxy configuration file updated by DFaaS Agent on {{.Now}}
-# DFaaS Agent running with "Random" strategy.
+# DFaaS Agent running with "Latency Threshold" strategy.
 
 # See k8s/charts/values-haproxy.yaml for more information about global,
 # userlist, defaults, and prometheus frontend sections.
@@ -61,16 +61,16 @@ backend function_{{$funcName}}
     # DFaaS node managed the request.
     http-response set-header DFaaS-Node-ID {{$.DFaaSNodeID}}
 
-    # Roundrobin provides deterministic selection when traffic is low and
-    # random percentages are used by the DFaaS agent.
+    # Roundrobin provides deterministic selection when traffic is low.
     balance roundrobin
 
-    # "openfaas-local" is the local FaaS platform and "rejector" is a dummy
-    # web server that rejects incoming requests.
-    server openfaas-local {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} weight 100
-    server rejector {{$.RejectorHost}}:{{$.RejectorPort}} weight 0
+    # "openfaas-local" is the local FaaS platform.
+    {{ $localWeight := index $.Weights $funcName $.DFaaSNodeID }}
+    server openfaas-local {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} weight {{$localWeight}}
     {{- range $.Neighbors }}
-        server {{.}} {{index $.NeighborsHost .}}:{{index $.NeighborsPort .}} weight 0
+        {{ $weight := index $.Weights $funcName .}}
+        {{ $serverName := printf "node_%s" .}}
+        server {{$serverName}} {{index $.NeighborsHost .}}:{{index $.NeighborsPort .}} weight {{$weight}}
     {{- end }}
 
     {{- if $timeout}}

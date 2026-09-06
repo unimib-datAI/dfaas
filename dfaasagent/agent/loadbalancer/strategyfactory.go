@@ -248,3 +248,37 @@ func (strategyFactory *randomStrategyFactory) createStrategy() (Strategy, error)
 
 	return strategy, nil
 }
+
+// latencyThresholdStrategyFactory is the strategy factory for the
+// LatencyThreshold strategy.
+type latencyThresholdStrategyFactory struct{}
+
+//go:embed haproxycfglatencythreshold.tmpl
+var haproxycfgLatencyThresholdTemplate string
+
+// createStrategy creates and returns a new LatencyThresholdStrategy instance.
+func (strategyFactory *latencyThresholdStrategyFactory) createStrategy() (Strategy, error) {
+	strategy := &LatencyThresholdStrategy{}
+
+	strategy.thresholdMs = _config.LatencyThresholdMs
+	if strategy.thresholdMs < 0 {
+		return nil, fmt.Errorf("latency threshold ms is %f, must be non-negative", strategy.thresholdMs)
+	}
+
+	// Set up the HAProxy config update mechanism (via HAProxy Data Plane API).
+	hacfgupdater, err := hacfgupd.New(_config.DataPlaneAPIHost,
+		_config.DataPlaneAPIPort,
+		_config.DataPlaneAPIUser,
+		_config.DataPlaneAPIPassword,
+		haproxycfgLatencyThresholdTemplate)
+	if err != nil {
+		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
+	}
+	strategy.hacfgupdater = hacfgupdater
+
+	// Set up the wrapper to OpenFaaS Gateway API used to get the list of
+	// deployed OpenFaaS functions.
+	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+
+	return strategy, nil
+}
