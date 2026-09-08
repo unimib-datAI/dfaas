@@ -223,13 +223,16 @@ func (strategy *LatencyThresholdStrategy) setProxyWeights(weights map[string]map
 // latency in milliseconds. It uses three pings to get a more stable result.
 //
 // TODO: Run the ping in a dedicated goroutine so a slow node does not block the
-// strategy cycle. A 500 ms ping currently wastes 500 ms of the cycle.
+// strategy cycle. A 500 ms ping currently wastes 500 ms of the cycle. Maybe we
+// can create one goroutine for each neighbor?
 func getLatencyMs(nodeID string) (float64, error) {
 	p, err := peer.Decode(nodeID)
 	if err != nil {
 		return 0, fmt.Errorf("invalid peer id %s: %w", nodeID, err)
 	}
 
+    // FIXME: Set the timeout to the latency threshold. A higher timeout value
+    // is useless.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -238,6 +241,7 @@ func getLatencyMs(nodeID string) (float64, error) {
 	var totalMs float64
 	var count int
 
+    // TODO: Reduce the number of pings to just one. It should be enough.
 	for count < 3 {
 		select {
 		case res, ok := <-ch:
