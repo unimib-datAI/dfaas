@@ -1,0 +1,16 @@
+[project]
+name = "dfaas-k6"
+version = "0.1.0"
+requires-python = ">=3.12"
+dependencies = [
+    "matplotlib>=3.11.1",
+    "numpy>=2.5.3",
+    "pandas>=3.0.5",
+    "polars>=1.44.2",
+]
+
+[dependency-groups]
+dev = [
+    "ipython>=9.17.1",
+    "ruff>=0.16.6",
+]
