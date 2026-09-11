@@ -7,6 +7,7 @@ dependencies = [
     "numpy>=2.5.3",
     "pandas>=3.0.5",
     "polars>=1.44.2",
+    "pyarrow>=25.0.1",
 ]
 
 [dependency-groups]
