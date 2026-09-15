@@ -80,9 +80,7 @@ frontend fe_main
     http-request capture req.hdr(Host) len 50
     http-request capture req.hdr(DFaaS-Node-ID) len 50
 
-    {{/* Deny requests which are not directed to a function or / (root) or the
-    stats page (note: the root path is needed for health checks by
-    other nodes) or to /healthz */ -}}
+    {{/* Deny requests which are not directed to a function or / (root) or the stats page */ -}}
     http-request deny unless is_path_haproxy or is_path_system_funcs or is_path_function
 
     {{/* If a hdr DFaaS-Node-ID is present AND is not known deny request. 
@@ -110,16 +108,13 @@ frontend fe_main
 
 # Backend for managing the functions in self OpenFaaS instance.
 backend be_system_funcs
-    option httpchk GET /
     option http-server-close
-    server system_funcs {{.OpenFaaSHost}}:{{.OpenFaaSPort}} check
+    server system_funcs {{.OpenFaaSHost}}:{{.OpenFaaSPort}}
 
 # Backend for forwarding function requests to the self OpenFaaS Instance.
 #
 # This backend is used for requests coming from other DFaaS nodes.
 backend be_myself
-    option httpchk GET /healthz
-
     # Enable insertion of the X-Forwarded-For header to requests sent to
     # servers.
     option forwardfor
@@ -134,7 +129,7 @@ backend be_myself
     http-response set-header X-Server %s
     http-response set-header DFaaS-Node-ID {{$.MyNodeID}}
 
-    server {{$.NodeIP}} {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} check
+    server {{$.NodeIP}} {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}}
 
 # Backends for each deployed OpenFaaS function.
 #
@@ -146,7 +141,6 @@ backend be_{{$funcName}}
     # Enable load-balancing using custom weights.
     balance roundrobin
 
-    option httpchk GET /healthz
     option forwardfor
     option http-server-close
 
@@ -156,9 +150,9 @@ backend be_{{$funcName}}
 
     {{range $nodeID, $weight := $func.Weights -}}
     {{if (eq $nodeID $.MyNodeID) -}}
-    server {{$.NodeIP}} {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} weight {{$weight}} check
+    server {{$.NodeIP}} {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} weight {{$weight}}
     {{else -}}
-    server {{(index $.Nodes $nodeID).HAProxyHost}} {{(index $.Nodes $nodeID).HAProxyHost}}:{{(index $.Nodes $nodeID).HAProxyPort}} weight {{$weight}} check
+    server {{(index $.Nodes $nodeID).HAProxyHost}} {{(index $.Nodes $nodeID).HAProxyHost}}:{{(index $.Nodes $nodeID).HAProxyPort}} weight {{$weight}}
     {{end -}}
     {{end}}
 {{end}}

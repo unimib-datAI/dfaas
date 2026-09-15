@@ -72,9 +72,7 @@ frontend fe_main
     acl is_path_system_funcs path /system/functions
     acl is_path_function path_beg /function/
 
-    {{/* Deny requests which are not directed to a function or / (root) or the
-    stats page (note: the root path is needed for health checks by
-    other nodes) or to /healthz */ -}}
+    {{/* Deny requests which are not directed to a function or / (root) or the stats page */ -}}
     http-request deny unless is_path_haproxy or is_path_system_funcs or is_path_function
 
     {{/* Capture some request headers in log */ -}}
@@ -175,16 +173,10 @@ frontend fe_main
 
     {{end}}
 
-# Note: for all backend we enable HTTP health checks and HTTP connection closing
-# on the server side. This provides the lowest latency on the client side (slow
-# network) and the fastest session reuse on the server side to save server
-# resources.
-
 # Backend for OpenFaaS Administrative API (/system/functions)
 backend be_system_funcs
-    option httpchk GET /
     option http-server-close
-    server system_funcs {{.OpenFaaSHost}}:{{.OpenFaaSPort}} check
+    server system_funcs {{.OpenFaaSHost}}:{{.OpenFaaSPort}}
 
 # Backend for the local OpenFaaS instance. Requests (functions) arriving here
 # will be handled locally.
@@ -196,7 +188,6 @@ backend be_system_funcs
 # node's IP address and a DFaaS-Node-ID header with the agent's ID (libp2p ID).
 # This allows clients to identify which DFaaS node processed the request.
 backend be_myself
-    option httpchk GET /
     option http-server-close
 
     # Automatically add the X-Forwarded-For header to let know the local
@@ -224,13 +215,12 @@ backend be_myself
     {{range $nodeID, $_ := $func.LimitsIn -}}
     http-request track-sc0 dst_port table st_other_node_{{$funcName}}_{{$nodeID}} if is_func_{{$funcName}} has_nodeid_hdr is_node_{{$nodeID}}
     {{end}}
-    
     {{end}}
 
     http-response set-header X-Server %s
     http-response set-header DFaaS-Node-ID {{$.MyNodeID}}
 
-    server {{$.NodeIP}} {{.OpenFaaSHost}}:{{.OpenFaaSPort}} check
+    server {{$.NodeIP}} {{.OpenFaaSHost}}:{{.OpenFaaSPort}}
 
 {{range $funcName, $func := .Functions -}}
 # Backend responsible for forwarding incoming user requests to other DFaaS
@@ -247,7 +237,6 @@ backend be_myself
 # If no servers are available (no other DFaaS nodes are up), HAProxy will return
 # a 503 error (with X-Server and DFaaS-Node-ID local node values).
 backend be_others_func_{{$funcName}}
-    option httpchk GET /
     option forwardfor
     option http-server-close
 
@@ -262,7 +251,7 @@ backend be_others_func_{{$funcName}}
 
     {{range $nodeID, $weight := $func.Weights -}}
     {{if (gt $weight 0) -}}
-    server {{(index $.Nodes $nodeID).HAProxyHost}} {{(index $.Nodes $nodeID).HAProxyHost}}:{{(index $.Nodes $nodeID).HAProxyPort}} weight {{$weight}} check
+    server {{(index $.Nodes $nodeID).HAProxyHost}} {{(index $.Nodes $nodeID).HAProxyHost}}:{{(index $.Nodes $nodeID).HAProxyPort}} weight {{$weight}}
     {{end -}}
     {{end}}
 {{end}}
