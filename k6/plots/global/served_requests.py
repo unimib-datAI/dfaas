@@ -119,13 +119,24 @@ def plot(df, output):
     plt.close(fig)
 
 
-def process_csv(input_csv, output_csv, output_pdf):
+def process_csv(input_csv, output_csv, output_pdf, rl_strategy=False):
     """
     Process a single input CSV file.
     """
     print(f"Loading: {input_csv}")
 
     df = pl.read_csv(input_csv, null_values=[""])
+
+    if rl_strategy:
+        if "phase" not in df.columns:
+            raise ValueError(
+                "CSV does not contain 'phase' column required for RL strategy"
+            )
+
+        df = df.filter(pl.col("phase") == "rl_agent")
+        print("Filtering phase == 'rl_agent'")
+        if df.height == 0:
+            raise ValueError("CSV is empty after filtering")
 
     # Classify request outcomes
     df = classify_outcome(df)
@@ -157,7 +168,7 @@ def process_csv(input_csv, output_csv, output_pdf):
     print()
 
 
-def process_experiment(exp):
+def process_experiment(exp, rl_strategy=False):
     """
     Process one experiment directory.
     """
@@ -167,7 +178,7 @@ def process_experiment(exp):
     output_csv = output_dir / "request_outcome_by_node.csv"
     output_pdf = output_dir / "request_outcome_by_node.pdf"
 
-    process_csv(input_csv, output_csv, output_pdf)
+    process_csv(input_csv, output_csv, output_pdf, rl_strategy)
 
 
 def main():
@@ -211,6 +222,12 @@ def main():
         help="Output PDF plot file (required with --input-csv)",
     )
 
+    parser.add_argument(
+        "--rl-strategy",
+        action="store_true",
+        help="Enable this option only if the experiment used the RL Agent strategy",
+    )
+
     args = parser.parse_args()
 
     # Direct CSV mode
@@ -218,7 +235,7 @@ def main():
         if args.output_csv is None or args.output_pdf is None:
             parser.error("--input-csv requires both --output-csv and --output-pdf")
 
-        process_csv(args.input_csv, args.output_csv, args.output_pdf)
+        process_csv(args.input_csv, args.output_csv, args.output_pdf, args.rl_strategy)
         return
 
     # Experiment directory mode
@@ -226,7 +243,7 @@ def main():
         parser.error("provide experiment directories or use --input-csv")
 
     for exp in args.experiments:
-        process_experiment(exp)
+        process_experiment(exp, args.rl_strategy)
 
 
 if __name__ == "__main__":
