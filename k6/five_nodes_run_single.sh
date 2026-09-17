@@ -15,6 +15,7 @@ echo "[INFO] Start at $(date '+%Y-%m-%dT%H:%M:%S%z [%Z] epoch=%s')"
 SSH_OPTS=(
   -i ~/.ssh/id_ed25519
   -o StrictHostKeyChecking=no
+  -o IdentitiesOnly=yes
   -o UserKnownHostsFile=/dev/null
   -o LogLevel=QUIET
 )

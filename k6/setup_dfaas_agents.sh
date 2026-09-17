@@ -23,6 +23,8 @@ AGENT_MASTER=""
 # VMs that are frequently recreated, and we operate in an isolated test bed
 # environment.
 SSH_OPTS=(
+  -i ~/.ssh/id_ed25519
+  -o IdentitiesOnly=yes
   -o StrictHostKeyChecking=no
   -o UserKnownHostsFile=/dev/null
   -o LogLevel=ERROR
