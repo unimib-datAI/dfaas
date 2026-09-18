@@ -27,12 +27,22 @@ def validate_nodes(df, expected_nodes=5):
 def process_csv(input_csv, output_pdf, rl_strategy=False):
     print(f"Loading: {input_csv}")
 
-    df = pl.read_csv(input_csv, null_values=[""])
+    df = pl.read_csv(input_csv)
+
+    if not validate_nodes(df):
+        raise SystemExit(1)
 
     if rl_strategy:
         if "phase" not in df.columns:
             raise ValueError(
                 "CSV does not contain 'phase' column required for RL strategy"
+            )
+
+        phases = df["phase"].unique().to_list()
+
+        if "rl_agent" not in phases:
+            raise ValueError(
+                f"'rl_agent' not found in phase column. Available: {phases}"
             )
 
         df = df.filter(pl.col("phase") == "rl_agent")
@@ -41,8 +51,8 @@ def process_csv(input_csv, output_pdf, rl_strategy=False):
         if df.height == 0:
             raise ValueError("CSV is empty after filtering")
 
-    if not validate_nodes(df):
-        raise SystemExit(1)
+        # Re-validate node count after filtering, but only warn.
+        validate_nodes(df)
 
     # Aggregate k6 results and prepare data for plotting.
     # Assumption: each k6 iteration represents a 60-second interval.
