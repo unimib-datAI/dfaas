@@ -28,12 +28,12 @@ def classify_outcome(df):
             pl.col("dfaas_forwarded_to").is_not_null() & (pl.col("http_status") == 200)
         )
         .then(pl.lit("forward_success"))
-        .when(pl.col("dfaas_forwarded_to").is_null() & (pl.col("http_status") == 503))
+        .when(pl.col("dfaas_forwarded_to").is_null() & (pl.col("http_status") == 403))
         .then(pl.lit("agent_reject"))
         .when(
             pl.col("dfaas_forwarded_to").is_null()
             & (pl.col("http_status") != 200)
-            & (pl.col("http_status") != 503)
+            & (pl.col("http_status") != 403)
         )
         .then(pl.lit("local_reject"))
         .when(
