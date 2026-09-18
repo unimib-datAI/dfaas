@@ -60,7 +60,7 @@ def process_csv(input_csv, output_pdf, rl_strategy=False):
         df.group_by(["iteration", "node"])
         .agg(
             [
-                ((pl.col("http_status") == 200).mean() * 100).alias("success_rate"),
+                ((pl.col("http_status") == 200.0).mean() * 100).alias("success_rate"),
                 (pl.len() / 60).alias("rps"),
             ]
         )
