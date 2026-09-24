@@ -1,3 +1,16 @@
+# SPDX-License-Identifier: AGPL-3.0-or-later
+# Copyright 2026 The DFaaS Authors. All rights reserved.
+# This file is licensed under the AGPL v3.0 or later license. See LICENSE and
+# AUTHORS file for more information.
+#
+# This script converts raw k6 output CSV files into a reconstructed metrics
+# table, where each request is represented by a single row and the columns
+# contain all the metrics and information associated with that request.
+#
+# The main motivation behind this transformation is that the raw k6 output
+# contains multiple rows for a single request, which makes the CSV file more
+# difficult to process and analyze in later stages.
+
 import argparse
 
 import pandas as pd
@@ -108,6 +121,11 @@ def build_request_table(df):
     # Ensure "k6_stage" is integer. We could not this before since stage was in
     # "metrics_value" column (float).
     df["k6_stage"] = df["k6_stage"].astype(int)
+
+    # Do the same also for "http_status", but in this case the value may be
+    # missing (e.g. request timeout at k6 level, so with no response) and we
+    # want to keep these missing values.
+    df["http_status"] = df["http_status"].astype("Int64")
 
     # Add the "iteration" column that merges 2 k6_stage at time. This column
     # will be overwritten if --rl-strategy is given.
