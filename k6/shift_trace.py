@@ -122,7 +122,11 @@ def optimize(reference):
                 candidate_score, candidate_total = score(candidate)
 
                 if candidate_score < best_score:
-                    best_score, best_offsets, best_total = candidate_score, candidate, candidate_total
+                    best_score, best_offsets, best_total = (
+                        candidate_score,
+                        candidate,
+                        candidate_total,
+                    )
                     improved = True
                     break
 
@@ -155,7 +159,9 @@ def main():
     for node, offset in zip(NODES, offsets):
         print(f"{node}: offset={offset}")
 
-    print(f"max={total.max():.3f}, std={total.std():.3f}, p99={np.percentile(total, 99):.3f}")
+    print(
+        f"max={total.max():.3f}, std={total.std():.3f}, p99={np.percentile(total, 99):.3f}"
+    )
 
     # Apply the selected offsets and expand the samples again:
     # [8,10,15] -> [8,8,10,10,15,15]

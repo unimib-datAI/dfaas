@@ -116,5 +116,6 @@ merge_k6_results.py scripts.
 
     print(f"Done. {len(dfs)} experiments -> {output}")
 
+
 if __name__ == "__main__":
     main()
