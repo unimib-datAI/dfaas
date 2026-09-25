@@ -127,6 +127,17 @@ type Configuration struct {
 	// observation may return different actions.
 	RLModelExplore bool `mapstructure:"AGENT_RLMODEL_EXPLORE"`
 
+	// Connection information for the "historical oracle" Prometheus. Used only
+	// by the "rlagentstrategy". Note that the query resolution step is the same
+	// of PrometheusStep.
+	HistoricalPrometheusHost string `mapstructure:"AGENT_HISTORICAL_PROMETHEUS_HOST"`
+	HistoricalPrometheusPort uint   `mapstructure:"AGENT_HISTORICAL_PROMETHEUS_PORT"`
+
+	// Path of the CSV file that contains the mapping between iterations and the
+	// start/end timestamps of each iteration in the historical Prometheus
+	// instance. Used only by the "rlagentstrategy".
+	HistoricalIterationsPath string `mapstructure:"AGENT_HISTORICAL_ITERATIONS_PATH"`
+
 	// RandomSeed is the starting seed for the pseudo-random number generator.
 	// If set to -1, a random seed is used. Used only for "randomstrategy".
 	RandomSeed int64 `mapstructure:"AGENT_RANDOM_SEED"`

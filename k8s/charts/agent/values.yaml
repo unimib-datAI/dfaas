@@ -125,6 +125,17 @@ config:
   # return different actions.
   AGENT_RLMODEL_EXPLORE: false
 
+  # Connection information for the "historical oracle" Prometheus. Used only
+  # by the "rlagentstrategy". Note that the query resolution step is the same
+  # of PrometheusStep.
+  AGENT_HISTORICAL_PROMETHEUS_HOST: "127.0.0.1"
+  AGENT_HISTORICAL_PROMETHEUS_PORT: 10666
+
+  # Path of the CSV file that contains the mapping between iterations and the
+  # start/end timestamps of each iteration in the historical Prometheus
+  # instance. Used only by the "rlagentstrategy".
+  AGENT_HISTORICAL_ITERATIONS_PATH: "/usr/local/share/prometheus/iteration_timestamps.csv"
+
   # Starting seed for the pseudo-random number generator. If set to -1, a random
   # seed is used. Used only for "randomstrategy".
   AGENT_RANDOM_SEED: -1

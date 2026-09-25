@@ -231,8 +231,8 @@ func getLatencyMs(nodeID string) (float64, error) {
 		return 0, fmt.Errorf("invalid peer id %s: %w", nodeID, err)
 	}
 
-    // FIXME: Set the timeout to the latency threshold. A higher timeout value
-    // is useless.
+	// FIXME: Set the timeout to the latency threshold. A higher timeout value
+	// is useless.
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 
@@ -241,7 +241,7 @@ func getLatencyMs(nodeID string) (float64, error) {
 	var totalMs float64
 	var count int
 
-    // TODO: Reduce the number of pings to just one. It should be enough.
+	// TODO: Reduce the number of pings to just one. It should be enough.
 	for count < 3 {
 		select {
 		case res, ok := <-ch:

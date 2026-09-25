@@ -199,11 +199,26 @@ func (strategyFactory *rlAgentStrategyFactory) createStrategy() (Strategy, error
 	strategy.runtimeapi = proxy.NewRuntimeAPI(runtimeapi_addr)
 
 	// Set up the Prometheus client used to run PromQL queries.
-	promq, err := promq.New(_config.PrometheusHost, _config.PrometheusPort, _config.PrometheusStep)
+	realPromq, err := promq.New(_config.PrometheusHost, _config.PrometheusPort, _config.PrometheusStep)
 	if err != nil {
 		return nil, fmt.Errorf("initializing Prometheus client: %w", err)
 	}
-	strategy.promq = promq
+	strategy.promq = realPromq
+
+	// Set up the historical Prometheus client used to run PromQL queries.
+	historicalPromq, err := promq.New(_config.HistoricalPrometheusHost,
+		_config.HistoricalPrometheusPort,
+		_config.PrometheusStep)
+	if err != nil {
+		return nil, fmt.Errorf("initializing historical Prometheus client: %w", err)
+	}
+	strategy.historicalPromq = historicalPromq
+
+	// Set up the mapping slice from iterations number to time span.
+	strategy.historicalIterationTimeSpan, err = readIterationTimestamps(_config.HistoricalIterationsPath)
+	if err != nil {
+		return nil, fmt.Errorf("initializing historical iterations time span info: %w", err)
+	}
 
 	// Set up the wrapper to OpenFaaS Gateway API used to get the list of
 	// deployed OpenFaaS functions.

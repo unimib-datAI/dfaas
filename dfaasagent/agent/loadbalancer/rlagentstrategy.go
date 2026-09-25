@@ -7,12 +7,14 @@ package loadbalancer
 
 import (
 	"bytes"
+	"encoding/csv"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"math"
 	"net/http"
+	"os"
 	"strconv"
 	"time"
 
@@ -37,8 +39,8 @@ type RLAgentStrategy struct {
 	promq         *promq.Client
 	httpClient    *http.Client
 
-	// Connection information for the RL model Web service. Used in RL Agent
-	// phase.
+	// Connection information for the RL model Web service. Used to get the
+	// actions (balacing weights).
 	rlModelHost string
 	rlModelPort uint
 
@@ -48,15 +50,23 @@ type RLAgentStrategy struct {
 	// different actions.
 	rlModelExplore bool
 
-	// The RL Agent strategy consists of two cycling phases.
-	// allLocalPhaseTimestamp and rlAgentPhaseTimestamp store the timestamps
-	// indicating when each phase starts. They may be zero if not yet set,
-	// typically at the beginning of the strategy.
-	allLocalPhaseTimestamp time.Time
-	rlAgentPhaseTimestamp  time.Time
+	// The strategy works in conjunction with k6. Time is divided into
+	// "iterations", counted from 0 onwards. The strategy will query the RL
+	// model at the start of each iteration. These variables are needed to keep
+	// track of the previous iteration.
+	prevIterationStart time.Time
+	prevIterationEnd   time.Time
+
+	// historicalIterationTimeSpan contains all the expected iterations that the
+	// strategy will receive. See iterationTimeSpan for more information.
+	historicalIterationTimeSpan []iterationTimeSpan
+
+	// historicalPromq is the Prometheus client used to query historical
+	// metrics, rather than current metrics as done by promq.
+	historicalPromq *promq.Client
 
 	// targetFunction stores the function's name used in the RL Agent strategy
-	// (the strategy currently supports only one deployed function)
+	// (the strategy currently supports only one deployed function).
 	targetFunction string
 
 	// The list of neighbors in the "node_ID" format. It will be initialized
@@ -65,40 +75,25 @@ type RLAgentStrategy struct {
 	neighbors []string
 }
 
-// strategyPhase represents the two possibile phases of the RL Agent strategy.
-type strategyPhase int
-
-const (
-	allLocalPhase strategyPhase = iota
-	rlAgentPhase
-)
-
-func (p strategyPhase) String() string {
-	switch p {
-	case allLocalPhase:
-		return "allLocalPhase"
-	case rlAgentPhase:
-		return "rlAgentPhase"
-	default:
-		return "Unknown"
-	}
+// IterationTimeSpan holds the information for a single historical iteration.
+// It is used by the strategy to convert the iteration number into the start and
+// end time span, and then query the historical Prometheus instance with PromQL
+// for the "holistic oracle" during the observation building process. For more
+// information, see the buildObservation() function.
+type iterationTimeSpan struct {
+	Iteration int
+	Start     time.Time
+	End       time.Time
 }
 
-// strategyPhaseFromStage returns the current RL Agent strategy phase based on
+// iterationFromStage returns the current RL Agent iteration based on
 // the given k6 stage index.
-func strategyPhaseFromStage(stage int) (strategyPhase, error) {
+func iterationFromStage(stage int) (int, error) {
 	if stage < 0 {
-		return allLocalPhase, errors.New("found negative stage, expected positive or zero")
+		return 0, errors.New("found negative stage, expected positive or zero")
 	}
 
-	switch stage % 4 {
-	case 0, 1:
-		return allLocalPhase, nil
-	case 2, 3:
-		return rlAgentPhase, nil
-	default:
-		return allLocalPhase, nil // Unreachable.
-	}
+	return stage / 2, nil
 }
 
 const rlModelLogPath = "rl_model.log"
@@ -120,8 +115,8 @@ func (strategy *RLAgentStrategy) RunStrategy() error {
 	if err := strategy.setup(); err != nil {
 		return fmt.Errorf("failed to do initial set-up: %w", err)
 	}
-	// We start with a nil phase, since we do not detected any stage.
-	var previousPhase *strategyPhase
+	// We start with a nil iteration, since we do not detected any stage.
+	var previousIteration *int
 
 	// We also keep track of the previous stage, but this information is only
 	// used for debugging purposes.
@@ -138,6 +133,9 @@ func (strategy *RLAgentStrategy) RunStrategy() error {
 	for range ticker.C {
 		start := time.Now().UTC()
 
+		// The first part of the code is dedicated to detecting the stage value,
+		// which is then used to detect the iteration.
+
 		// Get the "General Purpose Table 0" (gpt0) field for the key "global"
 		// in the stick-table "main" (a frontend) from HAProxy. This field
 		// represents the current "Stage" of k6, which HAProxy stores by parsing
@@ -149,13 +147,13 @@ func (strategy *RLAgentStrategy) RunStrategy() error {
 		if err != nil {
 			if errors.Is(err, hasock.ErrEmpty) {
 				// Disable log to avoid too many useless logs (one for each second).
-				//logger.Warn("Cannot detect current stage: empty gpt0 field for stick-table main. Skipping iteration")
+				//logger.Warn("Cannot detect current stage: empty gpt0 field for stick-table main. Skipping running cycle")
 				continue
 			}
 			return fmt.Errorf("reading gpt0 field in stick-table main from HAProxy: %w", err)
 		}
 		if stage == 0 {
-			logger.Warn("Cannot detect current stage: requests do not have DFaaS-K6-Stage header. Skipping iteration")
+			logger.Warn("Cannot detect current stage: requests do not have DFaaS-K6-Stage header. Skipping running cycle")
 			continue
 		} else {
 			// We must subtract 1 because the HAProxy config always add +1 to
@@ -166,7 +164,7 @@ func (strategy *RLAgentStrategy) RunStrategy() error {
 		logger.Infof("Current detected stage: %d", stage)
 
 		if previousStage != stage {
-			// We initialize the debug file every time the stage restart from 0.
+			// Initialize the debug file when a new k6 execution starts.
 			if stage == 0 {
 				if err := debugRLModelToFileInit(rlModelLogPath); err != nil {
 					return fmt.Errorf("failed to init log file: %w", err)
@@ -177,60 +175,36 @@ func (strategy *RLAgentStrategy) RunStrategy() error {
 			previousStage = stage
 		}
 
-		// From the current stage, we determine the strategy phase. The RL agent
-		// operates in two phases:
+		// From the current stage, we determine the iteration.
 		//
-		//  1) In the first phase, the DFaaS node processes all incoming
-		//  requests locally.
-		//
-		//  2) In the second phase, the DFaaS node uses statistics collected
-		//  from both the first phase and previous second phase to query the RL
-		//  model for an action, then applies that action (which may involve
-		//  rejecting requests or forwarding them to other nodes).
-		//
-		// Since k6 is used for load testing, each stage consists of two
-		// internal substages: stages 0 and 1 correspond to the "all-local"
-		// phase, while stages 2 and 3 correspond to the RL-driven phase. This
-		// pattern then repeats. Therefore, we can determine the current phase
-		// by applying a modulo operation on the stage index.
-		currentPhase, err := strategyPhaseFromStage(stage)
+		// Since k6 is used for load testing, each iteration consists of two
+		// internal stages.
+		currentIteration, err := iterationFromStage(stage)
 		if err != nil {
-			logger.Warnf("Failed converting detected stage to strategy phase, skipping iteration: %w", err)
+			logger.Warnf("Failed converting detected stage to k6 iteration, skipping running cycle: %w", err)
 			continue
 		}
 
-		if previousPhase == nil {
-			if currentPhase == allLocalPhase {
-				logger.Infof("Starting strategy in %q phase", currentPhase)
-			} else {
-				logger.Warn("Previous phase is nil, current is not allLocalPhase. Skipping iteration")
-				continue
-			}
-		} else if *previousPhase == currentPhase {
-			logger.Infof("Current phase is equal to previous (%s). Nothing to do.", currentPhase)
+		if previousIteration == nil {
+			logger.Infof("Starting strategy with iteration number %d", currentIteration)
+		} else if *previousIteration == currentIteration {
+			logger.Infof("Current iteration is equal to previous (%d). Nothing to do.", currentIteration)
 			continue
 		} else {
-			logger.Infof("Moving from %q to %q phase", *previousPhase, currentPhase)
+			logger.Infof("Moving from iteration number %d to %d", *previousIteration, currentIteration)
 		}
 
-		switch currentPhase {
-		case allLocalPhase:
-			err = strategy.allLocalPhase()
-		case rlAgentPhase:
-			err = strategy.rlAgentPhase()
-		default:
-			return fmt.Errorf("invalid phase %q", currentPhase)
-		}
+		err = strategy.runIteration(currentIteration)
 		if err != nil {
-			return fmt.Errorf("running phase %q: %w", currentPhase, err)
+			return fmt.Errorf("running cycle with iteration number %d: %w", currentIteration, err)
 		}
 
-		previousPhase = &currentPhase
+		previousIteration = &currentIteration
 
 		duration := time.Since(start)
 		httpserver.StrategyIterationDuration.Set(duration.Seconds())
 		httpserver.StrategySuccessIterations.Inc()
-		logger.Infof("Iteration completed. Duration: %s", duration.String())
+		logger.Infof("Running cycle completed. Duration: %s", duration.String())
 	}
 
 	return nil
@@ -257,8 +231,8 @@ func (strategy *RLAgentStrategy) setup() error {
 	strategy.targetFunction = funcs[0]
 	logger.Infof("Target function of RL Agent strategy is %q", strategy.targetFunction)
 
-	// We first set the initial proxy configuration. The allLocalPhase and
-	// rlAgentPhase will update the weights based on this configuration.
+	// We first set the initial proxy configuration. runIteration will update
+	// the weights based on this configuration.
 	if err := strategy.initProxyConfig(); err != nil {
 		return fmt.Errorf("failed to configure proxy: %w", err)
 	}
@@ -278,85 +252,24 @@ func (strategy *RLAgentStrategy) setup() error {
 	return nil
 }
 
-// allLocalPhase runs the phase where the DFaaS agent processes all incoming
-// requests locally.
-func (strategy *RLAgentStrategy) allLocalPhase() error {
-	if err := strategy.setAllLocal(); err != nil {
-		return fmt.Errorf("failed to configure proxy: %w", err)
-	}
-
-	strategy.allLocalPhaseTimestamp = time.Now().UTC()
-
-	return nil
-}
-
-// rlAgentPhase runs the phase where the DFaaS agent builds the observation for
-// the RL model, queries the model, and applies the resulting action to the
-// proxy.
-func (strategy *RLAgentStrategy) rlAgentPhase() error {
-	obs, err := strategy.buildObservation()
+// runIteration builds the observation for the RL model, queries the model, and
+// applies the resulting action to the proxy.
+func (strategy *RLAgentStrategy) runIteration(currentIteration int) error {
+	obs, err := strategy.buildObservation(currentIteration)
 	if err != nil {
-		return fmt.Errorf("building observation for RL phase: %w", err)
+		return fmt.Errorf("building observation: %w", err)
 	}
 
 	action, err := strategy.queryRLModel(obs)
 	if err != nil {
-		return fmt.Errorf("querying RL model for RL phase: %w", err)
+		return fmt.Errorf("querying RL model: %w", err)
 	}
 
 	if err := strategy.applyAction(action); err != nil {
-		return fmt.Errorf("applying RL action for RL phase: %w", err)
+		return fmt.Errorf("applying RL action: %w", err)
 	}
 
-	strategy.rlAgentPhaseTimestamp = time.Now().UTC()
-
-	return nil
-}
-
-// setAllLocal configures the proxy weights so that all incoming requests for
-// each deployed function are processed locally.
-func (strategy *RLAgentStrategy) setAllLocal() error {
-	logger := logging.Logger()
-
-	// We need the list of deployed functions becase we set the local processing
-	// action function by function.
-	functions, err := strategy.offuncsClient.GetFuncsNames()
-	if err != nil {
-		return fmt.Errorf("getting function names: %w", err)
-	}
-
-	// First set all actions, then apply them. The first key is the function
-	// name/backend, the second level is the server action.
-	weights := make(map[string]map[string]uint)
-
-	// For each function we process all incoming requests locally by setting
-	// weight 100 to "openfaas-local" server and weight 0 to "rejector" (used to
-	// reject requests) and all other neighbors.
-	for _, function := range functions {
-		// For each function there are two backends: one handling incoming
-		// forwarded requests and one handling incoming requests from clients.
-		//
-		// The agent currently controls only the incoming client requests
-		// backend.
-		backend := fmt.Sprintf("function_%s", function)
-		weights[backend] = make(map[string]uint)
-
-		weights[backend]["openfaas-local"] = 100
-		weights[backend]["rejector"] = 0
-		for _, neighborID := range strategy.neighbors {
-			weights[backend][neighborID] = 0
-		}
-	}
-
-	// Apply all weights.
-	for backend, actions := range weights {
-		for target, weight := range actions {
-			if err := strategy.runtimeapi.SetWeight(backend, target, weight); err != nil {
-				return fmt.Errorf("failed to set weight for %s on backend %s: %w", target, backend, err)
-			}
-		}
-	}
-	logger.Debugf("HAProxy updated with the following weights: %v", weights)
+	strategy.prevIterationStart = strategy.prevIterationEnd
 
 	return nil
 }
@@ -433,19 +346,42 @@ func (strategy *RLAgentStrategy) initProxyConfig() error {
 	return strategy.hacfgupdater.UpdateHAConfig(data)
 }
 
-func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
-	if strategy.allLocalPhaseTimestamp.IsZero() {
-		return nil, errors.New("allLocalPhaseTimestamp is not set, but is required for rlAgentPhase")
+func (strategy *RLAgentStrategy) buildObservation(currentIteration int) ([]byte, error) {
+	// During the first iteration, there is no previous iteration, so the
+	// queries to the real-time Prometheus instance must be skipped (they do not
+	// exist yet).
+	firstIteration := false
+	if strategy.prevIterationStart.IsZero() && strategy.prevIterationEnd.IsZero() {
+		firstIteration = true
 	}
-	now := time.Now().UTC()
-	if now.Before(strategy.allLocalPhaseTimestamp) {
-		return nil, errors.New("allLocalPhaseTimestamp cannot be greater than time.Now()")
+
+	// Sanity check valid only from the 2nd iteration onwards.
+	if !firstIteration {
+		if strategy.prevIterationStart.IsZero() {
+			return nil, errors.New("prevIterationStart must be set")
+		}
+	}
+
+	// Even if this is the first iteration, we set this variable, but it will
+	// not be used in this call.
+	strategy.prevIterationEnd = time.Now().UTC()
+	if strategy.prevIterationEnd.Before(strategy.prevIterationStart) {
+		return nil, errors.New("prevIterationEnd cannot be before than prevIterationStart")
 	}
 
 	obs := make(map[string]any)
 
+	// Observation information is taken from two Prometheus sources: one
+	// contains real-time measurements, while the other contains historical
+	// measurements used as a "holistic oracle" for the next incoming iteration.
+	// The latter requires converting the iteration number into a duration span.
+	historicalStart, historicalEnd, err := strategy.historicalTimeSpanFrom(currentIteration)
+	if err != nil {
+		return nil, fmt.Errorf("failed to convert iteration number %d to time span for historical data: %w", currentIteration, err)
+	}
+
 	// input_rate key in observation.
-	inputRPS, err := strategy.promq.InputRPS(strategy.allLocalPhaseTimestamp, now)
+	inputRPS, err := strategy.historicalPromq.InputRPS(historicalStart, historicalEnd)
 	if err != nil {
 		return nil, fmt.Errorf("building observation for 'input_rate' key: %w", err)
 	}
@@ -457,10 +393,10 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	obs["input_rate"] = inputRPSSingle
 
 	// previous_input_rate key in observation.
-	if strategy.rlAgentPhaseTimestamp.IsZero() {
+	if firstIteration {
 		obs["previous_input_rate"] = 0
 	} else {
-		inputRPS, err := strategy.promq.InputRPS(strategy.rlAgentPhaseTimestamp, strategy.allLocalPhaseTimestamp)
+		inputRPS, err := strategy.promq.InputRPS(strategy.prevIterationStart, strategy.prevIterationEnd)
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_input_rate' key: %w", err)
 		}
@@ -472,7 +408,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	}
 
 	// previous_fwd_to_node_X key in observation.
-	if strategy.rlAgentPhaseTimestamp.IsZero() {
+	if firstIteration {
 		peers := 0
 		for _, peer := range strategy.neighbors {
 			key := fmt.Sprintf("previous_fwd_to_%s", peer)
@@ -484,7 +420,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 			return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X' key: found %d peers, expected 4 peers", peers)
 		}
 	} else {
-		prevForwardRPS, err := strategy.promq.ForwardRPS(strategy.rlAgentPhaseTimestamp, strategy.allLocalPhaseTimestamp)
+		prevForwardRPS, err := strategy.promq.ForwardRPS(strategy.prevIterationStart, strategy.prevIterationEnd)
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X' key: %w", err)
 		}
@@ -492,7 +428,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	}
 
 	// previous_fwd_to_node_X_rejected key in observation.
-	if strategy.rlAgentPhaseTimestamp.IsZero() {
+	if firstIteration {
 		peers := 0
 		for _, peer := range strategy.neighbors {
 			key := fmt.Sprintf("previous_fwd_to_%s_rejected", peer)
@@ -504,7 +440,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 			return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X_rejected' key: found %d peers, expected 4 peers", peers)
 		}
 	} else {
-		prevForwardRejectRPS, err := strategy.promq.ForwardRejectRPS(strategy.rlAgentPhaseTimestamp, strategy.allLocalPhaseTimestamp)
+		prevForwardRejectRPS, err := strategy.promq.ForwardRejectRPS(strategy.prevIterationStart, strategy.prevIterationEnd)
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X_rejected' key: %w", err)
 		}
@@ -512,7 +448,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	}
 
 	// reject_rate key in observation.
-	rejectRate, err := strategy.promq.RejectRate(strategy.allLocalPhaseTimestamp, now)
+	rejectRate, err := strategy.historicalPromq.RejectRate(historicalStart, historicalEnd)
 	if err != nil {
 		return nil, fmt.Errorf("building observation for 'reject_rate' key: %w", err)
 	}
@@ -523,10 +459,10 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	obs["reject_rate"] = rejectRateSingle
 
 	// previous_reject_rate key in observation.
-	if strategy.rlAgentPhaseTimestamp.IsZero() {
+	if firstIteration {
 		obs["previous_reject_rate"] = 0.0
 	} else {
-		prevRejectRate, err := strategy.promq.RejectRate(strategy.rlAgentPhaseTimestamp, strategy.allLocalPhaseTimestamp)
+		prevRejectRate, err := strategy.promq.RejectRate(strategy.prevIterationStart, strategy.prevIterationEnd)
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_reject_rate' key: %w", err)
 		}
@@ -538,7 +474,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	}
 
 	// avg_resp_time_loc key in observation.
-	avgRespTime, err := strategy.promq.AvgRespTimeLocal(strategy.allLocalPhaseTimestamp, now)
+	avgRespTime, err := strategy.historicalPromq.AvgRespTimeLocal(historicalStart, historicalEnd)
 	if err != nil {
 		return nil, fmt.Errorf("building observation for 'avg_resp_time_loc' key: %w", err)
 	}
@@ -549,10 +485,10 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	obs["avg_resp_time_loc"] = avgRespTimeSingle
 
 	// previous_avg_resp_time_loc key in observation.
-	if strategy.rlAgentPhaseTimestamp.IsZero() {
+	if firstIteration {
 		obs["previous_avg_resp_time_loc"] = 0.0
 	} else {
-		prevAvgRespTime, err := strategy.promq.AvgRespTimeLocal(strategy.rlAgentPhaseTimestamp, strategy.allLocalPhaseTimestamp)
+		prevAvgRespTime, err := strategy.promq.AvgRespTimeLocal(strategy.prevIterationStart, strategy.prevIterationEnd)
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_avg_resp_time_loc' key: %w", err)
 		}
@@ -564,7 +500,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	}
 
 	// previous_avg_resp_time_fwd_to_node_X key in observation.
-	if strategy.rlAgentPhaseTimestamp.IsZero() {
+	if firstIteration {
 		peers := 0
 		for _, peer := range strategy.neighbors {
 			key := fmt.Sprintf("previous_avg_resp_time_fwd_to_%s", peer)
@@ -576,7 +512,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 			return nil, fmt.Errorf("building observation for 'previous_avg_resp_time_fwd_to_node_X' key: found %d peers, expected 4 peers", peers)
 		}
 	} else {
-		prevAvgRespTimeForward, err := strategy.promq.AvgRespTimeForward(strategy.rlAgentPhaseTimestamp, strategy.allLocalPhaseTimestamp)
+		prevAvgRespTimeForward, err := strategy.promq.AvgRespTimeForward(strategy.prevIterationStart, strategy.prevIterationEnd)
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_avg_resp_time_fwd_to_node_X' key: %w", err)
 		}
@@ -584,17 +520,17 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	}
 
 	// cpu_utilization key in observation (float32 in [0, 1]).
-	cpuUsage, err := strategy.promq.CPUUsage(strategy.targetFunction, strategy.allLocalPhaseTimestamp, now)
+	cpuUsage, err := strategy.historicalPromq.CPUUsage(strategy.targetFunction, historicalStart, historicalEnd)
 	if err != nil {
 		return nil, fmt.Errorf("building observation for 'cpu_utilization' key: %w", err)
 	}
 	obs["cpu_utilization"] = cpuUsage / 100
 
 	// previous_cpu_utilization key in observation.
-	if strategy.rlAgentPhaseTimestamp.IsZero() {
+	if firstIteration {
 		obs["previous_cpu_utilization"] = 0.0
 	} else {
-		prevCPUUsage, err := strategy.promq.CPUUsage(strategy.targetFunction, strategy.rlAgentPhaseTimestamp, strategy.allLocalPhaseTimestamp)
+		prevCPUUsage, err := strategy.promq.CPUUsage(strategy.targetFunction, strategy.prevIterationStart, strategy.prevIterationEnd)
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_cpu_utilization' key: %w", err)
 		}
@@ -602,7 +538,7 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	}
 
 	// n_replicas key observation.
-	replicas, err := strategy.promq.Replicas(strategy.allLocalPhaseTimestamp, now)
+	replicas, err := strategy.historicalPromq.Replicas(historicalStart, historicalEnd)
 	if err != nil {
 		return nil, fmt.Errorf("building observation for 'n_replicas' key: %w", err)
 	}
@@ -613,10 +549,10 @@ func (strategy *RLAgentStrategy) buildObservation() ([]byte, error) {
 	obs["n_replicas"] = replicasSingle
 
 	// previous_n_replicas key observation.
-	if strategy.rlAgentPhaseTimestamp.IsZero() {
+	if firstIteration {
 		obs["previous_n_replicas"] = 1
 	} else {
-		prevReplicas, err := strategy.promq.Replicas(strategy.rlAgentPhaseTimestamp, strategy.allLocalPhaseTimestamp)
+		prevReplicas, err := strategy.promq.Replicas(strategy.prevIterationStart, strategy.prevIterationEnd)
 		if err != nil {
 			return nil, fmt.Errorf("building observation for 'previous_n_replicas' key: %w", err)
 		}
@@ -818,4 +754,88 @@ func extractSingleIPv4(h host.Host, p peer.ID) (string, error) {
 	}
 
 	return "", fmt.Errorf("no IPv4 address found on active connections for peer: %s", p)
+}
+
+// readIterationTimestamps reads the iteration timestamp mapping from a CSV file.
+//
+// The CSV file is expected to contain a header row followed by entries with the
+// following columns: iteration, start_timestamp_s, and end_timestamp_s.
+//
+// Timestamps are Unix timestamps expressed in seconds and are converted to
+// time.Time values in UTC.
+//
+// The function returns a slice containing the time span for each iteration, or
+// an error if the file cannot be opened or a CSV entry cannot be parsed.
+func readIterationTimestamps(path string) ([]iterationTimeSpan, error) {
+	data, err := os.ReadFile(path)
+	if err != nil {
+		return nil, err
+	}
+
+	reader := csv.NewReader(bytes.NewReader(data))
+
+	// Skip header.
+	if _, err := reader.Read(); err != nil {
+		return nil, err
+	}
+
+	// Cycle through all rows (iterations).
+	var iterations []iterationTimeSpan
+	for {
+		record, err := reader.Read()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			return nil, err
+		}
+
+		if len(record) < 3 {
+			return nil, fmt.Errorf("invalid CSV record: expected at least 3 columns, got %d", len(record))
+		}
+
+		// Iteration number (iteration).
+		iteration, err := strconv.Atoi(record[0])
+		if err != nil {
+			return nil, fmt.Errorf("invalid iteration value %q: %w", record[0], err)
+		}
+
+		// Start time as timestamp (start_timestamp_s).
+		startTimestamp, err := strconv.ParseInt(record[1], 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid start timestamp %q: %w", record[1], err)
+		}
+
+		// End time as timestamp (end_timestamp_s).
+		endTimestamp, err := strconv.ParseInt(record[2], 10, 64)
+		if err != nil {
+			return nil, fmt.Errorf("invalid end timestamp %q: %w", record[2], err)
+		}
+
+		iterations = append(iterations, iterationTimeSpan{
+			Iteration: iteration,
+			Start:     time.Unix(startTimestamp, 0).UTC(),
+			End:       time.Unix(endTimestamp, 0).UTC(),
+		})
+	}
+
+	return iterations, nil
+}
+
+// historicalTimeSpanFrom returns the historical Prometheus time range
+// associated with the given iteration.
+func (strategy *RLAgentStrategy) historicalTimeSpanFrom(iteration int) (time.Time, time.Time, error) {
+	if iteration < 0 || iteration >= len(strategy.historicalIterationTimeSpan) {
+		return time.Time{}, time.Time{}, fmt.Errorf("invalid historical iteration number %d", iteration)
+	}
+
+	span := strategy.historicalIterationTimeSpan[iteration]
+
+	// This is a redundant check, but it can be useful for detecting malformed
+	// data.
+	if span.Iteration != iteration {
+		return time.Time{}, time.Time{}, fmt.Errorf("historical iteration mismatch: requested %d, found %d", iteration, span.Iteration)
+	}
+
+	return span.Start, span.End, nil
 }
