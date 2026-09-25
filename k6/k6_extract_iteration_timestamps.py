@@ -22,9 +22,11 @@ def process(input_csv, output_csv, iteration_duration_s):
     print(f"Input CSV: {input_csv}")
 
     # Reconstruct request start time.
-    # k6 timestamps and http_req_duration are expressed in seconds.
+    #
+    # Warning: k6 timestamp is in UNIX seconds, while http_req_duration are
+    # milliseconds!
     df = df.with_columns(
-        (pl.col("timestamp") - pl.col("http_req_duration")).alias(
+        (pl.col("timestamp") - pl.col("http_req_duration") / 1000.0).alias(
             "request_start_s"
         )
     )
@@ -36,21 +38,17 @@ def process(input_csv, output_csv, iteration_duration_s):
         df.group_by("iteration")
         .agg(pl.len().alias("requests"))
         .with_columns(
-            (
-                test_start_s
-                + pl.col("iteration") * iteration_duration_s
-            ).alias("start_timestamp_s"),
-            (
-                test_start_s
-                + (pl.col("iteration") + 1) * iteration_duration_s
-            ).alias("end_timestamp_s"),
+            (test_start_s + pl.col("iteration") * iteration_duration_s).alias(
+                "start_timestamp_s"
+            ),
+            (test_start_s + (pl.col("iteration") + 1) * iteration_duration_s).alias(
+                "end_timestamp_s"
+            ),
         )
         .with_columns(
             pl.col("start_timestamp_s").round().cast(pl.Int64),
             pl.col("end_timestamp_s").round().cast(pl.Int64),
-            pl.lit(iteration_duration_s)
-            .cast(pl.Int64)
-            .alias("duration_s"),
+            pl.lit(iteration_duration_s).cast(pl.Int64).alias("duration_s"),
         )
         .select(
             "iteration",
