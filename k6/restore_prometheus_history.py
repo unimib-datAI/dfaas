@@ -109,11 +109,11 @@ def restore_node(node, ip, experiment):
     run(
         ssh
         + [
-            f"set -e; "
+            (f"set -e; "
             f"sudo rm -rf {REMOTE_PROM_DIR}/tsdb; "
             f"sudo tar --zstd -xf {REMOTE_PROM_DIR}/tsdb.tar.zst "
             f"-C {REMOTE_PROM_DIR}; "
-            f"sudo rm -f {REMOTE_PROM_DIR}/tsdb.tar.zst"
+            f"sudo rm -f {REMOTE_PROM_DIR}/tsdb.tar.zst")
         ]
     )
 

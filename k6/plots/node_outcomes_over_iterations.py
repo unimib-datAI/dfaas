@@ -11,7 +11,7 @@ import polars as pl
 from matplotlib.ticker import MaxNLocator, PercentFormatter
 
 
-def process_csv(input_csv, output_pdf, node, rl_strategy=False, output_csv=None):
+def process_csv(input_csv, output_pdf, node, output_csv=None):
     print(f"Loading: {input_csv}")
 
     df = pl.read_csv(input_csv)
@@ -25,22 +25,6 @@ def process_csv(input_csv, output_pdf, node, rl_strategy=False, output_csv=None)
         raise ValueError(f"Node {node!r} not found. Available: {nodes}")
 
     df = df.filter(pl.col("node") == node)
-
-    if rl_strategy:
-        if "phase" not in df.columns:
-            raise ValueError(
-                "CSV does not contain 'phase' column required for RL strategy"
-            )
-
-        phases = df["phase"].unique().to_list()
-
-        if "rl_agent" not in phases:
-            raise ValueError(
-                f"'rl_agent' not found in phase column. Available: {phases}"
-            )
-
-        df = df.filter(pl.col("phase") == "rl_agent")
-        print("Filtering phase == 'rl_agent'")
 
     if df.height == 0:
         raise ValueError("CSV is empty after filtering")
@@ -248,7 +232,7 @@ def plot(df, node, output_pdf):
     print()
 
 
-def process_experiment(exp, node, rl_strategy=False):
+def process_experiment(exp, node):
     input_csv = exp / "k6" / "global" / "k6_results_processed.csv"
 
     output_pdf = exp / "k6" / "global" / f"{node}_outcomes_over_iterations.pdf"
@@ -262,7 +246,6 @@ def process_experiment(exp, node, rl_strategy=False):
         input_csv,
         output_pdf,
         node,
-        rl_strategy,
         output_csv,
     )
 
@@ -273,19 +256,16 @@ def main():
     )
 
     parser.add_argument(
-        "experiments", type=Path, nargs="*", help="Experiment directories"
+        "experiments",
+        type=Path,
+        nargs="*",
+        help="Experiment directories",
     )
 
     parser.add_argument("--input-csv", type=Path, help="Direct input CSV")
     parser.add_argument("--output-pdf", type=Path, help="Output PDF")
 
     parser.add_argument("--node", required=True, help="Node to plot")
-
-    parser.add_argument(
-        "--rl-strategy",
-        action="store_true",
-        help="Enable this option only if the experiment used the RL Agent strategy",
-    )
 
     args = parser.parse_args()
 
@@ -294,7 +274,7 @@ def main():
         if args.output_pdf is None:
             parser.error("--input-csv requires --output-pdf")
 
-        process_csv(args.input_csv, args.output_pdf, args.node, args.rl_strategy)
+        process_csv(args.input_csv, args.output_pdf, args.node)
         return
 
     # Experiment directory mode.
@@ -302,7 +282,7 @@ def main():
         parser.error("provide experiments or use --input-csv")
 
     for exp in args.experiments:
-        process_experiment(exp, args.node, args.rl_strategy)
+        process_experiment(exp, args.node)
 
 
 if __name__ == "__main__":

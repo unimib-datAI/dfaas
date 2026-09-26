@@ -35,7 +35,6 @@ from pathlib import Path
 
 import numpy as np
 
-
 # Nodes that receive the same input trace, only shifted in time.
 NODES = ["node_a", "node_b", "node_c", "node_f", "node_g"]
 

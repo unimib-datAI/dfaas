@@ -24,35 +24,13 @@ def validate_nodes(df, expected_nodes=5):
     return True
 
 
-def process_csv(input_csv, output_pdf, rl_strategy=False):
+def process_csv(input_csv, output_pdf):
     print(f"Loading: {input_csv}")
 
     df = pl.read_csv(input_csv)
 
     if not validate_nodes(df):
         raise SystemExit(1)
-
-    if rl_strategy:
-        if "phase" not in df.columns:
-            raise ValueError(
-                "CSV does not contain 'phase' column required for RL strategy"
-            )
-
-        phases = df["phase"].unique().to_list()
-
-        if "rl_agent" not in phases:
-            raise ValueError(
-                f"'rl_agent' not found in phase column. Available: {phases}"
-            )
-
-        df = df.filter(pl.col("phase") == "rl_agent")
-        print("Filtering phase == 'rl_agent'")
-
-        if df.height == 0:
-            raise ValueError("CSV is empty after filtering")
-
-        # Re-validate node count after filtering, but only warn.
-        validate_nodes(df)
 
     # Aggregate k6 results and prepare data for plotting.
     # Assumption: each k6 iteration represents a 60-second interval.
@@ -141,14 +119,14 @@ def process_csv(input_csv, output_pdf, rl_strategy=False):
     print()
 
 
-def process_experiment(exp, rl_strategy=False):
+def process_experiment(exp):
     input_csv = exp / "k6" / "global" / "k6_results_processed.csv"
     output_pdf = exp / "k6" / "global" / "success_rate_rps_per_node.pdf"
 
     if not input_csv.exists():
         raise FileNotFoundError(f"Missing input CSV: {input_csv}")
 
-    process_csv(input_csv, output_pdf, rl_strategy)
+    process_csv(input_csv, output_pdf)
 
 
 def main():
@@ -169,9 +147,7 @@ Running examples:
 
   uv run plot_success_rate_rps_per_node.py data/my_experiment
 
-  uv run plot_success_rate_rps_per_node.py data/my_experiment --rl-strategy
-
-  uv run plot_success_rate_rps_per_node.py --input-csv results.csv --output-pdf plot.pdf --rl-strategy
+  uv run plot_success_rate_rps_per_node.py --input-csv results.csv --output-pdf plot.pdf
 """,
         formatter_class=argparse.RawDescriptionHelpFormatter,
     )
@@ -187,12 +163,6 @@ Running examples:
 
     parser.add_argument("--output-pdf", type=Path, help="Output PDF plot file")
 
-    parser.add_argument(
-        "--rl-strategy",
-        action="store_true",
-        help="Enable this option only if the experiment used the RL Agent strategy",
-    )
-
     args = parser.parse_args()
 
     # Direct CSV mode.
@@ -200,7 +170,7 @@ Running examples:
         if args.output_pdf is None:
             parser.error("--input-csv requires --output-pdf")
 
-        process_csv(args.input_csv, args.output_pdf, args.rl_strategy)
+        process_csv(args.input_csv, args.output_pdf)
         return
 
     # Experiment directory mode. The input CSV is expected at the standard
@@ -209,7 +179,7 @@ Running examples:
         parser.error("provide experiment directories or use --input-csv")
 
     for exp in args.experiments:
-        process_experiment(exp, args.rl_strategy)
+        process_experiment(exp)
 
 
 if __name__ == "__main__":

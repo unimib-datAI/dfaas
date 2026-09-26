@@ -13,13 +13,28 @@ from matplotlib.ticker import FixedLocator
 ITERATION_DURATION = 60
 
 
-def plot(node, nodes, forwards, rejections, incoming, output_pdf):
-    iterations = sorted(set(incoming["iteration"].to_list()))
+def plot(node, nodes, forwards, failures, incoming, output_pdf):
+    """
+    Generate a plot showing:
+      - incoming requests/sec for every node
+      - forwarded requests for the selected node
+      - local failures for the remaining nodes
+    """
+    iterations = sorted(incoming["iteration"].unique().to_list())
     x = list(range(len(iterations)))
 
-    fig, axes = plt.subplots(5, 1, figsize=(16, 14), sharex=True)
+    fig, axes = plt.subplots(
+        len(nodes),
+        1,
+        figsize=(16, 3.5 * len(nodes)),
+        sharex=True,
+    )
+
+    if len(nodes) == 1:
+        axes = [axes]
 
     def add_rps_line(ax, current_node):
+        # Show incoming request rate for every node.
         values = incoming.filter(pl.col("node") == current_node).select(
             ["iteration", "rps"]
         )
@@ -41,93 +56,129 @@ def plot(node, nodes, forwards, rejections, incoming, output_pdf):
 
     for ax, current_node in zip(axes, nodes):
         if current_node == node:
+            # For the selected node, show forwarded requests only.
+            #
+            # dfaas_forwarded_to contains the destination node ID, which was
+            # already converted to the node name before this step.
             data = forwards.filter(pl.col("iteration").is_in(iterations))
 
             recipients = sorted(data["forwarded_to"].unique().to_list())
 
             bottom = [0.0] * len(iterations)
-            max_bar = 0
 
             for recipient in recipients:
                 values = data.filter(pl.col("forwarded_to") == recipient).select(
-                    ["iteration", "rps"]
+                    [
+                        "iteration",
+                        "rps",
+                    ]
                 )
 
                 values = dict(values.iter_rows())
 
                 bar_values = [values.get(iteration, 0) for iteration in iterations]
 
-                max_bar = max(
-                    max_bar,
-                    max(a + b for a, b in zip(bottom, bar_values)),
+                ax.bar(
+                    x,
+                    bar_values,
+                    bottom=bottom,
+                    label=recipient,
                 )
 
-                ax.bar(x, bar_values, bottom=bottom, label=recipient)
-
                 bottom = [a + b for a, b in zip(bottom, bar_values)]
-
-            line_values = add_rps_line(ax, current_node)
 
             ax.set_title(f"Forwarded requests on {current_node}")
 
         else:
-            data = rejections.filter(pl.col("node") == current_node)
+            # For all other nodes, show only local failures.
+            data = failures.filter(pl.col("node") == current_node)
 
-            values = dict(data.select(["iteration", "rps"]).iter_rows())
+            values = dict(
+                data.select(
+                    [
+                        "iteration",
+                        "rps",
+                    ]
+                ).iter_rows()
+            )
 
             bar_values = [values.get(iteration, 0) for iteration in iterations]
 
-            ax.bar(x, bar_values, label="Local rejection", color="red")
+            ax.bar(
+                x,
+                bar_values,
+                label="Local failure",
+                color="red",
+            )
 
-            max_bar = max(bar_values, default=0)
+            ax.set_title(f"Local failures on {current_node}")
 
-            line_values = add_rps_line(ax, current_node)
-
-            ax.set_title(f"Local rejections on {current_node}")
+        # Incoming rate is always shown for every node.
+        incoming_values = add_rps_line(
+            ax,
+            current_node,
+        )
 
         ymax = max(
-            max_bar,
-            max(line_values),
+            max(incoming_values, default=0),
             1,
         )
 
-        ax.set_ylim(0, ymax * 1.15)
-        ax.set_ylabel("Requests/s")
-        ax.grid(axis="y", linestyle="--", alpha=0.3)
+        ax.set_ylim(
+            0,
+            ymax * 1.15,
+        )
 
-        handles, labels = ax.get_legend_handles_labels()
+        ax.set_ylabel("Requests/s")
+
+        ax.grid(
+            axis="y",
+            linestyle="--",
+            alpha=0.3,
+        )
 
         ax.legend(
-            handles,
-            labels,
             loc="upper center",
             bbox_to_anchor=(0.5, -0.18),
             ncol=4,
             fontsize=8,
         )
 
-    # Show tick on X-axis from 0 to 100, every 5 ticks.
+    # Show tick on X-axis every 5 iterations.
     ticks = sorted(set(range(0, len(iterations), 5)) | {len(iterations) - 1})
+
     for ax in axes:
         ax.xaxis.set_major_locator(FixedLocator(ticks))
-        ax.set_xticklabels([iterations[i] for i in ticks], rotation=90, fontsize=8)
 
-        # Make sure the tick labels are shown on each sub-plots!
-        ax.tick_params(axis="x", labelbottom=True)
+        ax.set_xticklabels(
+            [iterations[i] for i in ticks],
+            rotation=90,
+            fontsize=8,
+        )
 
-    # But show the X-axis name only on the last plot.
+        # Make sure tick labels are visible on every subplot.
+        ax.tick_params(
+            axis="x",
+            labelbottom=True,
+        )
+
     axes[-1].set_xlabel("Iteration")
 
     plt.tight_layout()
 
-    fig.savefig(output_pdf, dpi=300, bbox_inches="tight")
+    fig.savefig(
+        output_pdf,
+        dpi=300,
+        bbox_inches="tight",
+    )
+
     plt.close(fig)
 
     print(f"Saved plot: {output_pdf}")
     print()
 
 
-def process_csv(input_csv, output_pdf, node, output_csv=None):
+def process_csv(input_csv, output_pdf, node):
     print(f"Loading: {input_csv}")
 
     df = pl.read_csv(input_csv)
@@ -135,148 +186,181 @@ def process_csv(input_csv, output_pdf, node, output_csv=None):
     if "node" not in df.columns:
         raise ValueError("CSV does not contain 'node' column")
 
-    if "phase" not in df.columns:
-        raise ValueError("CSV does not contain 'phase' column")
-
-    df = df.filter(pl.col("phase") == "rl_agent")
-
-    if df.height == 0:
-        raise ValueError("CSV is empty after filtering phase == 'rl_agent'")
-
     nodes = sorted(df["node"].unique().to_list())
-
-    if len(nodes) > 5:
-        raise ValueError(f"Expected at most 5 agents, found {len(nodes)}: {nodes}")
 
     if node not in nodes:
         raise ValueError(f"Node {node!r} not found. Available: {nodes}")
 
-    # Create a mapping from nodes' ID to node's name.
-    mapping = dict(
+    # Create a mapping from DFaaS node IDs to node names.
+    #
+    # dfaas_forwarded_to stores IDs, not names, so this conversion must happen
+    # before analysing forwarding behaviour.
+    node_mapping = dict(
         df.filter(pl.col("dfaas_node_id").is_not_null())
-        .select(["dfaas_node_id", "node"])
+        .select(
+            [
+                "dfaas_node_id",
+                "node",
+            ]
+        )
         .unique()
         .iter_rows()
     )
 
-    forwarded = pl.col("dfaas_forwarded_to").is_not_null()
+    # Empty forwarded_to means the request was not forwarded.
+    df = df.with_columns(
+        pl.when(pl.col("dfaas_forwarded_to") == "")
+        .then(None)
+        .otherwise(pl.col("dfaas_forwarded_to"))
+        .alias("dfaas_forwarded_to")
+    )
 
-    local_rejection = (
+    # Replace forwarded destination IDs with node names.
+    df = df.with_columns(
+        pl.col("dfaas_forwarded_to").replace(node_mapping).alias("forwarded_to")
+    )
+
+    # Count incoming requests for every node.
+    #
+    # This is independent of forwarding/failure. Every request received by a
+    # node contributes to its incoming rate.
+    incoming = (
+        df.group_by(
+            [
+                "node",
+                "iteration",
+            ]
+        )
+        .agg(pl.len().alias("requests"))
+        .with_columns((pl.col("requests") / ITERATION_DURATION).alias("rps"))
+    )
+
+    forwarded = pl.col("forwarded_to").is_not_null()
+
+    # Forwarded requests generated by the selected node.
+    forwards = (
+        df.filter((pl.col("node") == node) & forwarded)
+        .group_by(
+            [
+                "iteration",
+                "forwarded_to",
+            ]
+        )
+        .agg(pl.len().alias("requests"))
+        .with_columns((pl.col("requests") / ITERATION_DURATION).alias("rps"))
+        .sort(
+            [
+                "iteration",
+                "forwarded_to",
+            ]
+        )
+    )
+
+    # Local failures on all nodes except the selected node.
+    #
+    # These are requests that:
+    # - were not forwarded
+    # - were not rejected by the agent (403)
+    # - did not succeed locally (200)
+    local_failure = (
         ~forwarded & (pl.col("http_status") != 200) & (pl.col("http_status") != 403)
     )
 
-    incoming = (
-        df.group_by(["node", "iteration"])
-        .agg(pl.len().alias("requests"))
-        .with_columns((pl.col("requests") / ITERATION_DURATION).alias("rps"))
-    )
-
-    forwards = (
-        df.filter((pl.col("node") == node) & forwarded)
-        .with_columns(
-            pl.col("dfaas_forwarded_to").replace(mapping).alias("forwarded_to")
+    failures = (
+        df.filter(local_failure & (pl.col("node") != node))
+        .group_by(
+            [
+                "node",
+                "iteration",
+            ]
         )
-        .group_by(["iteration", "forwarded_to"])
         .agg(pl.len().alias("requests"))
         .with_columns((pl.col("requests") / ITERATION_DURATION).alias("rps"))
-        .sort(["iteration", "forwarded_to"])
+        .sort(
+            [
+                "node",
+                "iteration",
+            ]
+        )
     )
 
-    rejections = (
-        df.filter(local_rejection)
-        .group_by(["node", "iteration"])
-        .agg(pl.len().alias("requests"))
-        .with_columns((pl.col("requests") / ITERATION_DURATION).alias("rps"))
-        .sort(["node", "iteration"])
+    plot(
+        node,
+        nodes,
+        forwards,
+        failures,
+        incoming,
+        output_pdf,
     )
-
-    if output_csv:
-        forwards.write_csv(output_csv)
-        print(f"Saved CSV: {output_csv}")
-
-    plot(node, nodes, forwards, rejections, incoming, output_pdf)
 
 
 def process_experiment(exp, node):
     input_csv = exp / "k6" / "global" / "k6_results_processed.csv"
+
     output_pdf = exp / "k6" / "global" / f"{node}_forwarding_over_iterations.pdf"
-    output_csv = exp / "k6" / "global" / f"{node}_forwarding_over_iterations.csv"
 
     if not input_csv.exists():
         raise FileNotFoundError(f"Missing input CSV: {input_csv}")
 
-    process_csv(input_csv, output_pdf, node, output_csv)
+    process_csv(
+        input_csv,
+        output_pdf,
+        node,
+    )
 
 
 def main():
     parser = argparse.ArgumentParser(
-        description=(
-            "Plot request forwarding and local rejection behaviour "
-            "for DFaaS agents during the RL strategy phase. The plot "
-            "shows forwarded requests for the selected RL agent and "
-            "local rejections for the remaining agents. The script "
-            "supports direct CSV mode or experiment mode. In direct "
-            "CSV mode, --input-csv and --output-pdf are required. "
-            "In experiment mode, one or more experiment directories "
-            "are processed sequentially using predefined input/output "
-            "paths."
-        )
+        description=("Plot request forwarding and local failures for DFaaS nodes.")
     )
 
     parser.add_argument(
         "experiments",
         type=Path,
         nargs="*",
-        help=(
-            "Experiment directories. Multiple experiments are "
-            "processed sequentially. Input CSV and output PDF paths "
-            "are generated automatically."
-        ),
+        help="Experiment directories",
     )
 
     parser.add_argument(
         "--input-csv",
         type=Path,
-        help=("Input CSV file. Required when no experiment directory is provided."),
+        help="Input CSV file",
     )
 
     parser.add_argument(
         "--output-pdf",
         type=Path,
-        help=("Output PDF file. Required when no experiment directory is provided."),
+        help="Output PDF file",
     )
 
     parser.add_argument(
         "--node",
         required=True,
-        help=(
-            "RL agent node to analyze. The node must participate in "
-            "the experiment and use the RL strategy phase."
-        ),
+        help="Node to analyse",
     )
 
     args = parser.parse_args()
 
-    print("WARNING: This script assumes the experiment ran with RL strategy!")
-    print()
-
     if args.experiments:
         if args.input_csv or args.output_pdf:
-            parser.error(
-                "--input-csv and --output-pdf cannot be used with experiment directories"
-            )
+            parser.error("--input-csv and --output-pdf cannot be used with experiments")
 
         for exp in args.experiments:
-            process_experiment(exp, args.node)
+            process_experiment(
+                exp,
+                args.node,
+            )
 
         return
 
     if args.input_csv is None or args.output_pdf is None:
-        parser.error(
-            "--input-csv and --output-pdf are required when no experiment directory is provided"
-        )
+        parser.error("--input-csv and --output-pdf are required without experiments")
 
-    process_csv(args.input_csv, args.output_pdf, args.node)
+    process_csv(
+        args.input_csv,
+        args.output_pdf,
+        args.node,
+    )
 
 
 if __name__ == "__main__":
