@@ -4,7 +4,7 @@
 #
 # This script is intended to be run using uv with the following command:
 #
-#       uv run python merge_k6_results.py [exp_dir...]
+#       uv run python k6_merge_results.py [exp_dir...]
 #
 import argparse
 import subprocess
