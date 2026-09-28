@@ -12,8 +12,8 @@ set -euo pipefail
 
 TMUX_SESSION="agent"
 
-AL_CONFIG="node_config_al.env"
-RL_CONFIG="node_config_rl.env"
+AL_CONFIG="../node_config_al.env"
+RL_CONFIG="../node_config_rl.env"
 
 AL_NODES=()
 RL_NODES=()
