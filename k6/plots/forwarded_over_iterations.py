@@ -13,22 +13,27 @@ from matplotlib.ticker import FixedLocator
 ITERATION_DURATION = 60
 
 
-def plot(node, nodes, forwards, failures, incoming, output_pdf):
+def plot(
+    node,
+    nodes,
+    forwards,
+    failures,
+    forwarded_failures,
+    incoming,
+    forwarded_incoming,
+    output_pdf,
+):
     """
     Generate a plot showing:
       - incoming requests/sec for every node
       - forwarded requests for the selected node
       - local failures for the remaining nodes
+      - forwarded failures for the remaining nodes
     """
     iterations = sorted(incoming["iteration"].unique().to_list())
     x = list(range(len(iterations)))
 
-    fig, axes = plt.subplots(
-        len(nodes),
-        1,
-        figsize=(16, 3.5 * len(nodes)),
-        sharex=True,
-    )
+    fig, axes = plt.subplots(len(nodes), 1, figsize=(16, 3.5 * len(nodes)), sharex=True)
 
     if len(nodes) == 1:
         axes = [axes]
@@ -40,7 +45,6 @@ def plot(node, nodes, forwards, failures, incoming, output_pdf):
         )
 
         rps = dict(values.iter_rows())
-
         line_values = [rps.get(iteration, 0) for iteration in iterations]
 
         ax.plot(
@@ -50,6 +54,35 @@ def plot(node, nodes, forwards, failures, incoming, output_pdf):
             linestyle="--",
             color="black",
             label="Incoming rate",
+        )
+
+        return line_values
+
+    def add_forwarded_incoming_line(ax, current_node):
+        # Show incoming rate + requests forwarded to this node.
+        values = forwarded_incoming.filter(pl.col("node") == current_node).select(
+            ["iteration", "rps"]
+        )
+
+        forwarded_rps = dict(values.iter_rows())
+
+        incoming_values = incoming.filter(pl.col("node") == current_node).select(
+            ["iteration", "rps"]
+        )
+        incoming_rps = dict(incoming_values.iter_rows())
+
+        line_values = [
+            incoming_rps.get(iteration, 0) + forwarded_rps.get(iteration, 0)
+            for iteration in iterations
+        ]
+
+        ax.plot(
+            x,
+            line_values,
+            marker="x",
+            linestyle="-",
+            color="green",
+            label="Incoming + forwarded rate",
         )
 
         return line_values
@@ -68,81 +101,70 @@ def plot(node, nodes, forwards, failures, incoming, output_pdf):
 
             for recipient in recipients:
                 values = data.filter(pl.col("forwarded_to") == recipient).select(
-                    [
-                        "iteration",
-                        "rps",
-                    ]
+                    ["iteration", "rps"]
                 )
-
                 values = dict(values.iter_rows())
-
                 bar_values = [values.get(iteration, 0) for iteration in iterations]
 
-                ax.bar(
-                    x,
-                    bar_values,
-                    bottom=bottom,
-                    label=recipient,
-                )
+                ax.bar(x, bar_values, bottom=bottom, label=recipient)
 
                 bottom = [a + b for a, b in zip(bottom, bar_values)]
 
             ax.set_title(f"Forwarded requests on {current_node}")
 
         else:
-            # For all other nodes, show only local failures.
+            # For all other nodes, show local failures and failures of requests
+            # forwarded to this node by other nodes.
             data = failures.filter(pl.col("node") == current_node)
 
-            values = dict(
-                data.select(
-                    [
-                        "iteration",
-                        "rps",
-                    ]
-                ).iter_rows()
-            )
-
+            values = dict(data.select(["iteration", "rps"]).iter_rows())
             bar_values = [values.get(iteration, 0) for iteration in iterations]
+
+            ax.bar(x, bar_values, label="Local failure", color="red")
+
+            forwarded_failure_data = forwarded_failures.filter(
+                pl.col("node") == current_node
+            )
+            forwarded_failure_values = dict(
+                forwarded_failure_data.select(["iteration", "rps"]).iter_rows()
+            )
+            forwarded_failure_bars = [
+                forwarded_failure_values.get(iteration, 0) for iteration in iterations
+            ]
 
             ax.bar(
                 x,
-                bar_values,
-                label="Local failure",
-                color="red",
+                forwarded_failure_bars,
+                bottom=bar_values,
+                label="Forwarded failure",
+                color="orange",
             )
 
             ax.set_title(f"Local failures on {current_node}")
 
         # Incoming rate is always shown for every node.
-        incoming_values = add_rps_line(
-            ax,
-            current_node,
-        )
+        incoming_values = add_rps_line(ax, current_node)
+
+        # For every node except the selected node, also show:
+        #
+        # incoming rate + requests forwarded TO this node.
+        if current_node != node:
+            forwarded_incoming_values = add_forwarded_incoming_line(ax, current_node)
+        else:
+            forwarded_incoming_values = []
 
         ymax = max(
             max(incoming_values, default=0),
+            max(forwarded_incoming_values, default=0),
             1,
         )
 
-        ax.set_ylim(
-            0,
-            ymax * 1.15,
-        )
-
+        ax.set_ylim(0, ymax * 1.15)
         ax.set_ylabel("Requests/s")
 
-        ax.grid(
-            axis="y",
-            linestyle="--",
-            alpha=0.3,
-        )
+        ax.grid(axis="y", linestyle="--", alpha=0.3)
 
-        ax.legend(
-            loc="upper center",
-            bbox_to_anchor=(0.5, -0.18),
-            ncol=4,
-            fontsize=8,
-        )
+        ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.18), ncol=4, fontsize=8)
 
     # Show tick on X-axis every 5 iterations.
     ticks = sorted(set(range(0, len(iterations), 5)) | {len(iterations) - 1})
@@ -150,27 +172,16 @@ def plot(node, nodes, forwards, failures, incoming, output_pdf):
     for ax in axes:
         ax.xaxis.set_major_locator(FixedLocator(ticks))
 
-        ax.set_xticklabels(
-            [iterations[i] for i in ticks],
-            rotation=90,
-            fontsize=8,
-        )
+        ax.set_xticklabels([iterations[i] for i in ticks], rotation=90, fontsize=8)
 
         # Make sure tick labels are visible on every subplot.
-        ax.tick_params(
-            axis="x",
-            labelbottom=True,
-        )
+        ax.tick_params(axis="x", labelbottom=True)
 
     axes[-1].set_xlabel("Iteration")
 
     plt.tight_layout()
 
-    fig.savefig(
-        output_pdf,
-        dpi=300,
-        bbox_inches="tight",
-    )
+    fig.savefig(output_pdf, dpi=300, bbox_inches="tight")
 
     plt.close(fig)
 
@@ -197,12 +208,7 @@ def process_csv(input_csv, output_pdf, node):
     # before analysing forwarding behaviour.
     node_mapping = dict(
         df.filter(pl.col("dfaas_node_id").is_not_null())
-        .select(
-            [
-                "dfaas_node_id",
-                "node",
-            ]
-        )
+        .select(["dfaas_node_id", "node"])
         .unique()
         .iter_rows()
     )
@@ -225,12 +231,7 @@ def process_csv(input_csv, output_pdf, node):
     # This is independent of forwarding/failure. Every request received by a
     # node contributes to its incoming rate.
     incoming = (
-        df.group_by(
-            [
-                "node",
-                "iteration",
-            ]
-        )
+        df.group_by(["node", "iteration"])
         .agg(pl.len().alias("requests"))
         .with_columns((pl.col("requests") / ITERATION_DURATION).alias("rps"))
     )
@@ -240,20 +241,46 @@ def process_csv(input_csv, output_pdf, node):
     # Forwarded requests generated by the selected node.
     forwards = (
         df.filter((pl.col("node") == node) & forwarded)
-        .group_by(
-            [
-                "iteration",
-                "forwarded_to",
-            ]
-        )
+        .group_by(["iteration", "forwarded_to"])
         .agg(pl.len().alias("requests"))
         .with_columns((pl.col("requests") / ITERATION_DURATION).alias("rps"))
-        .sort(
-            [
-                "iteration",
-                "forwarded_to",
-            ]
-        )
+        .sort(["iteration", "forwarded_to"])
+    )
+
+    # Requests forwarded TO each node by ANY other node.
+    #
+    # Every request with a non-null forwarded_to contributes to the forwarded
+    # incoming rate of its destination.
+    forwarded_incoming = (
+        df.filter(forwarded)
+        .group_by(["forwarded_to", "iteration"])
+        .agg(pl.len().alias("requests"))
+        .with_columns((pl.col("requests") / ITERATION_DURATION).alias("rps"))
+        .rename({"forwarded_to": "node"})
+        .sort(["node", "iteration"])
+    )
+
+    # Requests forwarded TO each node by another node that subsequently failed.
+    #
+    # These are requests that:
+    # - were forwarded
+    # - were forwarded to the current node
+    # - did not succeed locally (200)
+    # - were not rejected by the agent (403)
+    forwarded_failure = (
+        forwarded
+        & (pl.col("node") != pl.col("forwarded_to"))
+        & (pl.col("http_status") != 200)
+        & (pl.col("http_status") != 403)
+    )
+
+    forwarded_failures = (
+        df.filter(forwarded_failure)
+        .group_by(["forwarded_to", "iteration"])
+        .agg(pl.len().alias("requests"))
+        .with_columns((pl.col("requests") / ITERATION_DURATION).alias("rps"))
+        .rename({"forwarded_to": "node"})
+        .sort(["node", "iteration"])
     )
 
     # Local failures on all nodes except the selected node.
@@ -268,20 +295,10 @@ def process_csv(input_csv, output_pdf, node):
 
     failures = (
         df.filter(local_failure & (pl.col("node") != node))
-        .group_by(
-            [
-                "node",
-                "iteration",
-            ]
-        )
+        .group_by(["node", "iteration"])
         .agg(pl.len().alias("requests"))
         .with_columns((pl.col("requests") / ITERATION_DURATION).alias("rps"))
-        .sort(
-            [
-                "node",
-                "iteration",
-            ]
-        )
+        .sort(["node", "iteration"])
     )
 
     plot(
@@ -289,24 +306,21 @@ def process_csv(input_csv, output_pdf, node):
         nodes,
         forwards,
         failures,
+        forwarded_failures,
         incoming,
+        forwarded_incoming,
         output_pdf,
     )
 
 
 def process_experiment(exp, node):
     input_csv = exp / "k6" / "global" / "k6_results_processed.csv"
-
     output_pdf = exp / "k6" / "global" / f"{node}_forwarding_over_iterations.pdf"
 
     if not input_csv.exists():
         raise FileNotFoundError(f"Missing input CSV: {input_csv}")
 
-    process_csv(
-        input_csv,
-        output_pdf,
-        node,
-    )
+    process_csv(input_csv, output_pdf, node)
 
 
 def main():
@@ -315,29 +329,11 @@ def main():
     )
 
     parser.add_argument(
-        "experiments",
-        type=Path,
-        nargs="*",
-        help="Experiment directories",
+        "experiments", type=Path, nargs="*", help="Experiment directories"
     )
-
-    parser.add_argument(
-        "--input-csv",
-        type=Path,
-        help="Input CSV file",
-    )
-
-    parser.add_argument(
-        "--output-pdf",
-        type=Path,
-        help="Output PDF file",
-    )
-
-    parser.add_argument(
-        "--node",
-        required=True,
-        help="Node to analyse",
-    )
+    parser.add_argument("--input-csv", type=Path, help="Input CSV file")
+    parser.add_argument("--output-pdf", type=Path, help="Output PDF file")
+    parser.add_argument("--node", required=True, help="Node to analyse")
 
     args = parser.parse_args()
 
@@ -346,21 +342,14 @@ def main():
             parser.error("--input-csv and --output-pdf cannot be used with experiments")
 
         for exp in args.experiments:
-            process_experiment(
-                exp,
-                args.node,
-            )
+            process_experiment(exp, args.node)
 
         return
 
     if args.input_csv is None or args.output_pdf is None:
         parser.error("--input-csv and --output-pdf are required without experiments")
 
-    process_csv(
-        args.input_csv,
-        args.output_pdf,
-        args.node,
-    )
+    process_csv(args.input_csv, args.output_pdf, args.node)
 
 
 if __name__ == "__main__":
