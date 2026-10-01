@@ -177,12 +177,6 @@ located.
         help="Experiment directories or directories containing multiple experiments.",
     )
 
-    parser.add_argument(
-        "--rl-strategy",
-        action="store_true",
-        help="Enable RL strategy processing (use if experiment uses RL strategy)",
-    )
-
     args = parser.parse_args()
 
     # Resolve all experiment directories.
