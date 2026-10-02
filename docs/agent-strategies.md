@@ -135,19 +135,63 @@ Unlike other strategies, RL Agent is event-driven rather than periodic. It
 relies on the presence of the `DFaaS-K6-Stage` header in incoming requests,
 which encodes the current stage of the workload.
 
-The strategy alternates between two phases: "All Local phase", whereequests are
-always processed locally, mirroring the behavior of the All Local strategy, and
-"RL phase", where the agent queries the RL model to obtain action weights and
-applies them to the HAProxy configuration.
+The strategy works together with k6 load tests. Each k6 iteration consists of
+two internal stages, so the iteration number is calculated by dividing the stage
+value by 2. The RL model is queried once when a new iteration is detected.
 
-The active phase is determined by the stage value using modulo 4: stages `0` and
-`1` is "All Local phase", stages `2` and `3` is RL phase.
+The observation sent to the RL model combines information about the future
+(predicted) iteration with measurements from the previous iteration. The future
+iteration metrics are obtained from a historical Prometheus instance and are
+used as a "holistic oracle" for the expected workload. The previous iteration
+metrics are obtained from the real-time Prometheus instance. This means that
+each DFaaS node has two Prometheus servers: one for real-time measurements and
+one for historical measurements only. The latter must be deployed and managed
+manually.
 
-This design matches how k6 structures load testing stages. If you invoke
-requests manually, ensure that the stage values follow this convention!
+The observation for the model contains the following metrics:
 
-You must configure the RL model endpoint via the `AGENT_RLMODEL_HOST` and
-`AGENT_RLMODEL_PORT` environment variables.
+* `input_rate`: input request rate for the current iteration.
+* `previous_input_rate`: input request rate during the previous iteration.
+* `previous_fwd_to_node_X`: request forwarding rate to each neighbor during the
+  previous iteration.
+* `previous_fwd_to_node_X_rejected`: rejected forwarding rate to each neighbor
+  during the previous iteration.
+* `reject_rate`: rejection rate for the current iteration.
+* `previous_reject_rate`: rejection rate during the previous iteration.
+* `avg_resp_time_loc`: average local response time for the current iteration.
+* `previous_avg_resp_time_loc`: average local response time during the previous
+  iteration.
+* `previous_avg_resp_time_fwd_to_node_X`: average response time for requests
+  forwarded to each neighbor during the previous iteration.
+* `cpu_utilization`: CPU utilization for the current iteration.
+* `previous_cpu_utilization`: CPU utilization during the previous iteration.
+* `n_replicas`: number of replicas for the current iteration.
+* `previous_n_replicas`: number of replicas during the previous iteration.
+
+During the first iteration, previous-iteration metrics are not available. These
+values are initialized to `0`, except for `previous_n_replicas`, which is
+initialized to `1`.
+
+The RL model returns a proportion for each available action: process requests
+locally, forward requests to each neighbor, or reject requests. The returned
+proportions are converted into HAProxy weights and applied.
+
+To use this strategy, you must configure these additional variables:
+
+* The RL model endpoint via the `AGENT_RLMODEL_HOST` and `AGENT_RLMODEL_PORT`
+  environment variables.
+* The `AGENT_RLMODEL_EXPLORE` option controls whether the RL model should
+  explore the action space (by default, `false`).
+* The historical Prometheus instance via the `AGENT_HISTORICAL_PROMETHEUS_HOST`
+  and `AGENT_HISTORICAL_PROMETHEUS_PORT` environment variables. The query
+  resolution is the same as the real-time Prometheus instance.
+
+> [!IMPORTANT]
+> The strategy has some limitations: it supports only one deployed function and,
+> more importantly, dynamic addition or removal of neighbors or functions is not
+> supported after the initial strategy configuration. Therefore, all functions
+> and neighbors must be set up before starting the strategy. The strategy waits
+> for 1 minute before starting, to allow all neighbors to connect.
 
 ### Random
 
