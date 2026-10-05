@@ -769,7 +769,7 @@ func (strategy *NodeMarginStrategy) processMsgNodeMarginInfoNMS(sender string, m
 				entries[sender].TAlive = time.Now().UTC()
 				entries[sender].Margin = msg.Margin
 				entries[sender].Load.RateHighUsage = msg.Load.RateHighUsage
-				entries[sender].Load.RateMediumUsage = msg.Load.RateLowUsage
+				entries[sender].Load.RateMediumUsage = msg.Load.RateMediumUsage
 				entries[sender].Load.RateMediumUsage = msg.Load.RateLowUsage
 			}
 		} else {
