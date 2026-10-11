@@ -52,7 +52,7 @@ func (r *RuntimeAPI) exec(cmd string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func (r *RuntimeAPI) GetWeight(backend, server string) (uint, error) {
+func (r *RuntimeAPI) Weight(backend, server string) (uint, error) {
 	cmd := fmt.Sprintf("get weight %s/%s", backend, server)
 
 	resp, err := r.exec(cmd)
@@ -89,7 +89,7 @@ func (r *RuntimeAPI) SetWeight(backend, server string, weight uint) error {
 
 	// We ask for current weight to be sure the previous command ran
 	// successfully.
-	got, err := r.GetWeight(backend, server)
+	got, err := r.Weight(backend, server)
 	if err != nil {
 		return fmt.Errorf("verify weight for %s/%s: %w", backend, server, err)
 	}
