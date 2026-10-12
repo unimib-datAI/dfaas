@@ -13,7 +13,6 @@ import (
 	"time"
 
 	"github.com/libp2p/go-libp2p/core/peer"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/hasock"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
 )
@@ -207,80 +206,6 @@ func debugPromRAMusagePerFunction(timeSpan time.Duration, data map[string]float6
 	logger.Debug(b.String())
 }
 
-func debugFuncsWithMaxRates(data map[string]uint) {
-	if !logging.GetDebugMode() {
-		return
-	}
-
-	keys := make([]string, 0, len(data))
-	for k := range data {
-		keys = append(keys, k)
-	}
-
-	sort.Strings(keys)
-
-	var b strings.Builder
-	b.WriteString(fmt.Sprintf("Available functions (with max rate): %d", len(keys)))
-	if len(keys) > 0 {
-		b.WriteString(" (limit req/s) ")
-		for _, funcName := range keys {
-			b.WriteString(fmt.Sprintf("%q (%d) ", funcName, data[funcName]))
-		}
-	}
-	logging.Logger().Debug(b.String())
-}
-
-func debugNodesTblContent(entries map[string]*nodestbl.EntryRecalc) {
-	if !logging.GetDebugMode() {
-		return
-	}
-
-	logger := logging.Logger()
-
-	nodeIDs := make([]string, 0, len(entries))
-	for k := range entries {
-		nodeIDs = append(nodeIDs, k)
-	}
-
-	sort.Strings(nodeIDs)
-
-	var b strings.Builder
-	b.WriteString("Content of nodestbl:")
-	if len(nodeIDs) == 0 {
-		b.WriteString("empty")
-		logger.Debug(b.String())
-		return
-	}
-
-	b.WriteString("\n")
-	for _, nodeID := range nodeIDs {
-		entry := entries[nodeID]
-
-		b.WriteString(fmt.Sprintf("  - NODE %s (HAProxy=%s:%d)\n",
-			nodeID,
-			entry.HAProxyHost,
-			entry.HAProxyPort))
-
-		funcNames := make([]string, 0, len(entry.FuncsData))
-		for k := range entry.FuncsData {
-			funcNames = append(funcNames, k)
-		}
-
-		sort.Strings(funcNames)
-
-		for _, funcName := range funcNames {
-			funcData := entry.FuncsData[funcName]
-
-			b.WriteString(fmt.Sprintf("    - FUNC %s: LimitIn=%.2f LimitOut=%.2f NodeWeight=%d\n",
-				funcName,
-				funcData.LimitIn,
-				funcData.LimitOut,
-				funcData.NodeWeight))
-		}
-	}
-	logger.Debug(b.String())
-}
-
 func debugNodesTblContentNMS(entries map[string]*nodestbl.EntryNMS) {
 	if !logging.GetDebugMode() {
 		return
@@ -314,49 +239,6 @@ func debugNodesTblContentNMS(entries map[string]*nodestbl.EntryNMS) {
 		b.WriteString("    - FUNCTIONS:\n")
 		for _, funcName := range entry.Funcs {
 			b.WriteString(fmt.Sprintf("       FUNC: %s\n", funcName))
-		}
-	}
-	logger.Debug(b.String())
-}
-
-func debugStickTable(stName string, stContent map[string]*hasock.STEntry) {
-	if !logging.GetDebugMode() {
-		return
-	}
-
-	clients := make([]string, 0, len(stContent))
-	for k := range stContent {
-		clients = append(clients, k)
-	}
-
-	sort.Strings(clients)
-
-	var b strings.Builder
-	b.WriteString(fmt.Sprintf("HAProxy stick-table %q content:", stName))
-	if len(clients) == 0 {
-		b.WriteString(" empty")
-	} else {
-		b.WriteString("\n")
-		for _, key := range clients {
-			stEntry := stContent[key]
-			b.WriteString(fmt.Sprintf("  - key=%s cnt=%d rate=%d\n", key, stEntry.HTTPReqCnt, stEntry.HTTPReqRate))
-		}
-	}
-	logging.Logger().Debug(b.String())
-}
-
-func debugMsgNodeInfoRecalc(msg MsgNodeInfoRecalc) {
-	if !logging.GetDebugMode() {
-		return
-	}
-
-	logger := logging.Logger()
-
-	var b strings.Builder
-	for _nodeID, _limits := range msg.FuncLimits {
-		b.WriteString(fmt.Sprintf("Functions limits for node %s:\n", _nodeID))
-		for funcName := range _limits {
-			b.WriteString(fmt.Sprintf("	Function %s LimitOut: %f\n", funcName, _limits[funcName]))
 		}
 	}
 	logger.Debug(b.String())

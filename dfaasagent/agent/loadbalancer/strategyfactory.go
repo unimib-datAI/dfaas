@@ -48,12 +48,17 @@ var haproxycfgrecalcTemplate string
 
 // createStrategy creates and returns a new RecalcStrategy instance.
 func (strategyFactory *recalcStrategyFactory) createStrategy() (Strategy, error) {
+	var err error
 	strategy := &RecalcStrategy{}
 
-	// Avoid premature expiration of nodes in the table between strategy runs.
-	strategy.nodestbl = nodestbl.NewTableRecalc(_config.RecalcPeriod + (_config.RecalcPeriod / 5))
+	if _config.RecalcPeriod <= 0 {
+		return nil, fmt.Errorf("RecalcPeriod must be a positive duration")
+	}
+	if _config.PrometheusStep <= 0 {
+		return nil, fmt.Errorf("PrometheusStep must be a positive duration")
+	}
 
-	hacfgupdater, err := hacfgupd.New(_config.DataPlaneAPIHost,
+	strategy.hacfgupdater, err = hacfgupd.New(_config.DataPlaneAPIHost,
 		_config.DataPlaneAPIPort,
 		_config.DataPlaneAPIUser,
 		_config.DataPlaneAPIPassword,
@@ -61,11 +66,21 @@ func (strategyFactory *recalcStrategyFactory) createStrategy() (Strategy, error)
 	if err != nil {
 		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
 	}
-	strategy.hacfgupdater = hacfgupdater
 
 	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
 
-	strategy.it = 0
+	// Set up the HAProxy Runtime API client. Used to set the proxy weights
+	// without reloading HAProxy (this cannot be done via Data Plane API).
+	runtimeapi_addr := fmt.Sprintf("%s:%d", _config.RuntimeAPIHost, _config.RuntimeAPIPort)
+	strategy.runtimeapi = proxy.NewRuntimeAPI(runtimeapi_addr)
+
+	// Set up the Prometheus client used to run PromQL queries.
+	strategy.promq, err = promq.New(_config.PrometheusHost, _config.PrometheusPort, _config.PrometheusStep)
+	if err != nil {
+		return nil, fmt.Errorf("initializing Prometheus client: %w", err)
+	}
+
+	strategy.limitsTable = make(map[string]map[string]float32)
 
 	return strategy, nil
 }

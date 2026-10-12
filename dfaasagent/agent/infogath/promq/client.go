@@ -11,6 +11,7 @@ import (
 	"errors"
 	"fmt"
 	"math"
+	"regexp"
 	"strings"
 	"time"
 
@@ -176,15 +177,12 @@ func (c *Client) InputRPS(start, end time.Time) (map[string]float32, error) {
 	// only integer. So: convert to seconds, round, then rebuild a clean duration.
 	durationStr := (time.Duration(math.Round(duration.Seconds())) * time.Second).String()
 
-	// Each function has two backends: one for local requests (function_X) and
-	// one for incoming forwarded requests (function_X_forwarded). We want only
-	// the first ones.
+	// Each function has at least one backend for requests coming from clients
+	// (function_X). We are interested only in this backend, so we need to
+	// exclude all others (function_X_forwarded or function_X_forwarded_Y...).
 	query := fmt.Sprintf(`
 	avg by (proxy) (
-	  rate(haproxy_backend_http_requests_total{
-		proxy=~"function_.*",
-		proxy!~".*_forwarded"
-	  }[%s])
+	  rate(haproxy_backend_http_requests_total{proxy=~"function_[^_]+"}[%s])
 	)`, durationStr)
 	c.logQuery(query, end)
 
@@ -212,6 +210,69 @@ func (c *Client) InputRPS(start, end time.Time) (map[string]float32, error) {
 		function := strings.TrimPrefix(proxy, "function_")
 
 		rps[function] = float32(sample.Value)
+	}
+
+	return rps, nil
+}
+
+// ForwardedRPS returns the average number of forwarded requests per second
+// for each function and its neighbors within the given time range.
+//
+// Used by the Recalc strategy.
+func (c *Client) ForwardedRPS(start, end time.Time) (map[string]map[string]float32, error) {
+	if end.Before(start) {
+		return nil, fmt.Errorf("end time (%d) must be after start time (%d)", end.Unix(), start.Unix())
+	}
+
+	// Compute range duration (same approach as other functions).
+	duration := end.Sub(start)
+
+	// duration is a time.Duration. Prometheus supports only integer durations,
+	// so convert to seconds, round, then rebuild a clean duration.
+	durationStr := (time.Duration(math.Round(duration.Seconds())) * time.Second).String()
+
+	// Match all forwarded backends in the format: function_X_forwarded_Y, where
+	// X is the function name, and Y is the neighbor.
+	query := fmt.Sprintf(`
+	avg by (proxy) (
+	  rate(haproxy_backend_http_requests_total{
+	    proxy=~"function_.+_forwarded_.+"
+	  }[%s])
+	)`, durationStr)
+	c.logQuery(query, end)
+
+	ctx := context.Background()
+	result, warnings, err := c.promAPI.Query(ctx, query, end)
+	if err != nil {
+		return nil, fmt.Errorf("get forwarded RPS from Prometheus: %w", err)
+	}
+	if len(warnings) > 0 {
+		c.logger.Warnf("Prometheus warnings for query %q\n%s", query, strings.Join(warnings, "\n"))
+	}
+
+	// We expect a vector result.
+	vector, ok := result.(model.Vector)
+	if !ok {
+		return nil, fmt.Errorf("result type is %T, expected %T", result, model.Vector{})
+	}
+
+	// Extract the function name and neighbor from the backend name.
+	backendRegex := regexp.MustCompile("^function_(.+)_forwarded_(.+)$")
+	rps := make(map[string]map[string]float32)
+	for _, sample := range vector {
+		proxy := string(sample.Metric["proxy"])
+
+		matches := backendRegex.FindStringSubmatch(proxy)
+		if len(matches) != 3 {
+			continue
+		}
+		function := matches[1]
+		neighbor := matches[2]
+
+		if _, ok := rps[function]; !ok {
+			rps[function] = make(map[string]float32)
+		}
+		rps[function][neighbor] = float32(sample.Value)
 	}
 
 	return rps, nil
