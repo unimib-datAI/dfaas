@@ -495,7 +495,7 @@ loop:
 				decision = "incoming_traffic_within_capacity"
 
 			default:
-				allowed = uint(share / neighborRPS * 100)
+				allowed = uint(math.Round(float64(share) / float64(neighborRPS) * 100))
 				decision = "incoming_traffic_over_capacity"
 			}
 
@@ -662,15 +662,16 @@ func (strategy *RecalcStrategy) calculateWeights(currentRPS float32, limits map[
 		neighbors = availableNeighbors
 	}
 
-	// Convert assigned RPS to integer percentages, rounding down.
+	// Convert assigned RPS to integer percentages.
 	var totalWeight uint
 	for server, rate := range assignedRPS {
-		weight := uint(rate / currentRPS * 100)
+		weight := uint(math.Round(float64(rate) / float64(currentRPS) * 100))
 		result[server] = weight
 		totalWeight += weight
 	}
 
-	// Reject unhandled traffic and absorb percentage rounding differences.
+	// Reject unhandled. Note that the totalWeight could be grater than 100 due
+	// to rounding differences, in that case do not reject anything.
 	if totalWeight < 100 {
 		result[rejector] = 100 - totalWeight
 	}
