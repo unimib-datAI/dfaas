@@ -12,6 +12,7 @@
 # difficult to process and analyze in later stages.
 
 import argparse
+from pathlib import Path
 
 import polars as pl
 
@@ -162,14 +163,25 @@ def main():
         description="Parse k6 results into reconstructed metrics CSV."
     )
 
-    parser.add_argument("--input", required=True, help="Path to k6_results.csv.gz")
-    parser.add_argument("--output", required=True, help="Path to output CSV file")
-
+    parser.add_argument(
+        "--input",
+        required=True,
+        type=Path,
+        help="Path to k6_results.csv.gz or k6_results.csv",
+    )
+    parser.add_argument(
+        "--output",
+        type=Path,
+        help="Path to output CSV file. If not provided will be create in the same directory of --input with name 'k6_results_processed.csv'",
+    )
     args = parser.parse_args()
 
     df = pl.read_csv(args.input)
 
     df = build_request_table(df)
+
+    if not args.output:
+        args.output = args.input.parent / "k6_results_processed.csv"
 
     df.write_csv(args.output)
     print(f"CSV saved to: {args.output}")
