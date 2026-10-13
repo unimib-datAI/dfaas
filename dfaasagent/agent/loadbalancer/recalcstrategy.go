@@ -170,7 +170,9 @@ func (strategy *RecalcStrategy) OnReceived(msg *pubsub.Message) error {
 
 func (strategy *RecalcStrategy) updateLimitsForNeighbors() error {
 	var err error
-	logger := logging.Logger()
+	logger := logging.Logger().With(
+		"strategy_component", "updateLimitsForNeighbors",
+	)
 
 	// Build neighbors info.
 	neighborsID := []string{} // Node's ID (node_XXX).
@@ -183,6 +185,10 @@ func (strategy *RecalcStrategy) updateLimitsForNeighbors() error {
 		logger.Warn("No available neighbors, skipping message publication")
 		return nil
 	}
+	logger.Debugw("Collected neighbors",
+		"neighbors_count", len(neighborsID),
+		"neighbors", neighborsID,
+	)
 
 	// Get deployed functions with associated limits.
 	funcs, err := strategy.offuncsClient.GetFuncsWithMaxRates()
@@ -202,6 +208,7 @@ func (strategy *RecalcStrategy) updateLimitsForNeighbors() error {
 		logger.Warn("No functions returned from InputRPS query, skipping message publishing")
 		return nil
 	}
+	logger.Debugw("Retrieved input RPS", "functions_count", len(rps))
 
 	// There may be cases where the function returned by the Prometheus query
 	// differs from the deployed functions because a function has not yet been
@@ -228,6 +235,12 @@ func (strategy *RecalcStrategy) updateLimitsForNeighbors() error {
 			for _, neighborID := range neighborsID {
 				limits[neighborID][funcName] = 0
 			}
+
+			logger.Debugw("Function overloaded: disabling incoming neighbor traffic",
+				"function", funcName,
+				"current_rps", rps[funcName],
+				"max_rps", funcs[funcName],
+			)
 			continue
 		}
 
@@ -246,6 +259,15 @@ func (strategy *RecalcStrategy) updateLimitsForNeighbors() error {
 		for _, neighborID := range neighborsID {
 			limits[neighborID][funcName] = share
 		}
+
+		logger.Debugw("Function not overloaded: distributed available capacity among neighbors",
+			"function", funcName,
+			"current_rps", funcRPS,
+			"max_rps", limit,
+			"available_margin", margin,
+			"share_per_neighbor", share,
+			"neighbors_count", len(neighborsID),
+		)
 	}
 
 	// Finally we can send the message.
@@ -257,7 +279,7 @@ func (strategy *RecalcStrategy) updateLimitsForNeighbors() error {
 }
 
 func (strategy *RecalcStrategy) updateLocalWeights() error {
-	logger := logging.Logger()
+	logger := logging.Logger().With("strategy_component", "updateLocalWeights")
 
 	// Before updating the proxy weights, the proxy must be reloaded whenever a
 	// function or a neighbor is added or removed. To check whether a reload is
@@ -281,12 +303,23 @@ func (strategy *RecalcStrategy) updateLocalWeights() error {
 		return fmt.Errorf("failed to get proxy current backends: %w", err)
 	}
 
+	logger.Debugw("Retrieved system and proxy state",
+		"functions_count", len(funcs),
+		"neighbors_count", len(neighborsID),
+		"proxy_backends_count", len(backends),
+	)
+
 	reload := false
 loop:
 	for funcName := range funcs {
 		if !slices.Contains(backends, "function_"+funcName) {
 			// Missing backend for handling this function from clients.
 			reload = true
+
+			logger.Debugw("Proxy reload required: missing local backend",
+				"function", funcName,
+				"backend", "function_"+funcName,
+			)
 			break
 		}
 		for _, neighborID := range neighborsID {
@@ -295,6 +328,12 @@ loop:
 				// Missing backend for handling these functions from other
 				// neighbors.
 				reload = true
+
+				logger.Debugw("Proxy reload required: missing neighbor backend",
+					"function", funcName,
+					"neighbor_id", neighborID,
+					"backend", bkd,
+				)
 				break loop
 			}
 		}
@@ -308,6 +347,7 @@ loop:
 		// BUG: After the reload, we cannot update the weights immediately
 		// because we need to wait for the reload to complete. Since we cannot
 		// determine this for now, we simply skip this iteration.
+		logger.Debug("Reloading proxy, skipping weight update in this iteration")
 		return strategy.reloadProxy()
 	}
 
@@ -347,7 +387,16 @@ loop:
 
 	for funcName, funcRPS := range rps {
 		limit := funcs[funcName]
-		if funcRPS >= float32(limit) {
+		overloaded := funcRPS >= float32(limit)
+
+		logger.Debugw("Evaluating function load",
+			"function", funcName,
+			"current_rps", funcRPS,
+			"max_rps", limit,
+			"overloaded?", overloaded,
+		)
+
+		if overloaded {
 			// We first disable incoming requests from neighbors because we are
 			// overloaded.
 			for _, neighborID := range neighborsID {
@@ -372,12 +421,24 @@ loop:
 					logger.Warnf("Neighbor %q for function %q has a limit of 0, NaN or Inf: %f", neighborID, funcName, neighborLimit)
 					limits[neighborNodeID] = 0
 				} else {
+					logger.Debugw("Using neighbor capacity",
+						"function", funcName,
+						"neighbor_id", neighborNodeID,
+						"neighbor_limit_rps", neighborLimit,
+					)
 					limits[neighborNodeID] = neighborLimit
 				}
 			}
 			strategy.limitsTableLock.RUnlock()
 
 			funcWeights := strategy.calculateWeights(funcRPS, limits)
+
+			logger.Debugw("Calculated proxy weights for overloaded function",
+				"function", funcName,
+				"current_rps", funcRPS,
+				"limits_rps", limits,
+				"calculated_proxy_weights", funcWeights,
+			)
 
 			// We now have the weights, but we need to store them in the global
 			// weight table.
@@ -409,36 +470,49 @@ loop:
 			margin = 0
 		}
 
-		// The available margin will be evenly distributed among the neighbors.
 		share := margin / float32(len(neighborsID))
 		for _, neighborID := range neighborsID {
 			backend := fmt.Sprintf("function_%s_forwarded_%s", funcName, neighborID)
+			neighborRPS := neighborsRPS[neighborID][funcName]
+
+			var allowed uint
+			var decision string // Only for debug.
 
 			// When calculating the weights, we also need to check the current
 			// incoming RPS, as it may exceed the margin assigned to that
 			// neighbor. In that case, some requests must be rejected.
-			neighborRPS := neighborsRPS[neighborID][funcName]
-			if neighborRPS <= 0 {
-				weights[backend]["openfaas-local"] = 100
-				weights[backend]["rejector"] = 0
-				continue
+			switch {
+			case neighborRPS <= 0:
+				allowed = 100
+				decision = "no_incoming_traffic"
+
+			case share <= 0:
+				allowed = 0
+				decision = "no_available_capacity"
+
+			case neighborRPS <= share:
+				allowed = 100
+				decision = "incoming_traffic_within_capacity"
+
+			default:
+				allowed = uint(share / neighborRPS * 100)
+				decision = "incoming_traffic_over_capacity"
 			}
 
-			if share <= 0 {
-				weights[backend]["openfaas-local"] = 0
-				weights[backend]["rejector"] = 100
-				continue
-			}
+			rejected := 100 - allowed
 
-			if neighborRPS <= share {
-				weights[backend]["openfaas-local"] = 100
-				weights[backend]["rejector"] = 0
-				continue
-			}
-
-			allowed := uint(share / neighborRPS * 100)
 			weights[backend]["openfaas-local"] = allowed
-			weights[backend]["rejector"] = 100 - allowed
+			weights[backend]["rejector"] = rejected
+
+			logger.Debugw("Calculated forwarded traffic weights",
+				"function", funcName,
+				"decision", decision,
+				"neighbor_id", neighborID,
+				"neighbor_rps", neighborRPS,
+				"available_share_rps", share,
+				"allowed_proxy_weight", allowed,
+				"rejected_proxy_weight", rejected,
+			)
 		}
 	}
 
@@ -450,13 +524,14 @@ loop:
 			}
 		}
 	}
-	logger.Debugf("HAProxy updated with the following weights: %v", weights)
+	logger.Debugw("Proxy weights updated", "weights", weights)
 
 	return nil
 }
 
 // processMsgRecalc processes an incoming message received from another node.
 func (strategy *RecalcStrategy) processMsgRecalc(senderID string, msg *MsgRecalc) error {
+	logger := logging.Logger().With("strategy_component", "processMsgRecalc")
 	myselfID := _p2pHost.ID().String()
 
 	if senderID == myselfID {
@@ -471,6 +546,7 @@ func (strategy *RecalcStrategy) processMsgRecalc(senderID string, msg *MsgRecalc
 	// ignore the message.
 	funcLimits, present := msg.FuncLimits[myselfID]
 	if !present {
+		logger.Debugf("Recevied message from %s, but local node is not present, skipping message", senderID)
 		return nil
 	}
 
@@ -489,6 +565,7 @@ func (strategy *RecalcStrategy) processMsgRecalc(senderID string, msg *MsgRecalc
 	//
 	// FIXME: In this way a removed function will be kept in the table!
 	for funcName, limits := range funcLimits {
+		logger.Debugf("Recevied message from %s, for function %q local node can send max. %.2f req/s", senderID, funcName, limits)
 		strategy.limitsTable[senderID][funcName] = limits
 	}
 
