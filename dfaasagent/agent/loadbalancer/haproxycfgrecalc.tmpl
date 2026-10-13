@@ -4,10 +4,8 @@
 # See k8s/charts/values-haproxy.yaml for more information about global,
 # userlist, defaults, and prometheus frontend sections.
 global
-  master-worker no-exit-on-failure
-  stats socket /var/run/haproxy.sock mode 660 level admin expose-fd listeners
-  insecure-fork-wanted
-  expose-deprecated-directives
+  master-worker
+  stats socket ipv4@*:6666 mode 660 level admin expose-fd listeners
 
   # Duplicate logs: one for stdout/k8s logs, one for haproxy-metrics-exporter, a
   # sidecar container in the same pod.
@@ -20,6 +18,8 @@ userlist dataplaneapi
 defaults
   mode http
   option httplog
+  option forwardfor
+  option http-server-close
   log global
   timeout client 60s
   timeout connect 60s
@@ -27,243 +27,109 @@ defaults
 
 frontend prometheus
   bind :8405
-  mode http
   http-request use-service prometheus-exporter
   no log
 
-{{range $funcName, $func := .Functions -}}
-# Stick table for invocations of function {{$funcName}} from users, not from
-# other DFaaS nodes. We just use one row for all clients. Denied requests are
-# not counted here.
-#
-# Among all stick tables, this is the only one used by the DFaaS agent to
-# calculate forwarding weights.
-backend st_users_func_{{$funcName}}
-    stick-table type integer size 10 expire {{$.SecsRecalc}}s store http_req_cnt,http_req_rate(1s)
+# The configuration is generated and changed by the DFaaS agent from this point
+# on.
 
-# Stick table for invocations of functions {{$funcName}} from all sources (users
-# and other DFaaS nodes). Same structure as st_users_func{{$funcName}}.
-backend st_local_func_{{$funcName}}
-    stick-table type integer size 10 expire {{$.SecsRecalc}}s store http_req_cnt,http_req_rate(1s)
+frontend main
+    bind :80
 
-{{range $nodeID, $_ := $func.LimitsIn -}}
-# Stick table for invocation of function {{$funcName}} from the DFaaS node with
-# id {{$nodeID}}.
-#
-# We use destination port (80) as key and we count requests num and rate.
-# RecalTime for expiring why LimitIn are updated every "RecalPeriod" time. Count
-# number of requests and check rate for periods of 1 sec.
-backend st_other_node_{{$funcName}}_{{$nodeID}}
-    stick-table type integer size 10 expire {{$.SecsRecalc}}s store http_req_cnt,http_req_rate(1s)
-{{end}}
+    # Use a stick table with only 1 global value, we will track the latest
+    # DFaaS-K6-Stage header value for incoming requests.
+    #
+    # We use type string for the key ("global") and gpt0 integer field to write
+    # the stage.
+    #
+    # Reminder: the name of this stick table is the section's name: "main".
+    #
+    # Ignore requests without the header.
+    #
+    # Warning: this stick table is used only for debugging purposes.
+    stick-table type string size 1 expire 5s store gpt(1)
 
-{{end}}
+    # Map stick counter 0 (sc0) with the key "global". Reminder: it is mandatory
+    # to first select the key and then write the value.
+    http-request track-sc0 str(global)
 
-frontend fe_main
-    bind *:80
+    # ACL to check if DFaaS-K6-Stage header exists and it is numeric.
+    acl has_stage_hdr req.hdr(DFaaS-K6-Stage) -m reg ^[0-9]+$
 
-    {{/* Enable statistics web page */ -}}
-    stats enable
-    stats auth admin:admin
-    stats uri /haproxy?stats
+    # ACL to detect incoming forwarded requests.
+    acl has_node_hdr req.hdr(DFaaS-Node-ID) -m found
 
-    {{/* Path ACLs */ -}}
-    acl is_path_haproxy path_beg /haproxy
-    acl is_path_system_funcs path /system/functions
-    acl is_path_function path_beg /function/
+    # Store latest stage to gpt0 as integer for the stick counter sc0 (we know
+    # it is mapped to the "global" key). Note we add +1 to distinguish the case
+    # where the header has not been found (default value is 0).
+    #
+    # Note: forwarded requests from other nodes are ignored!
+    http-request sc-set-gpt(0,0) req.hdr(DFaaS-K6-Stage),add(1) if has_stage_hdr !has_node_hdr
 
-    {{/* Deny requests which are not directed to a function or / (root) or the stats page */ -}}
-    http-request deny unless is_path_haproxy or is_path_system_funcs or is_path_function
+    # Track for the current transaction (request-response) the DFaaS-Node-ID
+    # header (if exists), it will be added in the response for incoming
+    # forwarded requests.
+    http-request set-var(txn.dfaas_node_id) req.hdr(DFaaS-Node-ID)
 
-    {{/* Capture some request headers in log */ -}}
-    http-request capture req.hdr(Host) len 50
-    http-request capture req.hdr(DFaaS-Node-ID) len 50
-
-    {{/* ACL check for DFaaS-Node-ID header with a variable, and capture that
-    variable so its value will be visible in the requests log */ -}}
-    http-request set-var(req.hdrcnt_nodeid) hdr_cnt(DFaaS-Node-ID)
-    acl has_nodeid_hdr var(req.hdrcnt_nodeid),add(0) gt 0 {{- /* The ",add(0)" is needed here, for some reason (maybe haproxy bug? like int/str conversion or something... if you remove it there will be problems!!!) */}}
-    http-request capture str(hdrID:),concat(,req.hdrcnt_nodeid,) len 10 {{- /* e.g. "hdrID:5" */}}
-
-    {{/* ACLs is_func_XXX */ -}}
+    {{/* Create ACLs and backend selection for each function. */}}
     {{range $funcName, $_ := .Functions -}}
-    acl is_func_{{$funcName}} path_beg /function/{{$funcName}}
+        # Match function path (always under /function/).
+        acl is_{{$funcName}} path_beg /function/{{$funcName}}
+
+        # Route forwarded requests to the dedicated neighbor backend. If a
+        # request comes with no recognized neighbor, HAProxy returns 503.
+        {{range $neighborID := $.Neighbors -}}
+            acl from_neighbor_{{$funcName}}_{{$neighborID}} req.hdr(DFaaS-Node-ID) -m str {{$neighborID}}
+            use_backend function_{{$funcName}}_forwarded_{{$neighborID}} if is_{{$funcName}} from_neighbor_{{$funcName}}_{{$neighborID}}
+        {{end -}}
+
+        # Locally originated requests use the normal load-balancing backend.
+        use_backend function_{{$funcName}} if is_{{$funcName}} !has_node_hdr
     {{end}}
 
-    {{/* ########## IF THE REQUEST COMES FROM ANOTHER DFAAS NODE (has_nodeid_hdr) ########## */ -}}
+{{- range $funcName, $timeout := .Functions }}
+backend function_{{$funcName}}
+    # Mark request with DFaaS-Node-ID header, otherwise if it is forwarded the
+    # receiving node cannot determine if the request has been forwarded or not.
+    http-request set-header DFaaS-Node-ID {{$.DFaaSNodeID}}
 
-    {{/* Deny request if rate limit exceeded */ -}}
-    {{range $funcName, $func := .Functions -}}
-    {{- /* # acl is_denied_rate_func_{{$funcName}} src,table_http_req_rate(st_src_func_{{$funcName}}) ge MAP_HERE {{mul $func.Limit $.SecsRecalc}} # i.e. {{$func.Limit}} req/s*/}}
-    {{- /* # http-request deny deny_status 429 if is_func_{{$funcName}} is_denied_rate_func_{{$funcName}} {{- /* Conditions are ANDed */}}
-    {{end}}
+    # Mark also response with DFaaS-Node-ID to let client know which DFaaS node
+    # managed (but possibily not processed) the request.
+    http-response set-header DFaaS-Node-ID {{$.DFaaSNodeID}}
 
-    {{/* ########## IF THE REQUEST COMES FROM A USER (!has_nodeid_hdr) ########## */ -}}
-
-    {{/* If the invocation rate (across all clients) is greater than the total
-    func req/s limit, we should send the request to be_others_func_XXX */ -}}
-    {{range $funcName, $func := .Functions -}}
-    {{/* Define ACL (using a variable) and capture that variable */ -}}
-    http-request set-var(req.rate_local_func_{{$funcName}}) dst_port,table_http_req_rate(st_local_func_{{$funcName}})
-    acl local_capacity_exceeded_func_{{$funcName}} var(req.rate_local_func_{{$funcName}}),add(0) ge {{$func.Limit}}  {{- /* The ",add(0)" needed also here (see above for explanation) */}}
-    http-request capture str({{$funcName}}:),concat(,req.rate_local_func_{{$funcName}},) len 20 {{- /* e.g. "figlet:5" */}}
-    {{end}}
-
-    {{/* ########## TRACKING WITH STICK TABLES ########## */ -}}
-
-    {{/* Track invocations by-function for users only
-    (this works because dst_port is 80 for every possible request) */ -}}
-    {{range $funcName, $_ := .Functions -}}
-    http-request track-sc1 dst_port table st_users_func_{{$funcName}} if is_func_{{$funcName}} !has_nodeid_hdr {{- /* Using Sticky-Counter #1 */}}
-    {{end}}
-
-    {{/* [NEW] ########### ACLs FOR CHECKING IF A NODE IS KNOWN ######### */ -}}
-    {{/* Multiple conditions in the same line are joined together with an AND
-        instead named ACLs named multiple times are joined with OR.
-            - acl is_node_{{$nodeID}} check that the http request came from {nodeID} node. 
-    */ -}}
-    {{if not $.Nodes}}
-    acl is_hdr_nodeID_known always_false
-    {{end}}
-    {{range $nodeID, $_ := $.Nodes}}
-    acl is_hdr_nodeID_known req.hdr(DFaaS-Node-ID) -m str {{$nodeID}} {{/* Conditions with same name, called multiple times are joined with OR */}}
-    acl is_node_{{$nodeID}} req.hdr(DFaaS-Node-ID) -m str {{$nodeID}}
-    {{end}}
-
-    {{/* [NEW] ########## ACLs FOR LIMIT-IN CONTROL ##########*/ -}}
-    {{/* If the rate of request from each other node for each function is greater than LimitIn 
-        calculated by the algorithm, deny further requests */ -}}
-    {{range $funcName, $func := .Functions -}}
-    {{/* Define ACL (using a variable) and capture that variable */ -}}
-    {{range $nodeID, $limitIn := $func.LimitsIn -}}
-    http-request set-var(req.rate_other_node_{{$funcName}}_{{$nodeID}}) dst_port,table_http_req_rate(st_other_node_{{$funcName}}_{{$nodeID}})
-    acl limitIn_saturated_{{$funcName}}_{{$nodeID}} var(req.rate_other_node_{{$funcName}}_{{$nodeID}}),add(0) ge {{$limitIn}}  {{- /* The ",add(0)" needed also here (see above for explanation) */}}
-    http-request capture str({{$funcName}}_{{$nodeID}}:),concat(,req.rate_other_node_{{$funcName}}_{{$nodeID}},) len 100 {{- /* e.g. "figlet_nodeID:5" */}}
-    {{end}}
-    {{end}}
-
-    {{/* [NEW] If a hdr DFaaS-Node-ID is present AND is not known deny request. 
-        * Returned message is 403 "Forbidden": The access to the resource is forbidden by this client.
-            * A different status code is useful for testing purpose; can be changed.
-    */ -}}
-    http-request deny deny_status 403 if has_nodeid_hdr !is_hdr_nodeID_known
-
-    {{/* [NEW] Deny requests that exceed limitIn */ -}}
-    {{/*
-    {{range $funcName, $func := .Functions -}}
-    {{range $nodeID, $limitIn := $func.LimitsIn -}}
-    http-request deny deny_status 429 if has_nodeid_hdr limitIn_saturated_{{$funcName}}_{{$nodeID}}
-    {{end}}
-    {{end}}
-    */ -}}
-
-    {{/* ########## BACKEND SELECTION ########## */ -}}
-
-    use_backend be_system_funcs if is_path_system_funcs
-    {{range $funcName, $func := .Functions -}}
-
-    {{/* [NEW] Select backend for request that exeeds limitsIn */ -}}
-    {{range $nodeID, $limitIn := $func.LimitsIn -}}
-    use_backend be_limitInExceeds if is_func_{{$funcName}} is_node_{{$nodeID}} has_nodeid_hdr limitIn_saturated_{{$funcName}}_{{$nodeID}} {{- /* Conditions are ANDed */}} 
-    {{end}}
-
-    use_backend be_myself if is_func_{{$funcName}} has_nodeid_hdr {{- /* Conditions are ANDed */}}
-    use_backend be_myself if is_func_{{$funcName}} !local_capacity_exceeded_func_{{$funcName}} {{- /* Conditions are ANDed */}}
-    use_backend be_others_func_{{$funcName}} if is_func_{{$funcName}} !has_nodeid_hdr local_capacity_exceeded_func_{{$funcName}} {{- /* Conditions are ANDed */}}
-
-    {{end}}
-
-# Backend for OpenFaaS Administrative API (/system/functions)
-backend be_system_funcs
-    option http-server-close
-    server system_funcs {{.OpenFaaSHost}}:{{.OpenFaaSPort}}
-
-# Backend for the local OpenFaaS instance. Requests (functions) arriving here
-# will be handled locally.
-#
-# Requests may originate directly from a client or from another DFaaS node. We
-# differentiate these cases using the DFaaS-Node-ID header.
-#
-# When the OpenFaaS instance responds, we add an X-Server header containing the
-# node's IP address and a DFaaS-Node-ID header with the agent's ID (libp2p ID).
-# This allows clients to identify which DFaaS node processed the request.
-backend be_myself
-    option http-server-close
-
-    # Automatically add the X-Forwarded-For header to let know the local
-    # OpenFaaS instance of the original client's IP address.
-    option forwardfor
-
-    # Always include the DFaaS-Node-ID header containing the node's ID.
-    http-request add-header DFaaS-Node-ID {{.MyNodeID}}
-
-    # Replicate here some ACLs from the frontend. They will be used to track
-    # statistics.
-    acl has_nodeid_hdr var(req.hdrcnt_nodeid),add(0) gt 0
-    {{range $nodeID, $_ := $.Nodes}}
-    acl is_node_{{$nodeID}} req.hdr(DFaaS-Node-ID) -m str {{$nodeID}}
-    {{end}}
-
-    # For each function, record statistics in a dedicated stick table named
-    # st_local_func_<funcname>. Additionally, at the neighbor node level, track
-    # each function/node pair in a dedicated stick table named
-    # st_other_node_<funcname>_<nodeid>.
-    {{range $funcName, $func := .Functions -}}
-    acl is_func_{{$funcName}} path_beg /function/{{$funcName}}
-    http-request track-sc2 dst_port table st_local_func_{{$funcName}} if is_func_{{$funcName}}
-
-    {{range $nodeID, $_ := $func.LimitsIn -}}
-    http-request track-sc0 dst_port table st_other_node_{{$funcName}}_{{$nodeID}} if is_func_{{$funcName}} has_nodeid_hdr is_node_{{$nodeID}}
-    {{end}}
-    {{end}}
-
-    http-response set-header X-Server %s
-    http-response set-header DFaaS-Node-ID {{$.MyNodeID}}
-
-    server {{$.NodeIP}} {{.OpenFaaSHost}}:{{.OpenFaaSPort}}
-
-{{range $funcName, $func := .Functions -}}
-# Backend responsible for forwarding incoming user requests to other DFaaS
-# nodes. This backend is specific to the {{$funcName}} function.
-#
-# Forwarding follows a round-robin method with custom weights.
-#
-# As with the be_myself backend, the reply will have X-Server header with the
-# DFaaS agent IP address that served the requests and its node ID in
-# DFaaS-Node-ID header.
-#
-# Neighbor nodes with a weight of 0 will be excluded.
-#
-# If no servers are available (no other DFaaS nodes are up), HAProxy will return
-# a 503 error (with X-Server and DFaaS-Node-ID local node values).
-backend be_others_func_{{$funcName}}
-    option forwardfor
-    option http-server-close
-
+    # With low traffic and small iteration window is better roundrobin load
+    # balancing strategy instead of random because the first is deterministic.
     balance roundrobin
 
-    http-response set-header X-Server %s
-    http-request add-header DFaaS-Node-ID {{$.MyNodeID}}
+    # Two special servers: "openfaas-local" is the local FaaS platform,
+    # "rejector" is a dummy web server that only rejects incoming requests.
+    server openfaas-local {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} weight 100
+    server rejector {{$.RejectorHost}}:{{$.RejectorPort}} weight 0
+    {{- range $.Neighbors }}
+        {{/* FIXME: We assume here that the neighbors use the same HAProxy port as the local node. */}}
+        server {{.}} {{index $.NeighborsHost .}}:{{$.HAProxyPort}} weight 0
+    {{- end }}
 
-    # Overwrite default HAProxy 503 error with custom error. This allow to add
-    # custom headers, otherwise the reply won't have X-Server and DFaaS-Node-ID.
-    http-error status 503 content-type "text/plain" string "Overloaded function {{$funcName}}, no other DFaaS nodes available" hdr "X-Server" "{{$.NodeIP}}" hdr "DFaaS-Node-ID" "{{$.MyNodeID}}"
+    {{- if $timeout}}
+    timeout connect {{$timeout}}ms
+    timeout server {{$timeout}}ms
+    {{- end}}
 
-    {{range $nodeID, $weight := $func.Weights -}}
-    {{if (gt $weight 0) -}}
-    server {{(index $.Nodes $nodeID).HAProxyHost}} {{(index $.Nodes $nodeID).HAProxyHost}}:{{(index $.Nodes $nodeID).HAProxyPort}} weight {{$weight}}
-    {{end -}}
-    {{end}}
+{{- range $neighborID := $.Neighbors }}
+# Each neighbor has a dedicated backend for incoming forwarded requests because
+# we need to selectively balance weights for each.
+backend function_{{$funcName}}_forwarded_{{$neighborID}}
+    # This is a forwarded request: we preserve original node ID and add where it
+    # was forwarded to.
+    http-response set-header DFaaS-Node-ID %[var(txn.dfaas_node_id)]
+    http-response add-header DFaaS-Forwarded-To {{$.DFaaSNodeID}}
+
+    server openfaas-local {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} weight 100
+    server rejector {{$.RejectorHost}}:{{$.RejectorPort}} weight 0
+
+    {{- if $timeout}}
+    timeout connect {{$timeout}}ms
+    timeout server {{$timeout}}ms
+    {{- end}}
+{{- end }}
 {{end}}
-
-# Backend for deny exceeding limit in requests.
-#
-# As with the be_myself backend, the reply will have X-Server with the local
-# DFaaS node IP and its node IS in DFaaS-Node-ID.
-#
-# TODO: It could be divided in alla specific be for nodes and functions and
-# returns a specific error message.
-backend be_limitInExceeds
-    http-response set-header X-Server {{$.NodeIP}}
-    http-response set-header DFaaS-Node-ID {{$.MyNodeID}}
-    http-request deny deny_status 429

@@ -4,6 +4,7 @@ import (
 	"bufio"
 	"fmt"
 	"net"
+	"sort"
 	"strconv"
 	"strings"
 	"time"
@@ -52,7 +53,7 @@ func (r *RuntimeAPI) exec(cmd string) (string, error) {
 	return strings.TrimSpace(out.String()), nil
 }
 
-func (r *RuntimeAPI) GetWeight(backend, server string) (uint, error) {
+func (r *RuntimeAPI) Weight(backend, server string) (uint, error) {
 	cmd := fmt.Sprintf("get weight %s/%s", backend, server)
 
 	resp, err := r.exec(cmd)
@@ -60,21 +61,24 @@ func (r *RuntimeAPI) GetWeight(backend, server string) (uint, error) {
 		return 0, err
 	}
 
-	// Example response: "50 (initial 1)".
+	if resp == "No such server." {
+		return 0, fmt.Errorf("server does not exist")
+	}
+
+	// Example response: "50 (initial 1)" or "No such server.".
 	fields := strings.Fields(resp)
 	if len(fields) == 0 {
-		return 0, fmt.Errorf("empty response for %s/%s", backend, server)
+		return 0, fmt.Errorf("empty response")
 	}
 
 	w64, err := strconv.ParseInt(fields[0], 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("parse weight %q for %s/%s (raw: %q): %w",
-			fields[0], backend, server, resp, err)
+		return 0, fmt.Errorf("parsing raw content %q as integer: %w", resp, err)
 	}
 
 	// Weight is always non-negative, anyway we test that.
 	if w64 < 0 {
-		return 0, fmt.Errorf("negative weight returned for %s/%s: %d", backend, server, w64)
+		return 0, fmt.Errorf("negative weight %d returned", backend, server, w64)
 	}
 
 	return uint(w64), nil
@@ -84,20 +88,40 @@ func (r *RuntimeAPI) SetWeight(backend, server string, weight uint) error {
 	cmd := fmt.Sprintf("set server %s/%s weight %d", backend, server, weight)
 
 	if _, err := r.exec(cmd); err != nil {
-		return fmt.Errorf("set weight %d for %s/%s: %w", weight, backend, server, err)
+		return fmt.Errorf("failed to set weight: %w", err)
 	}
 
 	// We ask for current weight to be sure the previous command ran
 	// successfully.
-	got, err := r.GetWeight(backend, server)
+	got, err := r.Weight(backend, server)
 	if err != nil {
-		return fmt.Errorf("verify weight for %s/%s: %w", backend, server, err)
+		return fmt.Errorf("verification failed: %w", err)
 	}
 
 	if got != weight {
-		return fmt.Errorf("weight mismatch for %s/%s: expected %d got %d",
-			backend, server, weight, got)
+		return fmt.Errorf("weight mismatch after verification: expected %d got %d", weight, got)
 	}
 
 	return nil
+}
+
+// Backends returns the sorted list of available backend names.
+func (r *RuntimeAPI) Backends() ([]string, error) {
+	resp, err := r.exec("show backend")
+	if err != nil {
+		return nil, fmt.Errorf("list backends: %w", err)
+	}
+
+	var backends []string
+	for _, line := range strings.Split(resp, "\n") {
+		line = strings.TrimSpace(line)
+		// We must skip empty lines and comment lines.
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+		backends = append(backends, line)
+	}
+
+	sort.Strings(backends)
+	return backends, nil
 }

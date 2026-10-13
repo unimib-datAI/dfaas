@@ -21,24 +21,24 @@ type MsgText struct {
 // StrMsgTextType value for MsgText.MsgType
 const StrMsgTextType = "text"
 
-// MsgNodeInfoRecalc defines the format of the PubSub messages regarding a node's
-// information (for Recalc strategy)
-type MsgNodeInfoRecalc struct {
+// MsgRecalc defines the format of the PubSub messages used by the
+// Recalc strategy.
+type MsgRecalc struct {
+	// Will be set to MsgTypeRecalc before sending the message.
 	MsgType string
 
-	// Information for other DFaaS nodes to forward requests to this node.
-	// Consists of the node's public IP address and HAProxy's public port.
-	HAProxyHost string
-	HAProxyPort uint
-
-	// FuncLimits is a nested structure consisting of two maps. The mapping is
-	// the following: the rate limit for function funcName on node nodeID can be
-	// obtained by writing FuncLimits[nodeID][funcName]
-	FuncLimits map[string]map[string]float64
+	// FuncLimits is a nested structure consisting of two maps. The first is a
+	// mapping from node IDs to function names, the second is a mapping from
+	// function names to rate limit.
+	//
+	// For a received message from another node, the meaning of
+	// FuncLimits[nodeID][funcName] is: if you are nodeID, you can send me a
+	// limited number of requests per second for the function called funcName.
+	FuncLimits map[string]map[string]float32
 }
 
-// StrMsgNodeInfoTypeRecalc value for MsgNodeInfo.MsgType
-const StrMsgNodeInfoTypeRecalc = "nodeinfoRecalc"
+// MsgTypeRecalc value for MsgRecalc.MsgType
+const MsgTypeRecalc = "recalc"
 
 // MsgNodeInfoNMS defines the format of the PubSub messages regarding a node's
 // information (for Node Margin Strategy)

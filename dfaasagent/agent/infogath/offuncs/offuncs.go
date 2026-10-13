@@ -188,11 +188,18 @@ func (c *Client) GetFuncsWithMaxRates() (map[string]uint, error) {
 
 	result := map[string]uint{}
 	for _, item := range respObj {
-		num, err := strconv.ParseUint(item.Labels.MaxRate, 10, 32)
-		if err != nil {
-			return nil, fmt.Errorf("parsing max rate integer: %v", err)
+		funcName := item.Name
+		rawMaxRate := item.Labels.MaxRate
+
+		if rawMaxRate == "" {
+			return nil, fmt.Errorf("max rate label not found for function %q", funcName)
 		}
-		result[item.Name] = uint(num)
+
+		maxRate, err := strconv.ParseUint(rawMaxRate, 10, 32)
+		if err != nil {
+			return nil, fmt.Errorf("parsing max rate label for function %q: %v", funcName, err)
+		}
+		result[funcName] = uint(maxRate)
 	}
 
 	return result, nil

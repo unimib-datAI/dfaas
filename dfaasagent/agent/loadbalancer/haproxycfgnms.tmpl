@@ -4,7 +4,7 @@
 # userlist, defaults, and prometheus frontend sections.
 global
   master-worker no-exit-on-failure
-  stats socket /var/run/haproxy.sock mode 660 level admin expose-fd listeners
+  stats socket ipv4@*:6666 mode 660 level admin expose-fd listeners
   insecure-fork-wanted
   expose-deprecated-directives
 

@@ -52,50 +52,50 @@ variables.
 
 ### Recalc
 
-The Recalc strategy is a basic dynamic load balancing approach in which each
-agent periodically recalculates the forwarding weights according to real-time
-metrics and the state of the system.
+The Recalc strategy is the first implemented load-balancing approach in DFaaS.
+Each agent periodically recalculates the local processing, rejection, and
+forwarding weights based mostly on real-time metrics and the current state of
+the system.
 
-The weights recalculation occurs at intervals defined by the  
-`AGENT_RECALC_PERIOD` option. The recalculation process involves two phases:
+The strategy uses the concept of maximum requests per second (`maxrate`), which
+defines the maximum number of requests that a node can accept locally for a
+specific function. This is a static and predefined parameter for each function
+deployed on the node. The `maxrate` value is one of the inputs used by the
+strategy to calculate the weights.
 
-1. The agent gathers statistics and updates the local state.  
-2. It then calculates new weights and applies them to the HAProxy configuration.
+You must assign this label using the `faas-cli` command when deploying a
+function to a node:
 
-Between the two phases, there is a pause of `AGENT_RECALC_PERIOD`/2.
+    faas-cli deploy --image=[...] --name=[...] --label dfaas.maxrate=100
 
-The following metrics are collected and used:
+Other inputs are taken from the monitoring platform:
 
-* List of connected nodes with their supported functions and status (to
-  determine how many requests the local node can forward to neighbors).  
-* List of functions with the associated maximum rate for the local node.  
-* Function invocation rates for the local node over the previous 1 second.
+- The real-time invocation rate for requests coming directly from clients.
+- The real-time invocation rate for requests coming from each neighbor.
 
-Among these metrics, the most important is the last one, as it determines the
-overload status for each function. Function invocation rates are compared with
-the corresponding maximum rate, and if the rate is higher the function is
-considered overloaded. If underloaded, the "margin" (the capacity to accept
-requests from users or other nodes) is calculated for each function and evenly
-distributed among all neighbors. In phase 2, the HAProxy weights are then
-computed and applied based on this information.
+If the real-time invocation rate for requests coming directly from clients is
+lower than the `maxrate`, the local node can also accept requests from other
+neighbors, depending on the remaining capacity. The node sends a message to all
+its neighbors to inform them about the available capacity.
 
-At the end of each iteration, each node sends the status of each function to all
-other nodes.
+On the other hand, if the real-time invocation rate for requests coming directly
+from clients is higher than the `maxrate`, the function is considered
+overloaded, and the proxy is configured to reject requests coming from other
+neighbors. The local node also tries to forward requests coming from clients to
+neighbors if capacity is available. Any excess requests that cannot be processed
+or forwarded will be rejected.
 
-The Recalc strategy uses the concept of **maxrate** (maximum requests per
-second) for each function to determine how many requests a node can handle for
-that function. This maxrate is a fixed label and must be assigned to every
-deployed function. You can assign this label using the faas-cli command when
-deploying a function to a node:
+The entire process is performed independently and periodicaly for each function.
 
-```console
-faas-cli deploy --image=[...] --name=[...] --label dfaas.maxrate=100
-```
+The strategy specifically uses the `AGENT_RECALC_PERIOD` option to define how
+often the strategy recalculates and shares the available capacity for forwarded
+requests from other neighbors. An example could be `30s` for 30 seconds.
 
 ### Node Margin
 
 > [!WARNING]
-> Work in progress section!
+> Work in progress section! In the meantime, you can see the [strategy's source
+> code](../agent/loadbalancer/nodemarginstrategy.go).
 
 ### Static
 

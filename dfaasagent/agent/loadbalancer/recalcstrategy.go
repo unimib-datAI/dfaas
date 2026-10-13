@@ -6,50 +6,67 @@
 package loadbalancer
 
 import (
+	"context"
 	"encoding/json"
 	"fmt"
-	"strings"
+	"math"
+	"os"
+	"os/signal"
+	"slices"
+	"sync"
+	"syscall"
 	"time"
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
-	"github.com/libp2p/go-libp2p/core/peer"
 
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/communication"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/constants"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/hasock"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/offuncs"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/promq"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/utils/p2phostutils"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/proxy"
 )
 
 // This file contains the implementation of the Recalc strategy.
 
-// Struct representing a RecalcStrategy instance, which implements the Strategy interface
-
-// RecalcStrategy represent a Recalc strategy instance.
+// RecalcStrategy is the structure that implements the Strategy interface.
 //
-// As it implements the Strategy interface, it has the RunStrategy() and
-// OnReceived() methods.
+// Internally it works with 3 indipendents running components:
 //
-// As an internal detail, the strategy action is divided into two steps.
+// 1. A component that receives and process messages coming from other nodes,
+// updating the table of Limits. That the "OnReceived" method.
+//
+// 2. A component that, periodically, calculate how much can receive from
+// neighbors and publish the information as a message.
+//
+// 3. A component that, periodically, update the HAProxy weights based on the
+// current status (Limits, nr. of requests per second...).
+//
+// The 2nd and 3rd components are launched in a dedicated goroutines by the
+// "RunStrategy" method.
+//
+// See also the corresponding createStrategy method to understand how the struct
+// fields are initialized.
 type RecalcStrategy struct {
 	hacfgupdater  *hacfgupd.Updater
-	nodestbl      *nodestbl.TableRecalc
 	offuncsClient *offuncs.Client
+	runtimeapi    *proxy.RuntimeAPI
+	promq         *promq.Client
 
-	// The following variables are specific to the Recalc algorithm.
-	nodeIDs   []peer.ID          // IDs of the connected p2p nodes
-	funcs     map[string]uint    // Our OpenFaaS functions with dfaas.maxrate limits
-	userRates map[string]float64 // Invocation rates for users only (in req/s) (from HAProxy stick-tables)
+	// limitsTableLock is a read/write mutex to protect LimitsTable.
+	limitsTableLock sync.RWMutex
 
-	// For each function, the value is true if the node is currently in overload
-	// mode (req/s >= maxrate), false if underload
-	overloads map[string]bool
-
-	it int // = 0 // Number of agent loop iterations
+	// limitsTable is a nested structure consisting of two maps. The first is a
+	// mapping from node IDs to function names, the second is a mapping from
+	// function names to rate limit.
+	//
+	// The meaning of FuncLimits[nodeID][funcName] is: for the neighbor nodeID,
+	// this local node can send to it at maximum the given number of requests
+	// per second for the function called funcName.
+	//
+	// This information is updated on every incoming message from neighbors and
+	// read to update the HAProxy weights.
+	limitsTable map[string]map[string]float32
 }
 
 // RunStrategy handles the periodic execution of the recalculation function. It
@@ -57,547 +74,684 @@ type RecalcStrategy struct {
 func (strategy *RecalcStrategy) RunStrategy() error {
 	logger := logging.Logger()
 
-	var millisNow, millisSleep int64
-
-	if _config.RecalcPeriod == 0 {
-		logger.Warn("Given RecalcPeriod must be a positive time duration, using 1 minute by default")
-		_config.RecalcPeriod = 1 * time.Minute
+	// We first reload the proxy to apply the custom HAProxy default config.
+	if err := strategy.reloadProxy(); err != nil {
+		return err
 	}
 
-	// Set the interval to wait after a failed recalculation attempt. This is
-	// used for both step 1 and step 2 error recovery.
-	failedInterval := 5 * time.Second
+	// We run two goroutines, each with its own responsibility and timing. This
+	// function prepares the tickers for both goroutines, starts them, and then
+	// waits for the termination signal.
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
 
-	// Calculate the interval (in milliseconds) at which the recalculation
-	// should occur.
-	millisInterval := int64(_config.RecalcPeriod / time.Millisecond)
+	limitsPeriod := _config.RecalcPeriod
 
-	// Calculate half of the interval (in milliseconds). Used for timing the
-	// second recalculation step to occur halfway between intervals.
-	millisIntervalHalf := millisInterval / 2
+	// We use the Prometheus step as the period for the weight update mechanism
+	// because it runs a Prometheus query, which would return useless data if
+	// executed at a finer granularity than the Prometheus step, since no new
+	// data would be available.
+	weightsPeriod := _config.PrometheusStep
 
-	// The Recalc strategy code is divided into two steps: the first gathers
-	// data and updates the local state, and the second calculates the new
-	// weights and updates the HAProxy configuration.
-	for {
-		startStep1 := time.Now().UTC()
-		if err := strategy.recalcStep1(); err != nil {
-			logger.Error("Failed Recalc step 1, skipping RunStrategy iteration ", err)
-			logger.Warnf("Waiting %v before retrying RunStrategy", failedInterval.Seconds())
-			time.Sleep(failedInterval)
-			continue
+	var wg sync.WaitGroup
+
+	wg.Go(func() {
+		ticker := time.NewTicker(limitsPeriod)
+		defer ticker.Stop()
+
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if err := strategy.updateLimitsForNeighbors(); err != nil {
+					logger.Errorf(
+						"Failed to prepare and publish the message to neighbors: %v",
+						err,
+					)
+				}
+			}
 		}
-		durationStep1 := time.Since(startStep1)
+	})
 
-		millisNow = time.Now().UTC().UnixNano() / 1000000
-		millisSleep = millisInterval - ((millisNow + millisIntervalHalf) % millisInterval)
-		time.Sleep(time.Duration(millisSleep) * time.Millisecond)
+	wg.Go(func() {
+		ticker := time.NewTicker(weightsPeriod)
+		defer ticker.Stop()
 
-		startStep2 := time.Now().UTC()
-		if err := strategy.recalcStep2(); err != nil {
-			logger.Error("Failed Recalc step 2, skipping RunStrategy iteration ", err)
-			logger.Warnf("Waiting %v before retrying RunStrategy", failedInterval.Seconds())
-			time.Sleep(failedInterval)
-			continue
+		for {
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+				if err := strategy.updateLocalWeights(); err != nil {
+					logger.Errorf(
+						"Failed to update the local weights: %v",
+						err,
+					)
+				}
+			}
 		}
-		durationStep2 := time.Since(startStep2)
+	})
 
-		totalDuration := durationStep1 + durationStep2
+	// Wait for interruption...
+	<-ctx.Done()
+	logger.Info("Stopping recalculation strategy...")
+	stop()
+	wg.Wait()
+	logger.Info("Recalculation strategy stopped")
 
-		httpserver.StrategySuccessIterations.Inc()
-		httpserver.StrategyIterationDuration.Set(totalDuration.Seconds())
-
-		millisNow = time.Now().UTC().UnixNano() / 1000000
-		millisSleep = millisInterval - (millisNow % millisInterval)
-		time.Sleep(time.Duration(millisSleep) * time.Millisecond)
-	}
+	return nil
 }
 
 // OnReceived is executed every time a message from a peer is received.
 func (strategy *RecalcStrategy) OnReceived(msg *pubsub.Message) error {
+	// We need first to check the message's type...
 	var msgForType struct{ MsgType string }
 	if err := json.Unmarshal(msg.GetData(), &msgForType); err != nil {
-		return fmt.Errorf("error while deserializing a message from the PubSub subscription: %w", err)
+		return fmt.Errorf("error while deserializing a message: %w", err)
 	}
 
-	switch msgForType.MsgType {
-	case StrMsgTextType:
-		var objMsg MsgText
-		if err := json.Unmarshal(msg.GetData(), &objMsg); err != nil {
-			return fmt.Errorf("error while deserializing a message from the PubSub subscription: %w", err)
-		}
-
-		processMsgText(msg.GetFrom().String(), &objMsg)
-	case StrMsgNodeInfoTypeRecalc:
-		var objMsg MsgNodeInfoRecalc
-		if err := json.Unmarshal(msg.GetData(), &objMsg); err != nil {
-			return fmt.Errorf("error while deserializing a message from the PubSub subscription: %w", err)
-		}
-
-		strategy.processMsgNodeInfoRecalc(msg.GetFrom().String(), &objMsg)
-	default:
-		logging.Logger().Warnf("Unrecognized message type %q", msgForType.MsgType)
+	if msgForType.MsgType != MsgTypeRecalc {
+		logging.Logger().Warnf("Skipping message, unrecognized type %q", msgForType.MsgType)
+		return nil
 	}
+
+	// ...and only now we can parse it completely.
+	var parsedMsg MsgRecalc
+	if err := json.Unmarshal(msg.GetData(), &parsedMsg); err != nil {
+		logging.Logger().Warnf("Skipping message, failed to parse as MsgNodeInfoRecalc type: %w", err)
+		return fmt.Errorf("error while deserializing a message: %w", err)
+	}
+
+	strategy.processMsgRecalc(msg.GetFrom().String(), &parsedMsg)
 
 	return nil
 }
 
-func (strategy *RecalcStrategy) recalcStep1() error {
+func (strategy *RecalcStrategy) updateLimitsForNeighbors() error {
 	var err error
-	logger := logging.Logger()
+	logger := logging.Logger().With(
+		"strategy_component", "updateLimitsForNeighbors",
+	)
 
-	// Get list of connected nodes.
-	strategy.nodeIDs = p2phostutils.GetConnNodeIDsUniq(_p2pHost)
-	debugConnectedNodes(strategy.nodeIDs)
+	// Build neighbors info.
+	neighborsID := []string{} // Node's ID (node_XXX).
+	for _, peer := range _p2pHost.Network().Peers() {
+		// "node_ID" is required format.
+		peerID := fmt.Sprintf("node_%s", peer)
+		neighborsID = append(neighborsID, peerID)
+	}
+	if len(neighborsID) == 0 {
+		logger.Warn("No available neighbors, skipping message publication")
+		return nil
+	}
+	logger.Debugw("Collected neighbors",
+		"neighbors_count", len(neighborsID),
+		"neighbors", neighborsID,
+	)
 
-	// Get stats about OpenFaaS functions.
-	strategy.funcs, err = strategy.offuncsClient.GetFuncsWithMaxRates()
+	// Get deployed functions with associated limits.
+	funcs, err := strategy.offuncsClient.GetFuncsWithMaxRates()
 	if err != nil {
-		return fmt.Errorf("get functions info from OpenFaaS: %w", err)
-	}
-	debugFuncsWithMaxRates(strategy.funcs)
-
-	// For each function, the following stick tables are defined in HAProxy:
-	//
-	//  - Per-function, per-user requests: st_users_func_<funcName>
-	//    Purpose: Track invocation count and rate for each OpenFaaS function,
-	//    only for requests from users (not other nodes).
-	//
-	//  - Per-function, local requests: st_local_func_<funcName>
-	//    Purpose: Track invocation count and rate for each function handled by
-	//    the local OpenFaaS instance.
-	//
-	//  - Per-function, per-node requests: st_other_node_<funcName>_<nodeID>
-	//    Purpose: Track requests forwarded from other DFaaS nodes for each
-	//    function, per node.
-	//
-	// Warning: only st_users_func_<funcName> data are used to calculate weights!
-
-	// Get stats from HAProxy stick tables (st_users_func_<funcName>).
-	strategy.userRates = map[string]float64{}
-	for funcName := range strategy.funcs {
-		stName := fmt.Sprintf("st_users_func_%s", funcName)
-		stContent, err := hasock.ReadStickTable(stName)
-
-		if err != nil {
-			logger.Error(fmt.Errorf("error while reading the stick-table %q from the HAProxy socket: %w", stName, err))
-			logger.Warnf("Not changing userRates for stick-table %q but this should be ok", stName)
-			continue
-		}
-
-		for _, stEntry := range stContent {
-			// This stick table contains a single key, "80", which tracks both
-			// the number of requests within the given time window and the rate
-			// per second during the recalculation period. We only use the rate.
-			//
-			// Note: Do not use http_req_cnt, as HAProxy restarts every
-			// recalculation period, causing all counters to reset.
-			//
-			// FIXME: The http_req_rate value is taken from the previous
-			// 1-second period, not averaged over the entire recalculation
-			// period. This is a known limitation of the current strategy.
-			//
-			// See: https://github.com/unimib-datAI/dfaas/issues/45
-			strategy.userRates[funcName] = float64(stEntry.HTTPReqRate)
-		}
-
-		debugStickTable(stName, stContent)
+		return fmt.Errorf("failed to get deployed functions: %w", err)
 	}
 
-	/* Just for debugging purposes, not really used to calculate weights.
-
-	// Get stats from HAProxy stick tables (st_local_func_<funcName>).
-	for funcName := range strategy.funcs {
-		stName := fmt.Sprintf("st_local_func_%s", funcName)
-		stContent, err := hasock.ReadStickTable(stName)
-
-		if err != nil {
-			logger.Error(fmt.Errorf("Error while reading the stick-table %q from the HAProxy socket: %w", stName, err))
-			logger.Warnf("Not changing local rates for stick-table %q but this should be ok", stName)
-			continue
-		}
-
-		debugStickTable(stName, stContent)
-	}
-
-	// Get stats for HAProxy stick tables (st_other_node_<funcName>_<nodeID>).
-	for funcName := range strategy.funcs {
-		for _, nodeID := range strategy.nodeIDs {
-			stName := fmt.Sprintf("st_other_node_%s_%s", funcName, nodeID.String())
-			stContent, err := hasock.ReadStickTable(stName)
-			if err != nil {
-				logger.Error(fmt.Errorf("Error while reading the stick-table %q from the HAProxy socket: %w", stName, err))
-				logger.Warnf("Not changing other node rates for stick-table %q but this should be ok", stName)
-				continue
-			}
-			debugStickTable(stName, stContent)
-		}
-	}
-
-	*/
-
-	// Set overload/underload state for each function.
-	strategy.overloads = map[string]bool{}
-	for funcName, maxRate := range strategy.funcs {
-		invocRate, present := strategy.userRates[funcName]
-
-		if !present || invocRate < float64(maxRate) {
-			strategy.overloads[funcName] = false
-		} else {
-			strategy.overloads[funcName] = true
-		}
-	}
-
-	// Calculate limits and weights.
-	for funcName, overloaded := range strategy.overloads {
-		if overloaded {
-			logger.Debugf("Function %q: overloaded=true invocation_rate=%f max_rate=%d margin=0", funcName, strategy.userRates[funcName], strategy.funcs[funcName])
-
-			// Set LimitIn to zero: other DFaaS nodes will not forward requests
-			// to this node for this function.
-			strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryRecalc) error {
-				for _, entry := range entries {
-					funcData, present := entry.FuncsData[funcName]
-					if present {
-						funcData.LimitIn = 0
-					}
-				}
-				return nil
-			})
-			continue
-		}
-
-		// If not overloaded, we calculate the rate margin.
-		invocRate, present := strategy.userRates[funcName]
-		maxRate := strategy.funcs[funcName]
-		var margin uint
-		if present {
-			margin = maxRate - uint(invocRate)
-		} else {
-			margin = maxRate
-		}
-		logger.Debugf("Function %q: overloaded=false invocation_rate=%f max_rate=%d margin=%d", funcName, invocRate, maxRate, margin)
-
-		strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryRecalc) error {
-			// Retrieve only DFaaS nodes running the same function.
-			nNodes := uint(0)
-			for _, entry := range entries {
-				funcData, present := entry.FuncsData[funcName]
-				if present {
-					funcData.NodeWeight = 0
-					nNodes++
-					logger.Debugf("Set Weight to 0 for %s function", funcName)
-				}
-			}
-
-			// The margin is evenly distributed among neighbors.
-			if nNodes > 0 {
-				limitIn := margin / nNodes
-				for _, entry := range entries {
-					funcData, present := entry.FuncsData[funcName]
-					if present {
-						funcData.LimitIn = float64(limitIn)
-						logger.Debugf("Set LiminIn to %f for %s function", funcData.LimitIn, funcName)
-					}
-				}
-			}
-			return nil
-		})
-	}
-
-	// Print content of NodeStbl.
-	strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryRecalc) error {
-		debugNodesTblContent(entries)
-		return nil
-	})
-
-	// Publish messages on p2p network.
-	limits := map[string]map[string]float64{}
-	strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryRecalc) error {
-		for _, nodeID := range strategy.nodeIDs {
-			strNodeID := nodeID.String()
-			entry, present := entries[strNodeID]
-			if present {
-				limits[strNodeID] = map[string]float64{}
-				for funcName, funcData := range entry.FuncsData {
-					limits[strNodeID][funcName] = funcData.LimitIn
-				}
-			} else {
-				limits[strNodeID] = map[string]float64{}
-				for funcName := range strategy.funcs {
-					limits[strNodeID][funcName] = 0
-				}
-			}
-		}
-		return nil
-	})
-
-	msg := MsgNodeInfoRecalc{
-		MsgType:     StrMsgNodeInfoTypeRecalc,
-		HAProxyHost: _config.NodeIP,
-		HAProxyPort: constants.HAProxyPort,
-		FuncLimits:  limits,
-	}
-	debugMsgNodeInfoRecalc(msg)
-
-	err = communication.MarshAndPublish(msg)
+	// Get the input data only from a Prometheus query.
+	end := time.Now().UTC()
+	start := end.Add(-_config.RecalcPeriod)
+	rps, err := strategy.promq.InputRPS(start, end)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to run InputRPS query: %w", err)
 	}
-	return nil
-}
+	if len(rps) == 0 {
+		// This can happen when the system has just started up.
+		logger.Warn("No functions returned from InputRPS query, skipping message publishing")
+		return nil
+	}
+	logger.Debugw("Retrieved input RPS", "functions_count", len(rps))
 
-func (strategy *RecalcStrategy) recalcStep2() error {
-	// Calculate weights for functions in overloaded mode.
-	for funcName, overloaded := range strategy.overloads {
-		if !overloaded {
+	// There may be cases where the function returned by the Prometheus query
+	// differs from the deployed functions because a function has not yet been
+	// added to the proxy layer. In these cases, we simply skip the function. It
+	// will become available at some point.
+	overloaded := make(map[string]bool)
+	for funcName, funcRPS := range rps {
+		overloaded[funcName] = false
+
+		limit := funcs[funcName]
+		overloaded[funcName] = funcRPS >= float32(limit)
+	}
+
+	// This is what will be shared with all other neighbors.
+	limits := make(map[string]map[string]float32)
+	for _, neighborID := range neighborsID {
+		limits[neighborID] = make(map[string]float32)
+	}
+
+	// Calculate limits to share
+	for funcName, funcOverloaded := range overloaded {
+		if funcOverloaded {
+			// Overloaded: none of the neighbors should send anything to me.
+			for _, neighborID := range neighborsID {
+				limits[neighborID][funcName] = 0
+			}
+
+			logger.Debugw("Function overloaded: disabling incoming neighbor traffic",
+				"function", funcName,
+				"current_rps", rps[funcName],
+				"max_rps", funcs[funcName],
+			)
 			continue
 		}
 
-		// Calculate the weights for this function.
-		strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryRecalc) error {
-			totLimitsOut := float64(0)
+		// Not overloaded means we have enough margin to allow other neighbors
+		// to send requests to this node.
+		limit := funcs[funcName]
+		funcRPS := rps[funcName]
+		margin := float32(limit) - funcRPS
+		if margin < 0 {
+			logger.Warnf("Unexpected negative margin, will be set to 0: %f", margin)
+			margin = 0
+		}
 
-			// Loop on all node in _nodestbl, check if that node
-			// has this function running; if is present sum the amount of
-			// req/sec forwardable to this node.
-			for _, entry := range entries {
-				funcData, present := entry.FuncsData[funcName]
-				if present {
-					totLimitsOut += funcData.LimitOut
-				}
-			}
+		// The available margin will be evenly distributed among the neighbors.
+		share := margin / float32(len(neighborsID))
+		for _, neighborID := range neighborsID {
+			limits[neighborID][funcName] = share
+		}
 
-			if totLimitsOut <= 0 {
-				// If no node is available to help me with this function, i set
-				// totLimitsOut to 1, only to avoid division by zero problems.
-				// All the weights will be zero anyway.
-				totLimitsOut = 1
-			}
-
-			// Loop on all all node in _nodestbl, if function funcName is
-			// present in this node that is in "oveload" state, is present also
-			// in i-th node, calculate weight for the instance of function in
-			// i-th node.
-			//
-			// Weight is based on LimitOut (number of req/sec forwardable to
-			// this node) divided by total forwardable request.
-			//
-			// All multiplied by 100, that is the sum of weights; this op allow
-			// to express weights as the percentage of requests forwarded by
-			// this node to other functions that runs on other nodes.
-			for _, entry := range entries {
-				funcData, present := entry.FuncsData[funcName]
-				if present {
-					funcData.NodeWeight = uint(funcData.LimitOut * constants.HAProxyMaxWeight / totLimitsOut)
-				}
-			}
-
-			return nil
-		})
-	}
-
-	// Print content of nodestbl.
-	strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryRecalc) error {
-		debugNodesTblContent(entries)
-		return nil
-	})
-
-	// Update HAProxy config.
-	strMyself := _p2pHost.ID().String()
-
-	var hacfg *HACfgRecalc
-	strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryRecalc) error {
-		hacfg = strategy.createHACfgObject(
-			strMyself,
-			_config.OpenFaaSHost,
-			_config.OpenFaaSPort,
-			_config.RecalcPeriod,
-			entries,
-			strategy.funcs,
+		logger.Debugw("Function not overloaded: distributed available capacity among neighbors",
+			"function", funcName,
+			"current_rps", funcRPS,
+			"max_rps", limit,
+			"available_margin", margin,
+			"share_per_neighbor", share,
+			"neighbors_count", len(neighborsID),
 		)
-		return nil
-	})
-
-	if err := strategy.updateHAProxyConfig(hacfg); err != nil {
-		return fmt.Errorf("updating HAProxy config: %w", err)
 	}
+
+	// Finally we can send the message.
+	msg := MsgRecalc{MsgType: MsgTypeRecalc, FuncLimits: limits}
+	if err := communication.MarshAndPublish(msg); err != nil {
+		return fmt.Errorf("failed to publish node info to neighbors: %w", err)
+	}
+	return nil
+}
+
+func (strategy *RecalcStrategy) updateLocalWeights() error {
+	logger := logging.Logger().With("strategy_component", "updateLocalWeights")
+
+	// Before updating the proxy weights, the proxy must be reloaded whenever a
+	// function or a neighbor is added or removed. To check whether a reload is
+	// needed, we must compare the detected neighbors and functions with the
+	// proxy backends.
+
+	funcs, err := strategy.offuncsClient.GetFuncsWithMaxRates()
+	if err != nil {
+		return fmt.Errorf("failed to get deployed functions: %w", err)
+	}
+
+	neighborsID := []string{} // Node's ID (node_XXX).
+	for _, peer := range _p2pHost.Network().Peers() {
+		// "node_ID" is required format.
+		peerID := fmt.Sprintf("node_%s", peer)
+		neighborsID = append(neighborsID, peerID)
+	}
+
+	backends, err := strategy.runtimeapi.Backends()
+	if err != nil {
+		return fmt.Errorf("failed to get proxy current backends: %w", err)
+	}
+
+	logger.Debugw("Retrieved system and proxy state",
+		"functions_count", len(funcs),
+		"neighbors_count", len(neighborsID),
+		"proxy_backends_count", len(backends),
+	)
+
+	reload := false
+loop:
+	for funcName := range funcs {
+		if !slices.Contains(backends, "function_"+funcName) {
+			// Missing backend for handling this function from clients.
+			reload = true
+
+			logger.Debugw("Proxy reload required: missing local backend",
+				"function", funcName,
+				"backend", "function_"+funcName,
+			)
+			break
+		}
+		for _, neighborID := range neighborsID {
+			bkd := fmt.Sprintf("function_%s_forwarded_%s", funcName, neighborID)
+			if !slices.Contains(backends, bkd) {
+				// Missing backend for handling these functions from other
+				// neighbors.
+				reload = true
+
+				logger.Debugw("Proxy reload required: missing neighbor backend",
+					"function", funcName,
+					"neighbor_id", neighborID,
+					"backend", bkd,
+				)
+				break loop
+			}
+		}
+	}
+
+	// BUG: This code assumes that proxy reloads happen very infrequently. When
+	// the proxy is reloaded, the weights are reset to their default values and
+	// then updated. However, in the meantime, requests may arrive while the
+	// proxy is still using the reset weights.
+	if reload {
+		// BUG: After the reload, we cannot update the weights immediately
+		// because we need to wait for the reload to complete. Since we cannot
+		// determine this for now, we simply skip this iteration.
+		logger.Debug("Reloading proxy, skipping weight update in this iteration")
+		return strategy.reloadProxy()
+	}
+
+	// Before setting the weights, we need to know the current incoming RPS from
+	// clients and other neighbors.
+
+	end := time.Now().UTC()
+	// We double the interval to make sure we capture at least 2 data points;
+	// otherwise, the query can return empty.
+	start := end.Add(-(_config.PrometheusStep * 2))
+	rps, err := strategy.promq.InputRPS(start, end)
+	if err != nil {
+		return fmt.Errorf("failed to run InputRPS query: %w", err)
+	}
+	if len(rps) == 0 {
+		// This can happen when the system has just started up.
+		logger.Warn("No functions returned from InputRPS query, skipping updating proxy weights.")
+		return nil
+	}
+
+	neighborsRPS, err := strategy.promq.ForwardedRPS(start, end)
+	if err != nil {
+		return fmt.Errorf("failed to run ForwardedRPS query: %w", err)
+	}
+
+	// The weights map contains the raw weights to apply to each server for each
+	// backend in the proxy. We first initialize the map and its submaps; they
+	// will be populated by the code that follows.
+	weights := make(map[string]map[string]uint)
+	for funcName := range rps {
+		weights["function_"+funcName] = make(map[string]uint)
+		for _, neighborID := range neighborsID {
+			backend := fmt.Sprintf("function_%s_forwarded_%s", funcName, neighborID)
+			weights[backend] = make(map[string]uint)
+		}
+	}
+
+	for funcName, funcRPS := range rps {
+		limit := funcs[funcName]
+		overloaded := funcRPS >= float32(limit)
+
+		logger.Debugw("Evaluating function load",
+			"function", funcName,
+			"current_rps", funcRPS,
+			"max_rps", limit,
+			"overloaded?", overloaded,
+		)
+
+		if overloaded {
+			// We first disable incoming requests from neighbors because we are
+			// overloaded.
+			for _, neighborID := range neighborsID {
+				backend := fmt.Sprintf("function_%s_forwarded_%s", funcName, neighborID)
+				weights[backend]["openfaas-local"] = 0
+				weights[backend]["rejector"] = 100
+			}
+
+			// We need to prepare the limits map to pass to the calculateWeights
+			// method. This map defines the RPS limits that the local node and
+			// its neighbors can handle.
+			limits := make(map[string]float32)
+			limits["openfaas-local"] = float32(limit)
+			strategy.limitsTableLock.RLock()
+			for neighborID := range strategy.limitsTable {
+				// In the limitsTable neighbors ID are store as plain ID, but in
+				// the proxy we need to provide the "node_ID" form.
+				neighborNodeID := fmt.Sprintf("node_%s", neighborID)
+
+				neighborLimit, present := strategy.limitsTable[neighborID][funcName]
+				if !present || math.IsNaN(float64(neighborLimit)) || math.IsInf(float64(neighborLimit), 0) {
+					logger.Warnf("Neighbor %q for function %q has a limit of 0, NaN or Inf: %f", neighborID, funcName, neighborLimit)
+					limits[neighborNodeID] = 0
+				} else {
+					logger.Debugw("Using neighbor capacity",
+						"function", funcName,
+						"neighbor_id", neighborNodeID,
+						"neighbor_limit_rps", neighborLimit,
+					)
+					limits[neighborNodeID] = neighborLimit
+				}
+			}
+			strategy.limitsTableLock.RUnlock()
+
+			funcWeights := strategy.calculateWeights(funcRPS, limits)
+
+			logger.Debugw("Calculated proxy weights for overloaded function",
+				"function", funcName,
+				"current_rps", funcRPS,
+				"limits_rps", limits,
+				"calculated_proxy_weights", funcWeights,
+			)
+
+			// We now have the weights, but we need to store them in the global
+			// weight table.
+			backend := fmt.Sprintf("function_%s", funcName)
+			for server, weight := range funcWeights {
+				weights[backend][server] = weight
+			}
+			continue
+		}
+
+		// Since the node is not overloaded for this function, we can process
+		// all requests locally.
+		backend := fmt.Sprintf("function_%s", funcName)
+		weights[backend]["openfaas-local"] = 100
+		weights[backend]["rejector"] = 0
+		for _, neighborID := range neighborsID {
+			weights[backend][neighborID] = 0
+		}
+
+		// No neighbors, nothing to do.
+		if len(neighborsID) == 0 {
+			continue
+		}
+
+		// We have an RPS margin that we can accept from neighbors.
+		margin := float32(limit) - funcRPS
+		if margin < 0 {
+			logger.Warnf("Unexpected negative margin, will be set to 0: %f", margin)
+			margin = 0
+		}
+
+		share := margin / float32(len(neighborsID))
+		for _, neighborID := range neighborsID {
+			backend := fmt.Sprintf("function_%s_forwarded_%s", funcName, neighborID)
+			neighborRPS := neighborsRPS[neighborID][funcName]
+
+			var allowed uint
+			var decision string // Only for debug.
+
+			// When calculating the weights, we also need to check the current
+			// incoming RPS, as it may exceed the margin assigned to that
+			// neighbor. In that case, some requests must be rejected.
+			switch {
+			case neighborRPS <= 0:
+				allowed = 100
+				decision = "no_incoming_traffic"
+
+			case share <= 0:
+				allowed = 0
+				decision = "no_available_capacity"
+
+			case neighborRPS <= share:
+				allowed = 100
+				decision = "incoming_traffic_within_capacity"
+
+			default:
+				allowed = uint(math.Round(float64(share) / float64(neighborRPS) * 100))
+				decision = "incoming_traffic_over_capacity"
+			}
+
+			rejected := 100 - allowed
+
+			weights[backend]["openfaas-local"] = allowed
+			weights[backend]["rejector"] = rejected
+
+			logger.Debugw("Calculated forwarded traffic weights",
+				"function", funcName,
+				"decision", decision,
+				"neighbor_id", neighborID,
+				"neighbor_rps", neighborRPS,
+				"available_share_rps", share,
+				"allowed_proxy_weight", allowed,
+				"rejected_proxy_weight", rejected,
+			)
+		}
+	}
+
+	// Apply all weights.
+	for backend := range weights {
+		for server, weight := range weights[backend] {
+			if err := strategy.runtimeapi.SetWeight(backend, server, weight); err != nil {
+				return fmt.Errorf("failed to set weight %d for server %q on backend %q: %w", weight, server, backend, err)
+			}
+		}
+	}
+	logger.Debugw("Proxy weights updated", "weights", weights)
 
 	return nil
 }
 
-// processMsgNodeInfoRecalc processes a node info message received from pubsub.
-func (strategy *RecalcStrategy) processMsgNodeInfoRecalc(sender string, msg *MsgNodeInfoRecalc) error {
-	logger := logging.Logger()
-	myself := _p2pHost.ID().String()
+// processMsgRecalc processes an incoming message received from another node.
+func (strategy *RecalcStrategy) processMsgRecalc(senderID string, msg *MsgRecalc) error {
+	logger := logging.Logger().With("strategy_component", "processMsgRecalc")
+	myselfID := _p2pHost.ID().String()
 
-	if sender == myself {
+	if senderID == myselfID {
 		return nil // Ignore ourselves
 	}
 
-	if logging.GetDebugMode() {
-		var debugBuffer strings.Builder
-		debugBuffer.WriteString(fmt.Sprintf("Received node info message from node %s\n", sender))
-		for _nodeID, _limits := range msg.FuncLimits {
-			debugBuffer.WriteString(fmt.Sprintf("Functions limits for node %s:\n", _nodeID))
-			for funcName := range _limits {
-				debugBuffer.WriteString(fmt.Sprintf("\tFunction %s LimitOut: %f\n", funcName, _limits[funcName]))
-			}
-		}
-		logger.Debug(debugBuffer.String())
-	}
+	// All nodes inside the message are refereced as "node_X", where X is the
+	// full node ID.
+	myselfID = fmt.Sprintf("node_%s", myselfID)
 
-	// Note: if the sender node do not "know" us (we aren't in his FuncLimits)
-	// we just ignore his message.
-	funcLimits, present := msg.FuncLimits[myself]
+	// If the sender node do not "know" us (we aren't in his FuncLimits) we just
+	// ignore the message.
+	funcLimits, present := msg.FuncLimits[myselfID]
 	if !present {
+		logger.Debugf("Recevied message from %s, but local node is not present, skipping message", senderID)
 		return nil
 	}
-	err := strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryRecalc) error {
-		var debugBuffer strings.Builder
-		debugBuffer.WriteString(fmt.Sprintf("Setting received values for node %s into table\n", sender))
 
-		// If the message arrives from a sender node with ID nodeID that is not
-		// present in _nodesbl yet, it is added to the table.
-		_, present := entries[sender]
-		if !present {
-			entries[sender] = &nodestbl.EntryRecalc{
-				FuncsData: map[string]*nodestbl.FuncData{},
-			}
-			debugBuffer.WriteString(fmt.Sprintf("Node %s was not present and has been added to the table\n", sender))
-		}
+	strategy.limitsTableLock.Lock()
+	defer strategy.limitsTableLock.Unlock()
 
-		entries[sender].TAlive = time.Now().UTC()
+	// If the neighbor is new, may be not present in the local table, in that
+	// case we need to initialize the entry.
+	//
+	// FIXME: In this way a removed neighbor will be kept in the table!
+	if _, present := strategy.limitsTable[senderID]; !present {
+		strategy.limitsTable[senderID] = make(map[string]float32)
+	}
 
-		entries[sender].HAProxyHost = msg.HAProxyHost
-		entries[sender].HAProxyPort = msg.HAProxyPort
-
-		// Remove from my table the functions limits which are no more present
-		// in the new updated message.
-		debugBuffer.WriteString(fmt.Sprintf("Removing functions limits no more present in the received message from node %s\n", sender))
-		for funcName := range entries[sender].FuncsData {
-			_, present := funcLimits[funcName]
-			if !present {
-				delete(entries[sender].FuncsData, funcName)
-				debugBuffer.WriteString(fmt.Sprintf("%s function is no more present in the received message from node %s and has been removed\n", funcName, sender))
-			}
-		}
-
-		// Update the functions limits with the received values (also add new
-		// functions which weren't present before).
-		debugBuffer.WriteString(fmt.Sprintf("Updating functions limits with received values from node %s\n", sender))
-		for funcName, limit := range funcLimits {
-			_, present := entries[sender].FuncsData[funcName]
-			if present {
-				entries[sender].FuncsData[funcName].LimitOut = limit
-				debugBuffer.WriteString(fmt.Sprintf("Updated LimitOut to %f for %s function of node %s\n", limit, funcName, sender))
-			} else {
-				entries[sender].FuncsData[funcName] = &nodestbl.FuncData{
-					LimitIn:    0,
-					LimitOut:   limit,
-					NodeWeight: 0,
-				}
-				debugBuffer.WriteString(fmt.Sprintf("Set LimitOut to %f, LimitIn to 0 and NodeWeight to 0 for %s function of node %s\n", limit, funcName, sender))
-			}
-		}
-
-		logger.Debug(debugBuffer.String())
-
-		return nil
-	})
-	if err != nil {
-		return err
+	// Now we can overwrite (or set initially) the limits.
+	//
+	// FIXME: In this way a removed function will be kept in the table!
+	for funcName, limits := range funcLimits {
+		logger.Debugf("Recevied message from %s, for function %q local node can send max. %.2f req/s", senderID, funcName, limits)
+		strategy.limitsTable[senderID][funcName] = limits
 	}
 
 	return nil
 }
 
-// updateHAProxyConfig updates the HAProxy config file with the provided object.
-// Note: Go templates sort maps by key (see https://stackoverflow.com/questions/33860961/sorted-map-iteration-in-go-templates#comment76560806_33862260)
-func (strategy *RecalcStrategy) updateHAProxyConfig(hacfg *HACfgRecalc) error {
-	hacfg.Now = time.Now().UTC()
+// calculateWeights calculates integer proxy weights for a function.
+//
+// limits contains the RPS limits for "openfaas-local" and zero or more
+// neighbors.
+//
+// If currentRPS is below the local limit, all traffic is assigned locally.
+// Otherwise, local capacity is saturated first, then remaining traffic is
+// distributed proportionally to the neighbors' remaining capacities without
+// exceeding their limits. Unhandled traffic and rounding remainders are
+// assigned to "rejector".
+//
+// The returned map includes all input keys plus "rejector". Weights always sum
+// to 100.
+func (strategy *RecalcStrategy) calculateWeights(currentRPS float32, limits map[string]float32) map[string]uint {
+	const (
+		local    = "openfaas-local"
+		rejector = "rejector"
+	)
 
-	// hacfg is a struct of type HACfgRecalc, that is use as content
-	// for writing template file.
-	// Indeed, in template file is possible to access fields
-	// of this struct (see file of template .tmpl).
-	// Template is referred to a data structure, in that case HACfgRecalc type.
-	// See https://golang.org/pkg/text/template/.
-	return strategy.hacfgupdater.UpdateHAConfig(hacfg)
+	// Initialize output weights.
+	result := make(map[string]uint, len(limits)+1)
+	for server := range limits {
+		result[server] = 0
+	}
+	result[local] = 100 // By default process all locally.
+	result[rejector] = 0
+
+	localLimit := max(0, limits[local])
+	if currentRPS == 0 || currentRPS <= localLimit {
+		// Below the local limit, handle all traffic locally.
+		return result
+	}
+
+	// We are now in the overloaded case. We first saturate the local node and
+	// calculate the remaining traffic.
+	localRPS := min(localLimit, currentRPS)
+	remaining := currentRPS - localRPS
+
+	assignedRPS := make(map[string]float32, len(limits))
+	assignedRPS[local] = localRPS
+
+	// Include neighbors with a positive capacity, we know they're not
+	// overloaded.
+	neighbors := make([]string, 0, len(limits))
+	for neighborID, limit := range limits {
+		if neighborID != local && limit > 0 {
+			neighbors = append(neighbors, neighborID)
+		}
+	}
+
+	// We distribute the remaining traffic proportionally among the available
+	// neighbors. The complexity comes from rounding when converting from float
+	// to uint.
+	for remaining > 0 && len(neighbors) > 0 {
+		var totalCapacity float32
+		for _, neighborID := range neighbors {
+			totalCapacity += limits[neighborID] - assignedRPS[neighborID]
+		}
+
+		if totalCapacity <= 0 {
+			break
+		}
+
+		distributed := float32(0)
+		availableNeighbors := make([]string, 0, len(neighbors))
+
+		for _, neighborID := range neighbors {
+			// Calculate a proportional share, capped by the neighbor's
+			// remaining capacity.
+			capacity := limits[neighborID] - assignedRPS[neighborID]
+			share := min(remaining*capacity/totalCapacity, capacity)
+
+			assignedRPS[neighborID] += share
+			distributed += share
+
+			// Keep neighbors that still have available capacity.
+			if limits[neighborID]-assignedRPS[neighborID] > 0 {
+				availableNeighbors = append(availableNeighbors, neighborID)
+			}
+		}
+
+		// Avoid an infinite loop if no further traffic can be assigned.
+		if distributed <= 0 {
+			break
+		}
+
+		remaining -= distributed
+		neighbors = availableNeighbors
+	}
+
+	// Convert assigned RPS to integer percentages.
+	var totalWeight uint
+	for server, rate := range assignedRPS {
+		weight := uint(math.Round(float64(rate) / float64(currentRPS) * 100))
+		result[server] = weight
+		totalWeight += weight
+	}
+
+	// Reject unhandled. Note that the totalWeight could be grater than 100 due
+	// to rounding differences, in that case do not reject anything.
+	if totalWeight < 100 {
+		result[rejector] = 100 - totalWeight
+	}
+
+	return result
 }
 
-// Method which creates and returns the HACfgRecalc object,
-// used from method updateHAProxyConfig to update the HAProxy configuration
-func (strategy *RecalcStrategy) createHACfgObject(
-	myNodeID string,
-	openFaaSHost string,
-	openFaaSPort uint,
-	recalcPeriod time.Duration,
-	entries map[string]*nodestbl.EntryRecalc,
-	funcLimits map[string]uint,
-) *HACfgRecalc {
-	hacfg := &HACfgRecalc{
-		HACfg: HACfg{
-			MyNodeID:     myNodeID,
-			NodeIP:       _config.NodeIP,
-			HAProxyHost:  _config.HAProxyHost,
-			OpenFaaSHost: openFaaSHost,
-			OpenFaaSPort: openFaaSPort,
-		},
+func (strategy *RecalcStrategy) reloadProxy() error {
+	neighborsID := []string{}                // Node's ID (node_XXX).
+	neighborsHost := make(map[string]string) // Node's ID -> Node's host addr.
+	for _, peer := range _p2pHost.Network().Peers() {
+		host, err := extractSingleIPv4(_p2pHost, peer)
+		if err != nil {
+			return fmt.Errorf("failed to build neighbors information: %w", err)
+		}
 
-		StrRecalc:  recalcPeriod.String(),
-		SecsRecalc: uint(recalcPeriod / time.Second),
+		// "node_ID" is required format.
+		peerID := fmt.Sprintf("node_%s", peer)
 
-		Nodes:     map[string]*HACfgNodeRecalc{},
-		Functions: map[string]*HACfgFuncRecalc{},
+		neighborsID = append(neighborsID, peerID)
+		neighborsHost[peerID] = host
 	}
 
-	// For each function in this node set limit (maxrate).
-	for funcName, limit := range funcLimits {
-		hacfg.Functions[funcName] = &HACfgFuncRecalc{
-			Limit:    limit,
-			Weights:  map[string]uint{},
-			LimitsIn: map[string]uint{},
+	funcsTimeout, err := strategy.offuncsClient.GetFuncsWithTimeout()
+	if err != nil {
+		return fmt.Errorf("get function metadata: %w", err)
+	}
+
+	// Add 1 seconds to base timeout (if given) to all functions.
+	for _, timeout := range funcsTimeout {
+		if timeout != nil {
+			*timeout += 1000
 		}
 	}
 
-	// For each node write Host and port.
-	for nodeID, entry := range entries {
-		hacfg.Nodes[nodeID] = &HACfgNodeRecalc{
-			HAProxyHost: entry.HAProxyHost,
-			HAProxyPort: entry.HAProxyPort,
-		}
+	// Define and populate this anonymous struct to share data to the Go
+	// template that will build the proxy configuration. See
+	// haproxycfgrecalc.tmpl file.
+	data := struct {
+		Now           string
+		DFaaSNodeID   string
+		Functions     map[string]*uint
+		Neighbors     []string
+		NeighborsHost map[string]string
+		HAProxyPort   uint
+		OpenFaaSHost  string
+		OpenFaaSPort  uint
+		RejectorHost  string
+		RejectorPort  uint
+	}{
+		Now:           time.Now().UTC().Format("2006-01-02 15:04:05 MST"),
+		DFaaSNodeID:   _p2pHost.ID().String(),
+		Functions:     funcsTimeout,
+		Neighbors:     neighborsID,
+		NeighborsHost: neighborsHost,
+		HAProxyPort:   _config.HAProxyPort,
+		OpenFaaSHost:  _config.OpenFaaSHost,
+		OpenFaaSPort:  _config.OpenFaaSPort,
+		RejectorHost:  _config.RejectorHost,
+		RejectorPort:  _config.RejectorPort,
+	}
 
-		// For each function on selected node check if this function
-		// is also present in that node.
-		// If it is not present on this node set limit to 0 and
-		// weight and Limit in empty.
-		for funcName, funcData := range entry.FuncsData {
-			_, present := hacfg.Functions[funcName]
+	// The data structure will be passed to the hacfgupdater module and a
+	// new HAProxy config. will be generated and passed to the proxy. The
+	// proxy will restart.
+	return strategy.hacfgupdater.UpdateHAConfig(data)
+}
 
-			if !present {
-				// We do not have this function on our OpenFaaS.
-				// Set limit (maxrate) to 0 --> can't accept request for
-				// this function in local FaaS cluster, but can
-				// fwd to another node.
-				hacfg.Functions[funcName] = &HACfgFuncRecalc{
-					Limit:    0,
-					Weights:  map[string]uint{},
-					LimitsIn: map[string]uint{},
-				}
-			}
+// sameKeys returns true if the given dicts have the same keys, otherwise
+// returns false.
+func sameKeys[K comparable, V1, V2 any](a map[K]V1, b map[K]V2) bool {
+	if len(a) != len(b) {
+		return false
+	}
 
-			// For the function funcName in nodeID set weights and LimitsIn written
-			// previously during the 2 phases of racalc algo.
-			hacfg.Functions[funcName].Weights[nodeID] = funcData.NodeWeight
-			hacfg.Functions[funcName].LimitsIn[nodeID] = uint(funcData.LimitIn) // Note: Seems that is not written in template file.
-
-			// Weight are used in template file for load-balancing, with custom
-			// weights toward other nodes of p2p net.
-			// See: https://serverfault.com/questions/113637/haproxy-roundrobin-weights
-			// Also doc: http://cbonte.github.io/haproxy-dconv/configuration-1.4.html#5-weight
+	for k := range a {
+		if _, ok := b[k]; !ok {
+			return false
 		}
 	}
 
-	return hacfg
+	return true
 }

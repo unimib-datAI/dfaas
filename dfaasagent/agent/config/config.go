@@ -61,10 +61,21 @@ type Configuration struct {
 	// Set to true to mDNS discovery service to find other nodes.
 	MDNSEnabled bool `mapstructure:"AGENT_MDNS_ENABLED"`
 
+	// The duration must not be zero.
 	KadIdleTime time.Duration `mapstructure:"AGENT_KAD_IDLE_TIME"`
 
 	PubSubTopic string `mapstructure:"AGENT_PUBSUB_TOPIC"`
 
+	Strategy string `mapstructure:"AGENT_STRATEGY"`
+
+	// RecalcPeriod defines how often the strategy update step is executed.
+	//
+	// It was originally intended only for the "recalcstrategy", but all other
+	// strategies use this value as well. Its meaning may vary depending on the
+	// strategy. For the "recalcstrategy", it defines how often messages
+	// containing limits are published to neighbors.
+	//
+	// The duration must not be zero.
 	RecalcPeriod time.Duration `mapstructure:"AGENT_RECALC_PERIOD"`
 
 	HAProxyConfigFile string `mapstructure:"AGENT_HAPROXY_CONFIG_FILE"`
@@ -72,6 +83,8 @@ type Configuration struct {
 	HAProxyPort       uint   `mapstructure:"AGENT_HAPROXY_PORT"`
 
 	// Connection information for the Data Plane API, an API REST for HAProxy.
+	//
+	// The connection is used only by some strategies.
 	DataPlaneAPIHost     string `mapstructure:"AGENT_DATAPLANEAPI_HOST"`
 	DataPlaneAPIPort     uint   `mapstructure:"AGENT_DATAPLANEAPI_PORT"`
 	DataPlaneAPIUser     string `mapstructure:"AGENT_DATAPLANEAPI_USER"`
@@ -104,14 +117,13 @@ type Configuration struct {
 
 	// Query resolution step for Prometheus. Should be set accordingly to the
 	// scrape interval (see Prometheus config).
+	//
+	// The duration must not be zero.
 	PrometheusStep time.Duration `mapstructure:"AGENT_PROMETHEUS_STEP"`
 
-	Strategy string `mapstructure:"AGENT_STRATEGY"`
-
-	GroupListFileName string `mapstructure:"AGENT_GROUP_LIST_FILE_NAME"`
-
-	NodeType int `mapstructure:"AGENT_NODE_TYPE"`
-
+	// Options used by the "nodemarginstrategy".
+	GroupListFileName string  `mapstructure:"AGENT_GROUP_LIST_FILE_NAME"`
+	NodeType          int     `mapstructure:"AGENT_NODE_TYPE"`
 	CPUThresholdNMS   float64 `mapstructure:"AGENT_NMS_CPU_THRESHOLD"`
 	RAMThresholdNMS   float64 `mapstructure:"AGENT_NMS_RAM_THRESHOLD"`
 	PowerThresholdNMS float64 `mapstructure:"AGENT_NMS_POWER_THRESHOLD"`

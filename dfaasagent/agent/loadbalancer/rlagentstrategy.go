@@ -294,8 +294,8 @@ func (strategy *RLAgentStrategy) initProxyConfig() error {
 
 	// Build neighbors info.
 	strategy.neighbors = nil                 // Node's ID (node_XXX).
-	neighborsPort := make(map[string]string) // Node's ID -> Node's host addr.
-	neighborsHost := make(map[string]string) // Node's ID -> Node's port numb.
+	neighborsPort := make(map[string]string) // Node's ID -> Node's port numb.
+	neighborsHost := make(map[string]string) // Node's ID -> Node's host addr.
 
 	for _, peer := range _p2pHost.Network().Peers() {
 		host, err := extractSingleIPv4(_p2pHost, peer)
