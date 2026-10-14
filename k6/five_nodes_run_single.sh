@@ -1,5 +1,7 @@
 #!/usr/bin/env bash
 # vim: set tabstop=2 shiftwidth=2 softtabstop=2 expandtab:
+#
+# TODO: Migrate this script from Bash to Python.
 
 # Exit on error.
 set -euo pipefail
@@ -23,12 +25,18 @@ SSH_OPTS=(
 DEFAULT_TRACE_PATH="../data/input_requests/mlimage/rlstrategy/scaled_pwr_40_only_0_other_constant_4.json"
 DEFAULT_OUTPUT_BASE_DIR="../data/20260525_one_rl_agent"
 DEFAULT_STAGE_BUILDER="OneMinuteWindow"
+DEFAULT_COLLECT_RL_MODEL_LOG="true"
 
 # Allow to overwrite these options via environment variables. See
 # single_trace.js for more information about the env vars.
 TRACE_PATH="${TRACE_PATH:-$DEFAULT_TRACE_PATH}"
 OUTPUT_BASE_DIR="${OUTPUT_BASE_DIR:-$DEFAULT_OUTPUT_BASE_DIR}"
 STAGE_BUILDER="${STAGE_BUILDER:-$DEFAULT_STAGE_BUILDER}"
+
+# If true, the script will collect the logs for the RL model from all nodes, if
+# available. Set to false if any node uses the RL strategy. By default, this is
+# set to true.
+COLLECT_RL_MODEL_LOG="${COLLECT_RL_MODEL_LOG:-$DEFAULT_COLLECT_RL_MODEL_LOG}"
 
 run_job() {
   local NODE_NAME="$1"
@@ -102,8 +110,6 @@ done
 
 echo "[INFO] All jobs finished. Failures: $failures"
 
-echo "[INFO] Collecting rl_model.log file from DFaaS nodes..."
-
 collect_rl_model() {
   local NODE_NAME="$1"
   local IP="$2"
@@ -126,13 +132,15 @@ collect_rl_model() {
   fi
 }
 
-for job in "${JOBS[@]}"; do
-  collect_rl_model $job
-done
-
-echo "[INFO] All (if available) rl_model.log files collected."
-
-echo "[INFO] Collecting Prometheus snapshot from DFaaS nodes..."
+if [[ "$COLLECT_RL_MODEL_LOG" == "true" ]]; then
+  echo "[INFO] Collecting rl_model.log file from DFaaS nodes..."
+  for job in "${JOBS[@]}"; do
+    collect_rl_model $job
+  done
+  echo "[INFO] All (if available) rl_model.log files collected."
+else
+  echo "[INFO] rl_model.log collection skipped as requested."
+fi
 
 collect_prometheus_snapshot() {
   local readonly NODE_NAME="$1"
@@ -146,6 +154,8 @@ collect_prometheus_snapshot() {
     echo "[WARN] Failed to collect Prometheus snapshot from $NODE_NAME (IP=$IP)"
   fi
 }
+
+echo "[INFO] Collecting Prometheus snapshot from DFaaS nodes..."
 
 prom_failures=0
 
