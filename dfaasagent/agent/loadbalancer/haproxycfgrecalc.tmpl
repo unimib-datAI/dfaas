@@ -79,7 +79,8 @@ frontend main
         # Route forwarded requests to the dedicated neighbor backend. If a
         # request comes with no recognized neighbor, HAProxy returns 503.
         {{range $neighborID := $.Neighbors -}}
-            acl from_neighbor_{{$funcName}}_{{$neighborID}} req.hdr(DFaaS-Node-ID) -m str {{$neighborID}}
+            {{/* DFaaS-Node-ID contains the full ID without the "node_" prefix! */}}
+            acl from_neighbor_{{$funcName}}_{{$neighborID}} req.hdr(DFaaS-Node-ID) -m str {{trimPrefix "node_" $neighborID}}
             use_backend function_{{$funcName}}_forwarded_{{$neighborID}} if is_{{$funcName}} from_neighbor_{{$funcName}}_{{$neighborID}}
         {{end -}}
 
