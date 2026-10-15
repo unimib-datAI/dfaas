@@ -17,8 +17,14 @@ import (
 
 // Configuration holds the post-processed configuration values.
 type Configuration struct {
+	// If enabled, DEBUG-level logs are included in the output logs.
 	DebugMode bool `mapstructure:"AGENT_DEBUG"`
+
+	// If enabled, the timestamps in logs are formatted as human-readable dates
+	// and times.
 	DateTime  bool `mapstructure:"AGENT_LOG_DATETIME"`
+
+	// If enabled, console logs are displayed in color.
 	LogColors bool `mapstructure:"AGENT_LOG_COLORS"`
 
 	// IP address of the node where the agent runs. Used by other DFaaS agents
