@@ -228,7 +228,8 @@ func runAgent(config config.Configuration) error {
 	}
 
 	// Kademlia and DHT initialization, with connection to bootstrap nodes
-	if err := kademlia.Initialize(ctx, _p2pHost, bootstrapConfig, config.Rendezvous, config.KadIdleTime); err != nil {
+	kadDHT, err := kademlia.Initialize(ctx, _p2pHost, bootstrapConfig, config.Rendezvous, config.KadIdleTime)
+	if err != nil {
 		return fmt.Errorf("initializing Kademlia: %w", err)
 	}
 	logger.Debug("Connection to Kademlia bootstrap nodes completed")
@@ -276,6 +277,9 @@ func runAgent(config config.Configuration) error {
 				return err
 			}
 		}
+		if err := kadDHT.Close(); err != nil {
+			return err
+		}
 		_p2pHost.Close()
 		return nil
 	case err = <-chanErr:
@@ -283,6 +287,9 @@ func runAgent(config config.Configuration) error {
 			if err := mdns.Stop(); err != nil {
 				return err
 			}
+		}
+		if err := kadDHT.Close(); err != nil {
+			return err
 		}
 		_p2pHost.Close()
 		return err

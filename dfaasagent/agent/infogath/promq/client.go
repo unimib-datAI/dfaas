@@ -78,7 +78,7 @@ func (c *Client) Replicas(start, end time.Time) (map[string]uint, error) {
 	// Run query.
 	ctx := context.Background()
 	// Instant query at 'end' time
-	result, warnings, err := c.promAPI.Query(ctx, query, end)
+	result, warnings, _, err := c.promAPI.Query(ctx, query, end)
 	if err != nil {
 		return nil, fmt.Errorf("get replicas from Prometheus: %w", err)
 	}
@@ -130,7 +130,7 @@ func (c *Client) CPUUsage(containerName string, start, end time.Time) (float32, 
 	c.logQuery(query, end)
 
 	ctx := context.Background()
-	result, warnings, err := c.promAPI.Query(ctx, query, end)
+	result, warnings, _, err := c.promAPI.Query(ctx, query, end)
 	if err != nil {
 		return 0, fmt.Errorf("get CPU usage from Prometheus: %w", err)
 	}
@@ -187,7 +187,7 @@ func (c *Client) InputRPS(start, end time.Time) (map[string]float32, error) {
 	c.logQuery(query, end)
 
 	ctx := context.Background()
-	result, warnings, err := c.promAPI.Query(ctx, query, end)
+	result, warnings, _, err := c.promAPI.Query(ctx, query, end)
 	if err != nil {
 		return nil, fmt.Errorf("get input RPS from Prometheus: %w", err)
 	}
@@ -242,7 +242,7 @@ func (c *Client) ForwardedRPS(start, end time.Time) (map[string]map[string]float
 	c.logQuery(query, end)
 
 	ctx := context.Background()
-	result, warnings, err := c.promAPI.Query(ctx, query, end)
+	result, warnings, _, err := c.promAPI.Query(ctx, query, end)
 	if err != nil {
 		return nil, fmt.Errorf("get forwarded RPS from Prometheus: %w", err)
 	}
@@ -314,7 +314,7 @@ func (c *Client) AvgRespTimeLocal(start, end time.Time) (map[string]float32, err
 	c.logQuery(query, end)
 
 	ctx := context.Background()
-	result, warnings, err := c.promAPI.Query(ctx, query, end)
+	result, warnings, _, err := c.promAPI.Query(ctx, query, end)
 	if err != nil {
 		return nil, fmt.Errorf("get average response time from Prometheus: %w", err)
 	}
@@ -409,7 +409,7 @@ func (c *Client) RejectRate(start, end time.Time) (map[string]float32, error) {
 	c.logQuery(query, end)
 
 	ctx := context.Background()
-	result, warnings, err := c.promAPI.Query(ctx, query, end)
+	result, warnings, _, err := c.promAPI.Query(ctx, query, end)
 	if err != nil {
 		return nil, fmt.Errorf("get reject rate from Prometheus: %w", err)
 	}
@@ -488,7 +488,7 @@ func (c *Client) ForwardRPS(start, end time.Time) (map[string]map[string]float32
 	c.logQuery(query, end)
 
 	ctx := context.Background()
-	result, warnings, err := c.promAPI.Query(ctx, query, end)
+	result, warnings, _, err := c.promAPI.Query(ctx, query, end)
 	if err != nil {
 		return nil, fmt.Errorf("get forward RPS from Prometheus: %w", err)
 	}
@@ -588,7 +588,7 @@ func (c *Client) ForwardRejectRPS(start, end time.Time) (map[string]map[string]f
 	c.logQuery(query, end)
 
 	ctx := context.Background()
-	result, warnings, err := c.promAPI.Query(ctx, query, end)
+	result, warnings, _, err := c.promAPI.Query(ctx, query, end)
 	if err != nil {
 		return nil, fmt.Errorf("get forward reject RPS from Prometheus: %w", err)
 	}
@@ -677,7 +677,7 @@ func (c *Client) AvgRespTimeForward(start, end time.Time) (map[string]map[string
 	c.logQuery(query, end)
 
 	ctx := context.Background()
-	result, warnings, err := c.promAPI.Query(ctx, query, end)
+	result, warnings, _, err := c.promAPI.Query(ctx, query, end)
 	if err != nil {
 		return nil, fmt.Errorf("get forward average response time from Prometheus: %w", err)
 	}

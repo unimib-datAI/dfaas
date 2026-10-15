@@ -43,8 +43,14 @@ var _routingDisc *discovery.RoutingDiscovery
 //
 // If boostrapConfig.BootstrapForce is true, the function loops until all
 // bootstrap nodes are connected.
-func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig BootstrapConfiguration, rendezvous string, idleTime time.Duration) error {
+//
+// Returns the IpfsDHT instance that must be closed with Close() at the end.
+func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig BootstrapConfiguration, rendezvous string, idleTime time.Duration) (*dht.IpfsDHT, error) {
 	logger := logging.Logger()
+
+	if idleTime == 0 {
+		return nil, fmt.Errorf("Kademlia idle time must be a positive duration, got 0")
+	}
 
 	// Start a DHT, for use in peer discovery. We can't just make a new DHT
 	// client because we want each peer to maintain its own local copy of the
@@ -55,16 +61,16 @@ func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig Bootstra
 	// decentralized. This setup enables bootstrapping a DFaaS agent using a
 	// single known node, after which additional peers are discovered
 	// automatically.
-	kadDHT, err := dht.New(ctx, p2pHost, dht.Mode(dht.ModeServer))
+	kadDHT, err := dht.New(p2pHost, dht.Mode(dht.ModeServer))
 	if err != nil {
-		return fmt.Errorf("error while starting the DHT for Kademlia peer discovery: %w", err)
+		return nil, fmt.Errorf("error while starting the DHT for Kademlia peer discovery: %w", err)
 	}
 
 	// Bootstrap the DHT. In the default configuration, this spawns a Background
 	// thread that will refresh the peer table every five minutes.
 	err = kadDHT.Bootstrap(ctx)
 	if err != nil {
-		return fmt.Errorf("error while bootstrapping the DHT for Kademlia peer discovery: %w", err)
+		return nil, fmt.Errorf("error while bootstrapping the DHT for Kademlia peer discovery: %w", err)
 	}
 
 	// Let's connect to the bootstrap nodes. They will tell us about the other
@@ -72,14 +78,14 @@ func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig Bootstra
 
 	bootstrapNodes, err := BuildBoostrapNodes(bootstrapConfig)
 	if err != nil {
-		return fmt.Errorf("building boostrap nodes: %w", err)
+		return nil, fmt.Errorf("building boostrap nodes: %w", err)
 	}
 
 	var wg sync.WaitGroup
 	for _, peerAddr := range bootstrapNodes {
 		peerInfo, err := peer.AddrInfoFromP2pAddr(peerAddr)
 		if err != nil {
-			return fmt.Errorf("error while getting information from the bootstrap node's address \"%s\": %w", peerAddr.String(), err)
+			return nil, fmt.Errorf("error while getting information from the bootstrap node's address \"%s\": %w", peerAddr.String(), err)
 		}
 
 		wg.Add(1)
@@ -112,11 +118,6 @@ func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig Bootstra
 	routingDisc := discovery.NewRoutingDiscovery(kadDHT)
 	discoveryUtils.Advertise(ctx, routingDisc, rendezvous)
 
-	if idleTime == 0 {
-		logger.Warn("Given Kademlia idle time must be a positive duration, using 1 minute by default")
-		idleTime = 1 * time.Minute
-	}
-
 	// If everything successful, set the package's static vars
 	_ctx = ctx
 	_p2pHost = p2pHost
@@ -124,7 +125,7 @@ func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig Bootstra
 	_idleTime = idleTime
 	_routingDisc = routingDisc
 
-	return nil
+	return kadDHT, nil
 }
 
 // RunDiscovery runs the discovery process. It should run in a goroutine.
