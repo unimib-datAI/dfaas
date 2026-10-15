@@ -25,7 +25,6 @@ import (
 
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/hasock"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/offuncs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/promq"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
@@ -86,16 +85,6 @@ type iterationTimeSpan struct {
 	End       time.Time
 }
 
-// iterationFromStage returns the current RL Agent iteration based on
-// the given k6 stage index.
-func iterationFromStage(stage int) (int, error) {
-	if stage < 0 {
-		return 0, errors.New("found negative stage, expected positive or zero")
-	}
-
-	return stage / 2, nil
-}
-
 const rlModelLogPath = "rl_model.log"
 
 // RunStrategy handles the execution of the strategy. It is ran in a goroutine.
@@ -115,15 +104,10 @@ func (strategy *RLAgentStrategy) RunStrategy() error {
 	if err := strategy.setup(); err != nil {
 		return fmt.Errorf("failed to do initial set-up: %w", err)
 	}
-	// We start with a nil iteration, since we do not detected any stage.
+	// We start with a nil iteration.
 	var previousIteration *int
 
-	// We also keep track of the previous stage, but this information is only
-	// used for debugging purposes.
-	previousStage := -1
-
-	// Wait some seconds to let HAProxy update tables, frontend and backends,
-	// otherwise the StickTableField call may fail sometimes.
+	// Wait some seconds to let HAProxy update all things.
 	time.Sleep(5 * time.Second)
 	logger.Info("Strategy started")
 
@@ -132,66 +116,46 @@ func (strategy *RLAgentStrategy) RunStrategy() error {
 
 	for range ticker.C {
 		start := time.Now().UTC()
+		newExperiment := false
 
-		// The first part of the code is dedicated to detecting the stage value,
-		// which is then used to detect the iteration.
-
-		// Get the "General Purpose Table 0" (gpt0) field for the key "global"
-		// in the stick-table "main" (a frontend) from HAProxy. This field
-		// represents the current "Stage" of k6, which HAProxy stores by parsing
-		// the "DFaaS-K6-Stage" header from incoming requests.
-		//
-		// Note the value is always added with +1, so if it is 0 means no header
-		// has been found.
-		stage, err := hasock.StickTableField(strategy.httpClient, "main", "gpt0")
+		currentIterationRaw, found, err := strategy.runtimeapi.Variable("k6_iteration")
 		if err != nil {
-			if errors.Is(err, hasock.ErrEmpty) {
-				// Disable log to avoid too many useless logs (one for each second).
-				//logger.Warn("Cannot detect current stage: empty gpt0 field for stick-table main. Skipping running cycle")
+			return fmt.Errorf("failed to get DFaaS-K6-Iteration from proxy: %w", err)
+		}
+		if !found {
+			// DFaaS-K6-Iteration not found, maybe the k6 experiment has not
+			// started yet.
+			continue
+		}
+
+		currentIteration, err := strconv.Atoi(currentIterationRaw)
+		if err != nil {
+			return fmt.Errorf("failed to parse DFaaS-K6-Iteration header: %w", err)
+		}
+
+		if previousIteration != nil {
+			// If previousIteration is not nil but is greater than the current
+			// iteration, means a new experiment has started from zero.
+			if currentIteration < *previousIteration {
+				newExperiment = true
+			} else if currentIteration == *previousIteration {
+				logger.Infof("Current iteration is equal to previous (%d). Nothing to do.", currentIteration)
 				continue
+			} else {
+				logger.Infof("Moving from iteration number %d to %d", *previousIteration, currentIteration)
 			}
-			return fmt.Errorf("reading gpt0 field in stick-table main from HAProxy: %w", err)
-		}
-		if stage == 0 {
-			logger.Warn("Cannot detect current stage: requests do not have DFaaS-K6-Stage header. Skipping running cycle")
-			continue
 		} else {
-			// We must subtract 1 because the HAProxy config always add +1 to
-			// the stage counter to be able to represent the value 0 as "no
-			// stage header found".
-			stage--
-		}
-		logger.Infof("Current detected stage: %d", stage)
-
-		if previousStage != stage {
-			// Initialize the debug file when a new k6 execution starts.
-			if stage == 0 {
-				if err := debugRLModelToFileInit(rlModelLogPath); err != nil {
-					return fmt.Errorf("failed to init log file: %w", err)
-				}
-			}
-
-			// Also make sure to update previousStage!
-			previousStage = stage
-		}
-
-		// From the current stage, we determine the iteration.
-		//
-		// Since k6 is used for load testing, each iteration consists of two
-		// internal stages.
-		currentIteration, err := iterationFromStage(stage)
-		if err != nil {
-			logger.Warnf("Failed converting detected stage to k6 iteration, skipping running cycle: %w", err)
-			continue
-		}
-
-		if previousIteration == nil {
+			// If previousIteration is nil, we must be in a new experiment and
+			// currentIteration should be 0.
+			newExperiment = true
 			logger.Infof("Starting strategy with iteration number %d", currentIteration)
-		} else if *previousIteration == currentIteration {
-			logger.Infof("Current iteration is equal to previous (%d). Nothing to do.", currentIteration)
-			continue
-		} else {
-			logger.Infof("Moving from iteration number %d to %d", *previousIteration, currentIteration)
+		}
+
+		if newExperiment {
+			// Initialize the debug file when a new k6 experiment starts.
+			if err := debugRLModelToFileInit(rlModelLogPath); err != nil {
+				return fmt.Errorf("failed to init log file: %w", err)
+			}
 		}
 
 		err = strategy.runIteration(currentIteration)

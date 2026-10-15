@@ -36,35 +36,8 @@ frontend prometheus
 frontend main
     bind :80
 
-    # Use a stick table with only 1 global value, we will track the latest
-    # DFaaS-K6-Stage header value for incoming requests.
-    #
-    # We use type string for the key ("global") and gpt0 integer field to write
-    # the stage.
-    #
-    # Reminder: the name of this stick table is the section's name: "main".
-    #
-    # Ignore requests without the header.
-    #
-    # Warning: this stick table is used only for debugging purposes.
-    stick-table type string size 1 expire 5s store gpt(1)
-
-    # Map stick counter 0 (sc0) with the key "global". Reminder: it is mandatory
-    # to first select the key and then write the value.
-    http-request track-sc0 str(global)
-
-    # ACL to check if DFaaS-K6-Stage header exists and it is numeric.
-    acl has_stage_hdr req.hdr(DFaaS-K6-Stage) -m reg ^[0-9]+$
-
     # ACL to detect incoming forwarded requests.
     acl has_node_hdr req.hdr(DFaaS-Node-ID) -m found
-
-    # Store latest stage to gpt0 as integer for the stick counter sc0 (we know
-    # it is mapped to the "global" key). Note we add +1 to distinguish the case
-    # where the header has not been found (default value is 0).
-    #
-    # Note: forwarded requests from other nodes are ignored!
-    http-request sc-set-gpt(0,0) req.hdr(DFaaS-K6-Stage),add(1) if has_stage_hdr !has_node_hdr
 
     # Track for the current transaction (request-response) the DFaaS-Node-ID
     # header (if exists), it will be added in the response for incoming
@@ -85,6 +58,12 @@ frontend main
 
 {{- range $funcName, $timeout := .Functions }}
 backend function_{{$funcName}}
+    # Save, if available, the K6 iteration to a process' variable. This
+    # variabile will be read by the DFaaS agent via the Runtime API to know the
+    # latest known K6 iteration. Used only for debugging and on strategies that
+    # depends on the concept of "iteration".
+    http-request set-var(proc.k6_iteration) req.hdr(DFaaS-K6-Iteration) if { req.hdr(DFaaS-K6-Iteration) -m found }
+
     # Mark request with DFaaS-Node-ID header, otherwise if it is forwarded the
     # receiving node cannot determine if the request has been forwarded or not.
     http-request set-header DFaaS-Node-ID {{$.DFaaSNodeID}}

@@ -22,7 +22,7 @@ type Configuration struct {
 
 	// If enabled, the timestamps in logs are formatted as human-readable dates
 	// and times.
-	DateTime  bool `mapstructure:"AGENT_LOG_DATETIME"`
+	DateTime bool `mapstructure:"AGENT_LOG_DATETIME"`
 
 	// If enabled, console logs are displayed in color.
 	LogColors bool `mapstructure:"AGENT_LOG_COLORS"`
