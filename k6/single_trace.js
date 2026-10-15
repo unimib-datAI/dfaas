@@ -100,7 +100,7 @@ export let options = {
 export default function () {
   // Tag each request with its corresponding stage index (e.g., stage 0, 1, 2,
   // ...). This makes it possible to map each request to its stage and, in turn,
-  // to the trace iteration.
+  // to the trace iteration (2 stages is 1 iteration).
   //
   // The mapping between stage index and trace iteration depends on the selected
   // STAGE_BUILDER.
@@ -108,16 +108,19 @@ export default function () {
   // See: https://grafana.com/docs/k6/latest/using-k6/tags-and-groups/
   tagWithCurrentStageIndex();
 
-  // Add to each requests its current stage index, the rate and duration. This
-  // will help the DFaaS node to extract some information about the input trace.
+  // Add to each requests its current stage index, the rate, iteration, and
+  // duration. These information will help the DFaaS agent to extract some
+  // information about the input trace.
   const stage = getCurrentStageIndex();
   const rate = stages[stage].target;
   const duration = stages[stage].duration;
+  const iteration = Math.floor(stage / 2) + 1;
 
   const params = {
     headers: {
       "Content-Type": CONTENT_TYPE,
       "DFaaS-K6-Stage": stage,
+      "DFaaS-K6-Iteration": String(iteration),
       "DFaaS-K6-Rate": String(rate),
       "DFaaS-K6-Duration": String(duration),
     },
