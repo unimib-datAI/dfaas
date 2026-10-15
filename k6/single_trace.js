@@ -114,7 +114,7 @@ export default function () {
   const stage = getCurrentStageIndex();
   const rate = stages[stage].target;
   const duration = stages[stage].duration;
-  const iteration = Math.floor(stage / 2) + 1;
+  const iteration = Math.floor(stage / 2); // Iterations start from 0.
 
   const params = {
     headers: {
