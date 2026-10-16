@@ -33,6 +33,18 @@ frontend prometheus
 frontend main
     bind :80
 
+    # Detect K6 experiment lifecycle events.
+    acl is_k6_exp_started path -m str /k6_exp_started
+    acl is_k6_exp_ended  path -m str /k6_exp_ended
+
+    # Store experiment state in process-wide variables.
+    http-request set-var(proc.k6_exp_started) str(true) if is_k6_exp_started
+    http-request set-var(proc.k6_exp_ended) str(true) if is_k6_exp_ended
+
+    # Reject lifecycle requests without forwarding them to a backend.
+    http-request deny deny_status 403 if is_k6_exp_started
+    http-request deny deny_status 403 if is_k6_exp_ended
+
     # Track the DFaaS node that originally received the request. This header is
     # added by the backend before a request is forwarded to another node.
     http-request set-var(txn.dfaas_node_id) req.hdr(DFaaS-Node-ID)

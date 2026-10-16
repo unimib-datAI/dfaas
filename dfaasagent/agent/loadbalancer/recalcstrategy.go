@@ -1,20 +1,17 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Copyright 2021-2025 The DFaaS Authors. All rights reserved.
+// Copyright 2021-2026 The DFaaS Authors. All rights reserved.
 // This file is licensed under the AGPL v3.0 or later license. See LICENSE and
 // AUTHORS file for more information.
 
 package loadbalancer
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"math"
-	"os"
-	"os/signal"
 	"slices"
+	"strconv"
 	"sync"
-	"syscall"
 	"time"
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
@@ -31,18 +28,13 @@ import (
 
 // RecalcStrategy is the structure that implements the Strategy interface.
 //
-// Internally it works with 3 indipendents running components:
+// Internally it works with 2 components:
 //
-// 1. A component that receives and process messages coming from other nodes,
-// updating the table of Limits. That the "OnReceived" method.
+// 1. A component that receives and processes messages coming from other nodes,
+// updating the table of Limits. That is the "OnReceived" method.
 //
-// 2. A component that, periodically, calculate how much can receive from
-// neighbors and publish the information as a message.
-//
-// 3. A component that, periodically, update the HAProxy weights based on the
-// current status (Limits, nr. of requests per second...).
-//
-// The 2nd and 3rd components are launched in a dedicated goroutines by the
+// 2. A component that synchronizes the limit and weight updates with k6
+// iterations. The component is launched in a dedicated goroutine by the
 // "RunStrategy" method.
 //
 // See also the corresponding createStrategy method to understand how the struct
@@ -69,78 +61,166 @@ type RecalcStrategy struct {
 	limitsTable map[string]map[string]float32
 }
 
-// RunStrategy handles the periodic execution of the recalculation function. It
-// should run in a goroutine.
+// RunStrategy initializes the proxy and runs experiments sequentially.
+// It should run in a dedicated goroutine.
 func (strategy *RecalcStrategy) RunStrategy() error {
 	logger := logging.Logger()
 
-	// We first reload the proxy to apply the custom HAProxy default config.
 	if err := strategy.reloadProxy(); err != nil {
-		return err
+		return fmt.Errorf("failed to initialize proxy: %w", err)
 	}
 
-	// We run two goroutines, each with its own responsibility and timing. This
-	// function prepares the tickers for both goroutines, starts them, and then
-	// waits for the termination signal.
-	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
-	defer stop()
+	for {
+		// Start periodic broadcasts while no experiment is running.
+		stop := make(chan struct{})
+		go strategy.broadcastLimitsPeriodically(stop)
 
-	limitsPeriod := _config.RecalcPeriod
+		// Wait until k6 starts an experiment.
+		if _, err := strategy.waitForProxyVariable("k6_exp_started"); err != nil {
+			close(stop)
+			return fmt.Errorf("failed waiting for experiment start: %w", err)
+		}
 
-	// We use the Prometheus step as the period for the weight update mechanism
-	// because it runs a Prometheus query, which would return useless data if
-	// executed at a finer granularity than the Prometheus step, since no new
-	// data would be available.
-	weightsPeriod := _config.PrometheusStep
+		// Stop periodic broadcasts during the experiment.
+		close(stop)
+		logger.Info("k6 experiment started")
 
-	var wg sync.WaitGroup
+		if err := strategy.reloadProxy(); err != nil {
+			return fmt.Errorf("failed to reload proxy at experiment start: %w", err)
+		}
 
-	wg.Go(func() {
-		ticker := time.NewTicker(limitsPeriod)
-		defer ticker.Stop()
+		if err := strategy.RunExperiment(); err != nil {
+			return fmt.Errorf("experiment failed: %w", err)
+		}
 
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				if err := strategy.updateLimitsForNeighbors(); err != nil {
-					logger.Errorf(
-						"Failed to prepare and publish the message to neighbors: %v",
-						err,
-					)
-				}
+		logger.Info("k6 experiment completed")
+	}
+}
+
+// RunExperiment synchronizes limit and weight updates with k6 iterations.
+// It returns when the current experiment ends.
+func (strategy *RecalcStrategy) RunExperiment() error {
+	logger := logging.Logger().With("strategy_component", "RunExperiment")
+
+	var previousIteration int
+	initialized := false
+	for {
+		// Check whether the experiment has ended.
+		_, ended, err := strategy.runtimeapi.Variable("k6_exp_ended")
+		if err != nil {
+			return fmt.Errorf("failed to check experiment status: %w", err)
+		}
+		if ended {
+			logger.Info("k6 experiment ended")
+			return nil
+		}
+
+		// We expect k6 to attach the current iteration to every incoming
+		// request.
+		value, err := strategy.waitForProxyVariable("k6_iteration")
+		if err != nil {
+			return fmt.Errorf("failed waiting for k6 iteration: %w", err)
+		}
+
+		currentIteration, err := strconv.Atoi(value)
+		if err != nil {
+			return fmt.Errorf("invalid k6_iteration value %q: %w", value, err)
+		}
+
+		// Process each iteration only once.
+		if initialized && currentIteration == previousIteration {
+			time.Sleep(time.Second)
+			continue
+		}
+
+		if !initialized {
+			logger.Infow("First k6 iteration detected", "iteration", currentIteration)
+			initialized = true
+		} else {
+			logger.Infow("New k6 iteration detected, resetting proxy weights",
+				"previous_iteration", previousIteration,
+				"current_iteration", currentIteration,
+			)
+
+			// At the start of each iteration, we reset the weights to their
+			// initial configuration. Instead of reloading the proxy, we update
+			// the weights directly.
+			if err := strategy.setAllTrafficLocal(); err != nil {
+				logger.Errorf("Failed to reset proxy weights: %v", err)
 			}
 		}
-	})
 
-	wg.Go(func() {
-		ticker := time.NewTicker(weightsPeriod)
-		defer ticker.Stop()
+		previousIteration = currentIteration
 
-		for {
-			select {
-			case <-ctx.Done():
-				return
-			case <-ticker.C:
-				if err := strategy.updateLocalWeights(); err != nil {
-					logger.Errorf(
-						"Failed to update the local weights: %v",
-						err,
-					)
-				}
-			}
+		// Read the rate configured by k6 for this iteration.
+		//
+		// FIXME: This limits the strategy to a single function and does not
+		// infer the input rate from proxy statistics.
+		rate, found, err := strategy.runtimeapi.Variable("k6_iteration_rate")
+		if err != nil {
+			return fmt.Errorf("failed to read k6_iteration_rate: %w", err)
 		}
-	})
+		if !found {
+			return fmt.Errorf("k6_iteration_rate variable not found")
+		}
 
-	// Wait for interruption...
-	<-ctx.Done()
-	logger.Info("Stopping recalculation strategy...")
-	stop()
-	wg.Wait()
-	logger.Info("Recalculation strategy stopped")
+		parsedRate, err := strconv.ParseFloat(rate, 32)
+		if err != nil {
+			return fmt.Errorf("invalid k6_iteration_rate value %q: %w", rate, err)
+		}
+		if parsedRate < 0 || math.IsNaN(parsedRate) || math.IsInf(parsedRate, 0) {
+			return fmt.Errorf("invalid k6_iteration_rate value %q", rate)
+		}
 
-	return nil
+		iterationRate := float32(parsedRate)
+		logger.Debugw("Retrieved k6 iteration rate",
+			"iteration", currentIteration,
+			"rate", iterationRate,
+		)
+
+		// Publish the available limits to neighbors.
+		if err := strategy.updateLimitsForNeighbors(iterationRate); err != nil {
+			return fmt.Errorf("failed to update neighbor limits: %w", err)
+		}
+
+		// Allow neighbor updates to propagate.
+		time.Sleep(4 * time.Second)
+
+		// Do not apply stale weights if k6 has already advanced to another
+		// iteration while we were waiting.
+		latestValue, err := strategy.waitForProxyVariable("k6_iteration")
+		if err != nil {
+			return fmt.Errorf("failed to recheck k6 iteration: %w", err)
+		}
+
+		latestIteration, err := strconv.Atoi(latestValue)
+		if err != nil {
+			return fmt.Errorf("invalid k6_iteration value %q: %w", latestValue, err)
+		}
+
+		if latestIteration != currentIteration {
+			logger.Debugw("Skipping stale weight update",
+				"iteration", currentIteration,
+				"latest_iteration", latestIteration,
+			)
+			continue
+		}
+
+		// The experiment may have ended during the propagation delay.
+		_, ended, err = strategy.runtimeapi.Variable("k6_exp_ended")
+		if err != nil {
+			return fmt.Errorf("failed to check experiment status: %w", err)
+		}
+		if ended {
+			logger.Info("k6 experiment ended")
+			return nil
+		}
+
+		// Apply the weights for the current iteration.
+		if err := strategy.updateLocalWeights(); err != nil {
+			return fmt.Errorf("failed to update local weights: %w", err)
+		}
+	}
 }
 
 // OnReceived is executed every time a message from a peer is received.
@@ -159,20 +239,73 @@ func (strategy *RecalcStrategy) OnReceived(msg *pubsub.Message) error {
 	// ...and only now we can parse it completely.
 	var parsedMsg MsgRecalc
 	if err := json.Unmarshal(msg.GetData(), &parsedMsg); err != nil {
-		logging.Logger().Warnf("Skipping message, failed to parse as MsgNodeInfoRecalc type: %w", err)
+		logging.Logger().Warnf("Skipping message, failed to parse as MsgNodeInfoRecalc type: %v", err)
 		return fmt.Errorf("error while deserializing a message: %w", err)
 	}
 
-	strategy.processMsgRecalc(msg.GetFrom().String(), &parsedMsg)
+	if err := strategy.processMsgRecalc(msg.GetFrom().String(), &parsedMsg); err != nil {
+		return fmt.Errorf("failed to process recalc message: %w", err)
+	}
 
 	return nil
 }
 
-func (strategy *RecalcStrategy) updateLimitsForNeighbors() error {
-	var err error
-	logger := logging.Logger().With(
-		"strategy_component", "updateLimitsForNeighbors",
-	)
+// broadcastLimitsPeriodically periodically publishes the available limits to
+// neighboring nodes while no k6 experiment is running. It stops when the stop
+// channel is closed.
+func (strategy *RecalcStrategy) broadcastLimitsPeriodically(stop <-chan struct{}) {
+	logger := logging.Logger().With("strategy_component", "broadcastLimitsPeriodically")
+	ticker := time.NewTicker(_config.RecalcPeriod)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-stop:
+			return
+
+		case <-ticker.C:
+			proxyReqRate, err := strategy.runtimeapi.ReqRate()
+			if err != nil {
+				logger.Errorf("Failed to get proxy request rate: %v", err)
+				continue
+			}
+
+			funcs, err := strategy.offuncsClient.GetFuncsWithMaxRates()
+			if err != nil {
+				logger.Errorf("Failed to get deployed functions: %v", err)
+				continue
+			}
+
+			// FIXME: Support more than 1 function.
+			if len(funcs) > 1 {
+				logger.Errorf("Expected only 1 function, found %d", len(funcs))
+				continue
+			}
+
+			for funcName := range funcs {
+				backend := "function_" + funcName
+				servers, present := proxyReqRate[backend]
+
+				var iterationRate float32
+				if present {
+					iterationRate = servers["BACKEND"]
+				} else {
+					logger.Warnw("Backend not found, skipping margin broadcasting", "backend", backend)
+					continue
+				}
+
+				if err := strategy.updateLimitsForNeighbors(iterationRate); err != nil {
+					logger.Errorw("Failed to update neighbor limits for %q: %v", funcName, err)
+				}
+			}
+		}
+	}
+}
+
+// updateLimitsForNeighbors calculates the available margin based on the current
+// local rate and publishes the information to neighbors.
+func (strategy *RecalcStrategy) updateLimitsForNeighbors(iterationRate float32) error {
+	logger := logging.Logger().With("strategy_component", "updateLimitsForNeighbors")
 
 	// Build neighbors info.
 	neighborsID := []string{} // Node's ID (node_XXX).
@@ -196,29 +329,31 @@ func (strategy *RecalcStrategy) updateLimitsForNeighbors() error {
 		return fmt.Errorf("failed to get deployed functions: %w", err)
 	}
 
-	// Get the input data only from a Prometheus query.
-	end := time.Now().UTC()
-	start := end.Add(-_config.RecalcPeriod)
-	rps, err := strategy.promq.InputRPS(start, end)
-	if err != nil {
-		return fmt.Errorf("failed to run InputRPS query: %w", err)
+	// For now, k6_iteration_rate refers to the only deployed function.
+	rps := make(map[string]float32)
+	for funcName := range funcs {
+		rps[funcName] = iterationRate
 	}
+
 	if len(rps) == 0 {
-		// This can happen when the system has just started up.
-		logger.Warn("No functions returned from InputRPS query, skipping message publishing")
+		logger.Warn("No deployed functions returned, skipping message publishing")
 		return nil
 	}
-	logger.Debugw("Retrieved input RPS", "functions_count", len(rps))
 
-	// There may be cases where the function returned by the Prometheus query
-	// differs from the deployed functions because a function has not yet been
-	// added to the proxy layer. In these cases, we simply skip the function. It
-	// will become available at some point.
+	logger.Debugw("Retrieved k6 input rate",
+		"rate", iterationRate,
+		"functions_count", len(rps),
+	)
+
+	// There may be cases where the function returned by the deployed functions
+	// differs from the functions available in the proxy. In these cases, we
+	// simply skip the function. It will become available at some point.
 	overloaded := make(map[string]bool)
 	for funcName, funcRPS := range rps {
-		overloaded[funcName] = false
-
-		limit := funcs[funcName]
+		limit, present := funcs[funcName]
+		if !present {
+			continue
+		}
 		overloaded[funcName] = funcRPS >= float32(limit)
 	}
 
@@ -228,7 +363,7 @@ func (strategy *RecalcStrategy) updateLimitsForNeighbors() error {
 		limits[neighborID] = make(map[string]float32)
 	}
 
-	// Calculate limits to share
+	// Calculate limits to share.
 	for funcName, funcOverloaded := range overloaded {
 		if funcOverloaded {
 			// Overloaded: none of the neighbors should send anything to me.
@@ -281,10 +416,15 @@ func (strategy *RecalcStrategy) updateLimitsForNeighbors() error {
 func (strategy *RecalcStrategy) updateLocalWeights() error {
 	logger := logging.Logger().With("strategy_component", "updateLocalWeights")
 
-	// Before updating the proxy weights, the proxy must be reloaded whenever a
-	// function or a neighbor is added or removed. To check whether a reload is
-	// needed, we must compare the detected neighbors and functions with the
-	// proxy backends.
+	// We get the incoming request rate directly from the proxy via the Runtime
+	// API, rather than through Prometheus, because this method is expected to
+	// run within a few seconds (<5) of the start of a k6 iteration. Prometheus
+	// scraping is not frequent enough, so we may miss some data.
+	proxyReqRate, err := strategy.runtimeapi.ReqRate()
+	if err != nil {
+		return fmt.Errorf("failed to get proxy stats: %w", err)
+	}
+	logger.Debugw("Proxy req rate stats", "data", proxyReqRate)
 
 	funcs, err := strategy.offuncsClient.GetFuncsWithMaxRates()
 	if err != nil {
@@ -309,75 +449,39 @@ func (strategy *RecalcStrategy) updateLocalWeights() error {
 		"proxy_backends_count", len(backends),
 	)
 
-	reload := false
-loop:
+	// Before setting the weights, we need to know the current incoming RPS from
+	// clients and other neighbors. We retrieve it directly from HAProxy instead
+	// of querying Prometheus.
+	rps := make(map[string]float32)
+	neighborsRPS := make(map[string]map[string]float32)
+
 	for funcName := range funcs {
-		if !slices.Contains(backends, "function_"+funcName) {
-			// Missing backend for handling this function from clients.
-			reload = true
-
-			logger.Debugw("Proxy reload required: missing local backend",
-				"function", funcName,
-				"backend", "function_"+funcName,
-			)
-			break
+		backend := "function_" + funcName
+		if servers, present := proxyReqRate[backend]; present {
+			rps[funcName] = servers["BACKEND"]
+		} else {
+			rps[funcName] = 0
 		}
-		for _, neighborID := range neighborsID {
-			bkd := fmt.Sprintf("function_%s_forwarded_%s", funcName, neighborID)
-			if !slices.Contains(backends, bkd) {
-				// Missing backend for handling these functions from other
-				// neighbors.
-				reload = true
+	}
 
-				logger.Debugw("Proxy reload required: missing neighbor backend",
-					"function", funcName,
-					"neighbor_id", neighborID,
-					"backend", bkd,
-				)
-				break loop
+	for _, neighborID := range neighborsID {
+		neighborsRPS[neighborID] = make(map[string]float32)
+
+		for funcName := range funcs {
+			backend := fmt.Sprintf("function_%s_forwarded_%s", funcName, neighborID)
+			if servers, present := proxyReqRate[backend]; present {
+				neighborsRPS[neighborID][funcName] = servers["BACKEND"]
+			} else {
+				neighborsRPS[neighborID][funcName] = 0
 			}
 		}
-	}
-
-	// BUG: This code assumes that proxy reloads happen very infrequently. When
-	// the proxy is reloaded, the weights are reset to their default values and
-	// then updated. However, in the meantime, requests may arrive while the
-	// proxy is still using the reset weights.
-	if reload {
-		// BUG: After the reload, we cannot update the weights immediately
-		// because we need to wait for the reload to complete. Since we cannot
-		// determine this for now, we simply skip this iteration.
-		logger.Debug("Reloading proxy, skipping weight update in this iteration")
-		return strategy.reloadProxy()
-	}
-
-	// Before setting the weights, we need to know the current incoming RPS from
-	// clients and other neighbors.
-
-	end := time.Now().UTC()
-	// We double the interval to make sure we capture at least 2 data points;
-	// otherwise, the query can return empty.
-	start := end.Add(-(_config.PrometheusStep * 2))
-	rps, err := strategy.promq.InputRPS(start, end)
-	if err != nil {
-		return fmt.Errorf("failed to run InputRPS query: %w", err)
-	}
-	if len(rps) == 0 {
-		// This can happen when the system has just started up.
-		logger.Warn("No functions returned from InputRPS query, skipping updating proxy weights.")
-		return nil
-	}
-
-	neighborsRPS, err := strategy.promq.ForwardedRPS(start, end)
-	if err != nil {
-		return fmt.Errorf("failed to run ForwardedRPS query: %w", err)
 	}
 
 	// The weights map contains the raw weights to apply to each server for each
 	// backend in the proxy. We first initialize the map and its submaps; they
 	// will be populated by the code that follows.
 	weights := make(map[string]map[string]uint)
-	for funcName := range rps {
+	for funcName := range funcs {
 		weights["function_"+funcName] = make(map[string]uint)
 		for _, neighborID := range neighborsID {
 			backend := fmt.Sprintf("function_%s_forwarded_%s", funcName, neighborID)
@@ -412,7 +516,7 @@ loop:
 			limits["openfaas-local"] = float32(limit)
 			strategy.limitsTableLock.RLock()
 			for neighborID := range strategy.limitsTable {
-				// In the limitsTable neighbors ID are store as plain ID, but in
+				// In the limitsTable neighbors ID are stored as plain ID, but in
 				// the proxy we need to provide the "node_ID" form.
 				neighborNodeID := fmt.Sprintf("node_%s", neighborID)
 
@@ -538,22 +642,22 @@ func (strategy *RecalcStrategy) processMsgRecalc(senderID string, msg *MsgRecalc
 		return nil // Ignore ourselves
 	}
 
-	// All nodes inside the message are refereced as "node_X", where X is the
+	// All nodes inside the message are referenced as "node_X", where X is the
 	// full node ID.
 	myselfID = fmt.Sprintf("node_%s", myselfID)
 
-	// If the sender node do not "know" us (we aren't in his FuncLimits) we just
+	// If the sender node does not "know" us (we aren't in his FuncLimits) we just
 	// ignore the message.
 	funcLimits, present := msg.FuncLimits[myselfID]
 	if !present {
-		logger.Debugf("Recevied message from %s, but local node is not present, skipping message", senderID)
+		logger.Debugf("Received message from %s, but local node is not present, skipping message", senderID)
 		return nil
 	}
 
 	strategy.limitsTableLock.Lock()
 	defer strategy.limitsTableLock.Unlock()
 
-	// If the neighbor is new, may be not present in the local table, in that
+	// If the neighbor is new, maybe not present in the local table, in that
 	// case we need to initialize the entry.
 	//
 	// FIXME: In this way a removed neighbor will be kept in the table!
@@ -565,7 +669,7 @@ func (strategy *RecalcStrategy) processMsgRecalc(senderID string, msg *MsgRecalc
 	//
 	// FIXME: In this way a removed function will be kept in the table!
 	for funcName, limits := range funcLimits {
-		logger.Debugf("Recevied message from %s, for function %q local node can send max. %.2f req/s", senderID, funcName, limits)
+		logger.Debugf("Received message from %s, for function %q local node can send max. %.2f req/s", senderID, funcName, limits)
 		strategy.limitsTable[senderID][funcName] = limits
 	}
 
@@ -670,13 +774,80 @@ func (strategy *RecalcStrategy) calculateWeights(currentRPS float32, limits map[
 		totalWeight += weight
 	}
 
-	// Reject unhandled. Note that the totalWeight could be grater than 100 due
+	// Reject unhandled. Note that the totalWeight could be greater than 100 due
 	// to rounding differences, in that case do not reject anything.
 	if totalWeight < 100 {
 		result[rejector] = 100 - totalWeight
 	}
 
 	return result
+}
+
+// setAllTrafficLocal resets the proxy weights so that client traffic is handled
+// locally and forwarded traffic is rejected.
+func (strategy *RecalcStrategy) setAllTrafficLocal() error {
+	logger := logging.Logger().With("strategy_component", "setAllTrafficLocal")
+
+	// Get deployed functions.
+	funcs, err := strategy.offuncsClient.GetFuncsWithMaxRates()
+	if err != nil {
+		return fmt.Errorf("failed to get deployed functions: %w", err)
+	}
+
+	// Get the current proxy backends.
+	backends, err := strategy.runtimeapi.Backends()
+	if err != nil {
+		return fmt.Errorf("failed to get proxy current backends: %w", err)
+	}
+
+	// Collect neighbors.
+	neighborsID := []string{}
+	for _, peer := range _p2pHost.Network().Peers() {
+		// "node_ID" is required format.
+		peerID := fmt.Sprintf("node_%s", peer)
+		neighborsID = append(neighborsID, peerID)
+	}
+
+	for funcName := range funcs {
+		// All client requests are handled locally with no rejections and no
+		// forwarding.
+		localBackend := fmt.Sprintf("function_%s", funcName)
+		if slices.Contains(backends, localBackend) {
+			if err := strategy.runtimeapi.SetWeight(localBackend, "openfaas-local", 100); err != nil {
+				return fmt.Errorf("failed to set local weight for %q: %w", localBackend, err)
+			}
+
+			if err := strategy.runtimeapi.SetWeight(localBackend, "rejector", 0); err != nil {
+				return fmt.Errorf("failed to reset rejector weight for %q: %w", localBackend, err)
+			}
+
+			for _, neighborID := range neighborsID {
+				if err := strategy.runtimeapi.SetWeight(localBackend, neighborID, 0); err != nil {
+					return fmt.Errorf("failed to disable neighbor %q on %q: %w", neighborID, localBackend, err)
+				}
+			}
+		}
+
+		// Forwarded traffic is rejected until the next iteration is configured.
+		for _, neighborID := range neighborsID {
+			forwardedBackend := fmt.Sprintf("function_%s_forwarded_%s", funcName, neighborID)
+
+			if !slices.Contains(backends, forwardedBackend) {
+				continue
+			}
+
+			if err := strategy.runtimeapi.SetWeight(forwardedBackend, "openfaas-local", 0); err != nil {
+				return fmt.Errorf("failed to disable forwarded backend %q: %w", forwardedBackend, err)
+			}
+
+			if err := strategy.runtimeapi.SetWeight(forwardedBackend, "rejector", 100); err != nil {
+				return fmt.Errorf("failed to reject forwarded traffic on %q: %w", forwardedBackend, err)
+			}
+		}
+	}
+
+	logger.Info("Proxy weights reset: all client traffic is local")
+	return nil
 }
 
 func (strategy *RecalcStrategy) reloadProxy() error {
@@ -748,10 +919,25 @@ func sameKeys[K comparable, V1, V2 any](a map[K]V1, b map[K]V2) bool {
 	}
 
 	for k := range a {
-		if _, ok := b[k]; !ok {
+		if _, present := b[k]; !present {
 			return false
 		}
 	}
 
 	return true
+}
+
+func (strategy *RecalcStrategy) waitForProxyVariable(variable string) (string, error) {
+	for {
+		value, found, err := strategy.runtimeapi.Variable(variable)
+		if err != nil {
+			return "", fmt.Errorf("failed to read %s: %w", variable, err)
+		}
+
+		if found {
+			return value, nil
+		}
+
+		time.Sleep(time.Second)
+	}
 }

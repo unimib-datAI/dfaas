@@ -65,7 +65,7 @@ config: |
 # different location.
 configMount:
   mountPath: /usr/local/etc/haproxy/haproxy.init.readonly.cfg 
-  subPath: haproxy.cfg        
+  subPath: haproxy.cfg
 
 initContainers:
   # Since the initial HAProxy configuration is read-only, we need to copy it to

@@ -48,10 +48,17 @@ backend st_users_func_{{$funcName}}
 frontend fe_main
     bind *:80
 
-    {{/* Enable statistics web page */ -}}
-    stats enable
-    stats auth admin:admin
-    stats uri /haproxy?stats
+    # Detect K6 experiment lifecycle events.
+    acl is_k6_exp_started path -m str /k6_exp_started
+    acl is_k6_exp_ended  path -m str /k6_exp_ended
+
+    # Store experiment state in process-wide variables.
+    http-request set-var(proc.k6_exp_started) str(true) if is_k6_exp_started
+    http-request set-var(proc.k6_exp_ended) str(true) if is_k6_exp_ended
+
+    # Reject lifecycle requests without forwarding them to a backend.
+    http-request deny deny_status 403 if is_k6_exp_started
+    http-request deny deny_status 403 if is_k6_exp_ended
 
     {{/* ########### ACLs FOR CHECKING IF A NODE IS KNOWN ######### */ -}}
     {{if not $.Nodes}}
