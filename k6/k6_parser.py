@@ -19,6 +19,12 @@ import polars as pl
 
 def build_request_table(df):
     """Input must be a CSV from k6 output!."""
+    # The k6 CSV output contains metrics also for the setup and teardown k6
+    # experiment lifecycle. They will have the group column populated. We want
+    # to discard them, so we just keep the rows without any group since normal
+    # requests do not have a group.
+    df = df.filter(pl.col("group").is_null())
+
     # Keep only relevant columns.
     df = df.select(["timestamp", "metric_name", "metric_value", "status", "extra_tags"])
 
@@ -177,6 +183,7 @@ def main():
     args = parser.parse_args()
 
     df = pl.read_csv(args.input)
+    print(f"Input CSV:  {args.input.resolve()}")
 
     df = build_request_table(df)
 
@@ -184,7 +191,7 @@ def main():
         args.output = args.input.parent / "k6_results_processed.csv"
 
     df.write_csv(args.output)
-    print(f"CSV saved to: {args.output}")
+    print(f"Output CSV: {args.output.resolve()}")
 
 
 if __name__ == "__main__":
