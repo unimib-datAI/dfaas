@@ -1,42 +1,25 @@
-# Binaries for programs and plugins
+# Binaries and files that should not be in the repository at all!
 *.exe
 *.exe~
 *.dll
 *.so
 *.dylib
-
-# Test binary, built with `go test -c`
-*.test
-
-# Output of the go coverage tool, specifically when used with LiteIDE
-*.out
-
-# VIM temporary files.
 *.swp
-
-# Ignore dfaasagent binary.
-dfaasagent/dfaasagent
-
-# Ignore key files.
 *.pem
+__pycache__
+.idea
+.DS_Store
 
 # Ignore custom Ansible inventory files.
 **/inventory.yaml
 
 # Custom ignores
-__pycache__
-.idea
-.DS_Store
-vegeta-results
 emulator/containernet
 emulator/openflow
 framework/outputs/**
 !framework/outputs/**/.gitkeep
 simulation/outputs/**
 !simulation/outputs/**/.gitkeep
-
-# Container images.
-/*.tar
 
 # Ignore Python virtual environment directories.
 *.env/
@@ -47,25 +30,15 @@ env/
 # samples-generator-profiler.py Python scripts.
 metrics_predictions/output*/**
 
-# This is a binary.
-k8s/scripts/libp2p-peer-id/libp2p-peer-id
-
-# Ignore data.
-*.csv
-*.gz
-
-# Ignore generated output.
-*.html
-*.pdf
-
 # Ignore HAProxy generated configurations.
 /dfaasagent/haproxy*.cfg
 
 # Ignore custom DFaaS configurations.
 /dfaasagent/*.env
 
-# Ignore generated binary.
-/k8s/scripts/stick-table-exporter/stick-table-exporter
+# Ignore generated binaries.
+/dfaasagent/dfaasagent
+/k8s/scripts/libp2p-peer-id/libp2p-peer-id
 /k8s/scripts/rl-model-proxy/rl-model-proxy
 /k8s/scripts/haproxy-metrics-exporter/haproxy-metrics-exporter
 
@@ -79,3 +52,8 @@ k8s/scripts/libp2p-peer-id/libp2p-peer-id
 /data
 *.png
 *.jpg
+*.csv
+*.gz
+*.html
+*.pdf
+*.tar
