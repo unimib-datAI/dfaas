@@ -1,16 +1,11 @@
 # HAProxy configuration file updated by DFaaS Agent on {{.Now}}
-# DFaaS Agent running with Static strategy.
+# DFaaS Agent running with "Static" strategy.
 
 # See k8s/charts/values-haproxy.yaml for more information about global,
 # userlist, defaults, and prometheus frontend sections.
 global
   master-worker no-exit-on-failure
-  stats socket /var/run/haproxy.sock mode 660 level admin expose-fd listeners
-  insecure-fork-wanted
-  expose-deprecated-directives
-
-  # Duplicate logs: one for stdout/k8s logs, one for haproxy-metrics-exporter, a
-  # sidecar container in the same pod.
+  stats socket ipv4@*:6666 mode 660 level admin expose-fd listeners
   log stdout format raw local0
   log localhost:5014 local0
 
@@ -20,6 +15,8 @@ userlist dataplaneapi
 defaults
   mode http
   option httplog
+  option forwardfor
+  option http-server-close
   log global
   timeout client 60s
   timeout connect 60s
@@ -27,22 +24,14 @@ defaults
 
 frontend prometheus
   bind :8405
-  mode http
   http-request use-service prometheus-exporter
   no log
 
 # The configuration is generated and changed by the DFaaS agent from this point
 # on.
 
-{{/* #################### FRONTEND #################### */ -}}
-
 frontend fe_main
     bind *:80
-
-    {{/* Enable statistics web page */ -}}
-    stats enable
-    stats auth admin:admin
-    stats uri /haproxy?stats
 
     {{/* ########### ACLs FOR CHECKING IF A NODE IS KNOWN ######### */ -}}
     {{if not $.Nodes}}
@@ -79,8 +68,6 @@ frontend fe_main
     */ -}}
     http-request deny deny_status 403 if has_nodeid_hdr !is_hdr_nodeID_known
 
-    {{/* ########## BACKEND SELECTION ########## */ -}}
-
     use_backend be_system_funcs if is_path_system_funcs
 
     # For each deployed function, forward the incoming request to be_myself if
@@ -93,19 +80,12 @@ frontend fe_main
 
 # Backend for managing the functions in self OpenFaaS instance.
 backend be_system_funcs
-    option http-server-close
     server system_funcs {{.OpenFaaSHost}}:{{.OpenFaaSPort}}
 
 # Backend for forwarding function requests to the self OpenFaaS Instance.
 #
 # This backend is used for requests coming from other DFaaS nodes.
 backend be_myself
-    # Enable insertion of the X-Forwarded-For header to requests sent to
-    # servers.
-    option forwardfor
-
-    option http-server-close
-
     # Add DFaaS-Node-ID header of the current node if not exists.
     http-request add-header DFaaS-Node-ID {{$.MyNodeID}}
 
@@ -125,9 +105,6 @@ backend be_myself
 backend be_{{$funcName}}
     # Enable load-balancing using custom weights.
     balance roundrobin
-
-    option forwardfor
-    option http-server-close
 
     http-request add-header DFaaS-Node-ID {{$.MyNodeID}}
 
