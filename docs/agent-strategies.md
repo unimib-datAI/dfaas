@@ -52,44 +52,40 @@ variables.
 
 ### Recalc
 
-The Recalc strategy is the first implemented load-balancing approach in DFaaS.
-Each agent periodically recalculates the local processing, rejection, and
-forwarding weights based mostly on real-time metrics and the current state of
-the system.
+The Recalc strategy dynamically adjusts HAProxy weights based on the current
+request rate, the maximum processing capacity of each function (the `maxrate`
+parameter), and the available capacity advertised by neighboring nodes.
 
-The strategy uses the concept of maximum requests per second (`maxrate`), which
-defines the maximum number of requests that a node can accept locally for a
-specific function. This is a static and predefined parameter for each function
-deployed on the node. The `maxrate` value is one of the inputs used by the
-strategy to calculate the weights.
-
-You must assign this label using the `faas-cli` command when deploying a
-function to a node:
+The strategy uses the `dfaas.maxrate` label to define the maximum request rate
+that a node should handle locally for a function. You must assign this label
+using `faas-cli` when deploying a function:
 
     faas-cli deploy --image=[...] --name=[...] --label dfaas.maxrate=100
 
-Other inputs are taken from the monitoring platform:
+The strategy distinguishes between two conditions:
 
-- The real-time invocation rate for requests coming directly from clients.
-- The real-time invocation rate for requests coming from each neighbor.
+* Node not overloaded: all client requests are processed locally. The remaining
+  capacity is divided evenly among neighbors, and incoming forwarded requests
+  exceeding their allocated share are rejected.
+* Node overloaded: incoming forwarded requests are rejected. Client requests are
+  distributed between local processing and neighbors according to their
+  available capacities. Requests that cannot be handled are rejected.
 
-If the real-time invocation rate for requests coming directly from clients is
-lower than the `maxrate`, the local node can also accept requests from other
-neighbors, depending on the remaining capacity. The node sends a message to all
-its neighbors to inform them about the available capacity.
+Each node periodically broadcasts its available capacity to neighbors.
 
-On the other hand, if the real-time invocation rate for requests coming directly
-from clients is higher than the `maxrate`, the function is considered
-overloaded, and the proxy is configured to reject requests coming from other
-neighbors. The local node also tries to forward requests coming from clients to
-neighbors if capacity is available. Any excess requests that cannot be processed
-or forwarded will be rejected.
+During k6 experiments, the strategy synchronizes weight updates with workload
+iterations using the `DFaaS-K6-Iteration` header. Before applying new weights,
+it waits four seconds for capacity updates to propagate and verifies that the
+iteration has not changed.
 
-The entire process is performed independently and periodicaly for each function.
+The strategy uses the `AGENT_RECALC_PERIOD` option to configure the interval
+between capacity broadcasts when no k6 experiment is running. For example, `30s`
+sets the interval to 30 seconds.
 
-The strategy specifically uses the `AGENT_RECALC_PERIOD` option to define how
-often the strategy recalculates and shares the available capacity for forwarded
-requests from other neighbors. An example could be `30s` for 30 seconds.
+> [!IMPORTANT]
+> The current implementation supports only one deployed function during periodic
+> capacity broadcasts. During k6 experiments, the input rate is obtained from
+> `DFaaS-K6-Rate` header rather than inferred from proxy statistics.
 
 ### Node Margin
 
