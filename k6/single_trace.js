@@ -3,7 +3,7 @@
 // This file is licensed under the AGPL v3.0 or later license. See LICENSE and
 // AUTHORS file for more information.
 import http from 'k6/http';
-import sleep from 'k6';
+import { sleep } from 'k6';
 
 // Required to track the stage of a request in CSV output.
 import { tagWithCurrentStageIndex, getCurrentStageIndex } from 'https://jslib.k6.io/k6-utils/1.6.0/index.js';
