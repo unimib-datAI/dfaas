@@ -256,12 +256,12 @@ def plot(
 
     plt.close(fig)
 
-    print(f"Saved plot: {output_pdf}")
+    print(f"Output PDF: {output_pdf}")
     print()
 
 
 def process_csv(input_csv, output_pdf):
-    print(f"Loading: {input_csv}")
+    print(f"Input CSV: {input_csv}")
 
     df = pl.read_csv(input_csv)
 
@@ -432,14 +432,14 @@ def main():
             parser.error("--input-csv and --output-pdf cannot be used with experiments")
 
         for exp in args.experiments:
-            process_experiment(exp)
+            process_experiment(exp.resolve())
 
         return
 
     if args.input_csv is None or args.output_pdf is None:
         parser.error("--input-csv and --output-pdf are required without experiments")
 
-    process_csv(args.input_csv, args.output_pdf)
+    process_csv(args.input_csv.resolve(), args.output_pdf.resolve())
 
 
 if __name__ == "__main__":
