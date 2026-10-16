@@ -62,7 +62,7 @@ run_job() {
     --no-color \
     --address "" \
     --out csv="$OUTPUT_BASE_DIR/k6/$NODE_NAME/k6_results.csv.gz" \
-    --env IP_SERVER="$IP" \
+    --env ENDPOINT_IP="$IP" \
     --env TRACE_PATH="$TRACE_PATH" \
     --env FUNCTION=0 \
     --env NODE="$NODE_NAME" \

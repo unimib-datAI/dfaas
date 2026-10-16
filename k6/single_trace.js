@@ -3,6 +3,7 @@
 // This file is licensed under the AGPL v3.0 or later license. See LICENSE and
 // AUTHORS file for more information.
 import http from 'k6/http';
+import sleep from 'k6';
 
 // Required to track the stage of a request in CSV output.
 import { tagWithCurrentStageIndex, getCurrentStageIndex } from 'https://jslib.k6.io/k6-utils/1.6.0/index.js';
@@ -17,11 +18,15 @@ import { Counter } from 'k6/metrics';
 // (DFaaS-Forwarded-To and DFaaS-Node-ID tags).
 const DFaaSCounter = new Counter('DFaaS');
 
-const IP_SERVER = __ENV.IP_SERVER || "10.12.68.9"
+if (!__ENV.ENDPOINT_IP) {
+  throw new Error("Missing environment variable ENDPOINT_IP");
+}
+const ENDPOINT_PORT = __ENV.ENDPOINT_PORT || "30080"
+const ENDPOINT_ADDR = `http://${__ENV.ENDPOINT_IP}:${ENDPOINT_PORT}`
 
 // We first set up the function to call, with the URL and body.
 let FUNCTION_NAME = __ENV.FUNCTION_NAME || "mlimage";
-const FUNCTION_URL = `http://${IP_SERVER}:30080/function/${FUNCTION_NAME}`;
+const FUNCTION_URL = `${ENDPOINT_ADDR}/function/${FUNCTION_NAME}`;
 
 let CONTENT_TYPE, BODY_CONTENT, DATA_PATH;
 switch (FUNCTION_NAME) {
@@ -97,6 +102,21 @@ export let options = {
   discardResponseBodies: true,
 };
 
+// Before and after the experiment, we notify the DFaaS node that the experiment
+// is starting or has ended. We do not check the response, since the DFaaS node
+// may ignore these requests.
+
+export function setup() {
+    const res = http.get(`${ENDPOINT_ADDR}/k6_exp_started`);
+
+    // Let the DFaaS node to prepare for the experiment.
+    sleep(2);
+}
+
+export function teardown(data) {
+    const res = http.get(`${ENDPOINT_ADDR}/k6_exp_ended`);
+}
+
 export default function () {
   // Tag each request with its corresponding stage index (e.g., stage 0, 1, 2,
   // ...). This makes it possible to map each request to its stage and, in turn,
@@ -140,3 +160,4 @@ export default function () {
   const forwardedTo = response.headers["Dfaas-Forwarded-To"] || "";
   DFaaSCounter.add(1, {DFaaS_Node_ID: nodeId, DFaaS_Forwarded_To: forwardedTo, });
 }
+
