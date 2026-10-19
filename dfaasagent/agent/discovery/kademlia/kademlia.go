@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Copyright 2021-2025 The DFaaS Authors. All rights reserved.
+// Copyright 2021-2026 The DFaaS Authors. All rights reserved.
 // This file is licensed under the AGPL v3.0 or later license. See LICENSE and
 // AUTHORS file for more information.
 
@@ -22,7 +22,6 @@ import (
 	discovery "github.com/libp2p/go-libp2p/p2p/discovery/routing"
 	discoveryUtils "github.com/libp2p/go-libp2p/p2p/discovery/util"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
-	"go.uber.org/zap"
 )
 
 type BootstrapConfiguration struct {
@@ -46,7 +45,7 @@ var _routingDisc *discovery.RoutingDiscovery
 //
 // Returns the IpfsDHT instance that must be closed with Close() at the end.
 func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig BootstrapConfiguration, rendezvous string, idleTime time.Duration) (*dht.IpfsDHT, error) {
-	logger := logging.Logger()
+	logger := logging.Logger().With("component", "kademlia_discovery")
 
 	if idleTime == 0 {
 		return nil, fmt.Errorf("Kademlia idle time must be a positive duration, got 0")
@@ -93,22 +92,37 @@ func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig Bootstra
 			defer wg.Done()
 
 			for {
-				logger.Debugf("Connecting to bootstrap node: %s", peerAddr.String())
+				logger.Debugw("Connecting to bootstrap node",
+					"address", peerAddr.String(),
+					"peer_id", peerInfo.ID,
+				)
+
 				err := p2pHost.Connect(ctx, *peerInfo)
 				if err == nil {
-					logger.Infof("Connected to bootstrap node %s", peerInfo.String())
+					logger.Infow("Connected to bootstrap node",
+						"peer_id", peerInfo.ID,
+						"address", peerAddr.String(),
+					)
 					return
 				}
-				logger.Errorf("Connection failed to a bootstrap node: %s", err)
-				errWrap := fmt.Errorf("connection failed to a bootstrap node: %w", err)
+
+				logger.Warnw("Connection failed to a bootstrap node",
+					"peer_id", peerInfo.ID,
+					"address", peerAddr.String(),
+					"error", err,
+				)
 
 				if bootstrapConfig.BootstrapForce {
-					logger.Infof("Waiting 5 second before retrying to connect to bootstrap node: %s", peerAddr.String())
+					logger.Infow("Waiting before retrying to connect to bootstrap node",
+						"peer_id", peerInfo.ID,
+						"address", peerAddr.String(),
+						"retry_delay", 5*time.Second,
+					)
 					time.Sleep(5 * time.Second)
 					continue
-				} else {
-					logger.Error("Kademlia: ", errWrap)
 				}
+
+				return
 			}
 		}()
 	}
@@ -130,15 +144,20 @@ func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig Bootstra
 
 // RunDiscovery runs the discovery process. It should run in a goroutine.
 func RunDiscovery() error {
-	logger := logging.Logger()
+	logger := logging.Logger().With("component", "kademlia_discovery")
 
 	for {
-		logger.Debug("Current connected peers: ")
+		logger.Debugw("Current connected peers")
+
 		for _, conn := range _p2pHost.Network().Conns() {
-			logger.Debugf("  - Peer: %s, Addr: %s", conn.RemotePeer(), conn.RemoteMultiaddr())
+			logger.Debugw("Connected peer",
+				"peer_id", conn.RemotePeer(),
+				"address", conn.RemoteMultiaddr().String(),
+			)
 		}
 
-		logger.Debug("Searching for other peers...")
+		logger.Debugw("Searching for other peers", "rendezvous", _rendezvous)
+
 		peerChan, err := _routingDisc.FindPeers(_ctx, _rendezvous)
 		if err != nil {
 			return fmt.Errorf("searching for peers via Kademlia discovery: %w", err)
@@ -155,12 +174,24 @@ func RunDiscovery() error {
 				continue
 			}
 
-			logger.Debugf("Found a new peer with ID %s", peerInfo.ID)
+			logger.Debugw("Found a new peer",
+				"peer_id", peerInfo.ID,
+				"addresses", peerInfo.Addrs,
+			)
+
 			if err := _p2pHost.Connect(_ctx, peerInfo); err != nil {
-				logger.Error("Connection to peer (skipping): ", zap.Error(err))
+				logger.Warnw("Connection to peer failed; skipping",
+					"peer_id", peerInfo.ID,
+					"addresses", peerInfo.Addrs,
+					"error", err,
+				)
 				continue
 			}
-			logger.Debugf("Connected to a new peer with ID %s from %v", peerInfo.ID, peerInfo.Addrs)
+
+			logger.Debugw("Connected to a new peer",
+				"peer_id", peerInfo.ID,
+				"addresses", peerInfo.Addrs,
+			)
 		}
 
 		// Now wait a bit and relax...
@@ -172,15 +203,15 @@ func BuildBoostrapNodes(configuration BootstrapConfiguration) ([]multiaddr.Multi
 	var maddrs []multiaddr.Multiaddr
 	var err error
 
-	logger := logging.Logger()
+	logger := logging.Logger().With("component", "kademlia_discovery")
 
 	if !configuration.BootstrapNodes {
-		logger.Debug("Bootstrap nodes disabled")
+		logger.Debugw("Bootstrap nodes disabled")
 		return maddrs, nil
 	}
 
 	if configuration.PublicBootstrapNodes {
-		logger.Debug("Using public bootstrap nodes")
+		logger.Debugw("Using public bootstrap nodes")
 
 		// Use libp2p public bootstrap peers list.
 		maddrs = dht.DefaultBootstrapPeers
@@ -188,7 +219,9 @@ func BuildBoostrapNodes(configuration BootstrapConfiguration) ([]multiaddr.Multi
 	}
 
 	if len(configuration.BootstrapNodesList) > 0 {
-		logger.Debug("Using bootstrap nodes list")
+		logger.Debugw("Using bootstrap nodes list",
+			"count", len(configuration.BootstrapNodesList),
+		)
 
 		maddrs, err = maddrhelp.StringListToMultiaddrList(configuration.BootstrapNodesList)
 		if err != nil {
@@ -198,7 +231,9 @@ func BuildBoostrapNodes(configuration BootstrapConfiguration) ([]multiaddr.Multi
 	}
 
 	if configuration.BootstrapNodesFile != "" {
-		logger.Debug("Using bootstrap nodes file")
+		logger.Debugw("Using bootstrap nodes file",
+			"file", configuration.BootstrapNodesFile,
+		)
 
 		maddrs, err = maddrhelp.ParseMAddrFile(configuration.BootstrapNodesFile)
 		if err != nil {

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Copyright 2025 The DFaaS Authors. All rights reserved.
+// Copyright 2025-2026 The DFaaS Authors. All rights reserved.
 // This file is licensed under the AGPL v3.0 or later license. See LICENSE and
 // AUTHORS file for more information.
 
@@ -96,9 +96,10 @@ func (strategy *StaticStrategy) OnReceived(msg *pubsub.Message) error {
 	}
 
 	if msgForType.MsgType != StrMsgNodeInfoTypeStatic {
-		logging.Logger().Warnf("Received a PubSub message of type %q, expected %q",
-			msgForType.MsgType,
-			StrMsgNodeInfoTypeStatic)
+		logging.Logger().Warnw("Received a unexpected PubSub message type",
+			"expected", StrMsgNodeInfoTypeStatic,
+			"got", msgForType.MsgType,
+		)
 		return nil
 	}
 
@@ -288,10 +289,12 @@ func (strategy *StaticStrategy) processMsgNodeInfoStatic(sender string, msg *Msg
 		return nil // Ignore ourselves.
 	}
 
-	if logging.GetDebugMode() {
-		logger.Debugf("Received msg from node: %s (%s:%d) (functions: %v)",
-			sender, msg.HAProxyHost, msg.HAProxyPort, msg.Functions)
-	}
+	logger.Debugw("Received message from node",
+		"sender", sender,
+		"sender_proxy_host", msg.HAProxyHost,
+		"sender_proxy_port", msg.HAProxyPort,
+		"sender_functions", msg.Functions,
+	)
 
 	strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryNMS) error {
 		_, present := entries[sender]
@@ -300,7 +303,9 @@ func (strategy *StaticStrategy) processMsgNodeInfoStatic(sender string, msg *Msg
 				CommonNeighbour: false,
 				Load:            nodestbl.Load{},
 			}
-			logger.Debugf("Node %s was not present and has been added to the table", sender)
+			logger.Debugw("Node was not present and has been added to the table",
+				"node", sender,
+			)
 		}
 		entries[sender].TAlive = time.Now().UTC()
 		entries[sender].HAProxyHost = msg.HAProxyHost

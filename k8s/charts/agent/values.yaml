@@ -9,9 +9,14 @@ imagePullPolicy: Never # The agent image is manually imported.
 # Note that AGENT_OPENFAAS_PASS is automatically created by the Deployment
 # object.
 config:
-  AGENT_DEBUG: true
-  AGENT_LOG_DATETIME: true
-  AGENT_LOG_COLORS: true
+  # LogLevel is the minimum logging priority for a log to be printed or saved.
+  # It must be a supported level from zap. See
+  # https://pkg.go.dev/go.uber.org/zap/zapcore#Level
+  LOG_LEVEL: "debug"
+
+  # LogFile must be a local path where the log output is saved in JSONL format.
+  # Note that logs are also printed to stdout.
+  LOG_FILE: "agent.log"
 
   # IP address of the node where the agent runs. Used by other DFaaS agents to
   # forward requests to this node. Leave blank, Kubernetes automatically injects

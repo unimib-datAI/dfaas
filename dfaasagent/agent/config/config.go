@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Copyright 2021-2025 The DFaaS Authors. All rights reserved.
+// Copyright 2021-2026 The DFaaS Authors. All rights reserved.
 // This file is licensed under the AGPL v3.0 or later license. See LICENSE and
 // AUTHORS file for more information.
 
@@ -17,15 +17,14 @@ import (
 
 // Configuration holds the post-processed configuration values.
 type Configuration struct {
-	// If enabled, DEBUG-level logs are included in the output logs.
-	DebugMode bool `mapstructure:"AGENT_DEBUG"`
+	// LogLevel is the minimum logging priority for a log to be printed or
+	// saved. It must be a supported level from zap. See
+	// https://pkg.go.dev/go.uber.org/zap/zapcore#Level
+	LogLevel string `mapstructure:"LOG_LEVEL"`
 
-	// If enabled, the timestamps in logs are formatted as human-readable dates
-	// and times.
-	DateTime bool `mapstructure:"AGENT_LOG_DATETIME"`
-
-	// If enabled, console logs are displayed in color.
-	LogColors bool `mapstructure:"AGENT_LOG_COLORS"`
+	// LogFile must be a local path where the log output is saved in JSONL
+	// format. Note that logs are also printed to stdout.
+	LogFile string `mapstructure:"LOG_FILE"`
 
 	// IP address of the node where the agent runs. Used by other DFaaS agents
 	// to forward requests to this node. Kubernetes automatically injects this

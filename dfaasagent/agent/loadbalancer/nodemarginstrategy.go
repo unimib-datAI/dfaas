@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Copyright 2021-2025 The DFaaS Authors. All rights reserved.
+// Copyright 2021-2026 The DFaaS Authors. All rights reserved.
 // This file is licensed under the AGPL v3.0 or later license. See LICENSE and
 // AUTHORS file for more information.
 
@@ -696,26 +696,24 @@ func (strategy *NodeMarginStrategy) processMsgNodeInfoNMS(sender string, msg *Ms
 		return nil // Ignore ourselves
 	}
 
-	if logging.GetDebugMode() {
-		var b strings.Builder
-		b.WriteString(fmt.Sprintf("Received node info message from node %s\n", sender))
-		b.WriteString(fmt.Sprintf("Node %s type: %d\n", sender, msg.NodeType))
-		b.WriteString(fmt.Sprintf("Node %s HAProxyHost: %s\n", sender, msg.HAProxyHost))
-		b.WriteString(fmt.Sprintf("Node %s HAProxyPort: %d\n", sender, msg.HAProxyPort))
-		b.WriteString(fmt.Sprintf("Max Values: CPU=%f, RAM=%f, Power=%f\n",
-			msg.MaxValues[cpuUsageNodeMetric], msg.MaxValues[ramUsageNodeMetric], msg.MaxValues[powerUsageNodeMetric]))
+	var b strings.Builder
+	b.WriteString(fmt.Sprintf("Received node info message from node %s\n", sender))
+	b.WriteString(fmt.Sprintf("Node %s type: %d\n", sender, msg.NodeType))
+	b.WriteString(fmt.Sprintf("Node %s HAProxyHost: %s\n", sender, msg.HAProxyHost))
+	b.WriteString(fmt.Sprintf("Node %s HAProxyPort: %d\n", sender, msg.HAProxyPort))
+	b.WriteString(fmt.Sprintf("Max Values: CPU=%f, RAM=%f, Power=%f\n",
+		msg.MaxValues[cpuUsageNodeMetric], msg.MaxValues[ramUsageNodeMetric], msg.MaxValues[powerUsageNodeMetric]))
 
-		b.WriteString(fmt.Sprintf("Node %s functions: ", sender))
-		for i := 0; i < len(msg.Functions); i++ {
-			b.WriteString(msg.Functions[i])
-			if i < len(msg.Functions)-1 {
-				b.WriteString(", ")
-			}
+	b.WriteString(fmt.Sprintf("Node %s functions: ", sender))
+	for i := 0; i < len(msg.Functions); i++ {
+		b.WriteString(msg.Functions[i])
+		if i < len(msg.Functions)-1 {
+			b.WriteString(", ")
 		}
-		b.WriteString("\n")
-
-		logger.Debug(b.String())
 	}
+	b.WriteString("\n")
+
+	logger.Debug(b.String())
 
 	strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryNMS) error {
 		logger.Debugf("Setting received values for node %s into table", sender)
@@ -752,15 +750,14 @@ func (strategy *NodeMarginStrategy) processMsgNodeMarginInfoNMS(sender string, m
 	strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryNMS) error {
 		// Check if sender is a common neighbour. If not, ignore the message
 		if entries[sender].CommonNeighbour {
-			if logging.GetDebugMode() {
-				var b strings.Builder
-				b.WriteString(fmt.Sprintf("Received margin info message from node %s\n", sender))
-				b.WriteString(fmt.Sprintf("Margin: %f\n", msg.Margin))
-				b.WriteString(fmt.Sprintf("Load: High Usage=%f, Low Usage=%f, Medium Usage=%f\n",
-					msg.Load.RateHighUsage, msg.Load.RateLowUsage, msg.Load.RateMediumUsage))
+			var b strings.Builder
+			b.WriteString(fmt.Sprintf("Received margin info message from node %s\n", sender))
+			b.WriteString(fmt.Sprintf("Margin: %f\n", msg.Margin))
+			b.WriteString(fmt.Sprintf("Load: High Usage=%f, Low Usage=%f, Medium Usage=%f\n",
+				msg.Load.RateHighUsage, msg.Load.RateLowUsage, msg.Load.RateMediumUsage))
 
-				logger.Debug(b.String())
-			}
+			logger.Debug(b.String())
+
 			logger.Debugf("Setting received values for node %s into table", sender)
 
 			// Check if exists the neighbour with "sender" ID with its info in entries before adding new info to avoid errors

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Copyright 2021-2025 The DFaaS Authors. All rights reserved.
+// Copyright 2021-2026 The DFaaS Authors. All rights reserved.
 // This file is licensed under the AGPL v3.0 or later license. See LICENSE and
 // AUTHORS file for more information.
 
@@ -14,8 +14,6 @@ import (
 	"fmt"
 	"io"
 	"net/http"
-	"os"
-	"path/filepath"
 	"text/template"
 
 	"github.com/Masterminds/sprig"
@@ -68,20 +66,7 @@ func (updater *Updater) UpdateHAConfig(content interface{}) error {
 	}
 	configData := buf.Bytes()
 
-	// Save the rendered template to haproxy.cfg in the working directory for
-	// debug purposes.
-	if logging.GetDebugMode() {
-		cfgFile := "haproxy.cfg"
-		if err := os.WriteFile(cfgFile, configData, 0644); err != nil {
-			logger.Warnf("could not write rendered HAProxy config: %v", err)
-		} else {
-			abs, err := filepath.Abs(cfgFile)
-			if err != nil {
-				abs = cfgFile
-			}
-			logger.Debugf("rendered HAProxy config written to %s", abs)
-		}
-	}
+	logger.Debugw("Rendered HAProxy config, ready to be sent", "config", string(configData))
 
 	// Create POST request.
 	url := fmt.Sprintf("%s/v3/services/haproxy/configuration/raw?skip_version=true", updater.dataplaneapi_url)
@@ -106,7 +91,10 @@ func (updater *Updater) UpdateHAConfig(content interface{}) error {
 		return fmt.Errorf("reading Data Plane API response: %w", err)
 	}
 
-	logger.Debug(fmt.Sprintf("Data Plane API response %q: %s", resp.Status, string(rawBody)))
+	logger.Debugw("HAProxy Data Plane API response",
+		"http_status", resp.StatusCode,
+		"body", string(rawBody),
+	)
 
 	return nil
 }

@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Copyright 2021-2025 The DFaaS Authors. All rights reserved.
+// Copyright 2021-2026 The DFaaS Authors. All rights reserved.
 // This file is licensed under the AGPL v3.0 or later license. See LICENSE and
 // AUTHORS file for more information.
 
@@ -122,7 +122,7 @@ func runAgent(config config.Configuration) error {
 	}
 	if prvKey != nil {
 		prvKeyExist = true
-		logger.Info(fmt.Sprintf("Using private key from %q", config.PrivateKeyFile))
+		logger.Infow("Using private key from file", "file", config.PrivateKeyFile)
 	}
 
 	// Construct a new libp2p Host.
@@ -169,7 +169,7 @@ func runAgent(config config.Configuration) error {
 
 			// Get PEM as string and print to logger.
 			pemString := buf.String()
-			logger.Info(fmt.Sprintf("libp2p generated private key (PEM):\n%s", pemString))
+			logger.Infof("libp2p generated private key (PEM)", "key", pemString)
 		} else {
 			logger.Warn("libp2p host has no private key in Peerstore")
 		}
@@ -180,10 +180,7 @@ func runAgent(config config.Configuration) error {
 	if err != nil {
 		return fmt.Errorf("error while building the p2p host's multiaddress: %w", err)
 	}
-	logger.Info("libp2p host started. You can connect to this host by using the following multiaddresses:")
-	for i, addr := range myMAddrs {
-		logger.Info("  ", i+1, ". ", addr)
-	}
+	logger.Info("libp2p host started. You can connect to this host by using the following multiaddresses", "multiaddresses", myMAddrs)
 
 	////////// LOAD BALANCER INITIALIZATION //////////
 
@@ -271,7 +268,7 @@ func runAgent(config config.Configuration) error {
 
 	select {
 	case sig := <-chanStop:
-		logger.Warn("Caught " + sig.String() + " signal. Stopping.")
+		logger.Warnw("Caught OS signal. Stopping...", "signal", sig.String())
 		if config.MDNSEnabled {
 			if err := mdns.Stop(); err != nil {
 				return err
@@ -305,15 +302,21 @@ func Main() {
 		log.Fatal(err)
 	}
 
-	// Setup logging engine.
-	logger, err := logging.Initialize(_config.DateTime, _config.DebugMode, _config.LogColors)
-	if err != nil {
+	// Setup logging.
+	if err := logging.Initialize(_config.LogLevel, _config.LogFile); err != nil {
 		log.Fatal(err)
 	}
+	logger := logging.Logger()
 
 	// Run agent.
-	logger.Debugf("Running agent with configuration: %+v", _config)
+	logger.Debugw("Starting agent with loaded configuration", "config", _config)
 	if err := runAgent(_config); err != nil {
-		logger.Fatal(err)
+		logger.Error(err)
+	}
+
+	// Close logging.
+	if err := logging.Sync(); err != nil {
+		fmt.Printf("Failed to close logging: %s", err)
+		os.Exit(1)
 	}
 }

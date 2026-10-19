@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Copyright 2021-2025 The DFaaS Authors. All rights reserved.
+// Copyright 2021-2026 The DFaaS Authors. All rights reserved.
 // This file is licensed under the AGPL v3.0 or later license. See LICENSE and
 // AUTHORS file for more information.
 
@@ -12,118 +12,26 @@ import (
 	"strings"
 	"time"
 
-	"github.com/libp2p/go-libp2p/core/peer"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
+	"go.uber.org/zap"
+	"go.uber.org/zap/zapcore"
 )
 
-//////////////////// PRIVATE FUNCTIONS FOR LOGGING ////////////////////
-
-func debugConnectedNodes(nodeIDs []peer.ID) {
-	if !logging.GetDebugMode() {
-		return
-	}
-
-	var b strings.Builder
-	b.WriteString("Currently connected nodes:")
-
-	if len(nodeIDs) == 0 {
-		b.WriteString(" 0 nodes")
-	} else {
-		shortIDs := make([]string, len(nodeIDs))
-
-		for i, nodeID := range nodeIDs {
-			strNodeID := nodeID.String()
-			shortIDs[i] = strNodeID[len(strNodeID)-3:]
-		}
-
-		sort.Strings(shortIDs)
-
-		for _, shortNodeID := range shortIDs {
-			b.WriteString(" " + shortNodeID)
-		}
-	}
-
-	logging.Logger().Debug(b.String())
-}
-
-func debugPromAFET(timeSpan time.Duration, data map[string]float64) {
-	if !logging.GetDebugMode() {
-		return
-	}
-
+// debugLogger returns the logger only when the Debug level is enabled.
+func debugLogger() (*zap.SugaredLogger, bool) {
 	logger := logging.Logger()
-
-	keys := make([]string, 0, len(data))
-	for k := range data {
-		keys = append(keys, k)
+	if !logger.Desugar().Core().Enabled(zapcore.DebugLevel) {
+		return logger, false
 	}
-
-	sort.Strings(keys)
-
-	var b strings.Builder
-	b.WriteString("Average functions exec times (over " + timeSpan.String() + " time span):\n")
-	for _, funcName := range keys {
-		b.WriteString(fmt.Sprintf("  - FUNC %s: %.3f ms\n", funcName, data[funcName]*1000))
-	}
-	logger.Debug(b.String())
-}
-
-func debugPromInvoc(timeSpan time.Duration, data map[string]map[string]float64) {
-	if !logging.GetDebugMode() {
-		return
-	}
-
-	keys := make([]string, 0, len(data))
-	for k := range data {
-		keys = append(keys, k)
-	}
-
-	sort.Strings(keys)
-
-	var b strings.Builder
-	b.WriteString(fmt.Sprintf("Functions invocation counts (over %v time span):", timeSpan))
-	if len(keys) > 0 {
-		b.WriteString("\n")
-		for _, funcName := range keys {
-			for code, rate := range data[funcName] {
-				b.WriteString(fmt.Sprintf("  - FUNC %q, CODE %s: %.2f req/s\n", funcName, code, rate))
-			}
-		}
-	} else {
-		b.WriteString(" no available functions")
-	}
-	logging.Logger().Debug(b.String())
-}
-
-func debugPromServiceCount(data map[string]int) {
-	if !logging.GetDebugMode() {
-		return
-	}
-
-	logger := logging.Logger()
-
-	keys := make([]string, 0, len(data))
-	for k := range data {
-		keys = append(keys, k)
-	}
-
-	sort.Strings(keys)
-
-	var b strings.Builder
-	b.WriteString("Functions service counts:\n")
-	for _, funcName := range keys {
-		b.WriteString(fmt.Sprintf("  - FUNC %s: %d active function replicas\n", funcName, data[funcName]))
-	}
-	logger.Debug(b.String())
+	return logger, true
 }
 
 func debugPromCPUusage(timeSpan time.Duration, data map[string]float64) {
-	if !logging.GetDebugMode() {
+	logger, ok := debugLogger()
+	if !ok {
 		return
 	}
-
-	logger := logging.Logger()
 
 	keys := make([]string, 0, len(data))
 	for k := range data {
@@ -137,15 +45,19 @@ func debugPromCPUusage(timeSpan time.Duration, data map[string]float64) {
 	for _, instance := range keys {
 		b.WriteString(fmt.Sprintf("  - Instance %s CPU utilization: %.2f%%\n", instance, data[instance]*100))
 	}
-	logger.Debug(b.String())
+
+	logger.Debugw("Nodes CPU usage",
+		"message", b.String(),
+		"time_span", timeSpan.String(),
+		"instances", len(data),
+	)
 }
 
 func debugPromRAMusage(timeSpan time.Duration, data map[string]float64) {
-	if !logging.GetDebugMode() {
+	logger, ok := debugLogger()
+	if !ok {
 		return
 	}
-
-	logger := logging.Logger()
 
 	keys := make([]string, 0, len(data))
 	for k := range data {
@@ -159,59 +71,19 @@ func debugPromRAMusage(timeSpan time.Duration, data map[string]float64) {
 	for _, instance := range keys {
 		b.WriteString(fmt.Sprintf("  - Instance %s RAM utilization: %.2f%%\n", instance, data[instance]*100))
 	}
-	logger.Debug(b.String())
-}
 
-func debugPromCPUusagePerFunction(timeSpan time.Duration, data map[string]float64) {
-	if !logging.GetDebugMode() {
-		return
-	}
-
-	logger := logging.Logger()
-
-	keys := make([]string, 0, len(data))
-	for k := range data {
-		keys = append(keys, k)
-	}
-
-	sort.Strings(keys)
-
-	var b strings.Builder
-	b.WriteString("Nodes CPU usage for function (over " + timeSpan.String() + " time span) and averaged on number of container:\n")
-	for _, funcName := range keys {
-		b.WriteString(fmt.Sprintf("  - FUNC %s CPU utilization: %.2f%%\n", funcName, data[funcName]*100))
-	}
-	logger.Debug(b.String())
-}
-
-func debugPromRAMusagePerFunction(timeSpan time.Duration, data map[string]float64) {
-	if !logging.GetDebugMode() {
-		return
-	}
-
-	logger := logging.Logger()
-
-	keys := make([]string, 0, len(data))
-	for k := range data {
-		keys = append(keys, k)
-	}
-
-	sort.Strings(keys)
-
-	var b strings.Builder
-	b.WriteString("Nodes RAM usage for function (over " + timeSpan.String() + " time span) and averaged on number of container:\n")
-	for _, funcName := range keys {
-		b.WriteString(fmt.Sprintf("  - FUNC %s RAM utilization: %.2f%%\n", funcName, data[funcName]*100))
-	}
-	logger.Debug(b.String())
+	logger.Debugw("Nodes RAM usage",
+		"message", b.String(),
+		"time_span", timeSpan.String(),
+		"instances", len(data),
+	)
 }
 
 func debugNodesTblContentNMS(entries map[string]*nodestbl.EntryNMS) {
-	if !logging.GetDebugMode() {
+	logger, ok := debugLogger()
+	if !ok {
 		return
 	}
-
-	logger := logging.Logger()
 
 	nodeIDs := make([]string, 0, len(entries))
 	for k := range entries {
@@ -241,11 +113,16 @@ func debugNodesTblContentNMS(entries map[string]*nodestbl.EntryNMS) {
 			b.WriteString(fmt.Sprintf("       FUNC: %s\n", funcName))
 		}
 	}
-	logger.Debug(b.String())
+
+	logger.Debugw("Content of nodestbl",
+		"message", b.String(),
+		"nodes", len(entries),
+	)
 }
 
 func debugMsgNodeInfoNMS(msg MsgNodeInfoNMS) {
-	if !logging.GetDebugMode() {
+	logger, ok := debugLogger()
+	if !ok {
 		return
 	}
 
@@ -255,11 +132,17 @@ func debugMsgNodeInfoNMS(msg MsgNodeInfoNMS) {
 	} else {
 		buf.WriteString(fmt.Sprintf("MsgNodeInfoNMS content: type=%d functions=%v\n", msg.NodeType, msg.Functions))
 	}
-	logging.Logger().Debug(buf.String())
+
+	logger.Debugw("MsgNodeInfoNMS content",
+		"message", buf.String(),
+		"node_type", msg.NodeType,
+		"functions", msg.Functions,
+	)
 }
 
 func debugMsgNodeInfoStatic(msg MsgNodeInfoStatic) {
-	if !logging.GetDebugMode() {
+	logger, ok := debugLogger()
+	if !ok {
 		return
 	}
 
@@ -269,28 +152,40 @@ func debugMsgNodeInfoStatic(msg MsgNodeInfoStatic) {
 	} else {
 		buf.WriteString(fmt.Sprintf("MsgNodeInfoStatic content: functions=%v\n", msg.Functions))
 	}
-	logging.Logger().Debug(buf.String())
+
+	logger.Debugw("MsgNodeInfoStatic content",
+		"message", buf.String(),
+		"functions", msg.Functions,
+	)
 }
 
 func debugFuncsLoad(load GroupsLoad) {
-	if !logging.GetDebugMode() {
+	logger, ok := debugLogger()
+	if !ok {
 		return
 	}
 
-	logger := logging.Logger()
-
-	logger.Debugf("Node's Load: High Usage=%.2f req/s, Low Usage=%.2f req/s, Medium Usage=%.2f req/s",
+	var b strings.Builder
+	fmt.Fprintf(&b,
+		"Node's Load: High Usage=%.2f req/s, Low Usage=%.2f req/s, Medium Usage=%.2f req/s",
 		load.RateHighUsage,
 		load.RateLowUsage,
-		load.RateMediumUsage)
+		load.RateMediumUsage,
+	)
+
+	logger.Debugw("Node's Load",
+		"message", b.String(),
+		"high_usage", load.RateHighUsage,
+		"low_usage", load.RateLowUsage,
+		"medium_usage", load.RateMediumUsage,
+	)
 }
 
 func debugNodeMetricPredictions(predictions map[string]float64) {
-	if !logging.GetDebugMode() {
+	logger, ok := debugLogger()
+	if !ok {
 		return
 	}
-
-	logger := logging.Logger()
 
 	var b strings.Builder
 	b.WriteString("Node's usage predictions:\n")
@@ -298,57 +193,96 @@ func debugNodeMetricPredictions(predictions map[string]float64) {
 		predictions[cpuUsageNodeMetric],
 		predictions[ramUsageNodeMetric],
 		predictions[powerUsageNodeMetric]))
-	logger.Debug(b.String())
+
+	logger.Debugw("Node's usage predictions",
+		"message", b.String(),
+		"cpu_usage", predictions[cpuUsageNodeMetric],
+		"ram_usage", predictions[ramUsageNodeMetric],
+		"power_usage", predictions[powerUsageNodeMetric],
+	)
 }
 
 func debugOverloadNMS(overload bool) {
-	if !logging.GetDebugMode() {
+	logger, ok := debugLogger()
+	if !ok {
 		return
 	}
 
-	logger := logging.Logger()
-
+	var b strings.Builder
 	if overload {
-		logger.Debugf("Node's state: OVERLOAD")
+		b.WriteString("Node's state: OVERLOAD")
 	} else {
-		logger.Debugf("Node's state: UNDERLOAD")
+		b.WriteString("Node's state: UNDERLOAD")
 	}
+
+	logger.Debugw("Node's state",
+		"message", b.String(),
+		"overload", overload,
+	)
 }
 
 func debugNodeUsagePercentage(percentage float64) {
-	if !logging.GetDebugMode() {
+	logger, ok := debugLogger()
+	if !ok {
 		return
 	}
 
-	logger := logging.Logger()
+	var b strings.Builder
+	fmt.Fprintf(&b, "Node usage percentage: %.2f", percentage)
 
-	logger.Debugf("Node usage percentage: %.2f", percentage)
+	logger.Debugw("Node usage percentage",
+		"message", b.String(),
+		"percentage", percentage,
+	)
 }
 
 func debugNodeMargin(margin float64) {
-	if !logging.GetDebugMode() {
+	logger, ok := debugLogger()
+	if !ok {
 		return
 	}
 
-	logger := logging.Logger()
+	var b strings.Builder
+	fmt.Fprintf(&b, "Node's margin: %.2f", margin)
 
-	logger.Debugf("Node's margin: %.2f", margin)
+	logger.Debugw("Node's margin",
+		"message", b.String(),
+		"margin", margin,
+	)
 }
 
 func debugWeightsNMS(weights map[string]map[string]uint) {
-	if !logging.GetDebugMode() {
+	logger, ok := debugLogger()
+	if !ok {
 		return
 	}
 
+	functions := make([]string, 0, len(weights))
+	for fun := range weights {
+		functions = append(functions, fun)
+	}
+	sort.Strings(functions)
+
 	var buf strings.Builder
 	buf.WriteString("Calculated weights:\n")
-	for fun, nodesWeights := range weights {
+	for _, fun := range functions {
 		fmt.Fprintf(&buf, "  - function %s:\n", fun)
-		for node, weight := range nodesWeights {
-			fmt.Fprintf(&buf, "    - Node %s: %d\n", node, weight)
+
+		nodes := make([]string, 0, len(weights[fun]))
+		for node := range weights[fun] {
+			nodes = append(nodes, node)
+		}
+		sort.Strings(nodes)
+
+		for _, node := range nodes {
+			fmt.Fprintf(&buf, "    - Node %s: %d\n", node, weights[fun][node])
 		}
 	}
-	logging.Logger().Debug(buf.String())
+
+	logger.Debugw("Calculated weights",
+		"message", buf.String(),
+		"functions", len(weights),
+	)
 }
 
 // debugFuncsDiff prints the difference between the current and previous
@@ -360,14 +294,15 @@ func debugWeightsNMS(weights map[string]map[string]uint) {
 //
 //	Detected deployed functions: (total 4) shasum +figlet mlimage -curl !foo=1->nil !bar=nil->3 !baz=5->8
 func debugFuncsDiff(current, previous map[string]*uint) {
-	if !logging.GetDebugMode() {
+	logger, ok := debugLogger()
+	if !ok {
 		return
 	}
 
 	var b strings.Builder
 	fmt.Fprintf(&b, "Detected deployed functions: (total %d) ", len(current))
 
-	// Collect all unique function names from both maps
+	// Collect all unique function names from both maps.
 	keysSet := make(map[string]struct{})
 	for k := range current {
 		keysSet[k] = struct{}{}
@@ -376,7 +311,7 @@ func debugFuncsDiff(current, previous map[string]*uint) {
 		keysSet[k] = struct{}{}
 	}
 
-	// Collect and sort all keys
+	// Collect and sort all keys.
 	keys := make([]string, 0, len(keysSet))
 	for k := range keysSet {
 		keys = append(keys, k)
@@ -389,11 +324,11 @@ func debugFuncsDiff(current, previous map[string]*uint) {
 		pv, inPrevious := previous[k]
 
 		switch {
-
 		case inCurrent && !inPrevious:
 			// New function.
 			b.WriteString("+")
 			b.WriteString(k)
+
 		case !inCurrent && inPrevious:
 			// Removed function.
 			b.WriteString("-")
@@ -407,6 +342,7 @@ func debugFuncsDiff(current, previous map[string]*uint) {
 				b.WriteString("!")
 				b.WriteString(k)
 				b.WriteString("=")
+
 				var prevStr, currStr string
 				if pv == nil {
 					prevStr = "nil"
@@ -418,6 +354,7 @@ func debugFuncsDiff(current, previous map[string]*uint) {
 				} else {
 					currStr = fmt.Sprintf("%d", *cv)
 				}
+
 				b.WriteString(prevStr)
 				b.WriteString("->")
 				b.WriteString(currStr)
@@ -427,17 +364,23 @@ func debugFuncsDiff(current, previous map[string]*uint) {
 				b.WriteString(k)
 			}
 		}
+
 		if idx < len(keys)-1 {
 			b.WriteString(" ")
 		}
 	}
 
-	logging.Logger().Debug(b.String())
+	logger.Debugw("Detected deployed functions",
+		"message", b.String(),
+		"current_count", len(current),
+		"previous_count", len(previous),
+	)
 }
 
 // debugFuncs is similar to debugFuncsDiff but without the previous values.
 func debugFuncs(current map[string]*uint) {
-	if !logging.GetDebugMode() {
+	logger, ok := debugLogger()
+	if !ok {
 		return
 	}
 
@@ -463,7 +406,10 @@ func debugFuncs(current map[string]*uint) {
 		}
 	}
 
-	logging.Logger().Debug(b.String())
+	logger.Debugw("Detected deployed functions",
+		"message", b.String(),
+		"count", len(current),
+	)
 }
 
 // debugRLModelToFileInit initializes the JSON log file for the given file path.
@@ -487,7 +433,7 @@ func debugRLModelToFileInit(filename string) error {
 // Warning: the function assumes obs and action are valid non-empty JSON objects
 // encoded as string.
 //
-// Warning: make sure to all debugRLModelToFileInit once before using this
+// Warning: make sure to call debugRLModelToFileInit once before using this
 // function!
 func debugRLModelToFile(filename, obs, action string) error {
 	f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0644)
