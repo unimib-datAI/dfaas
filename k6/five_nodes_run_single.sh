@@ -25,18 +25,12 @@ SSH_OPTS=(
 DEFAULT_TRACE_PATH="../data/input_requests/mlimage/rlstrategy/scaled_pwr_40_only_0_other_constant_4.json"
 DEFAULT_OUTPUT_BASE_DIR="../data/20260525_one_rl_agent"
 DEFAULT_STAGE_BUILDER="OneMinuteWindow"
-DEFAULT_COLLECT_RL_MODEL_LOG="true"
 
 # Allow to overwrite these options via environment variables. See
 # single_trace.js for more information about the env vars.
 TRACE_PATH="${TRACE_PATH:-$DEFAULT_TRACE_PATH}"
 OUTPUT_BASE_DIR="${OUTPUT_BASE_DIR:-$DEFAULT_OUTPUT_BASE_DIR}"
 STAGE_BUILDER="${STAGE_BUILDER:-$DEFAULT_STAGE_BUILDER}"
-
-# If true, the script will collect the logs for the RL model from all nodes, if
-# available. Set to false if any node uses the RL strategy. By default, this is
-# set to true.
-COLLECT_RL_MODEL_LOG="${COLLECT_RL_MODEL_LOG:-$DEFAULT_COLLECT_RL_MODEL_LOG}"
 
 run_job() {
   local NODE_NAME="$1"
@@ -66,6 +60,7 @@ run_job() {
     --env TRACE_PATH="$TRACE_PATH" \
     --env FUNCTION=0 \
     --env NODE="$NODE_NAME" \
+    --env LIMIT=2 \
     --env STAGE_BUILDER="$STAGE_BUILDER" &
 
   echo "[LAUNCHED] $NODE_NAME (pid=$!)"
@@ -110,37 +105,35 @@ done
 
 echo "[INFO] All jobs finished. Failures: $failures"
 
-collect_rl_model() {
+# Wait before collecting data.
+sleep 10s
+
+collect_agent_logs() {
   local NODE_NAME="$1"
   local IP="$2"
 
-  local readonly RL_MODEL_PATH_SRC="dfaas-rl/dfaasagent/rl_model.log"
-  local readonly RL_MODEL_PATH_DST="$OUTPUT_BASE_DIR/other/$NODE_NAME/rl_model.log"
+  local readonly AGENT_LOG_PATH_SRC="dfaas-rl/dfaasagent/agent.log"
+  local readonly AGENT_LOG_PATH_DST="$OUTPUT_BASE_DIR/other/$NODE_NAME/agent.log"
 
-  # $RL_MODEL_PATH_SRC may not exist because that DFaaS agent is not executing
-  # the RL Agent strategy.
-  if ssh "${SSH_OPTS[@]}" user@"$IP" "test -f '$RL_MODEL_PATH_SRC'"; then
+  # $AGENT_LOG_PATH_SRC may not exist, so we must check that case.
+  if ssh "${SSH_OPTS[@]}" user@"$IP" "test -f '$AGENT_LOG_PATH_SRC'"; then
     mkdir -p "$OUTPUT_BASE_DIR/other/$NODE_NAME"
 
-    if scp "${SSH_OPTS[@]}" user@"$IP:$RL_MODEL_PATH_SRC" "$RL_MODEL_PATH_DST"; then
-      echo "[INFO] Collected rl_model.log from $NODE_NAME (IP=$IP)"
+    if scp "${SSH_OPTS[@]}" user@"$IP:$AGENT_LOG_PATH_SRC" "$AGENT_LOG_PATH_DST"; then
+      echo "[INFO] Collected DFaaS agent logs from $NODE_NAME (IP=$IP)"
     else
-      echo "[WARN] Failed to copy rl_model.log from $NODE_NAME (IP=$IP)"
+      echo "[WARN] Failed to copy DFaaS agent logs from $NODE_NAME (IP=$IP)"
     fi
   else
-    echo "[INFO] No rl_model.log found on $NODE_NAME (IP=$IP)"
+    echo "[INFO] No DFaaS agent logs found on $NODE_NAME (IP=$IP)"
   fi
 }
 
-if [[ "$COLLECT_RL_MODEL_LOG" == "true" ]]; then
-  echo "[INFO] Collecting rl_model.log file from DFaaS nodes..."
-  for job in "${JOBS[@]}"; do
-    collect_rl_model $job
-  done
-  echo "[INFO] All (if available) rl_model.log files collected."
-else
-  echo "[INFO] rl_model.log collection skipped as requested."
-fi
+echo "[INFO] Collecting DFaaS agent logs from DFaaS nodes..."
+for job in "${JOBS[@]}"; do
+  collect_agent_logs $job
+done
+echo "[INFO] All available DFaaS agent logs collected."
 
 collect_prometheus_snapshot() {
   local readonly NODE_NAME="$1"
