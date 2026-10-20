@@ -70,6 +70,9 @@ func (strategy *RecalcStrategy) RunStrategy() error {
 		return fmt.Errorf("failed to initialize proxy: %w", err)
 	}
 
+	// Need to wait to avoid reading sporious proxy variables.
+	time.Sleep(time.Second)
+
 	for {
 		// Start periodic broadcasts while no experiment is running.
 		stop := make(chan struct{})
@@ -88,6 +91,8 @@ func (strategy *RecalcStrategy) RunStrategy() error {
 		if err := strategy.reloadProxy(); err != nil {
 			return fmt.Errorf("failed to reload proxy at experiment start: %w", err)
 		}
+		// Same as the other sleep.
+		time.Sleep(time.Second)
 
 		if err := strategy.RunExperiment(); err != nil {
 			return fmt.Errorf("experiment failed: %w", err)
