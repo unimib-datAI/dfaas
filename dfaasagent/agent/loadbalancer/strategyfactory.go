@@ -107,6 +107,10 @@ func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, er
 	}
 	strategy.hacfgupdater = hacfgupdater
 
+	// Set up the HAProxy Runtime API client. Used to retrieve the stick tables.
+	runtimeapi_addr := fmt.Sprintf("%s:%d", _config.RuntimeAPIHost, _config.RuntimeAPIPort)
+	strategy.runtimeapi = proxy.NewRuntimeAPI(runtimeapi_addr)
+
 	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
 
 	strategy.forecasterClient = forecaster.Client{

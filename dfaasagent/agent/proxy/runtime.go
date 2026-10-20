@@ -239,3 +239,18 @@ func (r *RuntimeAPI) Variable(variable string) (string, bool, error) {
 
 	return resp[start:end], true, nil
 }
+
+// StickTable returns the raw output of the HAProxy Runtime API "show table"
+// command.
+func (r *RuntimeAPI) StickTable(name string) (string, error) {
+	resp, err := r.exec(fmt.Sprintf("show table %s", strings.TrimSpace(name)))
+	if err != nil {
+		return "", fmt.Errorf("show stick table %q: %w", name, err)
+	}
+
+	if strings.Contains(resp, "No such table.") {
+		return "", fmt.Errorf("stick table %q does not exist", name)
+	}
+
+	return resp, nil
+}

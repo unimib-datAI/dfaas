@@ -28,7 +28,6 @@ import (
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/discovery/kademlia"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/discovery/mdns"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/hasock"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/promq"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/loadbalancer"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
@@ -196,11 +195,6 @@ func runAgent(config config.Configuration) error {
 
 	////////// INFOGATH INITIALIZATION //////////
 
-	hasock.Initialize(config.DataPlaneAPIHost,
-		config.DataPlaneAPIPort,
-		config.DataPlaneAPIUser,
-		config.DataPlaneAPIPassword)
-	logger.Debug("infogath/hasock package initialization completed.")
 	promq.Initialize(config.PrometheusHost, config.PrometheusPort)
 	logger.Debug("infogath/promq package initialization completed.")
 

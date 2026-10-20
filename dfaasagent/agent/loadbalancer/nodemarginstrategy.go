@@ -9,6 +9,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"math"
+	"strconv"
 	"strings"
 	"time"
 
@@ -19,11 +20,11 @@ import (
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/forecaster"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/hasock"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/offuncs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/promq"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/proxy"
 )
 
 // In this file is implemented the Node Margin strategy
@@ -43,6 +44,8 @@ type NodeMarginStrategy struct {
 	offuncsClient    *offuncs.Client
 	forecasterClient forecaster.Client
 	nodeInfo         nodeInfo
+	runtimeapi       *proxy.RuntimeAPI
+
 	// Functions groups
 	funcsGroups Groups
 	// Map with a metric name as key
@@ -276,20 +279,19 @@ func (strategy *NodeMarginStrategy) updateCommonNeighbours() {
 	})
 }
 
-// Obtain functions invocation rates of the last RecalcPeriod from HAProxy
 func (strategy *NodeMarginStrategy) getFunctionsRates() (map[string]float64, error) {
-	var functionRates = make(map[string]float64)
+	functionRates := make(map[string]float64)
 
 	for _, funcName := range strategy.nodeInfo.funcs {
 		stName := fmt.Sprintf("st_users_func_%s", funcName)
-		stContent, err := hasock.ReadStickTable(stName)
 
+		stContent, err := strategy.readStickTable(stName)
 		if err != nil {
 			return nil, err
-		} else {
-			for _, stEntry := range stContent {
-				functionRates[funcName] = float64(stEntry.HTTPReqRate)
-			}
+		}
+
+		for _, stEntry := range stContent {
+			functionRates[funcName] = float64(stEntry.HTTPReqRate)
 		}
 	}
 
@@ -838,4 +840,92 @@ func (strategy *NodeMarginStrategy) createHACfgObject(
 	// Also doc: http://cbonte.github.io/haproxy-dconv/configuration-1.4.html#5-weight
 
 	return hacfg
+}
+
+// readStickTable reads a stick table through the HAProxy Runtime API.
+// The table must store http_req_cnt and http_req_rate(1s).
+func (strategy *NodeMarginStrategy) readStickTable(
+	stName string,
+) (map[string]*STEntry, error) {
+	if strategy.runtimeapi == nil {
+		return nil, fmt.Errorf("HAProxy Runtime API is not initialized")
+	}
+
+	resp, err := strategy.runtimeapi.StickTable(stName)
+	if err != nil {
+		return nil, fmt.Errorf("reading stick table %q: %w", stName, err)
+	}
+
+	result := make(map[string]*STEntry)
+
+	for _, line := range strings.Split(resp, "\n") {
+		line = strings.TrimSpace(line)
+
+		if line == "" || strings.HasPrefix(line, "#") {
+			continue
+		}
+
+		// Example:
+		// 0x...: key=192.168.1.10 use=0 exp=... http_req_cnt=5 http_req_rate(1000)=2
+		colon := strings.Index(line, ":")
+		if colon < 0 {
+			continue
+		}
+
+		fields := strings.Fields(line[colon+1:])
+		values := make(map[string]string, len(fields))
+
+		for _, field := range fields {
+			key, value, found := strings.Cut(field, "=")
+			if found {
+				values[key] = value
+			}
+		}
+
+		key, found := values["key"]
+		if !found {
+			continue
+		}
+
+		rawCnt, found := values["http_req_cnt"]
+		if !found {
+			return nil, fmt.Errorf(
+				"missing http_req_cnt for stick table key %q", key,
+			)
+		}
+
+		cnt, err := strconv.ParseUint(rawCnt, 10, strconv.IntSize)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"parsing http_req_cnt for key %q: %w", key, err,
+			)
+		}
+
+		rawRate, found := values["http_req_rate(1000)"]
+		if !found {
+			return nil, fmt.Errorf(
+				"missing http_req_rate(1000) for stick table key %q", key,
+			)
+		}
+
+		rate, err := strconv.ParseUint(rawRate, 10, strconv.IntSize)
+		if err != nil {
+			return nil, fmt.Errorf(
+				"parsing http_req_rate(1000) for key %q: %w", key, err,
+			)
+		}
+
+		result[key] = &STEntry{
+			HTTPReqCnt:  uint(cnt),
+			HTTPReqRate: uint(rate),
+		}
+	}
+
+	return result, nil
+}
+
+// STEntry represents a row of a stick table.
+type STEntry struct {
+	HTTPReqCnt  uint
+	HTTPReqRate uint
 }
