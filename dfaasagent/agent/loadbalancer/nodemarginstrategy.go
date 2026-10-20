@@ -41,7 +41,7 @@ const powerUsageNodeMetric = "power_usage_node"
 type NodeMarginStrategy struct {
 	hacfgupdater     *hacfgupd.Updater
 	nodestbl         *nodestbl.TableNMS
-	funcsClient    *funcs.Client
+	funcsClient      *funcs.Client
 	forecasterClient forecaster.Client
 	nodeInfo         nodeInfo
 	runtimeapi       *proxy.RuntimeAPI

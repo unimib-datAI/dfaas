@@ -85,8 +85,6 @@ type iterationTimeSpan struct {
 	End       time.Time
 }
 
-const rlModelLogPath = "rl_model.log"
-
 // RunStrategy handles the execution of the strategy. It is ran in a goroutine.
 func (strategy *RLAgentStrategy) RunStrategy() error {
 	logger := logging.Logger()
@@ -150,10 +148,6 @@ func (strategy *RLAgentStrategy) RunStrategy() error {
 		}
 
 		if newExperiment {
-			if err := debugRLModelToFileInit(rlModelLogPath); err != nil {
-				return fmt.Errorf("failed to init log file: %w", err)
-			}
-
 			// Do not reuse timestamps from the previous experiment.
 			strategy.prevIterationStart = time.Time{}
 			strategy.prevIterationEnd = time.Time{}
@@ -558,8 +552,8 @@ func (strategy *RLAgentStrategy) buildObservation(currentIteration int) ([]byte,
 func (strategy *RLAgentStrategy) queryRLModel(observation []byte) (map[string]map[string]float64, error) {
 	url := fmt.Sprintf("http://%s:%d/action", strategy.rlModelHost, strategy.rlModelPort)
 
-	logger := logging.Logger()
-	logger.Debugf("Observation JSON to send to RL model: %s", string(observation))
+	logger := logging.Logger().With("phase", "queryRLModel")
+	logger.Debugw("Observation JSON to send to RL model", "observation", string(observation))
 
 	resp, err := strategy.httpClient.Post(url, "application/json", bytes.NewReader(observation))
 	if err != nil {
@@ -577,9 +571,7 @@ func (strategy *RLAgentStrategy) queryRLModel(observation []byte) (map[string]ma
 		return nil, fmt.Errorf("reading HTTP response: %w", err)
 	}
 
-	logger.Debugf("Action JSON from response: %s", string(body))
-
-	debugRLModelToFile(rlModelLogPath, string(observation), string(body))
+	logger.Debugw("Action JSON from response", "action", string(body))
 
 	var action map[string]map[string]float64
 	err = json.Unmarshal(body, &action)

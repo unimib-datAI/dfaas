@@ -7,7 +7,6 @@ package loadbalancer
 
 import (
 	"fmt"
-	"os"
 	"sort"
 	"strings"
 	"time"
@@ -410,48 +409,4 @@ func debugFuncs(current map[string]*uint) {
 		"message", b.String(),
 		"count", len(current),
 	)
-}
-
-// debugRLModelToFileInit initializes the JSON log file for the given file path.
-//
-// This function should be called before using debugRLModelToFile.
-func debugRLModelToFileInit(filename string) error {
-	f, err := os.Create(filename)
-	if err != nil {
-		return fmt.Errorf("failed init JSON log file: %w", err)
-	}
-
-	// We only wanted to truncate and create the file.
-	return f.Close()
-}
-
-// debugRLModelToFile appends a single JSON log line to the given file.
-//
-// Each line is written in newline-delimited JSON format as:
-// {"observation": ..., "action": ..., "timestamp": "..."}
-//
-// Warning: the function assumes obs and action are valid non-empty JSON objects
-// encoded as string.
-//
-// Warning: make sure to call debugRLModelToFileInit once before using this
-// function!
-func debugRLModelToFile(filename, obs, action string) error {
-	f, err := os.OpenFile(filename, os.O_APPEND|os.O_WRONLY, 0644)
-	if err != nil {
-		return fmt.Errorf("failed to open log file: %w", err)
-	}
-	defer f.Close()
-
-	timestamp := time.Now().UTC().Format(time.RFC3339)
-
-	// Must use the backtick to use double-quotes inside the string.
-	line := fmt.Sprintf(`{"observation": %s, "action": %s, "timestamp": %q}`+"\n",
-		obs, action, timestamp,
-	)
-
-	if _, err := f.WriteString(line); err != nil {
-		return fmt.Errorf("failed to write log line: %w", err)
-	}
-
-	return nil
 }

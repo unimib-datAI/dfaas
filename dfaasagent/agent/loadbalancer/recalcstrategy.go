@@ -40,10 +40,10 @@ import (
 // See also the corresponding createStrategy method to understand how the struct
 // fields are initialized.
 type RecalcStrategy struct {
-	hacfgupdater  *hacfgupd.Updater
-	funcsClient *funcs.Client
-	runtimeapi    *proxy.RuntimeAPI
-	promq         *promq.Client
+	hacfgupdater *hacfgupd.Updater
+	funcsClient  *funcs.Client
+	runtimeapi   *proxy.RuntimeAPI
+	promq        *promq.Client
 
 	// limitsTableLock is a read/write mutex to protect LimitsTable.
 	limitsTableLock sync.RWMutex

@@ -26,8 +26,8 @@ import (
 // filters them using the configured latency threshold, and distributes traffic
 // equally between the local node and all eligible neighbours.
 type LatencyThresholdStrategy struct {
-	hacfgupdater  *hacfgupd.Updater
-	funcsClient *funcs.Client
+	hacfgupdater *hacfgupd.Updater
+	funcsClient  *funcs.Client
 
 	thresholdMs float64
 }
