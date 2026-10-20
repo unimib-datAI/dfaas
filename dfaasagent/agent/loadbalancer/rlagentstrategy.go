@@ -32,11 +32,11 @@ import (
 )
 
 type RLAgentStrategy struct {
-	hacfgupdater  *hacfgupd.Updater
-	runtimeapi    *proxy.RuntimeAPI
-	funcsClient *funcs.Client
-	promq         *promq.Client
-	httpClient    *http.Client
+	hacfgupdater *hacfgupd.Updater
+	runtimeapi   *proxy.RuntimeAPI
+	funcsClient  *funcs.Client
+	promq        *promq.Client
+	httpClient   *http.Client
 
 	// Connection information for the RL model Web service. Used to get the
 	// actions (balacing weights).
@@ -91,84 +91,90 @@ const rlModelLogPath = "rl_model.log"
 func (strategy *RLAgentStrategy) RunStrategy() error {
 	logger := logging.Logger()
 
-	// FIXME: We need to wait for all other neighbors to connect before doing
-	// the setup, because once the HAProxy configuration is pushed we never
-	// reconfigure HAProxy, only update the weights. Dynamic server
-	// adding/remove is not supported currently.
 	logger.Info("Waiting 1 minute before RL Agent strategy starts...")
-	time.Sleep(1 * time.Minute)
+	time.Sleep(time.Minute)
 
 	logger.Info("Starting RL Agent strategy...")
-
 	logger.Info("Initial set-up: updating proxy with the discovered functions")
+
 	if err := strategy.setup(); err != nil {
 		return fmt.Errorf("failed to do initial set-up: %w", err)
 	}
-	// We start with a nil iteration.
+
 	var previousIteration *int
 
-	// Wait some seconds to let HAProxy update all things.
 	time.Sleep(5 * time.Second)
 	logger.Info("Strategy started")
 
-	ticker := time.NewTicker(1 * time.Second)
+	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
 	for range ticker.C {
 		start := time.Now().UTC()
-		newExperiment := false
 
-		currentIterationRaw, found, err := strategy.runtimeapi.Variable("k6_iteration")
+		currentIterationRaw, err :=
+			strategy.waitForProxyVariable("k6_iteration")
 		if err != nil {
-			return fmt.Errorf("failed to get DFaaS-K6-Iteration from proxy: %w", err)
-		}
-		if !found {
-			// DFaaS-K6-Iteration not found, maybe the k6 experiment has not
-			// started yet.
-			continue
+			return fmt.Errorf("failed to wait for k6 iteration: %w", err)
 		}
 
 		currentIteration, err := strconv.Atoi(currentIterationRaw)
 		if err != nil {
-			return fmt.Errorf("failed to parse DFaaS-K6-Iteration header: %w", err)
+			return fmt.Errorf(
+				"invalid k6_iteration value %q: %w", currentIterationRaw, err)
 		}
 
+		newExperiment := previousIteration == nil
+
 		if previousIteration != nil {
-			// If previousIteration is not nil but is greater than the current
-			// iteration, means a new experiment has started from zero.
-			if currentIteration < *previousIteration {
-				newExperiment = true
-			} else if currentIteration == *previousIteration {
-				logger.Infof("Current iteration is equal to previous (%d). Nothing to do.", currentIteration)
+			switch {
+			case currentIteration == *previousIteration:
+				logger.Debugw("Iteration already processed", "iteration", currentIteration)
 				continue
-			} else {
-				logger.Infof("Moving from iteration number %d to %d", *previousIteration, currentIteration)
+
+			case currentIteration < *previousIteration:
+				newExperiment = true
+				logger.Infow("New k6 experiment detected: iteration counter reset",
+					"previous_iteration", *previousIteration,
+					"current_iteration", currentIteration,
+				)
+
+			default:
+				logger.Infow("New k6 iteration detected",
+					"previous_iteration", *previousIteration,
+					"current_iteration", currentIteration,
+				)
 			}
 		} else {
-			// If previousIteration is nil, we must be in a new experiment and
-			// currentIteration should be 0.
-			newExperiment = true
-			logger.Infof("Starting strategy with iteration number %d", currentIteration)
+			logger.Infow("Starting RL strategy", "iteration", currentIteration)
 		}
 
 		if newExperiment {
-			// Initialize the debug file when a new k6 experiment starts.
 			if err := debugRLModelToFileInit(rlModelLogPath); err != nil {
 				return fmt.Errorf("failed to init log file: %w", err)
 			}
+
+			// Do not reuse timestamps from the previous experiment.
+			strategy.prevIterationStart = time.Time{}
+			strategy.prevIterationEnd = time.Time{}
 		}
 
-		err = strategy.runIteration(currentIteration)
-		if err != nil {
+		if err := strategy.runIteration(currentIteration); err != nil {
 			return fmt.Errorf("running cycle with iteration number %d: %w", currentIteration, err)
 		}
 
-		previousIteration = &currentIteration
+		// Update only after the iteration has been processed successfully.
+		iteration := currentIteration
+		previousIteration = &iteration
 
 		duration := time.Since(start)
 		httpserver.StrategyIterationDuration.Set(duration.Seconds())
 		httpserver.StrategySuccessIterations.Inc()
-		logger.Infof("Running cycle completed. Duration: %s", duration.String())
+
+		logger.Infow("Running cycle completed",
+			"iteration", currentIteration,
+			"duration", duration.String(),
+		)
 	}
 
 	return nil
@@ -802,4 +808,19 @@ func (strategy *RLAgentStrategy) historicalTimeSpanFrom(iteration int) (time.Tim
 	}
 
 	return span.Start, span.End, nil
+}
+
+func (strategy *RLAgentStrategy) waitForProxyVariable(variable string) (string, error) {
+	for {
+		value, found, err := strategy.runtimeapi.Variable(variable)
+		if err != nil {
+			return "", fmt.Errorf("failed to read %s: %w", variable, err)
+		}
+
+		if found {
+			return value, nil
+		}
+
+		time.Sleep(time.Second)
+	}
 }
