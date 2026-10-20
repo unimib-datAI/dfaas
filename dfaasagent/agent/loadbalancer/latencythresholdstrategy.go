@@ -17,7 +17,7 @@ import (
 
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/offuncs"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/funcs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 )
 
@@ -27,7 +27,7 @@ import (
 // equally between the local node and all eligible neighbours.
 type LatencyThresholdStrategy struct {
 	hacfgupdater  *hacfgupd.Updater
-	offuncsClient *offuncs.Client
+	funcsClient *funcs.Client
 
 	thresholdMs float64
 }
@@ -109,7 +109,7 @@ func (strategy *LatencyThresholdStrategy) calculateWeights() (map[string]map[str
 	}
 
 	// Get the list of deployed OpenFaaS functions.
-	funcs, err := strategy.offuncsClient.GetFuncsNames()
+	funcs, err := strategy.funcsClient.GetFuncsNames()
 	if err != nil {
 		return nil, fmt.Errorf("failed to check deployed functions: %w", err)
 	}
@@ -160,7 +160,7 @@ func (strategy *LatencyThresholdStrategy) calculateWeights() (map[string]map[str
 // Update HAProxy configuration with new weights.
 func (strategy *LatencyThresholdStrategy) setProxyWeights(weights map[string]map[string]uint) error {
 	// Get the deployed functions and their timeout configuration.
-	funcs, err := strategy.offuncsClient.GetFuncsWithTimeout()
+	funcs, err := strategy.funcsClient.GetFuncsWithTimeout()
 	if err != nil {
 		return fmt.Errorf("get function metadata: %w", err)
 	}

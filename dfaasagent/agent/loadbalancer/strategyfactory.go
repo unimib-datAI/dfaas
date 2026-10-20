@@ -12,7 +12,7 @@ import (
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/constants"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/forecaster"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/offuncs"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/funcs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/promq"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/proxy"
@@ -67,7 +67,7 @@ func (strategyFactory *recalcStrategyFactory) createStrategy() (Strategy, error)
 		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
 	}
 
-	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+	strategy.funcsClient = funcs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
 
 	// Set up the HAProxy Runtime API client. Used to set the proxy weights
 	// without reloading HAProxy (this cannot be done via Data Plane API).
@@ -111,7 +111,7 @@ func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, er
 	runtimeapi_addr := fmt.Sprintf("%s:%d", _config.RuntimeAPIHost, _config.RuntimeAPIPort)
 	strategy.runtimeapi = proxy.NewRuntimeAPI(runtimeapi_addr)
 
-	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+	strategy.funcsClient = funcs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
 
 	strategy.forecasterClient = forecaster.Client{
 		Hostname: constants.ForecasterHost,
@@ -149,7 +149,7 @@ func (strategyFactory *staticStrategyFactory) createStrategy() (Strategy, error)
 	}
 	strategy.hacfgupdater = hacfgupdater
 
-	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+	strategy.funcsClient = funcs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
 
 	strategy.nodeInfo = nodeInfoStatic{}
 	strategy.targetNodes = make(map[string][]string)
@@ -181,7 +181,7 @@ func (strategyFactory *allLocalStrategyFactory) createStrategy() (Strategy, erro
 
 	// Set up the wrapper to OpenFaaS Gateway API used to get the list of
 	// deployed OpenFaaS functions.
-	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+	strategy.funcsClient = funcs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
 
 	return strategy, nil
 }
@@ -241,7 +241,7 @@ func (strategyFactory *rlAgentStrategyFactory) createStrategy() (Strategy, error
 
 	// Set up the wrapper to OpenFaaS Gateway API used to get the list of
 	// deployed OpenFaaS functions.
-	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+	strategy.funcsClient = funcs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
 
 	return strategy, nil
 }
@@ -278,7 +278,7 @@ func (strategyFactory *randomStrategyFactory) createStrategy() (Strategy, error)
 
 	// Set up the wrapper to OpenFaaS Gateway API used to get the list of
 	// deployed OpenFaaS functions.
-	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+	strategy.funcsClient = funcs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
 
 	return strategy, nil
 }
@@ -312,7 +312,7 @@ func (strategyFactory *latencyThresholdStrategyFactory) createStrategy() (Strate
 
 	// Set up the wrapper to OpenFaaS Gateway API used to get the list of
 	// deployed OpenFaaS functions.
-	strategy.offuncsClient = offuncs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+	strategy.funcsClient = funcs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
 
 	return strategy, nil
 }

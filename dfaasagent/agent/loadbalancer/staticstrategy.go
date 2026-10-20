@@ -17,7 +17,7 @@ import (
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/constants"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/offuncs"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/funcs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
 )
@@ -29,7 +29,7 @@ import (
 type StaticStrategy struct {
 	hacfgupdater  *hacfgupd.Updater
 	nodestbl      *nodestbl.TableNMS
-	offuncsClient *offuncs.Client
+	funcsClient *funcs.Client
 
 	nodeInfo nodeInfoStatic
 	// Map of target nodes, with node ID of a common neighbour as key,
@@ -159,7 +159,7 @@ func (strategy *StaticStrategy) publishNodeInfo() error {
 	var err error
 
 	// Obtain our function names list.
-	strategy.nodeInfo.funcs, err = strategy.offuncsClient.GetFuncsNames()
+	strategy.nodeInfo.funcs, err = strategy.funcsClient.GetFuncsNames()
 	if err != nil {
 		return fmt.Errorf("getting functions info from OpenFaaS: %w", err)
 	}

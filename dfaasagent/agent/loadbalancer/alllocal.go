@@ -13,7 +13,7 @@ import (
 
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/offuncs"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/funcs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 )
 
@@ -24,7 +24,7 @@ type AllLocalStrategy struct {
 	hacfgupdater *hacfgupd.Updater
 
 	// OpenFaaS Gateway client to retrieve deployed functions.
-	offuncsClient *offuncs.Client
+	funcsClient *funcs.Client
 
 	// AllLocalStrategy is an iteration-based strategy, where a method is
 	// executed every N seconds to check the current deployment state. If the
@@ -69,7 +69,7 @@ func (strategy *AllLocalStrategy) runIteration() error {
 	start := time.Now().UTC()
 
 	// GetFuncsWithTimeout always returns a new map.
-	funcs, err := strategy.offuncsClient.GetFuncsWithTimeout()
+	funcs, err := strategy.funcsClient.GetFuncsWithTimeout()
 	if err != nil {
 		return fmt.Errorf("get function metadata: %w", err)
 	}

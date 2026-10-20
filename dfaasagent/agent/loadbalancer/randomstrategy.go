@@ -15,7 +15,7 @@ import (
 
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/offuncs"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/funcs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/proxy"
 )
@@ -30,7 +30,7 @@ type RandomStrategy struct {
 	runtimeapi *proxy.RuntimeAPI
 
 	// OpenFaaS Gateway client used to get the list of deployed functions.
-	offuncsClient *offuncs.Client
+	funcsClient *funcs.Client
 
 	// Starting seed for the pseudo-random number generator. If set to -1, a
 	// random seed is used.
@@ -104,7 +104,7 @@ func (strategy *RandomStrategy) setup() error {
 	logger := logging.Logger()
 
 	// Get the list of deployed OpenFaaS functions.
-	funcs, err := strategy.offuncsClient.GetFuncsNames()
+	funcs, err := strategy.funcsClient.GetFuncsNames()
 	if err != nil {
 		return fmt.Errorf("failed to check deployed functions: %w", err)
 	}
@@ -128,7 +128,7 @@ func (strategy *RandomStrategy) setup() error {
 // are performed by changing the routing weights.
 func (strategy *RandomStrategy) initProxyConfig() error {
 	// Get the deployed functions and their timeout configuration.
-	funcs, err := strategy.offuncsClient.GetFuncsWithTimeout()
+	funcs, err := strategy.funcsClient.GetFuncsWithTimeout()
 	if err != nil {
 		return fmt.Errorf("get function metadata: %w", err)
 	}
@@ -192,7 +192,7 @@ func (strategy *RandomStrategy) initProxyConfig() error {
 func (strategy *RandomStrategy) recalculate() error {
 	logger := logging.Logger()
 
-	functions, err := strategy.offuncsClient.GetFuncsNames()
+	functions, err := strategy.funcsClient.GetFuncsNames()
 	if err != nil {
 		return fmt.Errorf("getting function names: %w", err)
 	}

@@ -25,7 +25,7 @@ import (
 
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/offuncs"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/funcs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/promq"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/proxy"
@@ -34,7 +34,7 @@ import (
 type RLAgentStrategy struct {
 	hacfgupdater  *hacfgupd.Updater
 	runtimeapi    *proxy.RuntimeAPI
-	offuncsClient *offuncs.Client
+	funcsClient *funcs.Client
 	promq         *promq.Client
 	httpClient    *http.Client
 
@@ -184,7 +184,7 @@ func (strategy *RLAgentStrategy) setup() error {
 	logger := logging.Logger()
 
 	// Strategy currently supports only one deployed function.
-	funcs, err := strategy.offuncsClient.GetFuncsNames()
+	funcs, err := strategy.funcsClient.GetFuncsNames()
 	if err != nil {
 		return fmt.Errorf("failed to check deployed functions: %w", err)
 	}
@@ -244,7 +244,7 @@ func (strategy *RLAgentStrategy) runIteration(currentIteration int) error {
 // where updates are performed only by changing the routing weights.
 func (strategy *RLAgentStrategy) initProxyConfig() error {
 	// Build the funcs map.
-	funcs, err := strategy.offuncsClient.GetFuncsWithTimeout()
+	funcs, err := strategy.funcsClient.GetFuncsWithTimeout()
 	if err != nil {
 		return fmt.Errorf("get function metadata: %w", err)
 	}
