@@ -14,7 +14,7 @@ while [[ $# -gt 0 ]]; do
     --nodes)
       IFS=',' read -ra NODES <<< "$2"
       for node in "${NODES[@]}"; do
-        ssh "${SSH_OPTS[@]}" "cloud-ateneo-dfaas-node-$node" "tmux send-keys -t agent C-c"
+        ssh "${SSH_OPTS[@]}" "$node" "tmux send-keys -t agent C-c"
       done
       shift 2
       ;;
