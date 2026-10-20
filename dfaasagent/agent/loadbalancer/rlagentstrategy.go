@@ -24,7 +24,6 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/funcs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/promq"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
@@ -87,88 +86,107 @@ type iterationTimeSpan struct {
 
 // RunStrategy handles the execution of the strategy. It is ran in a goroutine.
 func (strategy *RLAgentStrategy) RunStrategy() error {
-	logger := logging.Logger()
+	logger := logging.Logger().With("component", "run_strategy")
 
-	logger.Info("Waiting 1 minute before RL Agent strategy starts...")
-	time.Sleep(time.Minute)
-
-	logger.Info("Starting RL Agent strategy...")
-	logger.Info("Initial set-up: updating proxy with the discovered functions")
-
-	if err := strategy.setup(); err != nil {
-		return fmt.Errorf("failed to do initial set-up: %w", err)
+	if err := strategy.reloadProxy(); err != nil {
+		return fmt.Errorf("failed to initialize proxy: %w", err)
 	}
 
-	var previousIteration *int
+	// Need to wait to avoid reading sporious proxy variables.
+	time.Sleep(time.Second)
 
-	time.Sleep(5 * time.Second)
-	logger.Info("Strategy started")
+	for {
+		// Wait until k6 starts an experiment.
+		if _, err := strategy.waitForProxyVariable("k6_exp_started"); err != nil {
+			return fmt.Errorf("failed waiting for experiment start: %w", err)
+		}
+		logger.Info("k6 experiment started")
+
+		names, err := strategy.funcsClient.GetFuncsNames()
+		if err != nil {
+			return fmt.Errorf("failed to get function names: %w", err)
+		}
+		if len(names) == 0 || len(names) > 1 {
+			return fmt.Errorf("expected only 1 deployed functions, got %v", names)
+		}
+		strategy.targetFunction = names[0]
+
+		if err := strategy.reloadProxy(); err != nil {
+			return fmt.Errorf("failed to reload proxy at experiment start: %w", err)
+		}
+		// Same as the other sleep.
+		time.Sleep(time.Second)
+
+		if err := strategy.RunExperiment(); err != nil {
+			return fmt.Errorf("experiment failed: %w", err)
+		}
+
+		logger.Info("k6 experiment completed")
+	}
+}
+
+// RunExperiment synchronizes limit and weight updates with k6 iterations.
+// It returns when the current experiment ends.
+func (strategy *RLAgentStrategy) RunExperiment() error {
+	logger := logging.Logger().With("strategy_component", "RunExperiment")
+
+	var previousIteration int
+	initialized := false
 
 	ticker := time.NewTicker(time.Second)
 	defer ticker.Stop()
 
 	for range ticker.C {
-		start := time.Now().UTC()
-
-		currentIterationRaw, err :=
-			strategy.waitForProxyVariable("k6_iteration")
-		if err != nil {
-			return fmt.Errorf("failed to wait for k6 iteration: %w", err)
-		}
-
-		currentIteration, err := strconv.Atoi(currentIterationRaw)
+		// Check whether the experiment has ended.
+		_, ended, err := strategy.runtimeapi.Variable("k6_exp_ended")
 		if err != nil {
 			return fmt.Errorf(
-				"invalid k6_iteration value %q: %w", currentIterationRaw, err)
+				"failed to check experiment status: %w", err,
+			)
+		}
+		if ended {
+			logger.Info("k6 experiment ended")
+			return nil
 		}
 
-		newExperiment := previousIteration == nil
-
-		if previousIteration != nil {
-			switch {
-			case currentIteration == *previousIteration:
-				logger.Debugw("Iteration already processed", "iteration", currentIteration)
-				continue
-
-			case currentIteration < *previousIteration:
-				newExperiment = true
-				logger.Infow("New k6 experiment detected: iteration counter reset",
-					"previous_iteration", *previousIteration,
-					"current_iteration", currentIteration,
-				)
-
-			default:
-				logger.Infow("New k6 iteration detected",
-					"previous_iteration", *previousIteration,
-					"current_iteration", currentIteration,
-				)
-			}
-		} else {
-			logger.Infow("Starting RL strategy", "iteration", currentIteration)
+		// Read the current iteration.
+		value, err := strategy.waitForProxyVariable("k6_iteration")
+		if err != nil {
+			return fmt.Errorf("failed waiting for k6 iteration: %w", err)
 		}
 
-		if newExperiment {
-			// Do not reuse timestamps from the previous experiment.
+		currentIteration, err := strconv.Atoi(value)
+		if err != nil {
+			return fmt.Errorf("invalid k6_iteration value %q: %w", value, err)
+		}
+
+		// Process each iteration only once.
+		if initialized && currentIteration == previousIteration {
+			continue
+		}
+
+		if !initialized {
+			logger.Infow("First k6 iteration detected", "iteration", currentIteration)
+			initialized = true
+
+			// Do not reuse timestamps from an older experiment.
 			strategy.prevIterationStart = time.Time{}
 			strategy.prevIterationEnd = time.Time{}
+		} else {
+			logger.Infow("New k6 iteration detected",
+				"previous_iteration", previousIteration,
+				"current_iteration", currentIteration,
+			)
 		}
 
 		if err := strategy.runIteration(currentIteration); err != nil {
-			return fmt.Errorf("running cycle with iteration number %d: %w", currentIteration, err)
+			return fmt.Errorf(
+				"running iteration %d: %w",
+				currentIteration, err,
+			)
 		}
 
-		// Update only after the iteration has been processed successfully.
-		iteration := currentIteration
-		previousIteration = &iteration
-
-		duration := time.Since(start)
-		httpserver.StrategyIterationDuration.Set(duration.Seconds())
-		httpserver.StrategySuccessIterations.Inc()
-
-		logger.Infow("Running cycle completed",
-			"iteration", currentIteration,
-			"duration", duration.String(),
-		)
+		previousIteration = currentIteration
 	}
 
 	return nil
@@ -176,31 +194,6 @@ func (strategy *RLAgentStrategy) RunStrategy() error {
 
 // OnReceived is executed every time a message from a peer is received.
 func (strategy *RLAgentStrategy) OnReceived(msg *pubsub.Message) error {
-	return nil
-}
-
-// setup runs the initial setup of the RL Agent strategy.
-func (strategy *RLAgentStrategy) setup() error {
-	logger := logging.Logger()
-
-	// Strategy currently supports only one deployed function.
-	funcs, err := strategy.funcsClient.GetFuncsNames()
-	if err != nil {
-		return fmt.Errorf("failed to check deployed functions: %w", err)
-	}
-	if len(funcs) == 0 || len(funcs) > 1 {
-		logger.Errorf("Strategy requires exactly one deployed function, found %d functions", len(funcs))
-		return fmt.Errorf("exactly one function required, found %d", len(funcs))
-	}
-	strategy.targetFunction = funcs[0]
-	logger.Infof("Target function of RL Agent strategy is %q", strategy.targetFunction)
-
-	// We first set the initial proxy configuration. runIteration will update
-	// the weights based on this configuration.
-	if err := strategy.initProxyConfig(); err != nil {
-		return fmt.Errorf("failed to configure proxy: %w", err)
-	}
-
 	return nil
 }
 
@@ -226,11 +219,11 @@ func (strategy *RLAgentStrategy) runIteration(currentIteration int) error {
 	return nil
 }
 
-// initProxyConfig initializes the proxy configuration via the Data Plane API.
+// reloadProxy reloads the proxy configuration.
 //
-// After this call, the proxy is managed exclusively through the Runtime API,
-// where updates are performed only by changing the routing weights.
-func (strategy *RLAgentStrategy) initProxyConfig() error {
+// Usually this is done at the start of the strategy or where a new function or
+// a new neighbor appears.
+func (strategy *RLAgentStrategy) reloadProxy() error {
 	// Build the funcs map.
 	funcs, err := strategy.funcsClient.GetFuncsWithTimeout()
 	if err != nil {
@@ -335,12 +328,12 @@ func (strategy *RLAgentStrategy) buildObservation(currentIteration int) ([]byte,
 	// input_rate key in observation.
 	inputRPS, err := strategy.historicalPromq.InputRPS(historicalStart, historicalEnd)
 	if err != nil {
-		return nil, fmt.Errorf("building observation for 'input_rate' key: %w", err)
+		return nil, fmt.Errorf("for 'input_rate' key: %w", err)
 	}
 	// Because we currently support only one function!
-	inputRPSSingle, err := extractSingleFunctionValue(inputRPS, strategy.targetFunction)
+	inputRPSSingle, err := extractSingleFunctionValue(inputRPS)
 	if err != nil {
-		return nil, fmt.Errorf("building observation for 'input_rate' key: %w", err)
+		return nil, fmt.Errorf("for 'input_rate' key: %w", err)
 	}
 	obs["input_rate"] = inputRPSSingle
 
@@ -350,11 +343,11 @@ func (strategy *RLAgentStrategy) buildObservation(currentIteration int) ([]byte,
 	} else {
 		inputRPS, err := strategy.promq.InputRPS(strategy.prevIterationStart, strategy.prevIterationEnd)
 		if err != nil {
-			return nil, fmt.Errorf("building observation for 'previous_input_rate' key: %w", err)
+			return nil, fmt.Errorf("for 'previous_input_rate' key: %w", err)
 		}
-		inputRPSSingle, err := extractSingleFunctionValue(inputRPS, strategy.targetFunction)
+		inputRPSSingle, err := extractSingleFunctionValue(inputRPS)
 		if err != nil {
-			return nil, fmt.Errorf("building observation for 'previous_input_rate' key: %w", err)
+			return nil, fmt.Errorf("for 'previous_input_rate' key: %w", err)
 		}
 		obs["previous_input_rate"] = inputRPSSingle
 	}
@@ -369,12 +362,12 @@ func (strategy *RLAgentStrategy) buildObservation(currentIteration int) ([]byte,
 		}
 		// FIXME: Remove this code (used for debugging).
 		if peers != 4 {
-			return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X' key: found %d peers, expected 4 peers", peers)
+			return nil, fmt.Errorf("for 'previous_fwd_to_node_X' key: found %d peers, expected 4 peers", peers)
 		}
 	} else {
 		prevForwardRPS, err := strategy.promq.ForwardRPS(strategy.prevIterationStart, strategy.prevIterationEnd)
 		if err != nil {
-			return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X' key: %w", err)
+			return nil, fmt.Errorf("for 'previous_fwd_to_node_X' key: %w", err)
 		}
 		strategy.applyPromQLNeighborMetric(obs, prevForwardRPS, "previous_fwd_to_%s")
 	}
@@ -389,12 +382,12 @@ func (strategy *RLAgentStrategy) buildObservation(currentIteration int) ([]byte,
 		}
 		// FIXME: Remove this code (used for debugging).
 		if peers != 4 {
-			return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X_rejected' key: found %d peers, expected 4 peers", peers)
+			return nil, fmt.Errorf("for 'previous_fwd_to_node_X_rejected' key: found %d peers, expected 4 peers", peers)
 		}
 	} else {
 		prevForwardRejectRPS, err := strategy.promq.ForwardRejectRPS(strategy.prevIterationStart, strategy.prevIterationEnd)
 		if err != nil {
-			return nil, fmt.Errorf("building observation for 'previous_fwd_to_node_X_rejected' key: %w", err)
+			return nil, fmt.Errorf("for 'previous_fwd_to_node_X_rejected' key: %w", err)
 		}
 		strategy.applyPromQLNeighborMetric(obs, prevForwardRejectRPS, "previous_fwd_to_%s_rejected")
 	}
@@ -402,11 +395,11 @@ func (strategy *RLAgentStrategy) buildObservation(currentIteration int) ([]byte,
 	// reject_rate key in observation.
 	rejectRate, err := strategy.historicalPromq.RejectRate(historicalStart, historicalEnd)
 	if err != nil {
-		return nil, fmt.Errorf("building observation for 'reject_rate' key: %w", err)
+		return nil, fmt.Errorf("for 'reject_rate' key: %w", err)
 	}
-	rejectRateSingle, err := extractSingleFunctionValue(rejectRate, strategy.targetFunction)
+	rejectRateSingle, err := extractSingleFunctionValue(rejectRate)
 	if err != nil {
-		return nil, fmt.Errorf("building observation for 'reject_rate' key: %w", err)
+		return nil, fmt.Errorf("for 'reject_rate' key: %w", err)
 	}
 	obs["reject_rate"] = rejectRateSingle
 
@@ -416,11 +409,11 @@ func (strategy *RLAgentStrategy) buildObservation(currentIteration int) ([]byte,
 	} else {
 		prevRejectRate, err := strategy.promq.RejectRate(strategy.prevIterationStart, strategy.prevIterationEnd)
 		if err != nil {
-			return nil, fmt.Errorf("building observation for 'previous_reject_rate' key: %w", err)
+			return nil, fmt.Errorf("for 'previous_reject_rate' key: %w", err)
 		}
-		prevRejectRateSingle, err := extractSingleFunctionValue(prevRejectRate, strategy.targetFunction)
+		prevRejectRateSingle, err := extractSingleFunctionValue(prevRejectRate)
 		if err != nil {
-			return nil, fmt.Errorf("building observation for 'previous_reject_rate' key: %w", err)
+			return nil, fmt.Errorf("for 'previous_reject_rate' key: %w", err)
 		}
 		obs["previous_reject_rate"] = prevRejectRateSingle
 	}
@@ -428,11 +421,11 @@ func (strategy *RLAgentStrategy) buildObservation(currentIteration int) ([]byte,
 	// avg_resp_time_loc key in observation.
 	avgRespTime, err := strategy.historicalPromq.AvgRespTimeLocal(historicalStart, historicalEnd)
 	if err != nil {
-		return nil, fmt.Errorf("building observation for 'avg_resp_time_loc' key: %w", err)
+		return nil, fmt.Errorf("for 'avg_resp_time_loc' key: %w", err)
 	}
-	avgRespTimeSingle, err := extractSingleFunctionValue(avgRespTime, strategy.targetFunction)
+	avgRespTimeSingle, err := extractSingleFunctionValue(avgRespTime)
 	if err != nil {
-		return nil, fmt.Errorf("building observation for 'avg_resp_time_loc' key: %w", err)
+		return nil, fmt.Errorf("for 'avg_resp_time_loc' key: %w", err)
 	}
 	obs["avg_resp_time_loc"] = avgRespTimeSingle
 
@@ -442,11 +435,11 @@ func (strategy *RLAgentStrategy) buildObservation(currentIteration int) ([]byte,
 	} else {
 		prevAvgRespTime, err := strategy.promq.AvgRespTimeLocal(strategy.prevIterationStart, strategy.prevIterationEnd)
 		if err != nil {
-			return nil, fmt.Errorf("building observation for 'previous_avg_resp_time_loc' key: %w", err)
+			return nil, fmt.Errorf("for 'previous_avg_resp_time_loc' key: %w", err)
 		}
-		prevAvgRespTimeSingle, err := extractSingleFunctionValue(prevAvgRespTime, strategy.targetFunction)
+		prevAvgRespTimeSingle, err := extractSingleFunctionValue(prevAvgRespTime)
 		if err != nil {
-			return nil, fmt.Errorf("building observation for 'previous_avg_resp_time_loc' key: %w", err)
+			return nil, fmt.Errorf("for 'previous_avg_resp_time_loc' key: %w", err)
 		}
 		obs["previous_avg_resp_time_loc"] = prevAvgRespTimeSingle
 	}
@@ -461,12 +454,12 @@ func (strategy *RLAgentStrategy) buildObservation(currentIteration int) ([]byte,
 		}
 		// FIXME: Remove this code (used for debugging).
 		if peers != 4 {
-			return nil, fmt.Errorf("building observation for 'previous_avg_resp_time_fwd_to_node_X' key: found %d peers, expected 4 peers", peers)
+			return nil, fmt.Errorf("for 'previous_avg_resp_time_fwd_to_node_X' key: found %d peers, expected 4 peers", peers)
 		}
 	} else {
 		prevAvgRespTimeForward, err := strategy.promq.AvgRespTimeForward(strategy.prevIterationStart, strategy.prevIterationEnd)
 		if err != nil {
-			return nil, fmt.Errorf("building observation for 'previous_avg_resp_time_fwd_to_node_X' key: %w", err)
+			return nil, fmt.Errorf("for 'previous_avg_resp_time_fwd_to_node_X' key: %w", err)
 		}
 		strategy.applyPromQLNeighborMetric(obs, prevAvgRespTimeForward, "previous_avg_resp_time_fwd_to_%s")
 	}
@@ -474,7 +467,7 @@ func (strategy *RLAgentStrategy) buildObservation(currentIteration int) ([]byte,
 	// cpu_utilization key in observation (float32 in [0, 1]).
 	cpuUsage, err := strategy.historicalPromq.CPUUsage(strategy.targetFunction, historicalStart, historicalEnd)
 	if err != nil {
-		return nil, fmt.Errorf("building observation for 'cpu_utilization' key: %w", err)
+		return nil, fmt.Errorf("for 'cpu_utilization' key: %w", err)
 	}
 	obs["cpu_utilization"] = cpuUsage / 100
 
@@ -484,7 +477,7 @@ func (strategy *RLAgentStrategy) buildObservation(currentIteration int) ([]byte,
 	} else {
 		prevCPUUsage, err := strategy.promq.CPUUsage(strategy.targetFunction, strategy.prevIterationStart, strategy.prevIterationEnd)
 		if err != nil {
-			return nil, fmt.Errorf("building observation for 'previous_cpu_utilization' key: %w", err)
+			return nil, fmt.Errorf("for 'previous_cpu_utilization' key: %w", err)
 		}
 		obs["previous_cpu_utilization"] = prevCPUUsage / 100
 	}
@@ -492,11 +485,11 @@ func (strategy *RLAgentStrategy) buildObservation(currentIteration int) ([]byte,
 	// n_replicas key observation.
 	replicas, err := strategy.historicalPromq.Replicas(historicalStart, historicalEnd)
 	if err != nil {
-		return nil, fmt.Errorf("building observation for 'n_replicas' key: %w", err)
+		return nil, fmt.Errorf("for 'n_replicas' key: %w", err)
 	}
-	replicasSingle, err := extractSingleFunctionValue(replicas, strategy.targetFunction)
+	replicasSingle, err := extractSingleFunctionValue(replicas)
 	if err != nil {
-		return nil, fmt.Errorf("building observation for 'n_replicas' key: %w", err)
+		return nil, fmt.Errorf("for 'n_replicas' key: %w", err)
 	}
 	obs["n_replicas"] = replicasSingle
 
@@ -506,11 +499,11 @@ func (strategy *RLAgentStrategy) buildObservation(currentIteration int) ([]byte,
 	} else {
 		prevReplicas, err := strategy.promq.Replicas(strategy.prevIterationStart, strategy.prevIterationEnd)
 		if err != nil {
-			return nil, fmt.Errorf("building observation for 'previous_n_replicas' key: %w", err)
+			return nil, fmt.Errorf("for 'previous_n_replicas' key: %w", err)
 		}
-		prevReplicasSingle, err := extractSingleFunctionValue(prevReplicas, strategy.targetFunction)
+		prevReplicasSingle, err := extractSingleFunctionValue(prevReplicas)
 		if err != nil {
-			return nil, fmt.Errorf("building observation for 'previous_n_replicas' key: %w", err)
+			return nil, fmt.Errorf("for 'previous_n_replicas' key: %w", err)
 		}
 		obs["previous_n_replicas"] = prevReplicasSingle
 	}
@@ -598,7 +591,7 @@ func (strategy *RLAgentStrategy) applyAction(action map[string]map[string]float6
 		return fmt.Errorf("local node ID not found in RL action. Node ID: %s", localNode)
 	}
 
-	backend := fmt.Sprintf("function_%s", strategy.targetFunction)
+	backend := "function_" + strategy.targetFunction
 
 	// First extract all actions, then apply them.
 	weights := make(map[string]uint)
@@ -652,9 +645,9 @@ func (strategy *RLAgentStrategy) applyPromQLNeighborMetric(obs map[string]any, m
 	logger := logging.Logger()
 	dummy_node := fmt.Sprintf(obs_fmt_key, "node_X") // Used only for warnings.
 
-	metricFunc, err := extractSingleFunctionValue(metric, strategy.targetFunction)
+	metricFunc, err := extractSingleFunctionValue(metric)
 	if err != nil {
-		logger.Warnf("for key %q, function %q not found in metrics result, setting 0 by default to all neighbors", dummy_node, strategy.targetFunction)
+		logger.Warnf("for key %q, function %q not found in metrics result, setting 0 by default to all neighbors", dummy_node)
 	}
 
 	for _, peer := range strategy.neighbors {
@@ -668,7 +661,7 @@ func (strategy *RLAgentStrategy) applyPromQLNeighborMetric(obs map[string]any, m
 			if exists {
 				value = metricValue
 			} else {
-				logger.Warnf("for key %q and peer %q, function %q not found in metrics result, setting 0 by default to this neighbor", dummy_node, peer, strategy.targetFunction)
+				logger.Warnf("for key %q and peer %q, function %q not found in metrics result, setting 0 by default to this neighbor", dummy_node, peer)
 			}
 		}
 
@@ -676,18 +669,23 @@ func (strategy *RLAgentStrategy) applyPromQLNeighborMetric(obs map[string]any, m
 	}
 }
 
-// extractSingleFunctionValue extracts data related to the given function name
-// from the funcs map.
+// extractSingleFunctionValue extracts data related to the unique function from
+// the funcs map.
 //
 // Required by the RL Agent strategy because it supports only one deployed
 // function.
-func extractSingleFunctionValue[T any](funcs map[string]T, name string) (T, error) {
-	value, exists := funcs[name]
-	if !exists {
-		var zero T
-		return zero, fmt.Errorf("missing function %q in %v", name, funcs)
+func extractSingleFunctionValue[T any](funcs map[string]T) (T, error) {
+	var functionValue T
+	singleFunction := true
+	for _, value := range funcs {
+		if !singleFunction {
+			return functionValue, fmt.Errorf("expected one single function name, got many: %v", funcs)
+		}
+		functionValue = value
+
+		singleFunction = false
 	}
-	return value, nil
+	return functionValue, nil
 }
 
 func extractSingleIPv4(h host.Host, p peer.ID) (string, error) {
