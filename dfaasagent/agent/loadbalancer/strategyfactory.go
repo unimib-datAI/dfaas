@@ -8,6 +8,8 @@ package loadbalancer
 import (
 	_ "embed"
 	"fmt"
+	"net/http"
+	"time"
 
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/constants"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
@@ -242,6 +244,18 @@ func (strategyFactory *rlAgentStrategyFactory) createStrategy() (Strategy, error
 	// Set up the wrapper to OpenFaaS Gateway API used to get the list of
 	// deployed OpenFaaS functions.
 	strategy.funcsClient = funcs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+
+	// We also set-up the internal http.Client used to send the observation to
+	// the RL model and get the response as action. This allows used to reduce
+	// connection overhead by reusing the same HTTP client.
+	strategy.httpClient = &http.Client{
+		Timeout: 900 * time.Millisecond,
+		Transport: &http.Transport{
+			MaxIdleConns:        10,
+			MaxIdleConnsPerHost: 10,
+			IdleConnTimeout:     90 * time.Second,
+		},
+	}
 
 	return strategy, nil
 }

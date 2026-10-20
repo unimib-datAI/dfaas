@@ -201,18 +201,6 @@ func (strategy *RLAgentStrategy) setup() error {
 		return fmt.Errorf("failed to configure proxy: %w", err)
 	}
 
-	// We also set-up the internal http.Client used to contact the Data Plane
-	// API when asking for the current stage. This allows used to reduce
-	// connection overhead by reusing the same HTTP client.
-	strategy.httpClient = &http.Client{
-		Timeout: 900 * time.Millisecond,
-		Transport: &http.Transport{
-			MaxIdleConns:        10,
-			MaxIdleConnsPerHost: 10,
-			IdleConnTimeout:     90 * time.Second,
-		},
-	}
-
 	return nil
 }
 
