@@ -59,10 +59,10 @@ const TRACES = JSON.parse(open(TRACE_PATH));
 
 const FUNCTION = __ENV.FUNCTION || "0";
 const NODE = __ENV.NODE || "node_c";
-const LIMIT = parseInt(__ENV.LIMIT) || 0;
+const EXECUTION_LIMIT = parseInt(__ENV.EXECUTION_LIMIT) || 0;
 
-// We must validate FUNCTION, NODE and LIMIT because JavaScript won't throw a
-// clear error otherwise.
+// We must validate FUNCTION, NODE and EXECUTION_LIMIT because JavaScript won't
+// throw a clear error otherwise.
 if (!Object.prototype.hasOwnProperty.call(TRACES, FUNCTION)) {
   throw new Error(`Function '${FUNCTION}' not found in '${TRACE_PATH}'`);
 }
@@ -74,11 +74,11 @@ if (!Object.prototype.hasOwnProperty.call(TRACES[FUNCTION], NODE)) {
 let nodeTrace = TRACES[FUNCTION][NODE]
 
 // Optionally trim the trace.
-if (LIMIT > 0) {
-  if (LIMIT < 0) {
-    throw new Error(`Limit '${LIMIT}' must be non-negative`)
+if (EXECUTION_LIMIT > 0) {
+  if (EXECUTION_LIMIT < 0) {
+    throw new Error(`Limit '${EXECUTION_LIMIT}' must be non-negative`)
   }
-  nodeTrace = nodeTrace.slice(0, LIMIT)
+  nodeTrace = nodeTrace.slice(0, EXECUTION_LIMIT)
 }
 
 // Build stages according to STAGE_BUILDER env variable. See stagesBuild()

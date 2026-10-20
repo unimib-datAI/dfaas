@@ -60,7 +60,6 @@ run_job() {
     --env TRACE_PATH="$TRACE_PATH" \
     --env FUNCTION=0 \
     --env NODE="$NODE_NAME" \
-    --env LIMIT=2 \
     --env STAGE_BUILDER="$STAGE_BUILDER" &
 
   echo "[LAUNCHED] $NODE_NAME (pid=$!)"
