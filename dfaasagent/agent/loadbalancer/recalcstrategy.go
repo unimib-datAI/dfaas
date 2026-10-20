@@ -186,35 +186,8 @@ func (strategy *RecalcStrategy) RunExperiment() error {
 		// Allow neighbor updates to propagate.
 		time.Sleep(4 * time.Second)
 
-		// Do not apply stale weights if k6 has already advanced to another
-		// iteration while we were waiting.
-		latestValue, err := strategy.waitForProxyVariable("k6_iteration")
-		if err != nil {
-			return fmt.Errorf("failed to recheck k6 iteration: %w", err)
-		}
-
-		latestIteration, err := strconv.Atoi(latestValue)
-		if err != nil {
-			return fmt.Errorf("invalid k6_iteration value %q: %w", latestValue, err)
-		}
-
-		if latestIteration != currentIteration {
-			logger.Debugw("Skipping stale weight update",
-				"iteration", currentIteration,
-				"latest_iteration", latestIteration,
-			)
-			continue
-		}
-
-		// The experiment may have ended during the propagation delay.
-		_, ended, err = strategy.runtimeapi.Variable("k6_exp_ended")
-		if err != nil {
-			return fmt.Errorf("failed to check experiment status: %w", err)
-		}
-		if ended {
-			logger.Info("k6 experiment ended")
-			return nil
-		}
+		// FIXME: We assume that the time between the message propagation and
+		// the local weights update the k6_iteration is the same.
 
 		// Apply the weights for the current iteration.
 		if err := strategy.updateLocalWeights(); err != nil {
