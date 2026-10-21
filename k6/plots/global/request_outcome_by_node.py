@@ -123,7 +123,7 @@ def process_csv(input_csv, output_csv, output_pdf):
     """
     Process a single input CSV file.
     """
-    print(f"Loading: {input_csv}")
+    print(f"Loading CSV: {input_csv}")
 
     df = pl.read_csv(input_csv, null_values=[""])
 
@@ -171,19 +171,8 @@ def process_experiment(exp):
 
 
 def main():
-    """
-    Command-line entry point.
-
-    Modes:
-
-      Existing experiment mode:
-        script.py experiment_directory
-
-      Direct CSV mode:
-        script.py --input-csv input.csv --output-csv output.csv --output-pdf plot.pdf
-    """
     parser = argparse.ArgumentParser(
-        description="Plot incoming request outcomes per DFaaS node"
+        description="Plot incoming request outcomes per DFaaS node for a single experiment"
     )
 
     parser.add_argument(
@@ -218,7 +207,11 @@ def main():
         if args.output_csv is None or args.output_pdf is None:
             parser.error("--input-csv requires both --output-csv and --output-pdf")
 
-        process_csv(args.input_csv, args.output_csv, args.output_pdf)
+        process_csv(
+            args.input_csv.resolve(),
+            args.output_csv.resolve(),
+            args.output_pdf.resolve(),
+        )
         return
 
     # Experiment directory mode
@@ -226,7 +219,7 @@ def main():
         parser.error("provide experiment directories or use --input-csv")
 
     for exp in args.experiments:
-        process_experiment(exp)
+        process_experiment(exp.resolve())
 
 
 if __name__ == "__main__":

@@ -28,9 +28,7 @@ def timestamp_key(ts, source, line_number):
     #
     # Timestamps without an explicit timezone are interpreted as UTC.
     if not isinstance(ts, str):
-        raise ValueError(
-            f"{source}:{line_number}: Missing or non-string 'ts' field"
-        )
+        raise ValueError(f"{source}:{line_number}: Missing or non-string 'ts' field")
 
     match = TIMESTAMP_PATTERN.fullmatch(ts)
 
@@ -51,7 +49,9 @@ def timestamp_key(ts, source, line_number):
 
             tz = timezone(sign * timedelta(hours=hours, minutes=minutes))
 
-        dt = datetime.strptime(f"{date_part}T{time_part}", "%Y-%m-%dT%H:%M:%S").replace(tzinfo=tz)
+        dt = datetime.strptime(f"{date_part}T{time_part}", "%Y-%m-%dT%H:%M:%S").replace(
+            tzinfo=tz
+        )
 
         utc_dt = dt.astimezone(timezone.utc)
 
@@ -66,7 +66,9 @@ def timestamp_key(ts, source, line_number):
         return seconds, nanos
 
     except (ValueError, OverflowError) as exc:
-        raise ValueError(f"{source}:{line_number}: Invalid timestamp {ts!r}: {exc}") from exc
+        raise ValueError(
+            f"{source}:{line_number}: Invalid timestamp {ts!r}: {exc}"
+        ) from exc
 
 
 def merge_experiment(exp_dir):
@@ -93,7 +95,9 @@ def merge_experiment(exp_dir):
     log_files = sorted(other_dir.glob("node_*/agent.log"))
 
     if not log_files:
-        raise FileNotFoundError(f"{exp_dir}: No agent.log files found in node_* directories")
+        raise FileNotFoundError(
+            f"{exp_dir}: No agent.log files found in node_* directories"
+        )
 
     entries = []
 
@@ -112,15 +116,17 @@ def merge_experiment(exp_dir):
                 try:
                     entry = json.loads(line)
                 except json.JSONDecodeError as exc:
-                    raise ValueError(f"{log_file}:{line_number}: Malformed JSON: {exc}") from exc
+                    raise ValueError(
+                        f"{log_file}:{line_number}: Malformed JSON: {exc}"
+                    ) from exc
 
                 if not isinstance(entry, dict):
-                    raise ValueError(f"{log_file}:{line_number}: " "JSON entry must be an object")
+                    raise ValueError(
+                        f"{log_file}:{line_number}: JSON entry must be an object"
+                    )
 
                 # Validate the timestamp before accepting the entry.
-                sort_key = timestamp_key(
-                    entry.get("ts"), log_file, line_number
-                )
+                sort_key = timestamp_key(entry.get("ts"), log_file, line_number)
 
                 # Add the source node to each log entry.
                 entry["node"] = node
@@ -146,7 +152,9 @@ def expand_experiments(paths):
     experiments = []
     for path in paths:
         if not path.is_dir():
-            raise FileNotFoundError(f"Input path does not exist or is not a directory: {path}")
+            raise FileNotFoundError(
+                f"Input path does not exist or is not a directory: {path}"
+            )
 
         if (path / "other").is_dir():
             # This path is already an experiment directory.
@@ -162,7 +170,9 @@ def expand_experiments(paths):
             ]
 
             if not matching:
-                raise FileNotFoundError(f"{path}: No experiment directories containing an 'other' directory were found")
+                raise FileNotFoundError(
+                    f"{path}: No experiment directories containing an 'other' directory were found"
+                )
 
             experiments.extend(matching)
 
@@ -211,7 +221,7 @@ directory or a parent directory containing experiment subdirectories.
         "experiments",
         type=Path,
         nargs="+",
-        help="Experiment directories or directories containing multiple experiments."
+        help="Experiment directories or directories containing multiple experiments.",
     )
 
     args = parser.parse_args()
