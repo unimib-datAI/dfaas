@@ -95,8 +95,12 @@ config:
   AGENT_REJECTOR_HOST: "rejector.default.svc.cluster.local"
   AGENT_REJECTOR_PORT: 8080
 
+  # FaaS platform present on the local node. Currently only "openfaas" and
+  # "openwhisk" are supported.
+  AGENT_FAAS_PLATFORM: "openfaas"
+
   # Connection information for the local FaaS platform. If you use Kubernetes
-  # you can set the generated DNS name like ""gateway.default.svc.cluster.local"
+  # you can set the generated DNS name like "gateway.default.svc.cluster.local"
   # for OpenFaaS and port 8080, otherwise you must set manually the IP.
   AGENT_FAAS_HOST: "gateway.default.svc.cluster.local"
   AGENT_FAAS_PORT: 8080

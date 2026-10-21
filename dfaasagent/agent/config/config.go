@@ -106,6 +106,10 @@ type Configuration struct {
 	RuntimeAPIHost string `mapstructure:"AGENT_RUNTIMEAPI_HOST"`
 	RuntimeAPIPort uint   `mapstructure:"AGENT_RUNTIMEAPI_PORT"`
 
+	// FaaS platform present on the local node. Currently only "openfaas" and
+	// "openwhisk" are supported.
+	FaaSPlatform string `mapstructure:"AGENT_FAAS_PLATFORM"`
+
 	// Connection information for the local FaaS platform. This information will
 	// be used to configure the proxy, allow incoming requests to be processed
 	// locally, and run administrative queries, such as checking which functions
