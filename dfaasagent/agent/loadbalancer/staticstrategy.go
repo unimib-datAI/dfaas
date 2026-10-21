@@ -16,7 +16,6 @@ import (
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/communication"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/constants"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/funcs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
@@ -42,7 +41,7 @@ type StaticStrategy struct {
 
 // Private struct containing info about us.
 type nodeInfoStatic struct {
-	funcs               []string // Our OpenFaaS functions.
+	funcs               []string // Our FaaS functions.
 	commonNeighboursNum int      // Number of neighbours with at least a function in common.
 }
 
@@ -57,8 +56,6 @@ func (strategy *StaticStrategy) RunStrategy() error {
 	millisInterval := int64(_config.RecalcPeriod / time.Millisecond)
 
 	for {
-		start := time.Now().UTC()
-
 		if err := strategy.publishNodeInfo(); err != nil {
 			logger.Error("Failed to publish node info, skipping RunStrategy iteration ", err)
 			logger.Warn("Waiting 5 second before retrying RunStrategy")
@@ -76,10 +73,6 @@ func (strategy *StaticStrategy) RunStrategy() error {
 		if err = strategy.setProxyWeights(); err != nil {
 			return fmt.Errorf("setting new weights: %w", err)
 		}
-		duration := time.Since(start)
-
-		httpserver.StrategySuccessIterations.Inc()
-		httpserver.StrategyIterationDuration.Set(duration.Seconds())
 
 		millisNow = time.Now().UTC().UnixNano() / 1000000
 		millisSleep = millisInterval - (millisNow % millisInterval)
@@ -161,7 +154,7 @@ func (strategy *StaticStrategy) publishNodeInfo() error {
 	// Obtain our function names list.
 	strategy.nodeInfo.funcs, err = strategy.funcsClient.GetFuncsNames()
 	if err != nil {
-		return fmt.Errorf("getting functions info from OpenFaaS: %w", err)
+		return fmt.Errorf("getting functions info from local FaaS platform: %w", err)
 	}
 
 	msg := MsgNodeInfoStatic{
@@ -226,8 +219,6 @@ func (strategy *StaticStrategy) setProxyWeights() error {
 	strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryNMS) error {
 		hacfg = strategy.createHACfgObject(
 			myID,
-			_config.OpenFaaSHost,
-			_config.OpenFaaSPort,
 			entries,
 			strategy.weights,
 		)
@@ -245,18 +236,16 @@ func (strategy *StaticStrategy) setProxyWeights() error {
 // updateHAProxyConfig to update the HAProxy configuration.
 func (strategy *StaticStrategy) createHACfgObject(
 	myNodeID string,
-	openFaaSHost string,
-	openFaaSPort uint,
 	entries map[string]*nodestbl.EntryNMS,
 	funcsWeights map[string]map[string]uint,
 ) *HACfgStatic {
 	hacfg := &HACfgStatic{
 		HACfg: HACfg{
-			MyNodeID:     myNodeID,
-			NodeIP:       _config.NodeIP,
-			HAProxyHost:  _config.HAProxyHost,
-			OpenFaaSHost: openFaaSHost,
-			OpenFaaSPort: openFaaSPort,
+			MyNodeID:    myNodeID,
+			NodeIP:      _config.NodeIP,
+			HAProxyHost: _config.HAProxyHost,
+			FaaSHost:    _config.OpenFaaSHost,
+			FaaSPort:    _config.OpenFaaSPort,
 		},
 
 		Nodes:     map[string]*HACfgNodeStatic{},

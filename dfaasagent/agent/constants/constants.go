@@ -1,5 +1,5 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Copyright 2021-2025 The DFaaS Authors. All rights reserved.
+// Copyright 2021-2026 The DFaaS Authors. All rights reserved.
 // This file is licensed under the AGPL v3.0 or later license. See LICENSE and
 // AUTHORS file for more information.
 
@@ -27,9 +27,4 @@ const (
 	// Connection information for accessing the DFaaS Forecaster service.
 	ForecasterHost = "dfaas-forecaster"
 	ForeasterPort  = 80
-
-	// Connection information used to run an HTTP Web Server for health checking
-	// at /healthz endpoint.
-	HttpServerHost = "0.0.0.0"
-	HttpServerPort = 8080
 )

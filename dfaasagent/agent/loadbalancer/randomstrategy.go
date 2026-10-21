@@ -14,7 +14,6 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/funcs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/proxy"
@@ -29,7 +28,7 @@ type RandomStrategy struct {
 	// reloading HAProxy.
 	runtimeapi *proxy.RuntimeAPI
 
-	// OpenFaaS Gateway client used to get the list of deployed functions.
+	// FaaS client used to get the list of deployed functions.
 	funcsClient *funcs.Client
 
 	// Starting seed for the pseudo-random number generator. If set to -1, a
@@ -50,16 +49,14 @@ type RandomStrategy struct {
 
 // RunStrategy handles the execution of the strategy. It is run in a goroutine.
 func (strategy *RandomStrategy) RunStrategy() error {
-	logger := logging.Logger()
-
-	logger.Info("Starting Random strategy...")
+	logger := logging.Logger().With("component", "run_strategy")
 
 	// Initialize the pseudo-random number generator.
 	seed := strategy.randomSeed
 	if seed == -1 {
 		seed = time.Now().UnixNano()
 	}
-	logger.Infof("Starting RNG with seed %d", seed)
+	logger.Infow("Starting Random strategy...", "seed", seed)
 
 	strategy.random = rand.New(rand.NewSource(seed))
 
@@ -85,10 +82,7 @@ func (strategy *RandomStrategy) RunStrategy() error {
 		}
 
 		duration := time.Since(start)
-		httpserver.StrategyIterationDuration.Set(duration.Seconds())
-		httpserver.StrategySuccessIterations.Inc()
-
-		logger.Infof("Iteration completed. Duration: %s", duration.String())
+		logger.Infow("Iteration completed", "duration", duration.String())
 	}
 
 	return nil
@@ -103,7 +97,7 @@ func (strategy *RandomStrategy) OnReceived(msg *pubsub.Message) error {
 func (strategy *RandomStrategy) setup() error {
 	logger := logging.Logger()
 
-	// Get the list of deployed OpenFaaS functions.
+	// Get the list of deployed FaaS functions.
 	funcs, err := strategy.funcsClient.GetFuncsNames()
 	if err != nil {
 		return fmt.Errorf("failed to check deployed functions: %w", err)
@@ -168,8 +162,8 @@ func (strategy *RandomStrategy) initProxyConfig() error {
 		Neighbors     []string
 		NeighborsPort map[string]string
 		NeighborsHost map[string]string
-		OpenFaaSHost  string
-		OpenFaaSPort  uint
+		FaaSHost      string
+		FaaSPort      uint
 		RejectorHost  string
 		RejectorPort  uint
 	}{
@@ -179,8 +173,8 @@ func (strategy *RandomStrategy) initProxyConfig() error {
 		Neighbors:     strategy.neighbors,
 		NeighborsHost: neighborsHost,
 		NeighborsPort: neighborsPort,
-		OpenFaaSHost:  _config.OpenFaaSHost,
-		OpenFaaSPort:  _config.OpenFaaSPort,
+		FaaSHost:      _config.OpenFaaSHost,
+		FaaSPort:      _config.OpenFaaSPort,
 		RejectorHost:  _config.RejectorHost,
 		RejectorPort:  _config.RejectorPort,
 	}
@@ -211,10 +205,10 @@ func (strategy *RandomStrategy) recalculate() error {
 			}
 		}
 
-		logger.Infof("Random distribution for %s:", function)
-		for target, weight := range weights {
-			logger.Infof("  target=%s weight=%d%%", target, weight)
-		}
+		logger.Infow("Random distribution for function",
+			"function_name", function,
+			"weights", weights,
+		)
 	}
 
 	return nil

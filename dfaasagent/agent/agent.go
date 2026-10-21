@@ -27,7 +27,6 @@ import (
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/communication"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/discovery/kademlia"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/discovery/mdns"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/promq"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/loadbalancer"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
@@ -241,10 +240,6 @@ func runAgent(config config.Configuration) error {
 
 	nodestbl.Initialize(config)
 
-	////////// HTTPSERVER INITIALIZATION //////////
-
-	httpserver.Initialize(config)
-
 	////////// GOROUTINES //////////
 
 	chanStop := make(chan os.Signal, 1)
@@ -257,8 +252,6 @@ func runAgent(config config.Configuration) error {
 	go func() { chanErr <- communication.RunReceiver() }()
 
 	go func() { chanErr <- strategy.RunStrategy() }()
-
-	go func() { chanErr <- httpserver.RunHttpServer() }()
 
 	select {
 	case sig := <-chanStop:

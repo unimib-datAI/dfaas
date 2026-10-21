@@ -87,7 +87,7 @@ backend function_{{$funcName}}
 
     # Two special servers: "openfaas-local" is the local FaaS platform,
     # "rejector" is a dummy web server that only rejects incoming requests.
-    server openfaas-local {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} weight 100
+    server openfaas-local {{$.FaaSHost}}:{{$.FaaSPort}} weight 100
     server rejector {{$.RejectorHost}}:{{$.RejectorPort}} weight 0
     {{- range $.Neighbors }}
         server {{.}} {{index $.NeighborsHost .}}:{{index $.NeighborsPort .}} weight 0
@@ -103,7 +103,7 @@ backend function_{{$funcName}}_forwarded
     # was forwarded to.
     http-response set-header DFaaS-Node-ID %[var(txn.dfaas_node_id)]
     http-response add-header DFaaS-Forwarded-To {{$.DFaaSNodeID}}
-    server openfaas-local {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}}
+    server openfaas-local {{$.FaaSHost}}:{{$.FaaSPort}}
     {{- if $timeout}}
     timeout connect {{$timeout}}ms
     timeout server {{$timeout}}ms

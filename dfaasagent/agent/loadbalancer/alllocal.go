@@ -12,7 +12,6 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/funcs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 )
@@ -23,7 +22,7 @@ type AllLocalStrategy struct {
 	// HAProxy client to update configuration.
 	hacfgupdater *hacfgupd.Updater
 
-	// OpenFaaS Gateway client to retrieve deployed functions.
+	// FaaS client to retrieve deployed functions.
 	funcsClient *funcs.Client
 
 	// AllLocalStrategy is an iteration-based strategy, where a method is
@@ -85,7 +84,7 @@ func (strategy *AllLocalStrategy) runIteration() error {
 	equal := funcsMetadataEqual(funcs, strategy.prevFuncs) && funcsMetadataEqual(strategy.prevFuncs, funcs)
 	if !equal {
 		debugFuncsDiff(funcs, strategy.prevFuncs)
-		logger.Info("Updating proxy due to new/deleted functions or changed timeouts")
+		logger.Debug("Updating proxy due to new/deleted functions or changed timeouts")
 		if err = strategy.updateProxyConfiguration(funcs); err != nil {
 			return fmt.Errorf("updating proxy config: %w", err)
 		}
@@ -93,9 +92,7 @@ func (strategy *AllLocalStrategy) runIteration() error {
 	}
 
 	duration := time.Since(start)
-	httpserver.StrategySuccessIterations.Inc()
-	httpserver.StrategyIterationDuration.Set(duration.Seconds())
-	logger.Infof("Iteration completed. Duration: %s", duration.String())
+	logger.Infow("Iteration completed", "duration", duration.String())
 
 	return nil
 }
@@ -106,17 +103,17 @@ func (strategy *AllLocalStrategy) updateProxyConfiguration(funcs map[string]*uin
 	// Define and populate this anonymous struct to pass data to the Go
 	// template.
 	data := struct {
-		Now          string
-		DFaaSNodeID  string
-		Functions    map[string]*uint
-		OpenFaaSHost string
-		OpenFaaSPort uint
+		Now         string
+		DFaaSNodeID string
+		Functions   map[string]*uint
+		FaaSHost    string
+		FaaSPort    uint
 	}{
-		Now:          time.Now().UTC().Format("2006-01-02 15:04:05 MST"),
-		DFaaSNodeID:  _p2pHost.ID().String(),
-		Functions:    funcs,
-		OpenFaaSHost: _config.OpenFaaSHost,
-		OpenFaaSPort: _config.OpenFaaSPort,
+		Now:         time.Now().UTC().Format("2006-01-02 15:04:05 MST"),
+		DFaaSNodeID: _p2pHost.ID().String(),
+		Functions:   funcs,
+		FaaSHost:    _config.OpenFaaSHost,
+		FaaSPort:    _config.OpenFaaSPort,
 	}
 
 	return strategy.hacfgupdater.UpdateHAConfig(data)

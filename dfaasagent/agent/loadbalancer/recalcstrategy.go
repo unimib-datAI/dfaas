@@ -866,8 +866,8 @@ func (strategy *RecalcStrategy) reloadProxy() error {
 		Neighbors     []string
 		NeighborsHost map[string]string
 		HAProxyPort   uint
-		OpenFaaSHost  string
-		OpenFaaSPort  uint
+		FaaSHost      string
+		FaaSPort      uint
 		RejectorHost  string
 		RejectorPort  uint
 	}{
@@ -877,8 +877,8 @@ func (strategy *RecalcStrategy) reloadProxy() error {
 		Neighbors:     neighborsID,
 		NeighborsHost: neighborsHost,
 		HAProxyPort:   _config.HAProxyPort,
-		OpenFaaSHost:  _config.OpenFaaSHost,
-		OpenFaaSPort:  _config.OpenFaaSPort,
+		FaaSHost:      _config.OpenFaaSHost,
+		FaaSPort:      _config.OpenFaaSPort,
 		RejectorHost:  _config.RejectorHost,
 		RejectorPort:  _config.RejectorPort,
 	}

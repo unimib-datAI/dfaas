@@ -16,7 +16,6 @@ import (
 	libp2pping "github.com/libp2p/go-libp2p/p2p/protocol/ping"
 
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/funcs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 )
@@ -54,10 +53,7 @@ func (strategy *LatencyThresholdStrategy) RunStrategy() error {
 		}
 
 		duration := time.Since(start)
-		httpserver.StrategyIterationDuration.Set(duration.Seconds())
-		httpserver.StrategySuccessIterations.Inc()
-
-		logger.Infof("Iteration completed. Duration: %s", duration.String())
+		logger.Infow("Iteration completed", "duration", duration.String())
 	}
 
 	return nil
@@ -108,7 +104,7 @@ func (strategy *LatencyThresholdStrategy) calculateWeights() (map[string]map[str
 		usableNeighbours = append(usableNeighbours, neighID)
 	}
 
-	// Get the list of deployed OpenFaaS functions.
+	// Get the list of deployed FaaS functions.
 	funcs, err := strategy.funcsClient.GetFuncsNames()
 	if err != nil {
 		return nil, fmt.Errorf("failed to check deployed functions: %w", err)
@@ -202,8 +198,8 @@ func (strategy *LatencyThresholdStrategy) setProxyWeights(weights map[string]map
 		NeighborsPort map[string]string
 		NeighborsHost map[string]string
 		Weights       map[string]map[string]uint
-		OpenFaaSHost  string
-		OpenFaaSPort  uint
+		FaaSHost      string
+		FaaSPort      uint
 	}{
 		Now:           time.Now().UTC().Format("2006-01-02 15:04:05 MST"),
 		DFaaSNodeID:   _p2pHost.ID().String(),
@@ -212,8 +208,8 @@ func (strategy *LatencyThresholdStrategy) setProxyWeights(weights map[string]map
 		NeighborsHost: neighborsHost,
 		NeighborsPort: neighborsPort,
 		Weights:       weights,
-		OpenFaaSHost:  _config.OpenFaaSHost,
-		OpenFaaSPort:  _config.OpenFaaSPort,
+		FaaSHost:      _config.OpenFaaSHost,
+		FaaSPort:      _config.OpenFaaSPort,
 	}
 
 	return strategy.hacfgupdater.UpdateHAConfig(data)

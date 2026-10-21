@@ -90,11 +90,11 @@ frontend fe_main
     use_backend be_{{$funcName}} if is_func_{{$funcName}} !has_nodeid_hdr
     {{end}}
 
-# Backend for managing the functions in self OpenFaaS instance.
+# Backend for managing the functions in local FaaS instance.
 backend be_system_funcs
-    server system_funcs {{.OpenFaaSHost}}:{{.OpenFaaSPort}}
+    server system_funcs {{.FaaSHost}}:{{.FaaSPort}}
 
-# Backend for forwarding function requests to the self OpenFaaS Instance.
+# Backend for forwarding function requests to the local FaaS Instance.
 #
 # This backend is used for requests coming from other DFaaS nodes.
 backend be_myself
@@ -106,9 +106,9 @@ backend be_myself
     http-response set-header X-Server %s
     http-response set-header DFaaS-Node-ID {{$.MyNodeID}}
 
-    server {{$.NodeIP}} {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}}
+    server {{$.NodeIP}} {{$.FaaSHost}}:{{$.FaaSPort}}
 
-# Backends for each deployed OpenFaaS function.
+# Backends for each deployed FaaS function.
 #
 # These backends are used for incoming requests from clients, not from other
 # DFaaS nodes.
@@ -124,7 +124,7 @@ backend be_{{$funcName}}
 
     {{range $nodeID, $weight := $func.Weights -}}
     {{if (eq $nodeID $.MyNodeID) -}}
-    server {{$.NodeIP}} {{$.OpenFaaSHost}}:{{$.OpenFaaSPort}} weight {{$weight}}
+    server {{$.NodeIP}} {{$.FaaSHost}}:{{$.FaaSPort}} weight {{$weight}}
     {{else -}}
     server {{(index $.Nodes $nodeID).HAProxyHost}} {{(index $.Nodes $nodeID).HAProxyHost}}:{{(index $.Nodes $nodeID).HAProxyPort}} weight {{$weight}}
     {{end -}}

@@ -18,7 +18,6 @@ import (
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/communication"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/constants"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/httpserver"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/forecaster"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/funcs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/promq"
@@ -69,7 +68,7 @@ type GroupsLoad struct {
 // Private struct containing info about us
 type nodeInfo struct {
 	nodeType            int                // Node type (heavy=0, mid=1, light=2)
-	funcs               []string           // Our OpenFaaS functions
+	funcs               []string           // Our FaaS functions
 	funcsGroupsLoad     GroupsLoad         // Load rates for each group of functions
 	commonNeighboursNum int                // Number of neighbours with at least a function in common
 	funcsRates          map[string]float64 // Map with function name as key, and invocation rate as value
@@ -101,8 +100,6 @@ func (strategy *NodeMarginStrategy) RunStrategy() error {
 	var ramUsage = make(map[string]float64)
 
 	for {
-		start := time.Now().UTC()
-
 		cpuUsage, err = promq.QueryCPUusage(_config.RecalcPeriod)
 		if err != nil {
 			logger.Error("Failed to execute Prometheus QueryCPUusage query, skipping RunStrategy iteration ", err)
@@ -171,11 +168,6 @@ func (strategy *NodeMarginStrategy) RunStrategy() error {
 			return err
 		}
 
-		duration := time.Since(start)
-
-		httpserver.StrategySuccessIterations.Inc()
-		httpserver.StrategyIterationDuration.Set(duration.Seconds())
-
 		millisNow = time.Now().UTC().UnixNano() / 1000000
 		millisSleep = millisInterval - (millisNow % millisInterval)
 		time.Sleep(time.Duration(millisSleep) * time.Millisecond)
@@ -221,7 +213,7 @@ func (strategy *NodeMarginStrategy) publishNodeInfo() error {
 	// Obtain our function names list
 	strategy.nodeInfo.funcs, err = strategy.funcsClient.GetFuncsNames()
 	if err != nil {
-		return fmt.Errorf("getting functions info from OpenFaaS: %w", err)
+		return fmt.Errorf("getting functions info from the local FaaS platform: %w", err)
 	}
 
 	msg := MsgNodeInfoNMS{
@@ -806,11 +798,11 @@ func (strategy *NodeMarginStrategy) createHACfgObject(
 ) *HACfgNMS {
 	hacfg := &HACfgNMS{
 		HACfg: HACfg{
-			MyNodeID:     myNodeID,
-			NodeIP:       _config.NodeIP,
-			HAProxyHost:  _config.HAProxyHost,
-			OpenFaaSHost: openFaaSHost,
-			OpenFaaSPort: openFaaSPort,
+			MyNodeID:    myNodeID,
+			NodeIP:      _config.NodeIP,
+			HAProxyHost: _config.HAProxyHost,
+			FaaSHost:    openFaaSHost,
+			FaaSPort:    openFaaSPort,
 		},
 
 		StrRecalc: recalcPeriod.String(),
