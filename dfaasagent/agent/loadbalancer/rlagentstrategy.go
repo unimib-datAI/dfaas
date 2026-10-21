@@ -24,7 +24,7 @@ import (
 	ma "github.com/multiformats/go-multiaddr"
 
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/funcs"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/funcs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/promq"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/proxy"
@@ -102,7 +102,7 @@ func (strategy *RLAgentStrategy) RunStrategy() error {
 		}
 		logger.Info("k6 experiment started")
 
-		names, err := strategy.funcsClient.GetFuncsNames()
+		names, err := strategy.funcsClient.Names()
 		if err != nil {
 			return fmt.Errorf("failed to get function names: %w", err)
 		}
@@ -225,7 +225,7 @@ func (strategy *RLAgentStrategy) runIteration(currentIteration int) error {
 // a new neighbor appears.
 func (strategy *RLAgentStrategy) reloadProxy() error {
 	// Build the funcs map.
-	funcs, err := strategy.funcsClient.GetFuncsWithTimeout()
+	funcs, err := strategy.funcsClient.WithTimeout()
 	if err != nil {
 		return fmt.Errorf("get function metadata: %w", err)
 	}

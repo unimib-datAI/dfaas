@@ -12,7 +12,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/funcs"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/funcs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 )
 
@@ -67,8 +67,8 @@ func (strategy *AllLocalStrategy) runIteration() error {
 
 	start := time.Now().UTC()
 
-	// GetFuncsWithTimeout always returns a new map.
-	funcs, err := strategy.funcsClient.GetFuncsWithTimeout()
+	// WithTimeout always returns a new map.
+	funcs, err := strategy.funcsClient.WithTimeout()
 	if err != nil {
 		return fmt.Errorf("get function metadata: %w", err)
 	}

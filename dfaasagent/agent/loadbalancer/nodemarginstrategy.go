@@ -19,7 +19,7 @@ import (
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/constants"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/forecaster"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/funcs"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/funcs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/promq"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
@@ -211,7 +211,7 @@ func (strategy *NodeMarginStrategy) publishNodeInfo() error {
 	var err error
 
 	// Obtain our function names list
-	strategy.nodeInfo.funcs, err = strategy.funcsClient.GetFuncsNames()
+	strategy.nodeInfo.funcs, err = strategy.funcsClient.Names()
 	if err != nil {
 		return fmt.Errorf("getting functions info from the local FaaS platform: %w", err)
 	}

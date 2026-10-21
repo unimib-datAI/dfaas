@@ -18,7 +18,7 @@ import (
 
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/communication"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/funcs"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/funcs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/promq"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/proxy"
@@ -248,7 +248,7 @@ func (strategy *RecalcStrategy) broadcastLimitsPeriodically(stop <-chan struct{}
 				continue
 			}
 
-			funcs, err := strategy.funcsClient.GetFuncsWithMaxRates()
+			funcs, err := strategy.funcsClient.WithMaxRates()
 			if err != nil {
 				logger.Errorf("Failed to get deployed functions: %v", err)
 				continue
@@ -302,7 +302,7 @@ func (strategy *RecalcStrategy) updateLimitsForNeighbors(iterationRate float32) 
 	)
 
 	// Get deployed functions with associated limits.
-	funcs, err := strategy.funcsClient.GetFuncsWithMaxRates()
+	funcs, err := strategy.funcsClient.WithMaxRates()
 	if err != nil {
 		return fmt.Errorf("failed to get deployed functions: %w", err)
 	}
@@ -404,7 +404,7 @@ func (strategy *RecalcStrategy) updateLocalWeights() error {
 	}
 	logger.Debugw("Proxy req rate stats", "data", proxyReqRate)
 
-	funcs, err := strategy.funcsClient.GetFuncsWithMaxRates()
+	funcs, err := strategy.funcsClient.WithMaxRates()
 	if err != nil {
 		return fmt.Errorf("failed to get deployed functions: %w", err)
 	}
@@ -767,7 +767,7 @@ func (strategy *RecalcStrategy) setAllTrafficLocal() error {
 	logger := logging.Logger().With("strategy_component", "setAllTrafficLocal")
 
 	// Get deployed functions.
-	funcs, err := strategy.funcsClient.GetFuncsWithMaxRates()
+	funcs, err := strategy.funcsClient.WithMaxRates()
 	if err != nil {
 		return fmt.Errorf("failed to get deployed functions: %w", err)
 	}
@@ -844,7 +844,7 @@ func (strategy *RecalcStrategy) reloadProxy() error {
 		neighborsHost[peerID] = host
 	}
 
-	funcsTimeout, err := strategy.funcsClient.GetFuncsWithTimeout()
+	funcsTimeout, err := strategy.funcsClient.WithTimeout()
 	if err != nil {
 		return fmt.Errorf("get function metadata: %w", err)
 	}

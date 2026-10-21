@@ -14,7 +14,7 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/funcs"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/funcs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/proxy"
 )
@@ -98,7 +98,7 @@ func (strategy *RandomStrategy) setup() error {
 	logger := logging.Logger()
 
 	// Get the list of deployed FaaS functions.
-	funcs, err := strategy.funcsClient.GetFuncsNames()
+	funcs, err := strategy.funcsClient.Names()
 	if err != nil {
 		return fmt.Errorf("failed to check deployed functions: %w", err)
 	}
@@ -122,7 +122,7 @@ func (strategy *RandomStrategy) setup() error {
 // are performed by changing the routing weights.
 func (strategy *RandomStrategy) initProxyConfig() error {
 	// Get the deployed functions and their timeout configuration.
-	funcs, err := strategy.funcsClient.GetFuncsWithTimeout()
+	funcs, err := strategy.funcsClient.WithTimeout()
 	if err != nil {
 		return fmt.Errorf("get function metadata: %w", err)
 	}
@@ -186,7 +186,7 @@ func (strategy *RandomStrategy) initProxyConfig() error {
 func (strategy *RandomStrategy) recalculate() error {
 	logger := logging.Logger()
 
-	functions, err := strategy.funcsClient.GetFuncsNames()
+	functions, err := strategy.funcsClient.Names()
 	if err != nil {
 		return fmt.Errorf("getting function names: %w", err)
 	}
