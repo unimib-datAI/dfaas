@@ -75,8 +75,6 @@ func Query(query string) (string, error) {
 	return string(body), nil
 }
 
-//////////////// OPENFAAS GATEWAY METRICS QUERY ////////////////////
-
 // queryRate performs a custom AFET rate(...) Prometheus query. The returned map has
 // function names as keys average execution times as values.
 //

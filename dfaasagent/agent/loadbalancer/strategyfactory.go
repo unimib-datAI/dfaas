@@ -69,7 +69,7 @@ func (strategyFactory *recalcStrategyFactory) createStrategy() (Strategy, error)
 		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
 	}
 
-	strategy.funcsClient = funcs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+	strategy.funcsClient = funcs.NewClient(_config.FaaSHost, _config.FaaSPort)
 
 	// Set up the HAProxy Runtime API client. Used to set the proxy weights
 	// without reloading HAProxy (this cannot be done via Data Plane API).
@@ -113,7 +113,7 @@ func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, er
 	runtimeapi_addr := fmt.Sprintf("%s:%d", _config.RuntimeAPIHost, _config.RuntimeAPIPort)
 	strategy.runtimeapi = proxy.NewRuntimeAPI(runtimeapi_addr)
 
-	strategy.funcsClient = funcs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+	strategy.funcsClient = funcs.NewClient(_config.FaaSHost, _config.FaaSPort)
 
 	strategy.forecasterClient = forecaster.Client{
 		Hostname: constants.ForecasterHost,
@@ -151,7 +151,7 @@ func (strategyFactory *staticStrategyFactory) createStrategy() (Strategy, error)
 	}
 	strategy.hacfgupdater = hacfgupdater
 
-	strategy.funcsClient = funcs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+	strategy.funcsClient = funcs.NewClient(_config.FaaSHost, _config.FaaSPort)
 
 	strategy.nodeInfo = nodeInfoStatic{}
 	strategy.targetNodes = make(map[string][]string)
@@ -181,9 +181,9 @@ func (strategyFactory *allLocalStrategyFactory) createStrategy() (Strategy, erro
 	}
 	strategy.hacfgupdater = hacfgupdater
 
-	// Set up the wrapper to OpenFaaS Gateway API used to get the list of
-	// deployed OpenFaaS functions.
-	strategy.funcsClient = funcs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+	// Set up the wrapper to FaaS client used to get the list of deployed FaaS
+	// functions.
+	strategy.funcsClient = funcs.NewClient(_config.FaaSHost, _config.FaaSPort)
 
 	return strategy, nil
 }
@@ -241,9 +241,7 @@ func (strategyFactory *rlAgentStrategyFactory) createStrategy() (Strategy, error
 		return nil, fmt.Errorf("initializing historical iterations time span info: %w", err)
 	}
 
-	// Set up the wrapper to OpenFaaS Gateway API used to get the list of
-	// deployed OpenFaaS functions.
-	strategy.funcsClient = funcs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+	strategy.funcsClient = funcs.NewClient(_config.FaaSHost, _config.FaaSPort)
 
 	// We also set-up the internal http.Client used to send the observation to
 	// the RL model and get the response as action. This allows used to reduce
@@ -290,9 +288,7 @@ func (strategyFactory *randomStrategyFactory) createStrategy() (Strategy, error)
 	runtimeapiAddr := fmt.Sprintf("%s:%d", _config.RuntimeAPIHost, _config.RuntimeAPIPort)
 	strategy.runtimeapi = proxy.NewRuntimeAPI(runtimeapiAddr)
 
-	// Set up the wrapper to OpenFaaS Gateway API used to get the list of
-	// deployed OpenFaaS functions.
-	strategy.funcsClient = funcs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+	strategy.funcsClient = funcs.NewClient(_config.FaaSHost, _config.FaaSPort)
 
 	return strategy, nil
 }
@@ -324,9 +320,7 @@ func (strategyFactory *latencyThresholdStrategyFactory) createStrategy() (Strate
 	}
 	strategy.hacfgupdater = hacfgupdater
 
-	// Set up the wrapper to OpenFaaS Gateway API used to get the list of
-	// deployed OpenFaaS functions.
-	strategy.funcsClient = funcs.NewClient(_config.OpenFaaSHost, _config.OpenFaaSPort)
+	strategy.funcsClient = funcs.NewClient(_config.FaaSHost, _config.FaaSPort)
 
 	return strategy, nil
 }

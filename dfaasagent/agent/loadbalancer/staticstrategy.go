@@ -244,8 +244,8 @@ func (strategy *StaticStrategy) createHACfgObject(
 			MyNodeID:    myNodeID,
 			NodeIP:      _config.NodeIP,
 			HAProxyHost: _config.HAProxyHost,
-			FaaSHost:    _config.OpenFaaSHost,
-			FaaSPort:    _config.OpenFaaSPort,
+			FaaSHost:    _config.FaaSHost,
+			FaaSPort:    _config.FaaSPort,
 		},
 
 		Nodes:     map[string]*HACfgNodeStatic{},

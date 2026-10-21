@@ -208,8 +208,8 @@ func (strategy *LatencyThresholdStrategy) setProxyWeights(weights map[string]map
 		NeighborsHost: neighborsHost,
 		NeighborsPort: neighborsPort,
 		Weights:       weights,
-		FaaSHost:      _config.OpenFaaSHost,
-		FaaSPort:      _config.OpenFaaSPort,
+		FaaSHost:      _config.FaaSHost,
+		FaaSPort:      _config.FaaSPort,
 	}
 
 	return strategy.hacfgupdater.UpdateHAConfig(data)

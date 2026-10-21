@@ -173,8 +173,8 @@ func (strategy *RandomStrategy) initProxyConfig() error {
 		Neighbors:     strategy.neighbors,
 		NeighborsHost: neighborsHost,
 		NeighborsPort: neighborsPort,
-		FaaSHost:      _config.OpenFaaSHost,
-		FaaSPort:      _config.OpenFaaSPort,
+		FaaSHost:      _config.FaaSHost,
+		FaaSPort:      _config.FaaSPort,
 		RejectorHost:  _config.RejectorHost,
 		RejectorPort:  _config.RejectorPort,
 	}

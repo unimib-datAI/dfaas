@@ -106,8 +106,12 @@ type Configuration struct {
 	RuntimeAPIHost string `mapstructure:"AGENT_RUNTIMEAPI_HOST"`
 	RuntimeAPIPort uint   `mapstructure:"AGENT_RUNTIMEAPI_PORT"`
 
-	OpenFaaSHost string `mapstructure:"AGENT_OPENFAAS_HOST"`
-	OpenFaaSPort uint   `mapstructure:"AGENT_OPENFAAS_PORT"`
+	// Connection information for the local FaaS platform. This information will
+	// be used to configure the proxy, allow incoming requests to be processed
+	// locally, and run administrative queries, such as checking which functions
+	// are currently deployed.
+	FaaSHost string `mapstructure:"AGENT_FAAS_HOST"`
+	FaaSPort uint   `mapstructure:"AGENT_FAAS_PORT"`
 
 	// Connection information for the rejector utility, a web server that
 	// rejects all incoming requests (used for requests deliberately rejected by

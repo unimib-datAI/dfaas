@@ -877,8 +877,8 @@ func (strategy *RecalcStrategy) reloadProxy() error {
 		Neighbors:     neighborsID,
 		NeighborsHost: neighborsHost,
 		HAProxyPort:   _config.HAProxyPort,
-		FaaSHost:      _config.OpenFaaSHost,
-		FaaSPort:      _config.OpenFaaSPort,
+		FaaSHost:      _config.FaaSHost,
+		FaaSPort:      _config.FaaSPort,
 		RejectorHost:  _config.RejectorHost,
 		RejectorPort:  _config.RejectorPort,
 	}

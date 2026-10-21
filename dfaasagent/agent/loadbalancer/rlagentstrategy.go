@@ -268,8 +268,8 @@ func (strategy *RLAgentStrategy) reloadProxy() error {
 		Neighbors     []string
 		NeighborsPort map[string]string
 		NeighborsHost map[string]string
-		OpenFaaSHost  string
-		OpenFaaSPort  uint
+		FaaSHost  string
+		FaaSPort  uint
 		RejectorHost  string
 		RejectorPort  uint
 	}{
@@ -279,8 +279,8 @@ func (strategy *RLAgentStrategy) reloadProxy() error {
 		Neighbors:     strategy.neighbors,
 		NeighborsHost: neighborsHost,
 		NeighborsPort: neighborsPort,
-		OpenFaaSHost:  _config.OpenFaaSHost,
-		OpenFaaSPort:  _config.OpenFaaSPort,
+		FaaSHost:  _config.FaaSHost,
+		FaaSPort:  _config.FaaSPort,
 		RejectorHost:  _config.RejectorHost,
 		RejectorPort:  _config.RejectorPort,
 	}
