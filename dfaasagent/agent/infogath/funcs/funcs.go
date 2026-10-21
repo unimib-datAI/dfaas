@@ -1,6 +1,6 @@
 // SPDX-License-Identifier: AGPL-3.0-or-later
-// Copyright 2021-2025 The DFaaS Authors. All rights reserved.
-// This file is licensed under the AGPL v3.0-or later license. See LICENSE and
+// Copyright 2021-2026 The DFaaS Authors. All rights reserved.
+// This file is licensed under the AGPL v3.0-or-later license. See LICENSE and
 // AUTHORS file for more information.
 
 // Package funcs allows to retrieve the function lists and details from the
@@ -11,156 +11,66 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"net"
 	"net/http"
 	"net/url"
 	"strconv"
+	"time"
 
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
-
 	"go.uber.org/zap"
 )
 
-/*
-	Example of response from "/system/functions":
-
-	[
-		{
-			"name": "nodeinfo",
-			"image": "functions/nodeinfo-http:latest",
-			"invocationCount": 0,
-			"replicas": 1,
-			"envProcess": "",
-			"availableReplicas": 0,
-			"labels": {
-				"com.openfaas.function": "nodeinfo",
-				"com.openfaas.uid": "181161398",
-				"dfaas.maxrate": "50",
-				"function": "true"
-			},
-			"annotations": null
-		},
-		{
-			"name": "figlet",
-			"image": "functions/figlet:0.13.0",
-			"invocationCount": 0,
-			"replicas": 1,
-			"envProcess": "figlet",
-			"availableReplicas": 0,
-			"labels": {
-				"com.openfaas.function": "figlet",
-				"com.openfaas.uid": "433840237",
-				"dfaas.maxrate": "50",
-				"function": "true"
-			},
-			"annotations": null
-		},
-		{
-			"name": "funca",
-			"image": "funca:latest",
-			"invocationCount": 7501,
-			"replicas": 1,
-			"envProcess": "./handler",
-			"availableReplicas": 0,
-			"labels": {
-				"com.openfaas.function": "funca",
-				"com.openfaas.uid": "107584837",
-				"dfaas.maxrate": "110",
-				"function": "true"
-			},
-			"annotations": null
-		},
-		{
-			"name": "funcc",
-			"image": "funcc:latest",
-			"invocationCount": 2,
-			"replicas": 1,
-			"envProcess": "./handler",
-			"availableReplicas": 0,
-			"labels": {
-				"com.openfaas.function": "funcc",
-				"com.openfaas.uid": "379141780",
-				"dfaas.maxrate": "310",
-				"function": "true"
-			},
-			"annotations": null
-		},
-		{
-			"name": "funcb",
-			"image": "funcb:latest",
-			"invocationCount": 1,
-			"replicas": 1,
-			"envProcess": "./handler",
-			"availableReplicas": 0,
-			"labels": {
-				"com.openfaas.function": "funcb",
-				"com.openfaas.uid": "764206021",
-				"dfaas.maxrate": "210",
-				"function": "true"
-			},
-			"annotations": null
-		}
-	]
-*/
-
-// funcsTimeoutResponse is a subset of the structure in a response from
-// /system/functions. It contains only relevant attributes used by the
-// "recalc" strategy.
-type funcsMaxRatesResponse []struct {
+// functionResponse contains the relevant attributes of a function returned by
+// the /system/functions endpoint. Unspecified JSON fields are ignored.
+type functionResponse struct {
 	Name   string `json:"name"`
 	Labels struct {
-		MaxRate string `json:"dfaas.maxrate"`
+		MaxRate string  `json:"dfaas.maxrate"`
+		Timeout *string `json:"dfaas.timeout_ms"`
 	} `json:"labels"`
 }
 
-// funcsTimeoutResponse is a subset of the structure in a response from
-// /system/functions. It contains only relevant attributes used by the
-// "alllocal" strategy.
-type funcsTimeoutResponse []struct {
-	Name   string `json:"name"`
-	Labels struct {
-		// Execution timeout for this function. This value is optional. When
-		// provided, the HAProxy backend is configured accordingly, with a small
-		// amount added to prevent premature rejection.
-		Timeout *string `json:"dfaas.timeout_ms,omitempty"`
-	} `json:"labels"`
-}
+type functionsResponse []functionResponse
 
-// funcsTimeoutResponse is a subset of the structure in a response from
-// /system/functions. It contains only relevant attributes used by a generic
-// strategy.
-type funcsNamesResponse []struct {
-	Name string `json:"name"`
-}
-
-// Client holds information for connecting to OpenFaaS instance.
+// Client holds information for connecting to an OpenFaaS instance.
 type Client struct {
-	hostname string
-	port     uint
+	hostname   string
+	port       uint
+	httpClient *http.Client
 }
 
-// NewClient returns a new Client.
-func NewClient(hostname string, port uint) *Client {
-	return &Client{hostname: hostname, port: port}
+// New returns a new Client.
+func New(hostname string, port uint) *Client {
+	return &Client{
+		hostname: hostname,
+		port:     port,
+		httpClient: &http.Client{
+			Timeout: 10 * time.Second,
+		},
+	}
 }
 
-// doFuncsRequest gets info about functions from "/system/functions" endpoint.
+// doFuncsRequest retrieves function information from /system/functions.
 func (c *Client) doFuncsRequest() ([]byte, error) {
-	u := &url.URL{
+	u := url.URL{
 		Scheme: "http",
-		Host:   fmt.Sprintf("%s:%d", c.hostname, c.port),
+		Host:   net.JoinHostPort(c.hostname, strconv.FormatUint(uint64(c.port), 10)),
 		Path:   "/system/functions",
 	}
 
-	resp, err := http.Get(u.String())
+	resp, err := c.httpClient.Get(u.String())
 	if err != nil {
 		return nil, fmt.Errorf("HTTP GET to /system/functions: %w", err)
 	}
+	defer resp.Body.Close()
 
 	if resp.StatusCode != http.StatusOK {
+		// Drain the body when possible to allow connection reuse.
+		_, _ = io.Copy(io.Discard, resp.Body)
 		return nil, fmt.Errorf("HTTP GET to /system/functions: %s", resp.Status)
 	}
 
-	defer resp.Body.Close()
 	body, err := io.ReadAll(resp.Body)
 	if err != nil {
 		return nil, fmt.Errorf("HTTP response from /system/functions: %w", err)
@@ -169,96 +79,107 @@ func (c *Client) doFuncsRequest() ([]byte, error) {
 	return body, nil
 }
 
-/////////////////////////////////// PUBLIC INTERFACE ////////////////////////////////
-
-// GetFuncsWithMaxRates returns the functions list as a map[string]uint of
-// function names and dfaas.maxrate values.
-func (c *Client) GetFuncsWithMaxRates() (map[string]uint, error) {
+// getFunctions retrieves and decodes the function list.
+func (c *Client) getFunctions() (functionsResponse, error) {
 	body, err := c.doFuncsRequest()
 	if err != nil {
 		return nil, fmt.Errorf("get functions info: %w", err)
 	}
 
-	var respObj funcsMaxRatesResponse
-	err = json.Unmarshal(body, &respObj)
-	if err != nil {
-		logging.Logger().Debug("Body response that fails JSON decoding", zap.String("body", string(body)))
+	var functions functionsResponse
+	if err := json.Unmarshal(body, &functions); err != nil {
+		logging.Logger().Debug(
+			"Body response that fails JSON decoding",
+			zap.String("body", string(body)),
+		)
 		return nil, fmt.Errorf("deserializing JSON functions info: %w", err)
 	}
 
-	result := map[string]uint{}
-	for _, item := range respObj {
-		funcName := item.Name
-		rawMaxRate := item.Labels.MaxRate
+	return functions, nil
+}
 
-		if rawMaxRate == "" {
-			return nil, fmt.Errorf("max rate label not found for function %q", funcName)
+// parseUintLabel parses an unsigned 32-bit integer from a function label.
+func parseUintLabel(value, label, functionName string) (uint, error) {
+	n, err := strconv.ParseUint(value, 10, 32)
+	if err != nil {
+		return 0, fmt.Errorf(
+			"parsing %s for function %q: %w",
+			label, functionName, err,
+		)
+	}
+
+	return uint(n), nil
+}
+
+// WithMaxRates returns a map of function names to dfaas.maxrate values.
+func (c *Client) WithMaxRates() (map[string]uint, error) {
+	functions, err := c.getFunctions()
+	if err != nil {
+		return nil, err
+	}
+
+	result := make(map[string]uint, len(functions))
+	for _, fn := range functions {
+		if fn.Labels.MaxRate == "" {
+			return nil, fmt.Errorf(
+				"max rate label not found for function %q",
+				fn.Name,
+			)
 		}
 
-		maxRate, err := strconv.ParseUint(rawMaxRate, 10, 32)
+		maxRate, err := parseUintLabel(
+			fn.Labels.MaxRate, "max rate label", fn.Name,
+		)
 		if err != nil {
-			return nil, fmt.Errorf("parsing max rate label for function %q: %v", funcName, err)
+			return nil, err
 		}
-		result[funcName] = uint(maxRate)
+
+		result[fn.Name] = maxRate
 	}
 
 	return result, nil
 }
 
-// GetFuncsNames returns the function names as list.
-func (c *Client) GetFuncsNames() ([]string, error) {
-	body, err := c.doFuncsRequest()
+// Names returns the names of all functions.
+func (c *Client) Names() ([]string, error) {
+	functions, err := c.getFunctions()
 	if err != nil {
-		return nil, fmt.Errorf("get functions info: %w", err)
+		return nil, err
 	}
 
-	var respObj funcsNamesResponse
-	err = json.Unmarshal(body, &respObj)
-	if err != nil {
-		logging.Logger().Debugf("Body response that fails JSON decoding: \n%s", string(body))
-		return nil, fmt.Errorf("deserializing JSON functions info: %w", err)
+	names := make([]string, 0, len(functions))
+	for _, fn := range functions {
+		names = append(names, fn.Name)
 	}
 
-	var result []string
-	for _, item := range respObj {
-		result = append(result, item.Name)
-	}
-
-	return result, nil
+	return names, nil
 }
 
-// GetFuncsWithTimeout returns the functions list as a map[string]uint of
-// function names and dfaas.timeout_ms values in milliseconds. If
-// "dfaas.timeout" is not present, nil is set by default.
-func (c *Client) GetFuncsWithTimeout() (map[string]*uint, error) {
-	// Make the HTTP request to get function's metadata.
-	body, err := c.doFuncsRequest()
+// WithTimeout returns a map of function names to dfaas.timeout_ms
+// values in milliseconds. A nil value indicates that the timeout is absent.
+func (c *Client) WithTimeout() (map[string]*uint, error) {
+	functions, err := c.getFunctions()
 	if err != nil {
-		return nil, fmt.Errorf("get functions info: %w", err)
+		return nil, err
 	}
 
-	// Parse only relevant attributes.
-	var respObj funcsTimeoutResponse
-	err = json.Unmarshal(body, &respObj)
-	if err != nil {
-		logging.Logger().Debugf("Body response that fails JSON decoding: \n%s", string(body))
-		return nil, fmt.Errorf("deserializing JSON functions info: %w", err)
-	}
-
-	// Prepare output.
-	result := map[string]*uint{}
-	for _, item := range respObj {
-		if item.Labels.Timeout == nil {
-			result[item.Name] = nil
+	result := make(map[string]*uint, len(functions))
+	for _, fn := range functions {
+		if fn.Labels.Timeout == nil {
+			result[fn.Name] = nil
 			continue
 		}
 
-		num, err := strconv.ParseUint(*item.Labels.Timeout, 10, 32)
+		timeout, err := parseUintLabel(
+			*fn.Labels.Timeout, "timeout label", fn.Name,
+		)
 		if err != nil {
-			return nil, fmt.Errorf("parsing timeout for function %q: %v", item.Name, err)
+			return nil, err
 		}
-		val := uint(num)
-		result[item.Name] = &val
+
+		value := timeout
+		result[fn.Name] = &value
 	}
+
 	return result, nil
 }
