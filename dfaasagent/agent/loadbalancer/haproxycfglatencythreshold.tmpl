@@ -73,9 +73,9 @@ backend function_{{$funcName}}
     # Roundrobin provides deterministic selection when traffic is low.
     balance roundrobin
 
-    # "openfaas-local" is the local FaaS platform.
+    # "faas-local" is the local FaaS platform.
     {{ $localWeight := index $.Weights $funcName $.DFaaSNodeID }}
-    server openfaas-local {{$.FaaSHost}}:{{$.FaaSPort}} weight {{$localWeight}}
+    server faas-local {{$.FaaSHost}}:{{$.FaaSPort}} weight {{$localWeight}}
     {{- range $.Neighbors }}
         {{ $weight := index $.Weights $funcName .}}
         {{ $serverName := printf "node_%s" .}}
@@ -93,7 +93,7 @@ backend function_{{$funcName}}_forwarded
     http-response set-header DFaaS-Node-ID %[var(txn.dfaas_node_id)]
     http-response add-header DFaaS-Forwarded-To {{$.DFaaSNodeID}}
 
-    server openfaas-local {{$.FaaSHost}}:{{$.FaaSPort}}
+    server faas-local {{$.FaaSHost}}:{{$.FaaSPort}}
 
     {{- if $timeout}}
     timeout connect {{$timeout}}ms

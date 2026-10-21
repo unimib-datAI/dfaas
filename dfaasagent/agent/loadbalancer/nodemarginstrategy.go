@@ -665,8 +665,6 @@ func (strategy *NodeMarginStrategy) setProxyWeights() error {
 	strategy.nodestbl.SafeExec(func(entries map[string]*nodestbl.EntryNMS) error {
 		hacfg = strategy.createHACfgObject(
 			myID,
-			_config.FaaSHost,
-			_config.FaaSPort,
 			_config.RecalcPeriod,
 			entries,
 			strategy.weights,
@@ -790,8 +788,6 @@ func (strategy *NodeMarginStrategy) updateHAProxyConfig(hacfg *HACfgNMS) error {
 // used from method updateHAProxyConfig to update the HAProxy configuration
 func (strategy *NodeMarginStrategy) createHACfgObject(
 	myNodeID string,
-	openFaaSHost string,
-	openFaaSPort uint,
 	recalcPeriod time.Duration,
 	entries map[string]*nodestbl.EntryNMS,
 	funcsWeights map[string]map[string]uint,
@@ -801,8 +797,8 @@ func (strategy *NodeMarginStrategy) createHACfgObject(
 			MyNodeID:    myNodeID,
 			NodeIP:      _config.NodeIP,
 			HAProxyHost: _config.HAProxyHost,
-			FaaSHost:    openFaaSHost,
-			FaaSPort:    openFaaSPort,
+			FaaSHost:    _config.FaaSHost,
+			FaaSPort:    _config.FaaSPort,
 		},
 
 		StrRecalc: recalcPeriod.String(),

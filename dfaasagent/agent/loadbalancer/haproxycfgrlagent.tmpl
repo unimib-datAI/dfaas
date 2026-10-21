@@ -85,9 +85,9 @@ backend function_{{$funcName}}
     # balancing strategy instead of random because the first is deterministic.
     balance roundrobin
 
-    # Two special servers: "openfaas-local" is the local FaaS platform,
+    # Two special servers: "faas-local" is the local FaaS platform,
     # "rejector" is a dummy web server that only rejects incoming requests.
-    server openfaas-local {{$.FaaSHost}}:{{$.FaaSPort}} weight 100
+    server faas-local {{$.FaaSHost}}:{{$.FaaSPort}} weight 100
     server rejector {{$.RejectorHost}}:{{$.RejectorPort}} weight 0
     {{- range $.Neighbors }}
         server {{.}} {{index $.NeighborsHost .}}:{{index $.NeighborsPort .}} weight 0
@@ -103,7 +103,7 @@ backend function_{{$funcName}}_forwarded
     # was forwarded to.
     http-response set-header DFaaS-Node-ID %[var(txn.dfaas_node_id)]
     http-response add-header DFaaS-Forwarded-To {{$.DFaaSNodeID}}
-    server openfaas-local {{$.FaaSHost}}:{{$.FaaSPort}}
+    server faas-local {{$.FaaSHost}}:{{$.FaaSPort}}
     {{- if $timeout}}
     timeout connect {{$timeout}}ms
     timeout server {{$timeout}}ms

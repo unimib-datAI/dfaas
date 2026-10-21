@@ -601,7 +601,7 @@ func (strategy *RLAgentStrategy) applyAction(action map[string]map[string]float6
 	if !exist {
 		return fmt.Errorf("local proportion not found in RL action: %v", action)
 	}
-	weights["openfaas-local"] = uint(math.Round(localProportion * 100))
+	weights["faas-local"] = uint(math.Round(localProportion * 100))
 
 	// Extract reject action.
 	rejectProportion, exist := action[localNode]["reject"]

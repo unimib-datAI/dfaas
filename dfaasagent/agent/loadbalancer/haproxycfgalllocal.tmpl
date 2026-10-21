@@ -68,7 +68,7 @@ frontend main
 {{range $funcName, $timeout := .Functions -}}
 backend function_{{$funcName}}
     http-response set-header DFaaS-Node-ID {{$.DFaaSNodeID}}
-    server openfaas-local {{$.FaaSHost}}:{{$.FaaSPort}}
+    server faas-local {{$.FaaSHost}}:{{$.FaaSPort}}
     {{- if $timeout}}
     # If the function's metadata contains dfaas.timeout_ms label, we se in the
     # HAProxy backend a timeout of dfaas.timeout_ms+1s. Note that in the
@@ -82,7 +82,7 @@ backend function_{{$funcName}}_forwarded
     # was forwarded to.
     http-response set-header DFaaS-Node-ID %[var(txn.dfaas_node_id)]
     http-response add-header DFaaS-Forwarded-To {{$.DFaaSNodeID}}
-    server openfaas-local {{$.FaaSHost}}:{{$.FaaSPort}}
+    server faas-local {{$.FaaSHost}}:{{$.FaaSPort}}
     {{- if $timeout}}
     timeout connect {{$timeout}}ms
     timeout server {{$timeout}}ms

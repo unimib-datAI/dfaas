@@ -224,12 +224,12 @@ func (strategy *RandomStrategy) generateWeights() map[string]uint {
 	// If there are no neighbors and rejection is disabled, all requests
 	// must be processed locally.
 	if len(strategy.neighbors) == 0 && !strategy.randomReject {
-		weights["openfaas-local"] = 100
+		weights["faas-local"] = 100
 		return weights
 	}
 
 	// Build the list of possible targets.
-	targets := []string{"openfaas-local"}
+	targets := []string{"faas-local"}
 	targets = append(targets, strategy.neighbors...)
 
 	if strategy.randomReject {

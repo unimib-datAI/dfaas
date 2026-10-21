@@ -483,7 +483,7 @@ func (strategy *RecalcStrategy) updateLocalWeights() error {
 			// overloaded.
 			for _, neighborID := range neighborsID {
 				backend := fmt.Sprintf("function_%s_forwarded_%s", funcName, neighborID)
-				weights[backend]["openfaas-local"] = 0
+				weights[backend]["faas-local"] = 0
 				weights[backend]["rejector"] = 100
 			}
 
@@ -491,7 +491,7 @@ func (strategy *RecalcStrategy) updateLocalWeights() error {
 			// method. This map defines the RPS limits that the local node and
 			// its neighbors can handle.
 			limits := make(map[string]float32)
-			limits["openfaas-local"] = float32(limit)
+			limits["faas-local"] = float32(limit)
 			strategy.limitsTableLock.RLock()
 			for neighborID := range strategy.limitsTable {
 				// In the limitsTable neighbors ID are stored as plain ID, but in
@@ -534,7 +534,7 @@ func (strategy *RecalcStrategy) updateLocalWeights() error {
 		// Since the node is not overloaded for this function, we can process
 		// all requests locally.
 		backend := fmt.Sprintf("function_%s", funcName)
-		weights[backend]["openfaas-local"] = 100
+		weights[backend]["faas-local"] = 100
 		weights[backend]["rejector"] = 0
 		for _, neighborID := range neighborsID {
 			weights[backend][neighborID] = 0
@@ -583,7 +583,7 @@ func (strategy *RecalcStrategy) updateLocalWeights() error {
 
 			rejected := 100 - allowed
 
-			weights[backend]["openfaas-local"] = allowed
+			weights[backend]["faas-local"] = allowed
 			weights[backend]["rejector"] = rejected
 
 			logger.Debugw("Calculated forwarded traffic weights",
@@ -656,7 +656,7 @@ func (strategy *RecalcStrategy) processMsgRecalc(senderID string, msg *MsgRecalc
 
 // calculateWeights calculates integer proxy weights for a function.
 //
-// limits contains the RPS limits for "openfaas-local" and zero or more
+// limits contains the RPS limits for "faas-local" and zero or more
 // neighbors.
 //
 // If currentRPS is below the local limit, all traffic is assigned locally.
@@ -669,7 +669,7 @@ func (strategy *RecalcStrategy) processMsgRecalc(senderID string, msg *MsgRecalc
 // to 100.
 func (strategy *RecalcStrategy) calculateWeights(currentRPS float32, limits map[string]float32) map[string]uint {
 	const (
-		local    = "openfaas-local"
+		local    = "faas-local"
 		rejector = "rejector"
 	)
 
@@ -791,7 +791,7 @@ func (strategy *RecalcStrategy) setAllTrafficLocal() error {
 		// forwarding.
 		localBackend := fmt.Sprintf("function_%s", funcName)
 		if slices.Contains(backends, localBackend) {
-			if err := strategy.runtimeapi.SetWeight(localBackend, "openfaas-local", 100); err != nil {
+			if err := strategy.runtimeapi.SetWeight(localBackend, "faas-local", 100); err != nil {
 				return fmt.Errorf("failed to set local weight for %q: %w", localBackend, err)
 			}
 
@@ -814,7 +814,7 @@ func (strategy *RecalcStrategy) setAllTrafficLocal() error {
 				continue
 			}
 
-			if err := strategy.runtimeapi.SetWeight(forwardedBackend, "openfaas-local", 0); err != nil {
+			if err := strategy.runtimeapi.SetWeight(forwardedBackend, "faas-local", 0); err != nil {
 				return fmt.Errorf("failed to disable forwarded backend %q: %w", forwardedBackend, err)
 			}
 
