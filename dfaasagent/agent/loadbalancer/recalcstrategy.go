@@ -889,22 +889,6 @@ func (strategy *RecalcStrategy) reloadProxy() error {
 	return strategy.hacfgupdater.UpdateHAConfig(data)
 }
 
-// sameKeys returns true if the given dicts have the same keys, otherwise
-// returns false.
-func sameKeys[K comparable, V1, V2 any](a map[K]V1, b map[K]V2) bool {
-	if len(a) != len(b) {
-		return false
-	}
-
-	for k := range a {
-		if _, present := b[k]; !present {
-			return false
-		}
-	}
-
-	return true
-}
-
 func (strategy *RecalcStrategy) waitForProxyVariable(variable string) (string, error) {
 	for {
 		value, found, err := strategy.runtimeapi.Variable(variable)

@@ -5,10 +5,6 @@
 
 package loadbalancer
 
-import (
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
-)
-
 //////////////////// MESSAGES' STRUCT TYPES ////////////////////
 
 // MsgText defines the format of the PubSub messages containing a bare text message
@@ -85,17 +81,3 @@ type MsgNodeInfoStatic struct {
 
 // StrMsgNodeInfoTypeStatic value for MsgNodeInfoStatic.MsgType.
 const StrMsgNodeInfoTypeStatic = "nodeinfoStatic"
-
-// processMsgText processes a text message received from pubsub
-func processMsgText(sender string, msg *MsgText) error {
-	logger := logging.Logger()
-	myself := _p2pHost.ID().String()
-
-	if sender == myself {
-		return nil // Ignore ourselves
-	}
-
-	logger.Debugf("Received text message from node %s: %s", sender, msg.Text)
-
-	return nil
-}

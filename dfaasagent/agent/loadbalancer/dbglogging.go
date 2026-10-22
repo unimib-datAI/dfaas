@@ -375,38 +375,3 @@ func debugFuncsDiff(current, previous map[string]*uint) {
 		"previous_count", len(previous),
 	)
 }
-
-// debugFuncs is similar to debugFuncsDiff but without the previous values.
-func debugFuncs(current map[string]*uint) {
-	logger, ok := debugLogger()
-	if !ok {
-		return
-	}
-
-	var b strings.Builder
-	fmt.Fprintf(&b, "Detected deployed functions: (total %d) ", len(current))
-
-	keys := make([]string, 0, len(current))
-	for k := range current {
-		keys = append(keys, k)
-	}
-	sort.Strings(keys)
-
-	for idx, k := range keys {
-		b.WriteString(k)
-		if current[k] != nil {
-			b.WriteString("=")
-			b.WriteString(fmt.Sprintf("%d", *current[k]))
-		} else {
-			b.WriteString("=nil")
-		}
-		if idx < len(keys)-1 {
-			b.WriteString(" ")
-		}
-	}
-
-	logger.Debugw("Detected deployed functions",
-		"message", b.String(),
-		"count", len(current),
-	)
-}

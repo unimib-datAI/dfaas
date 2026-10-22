@@ -48,7 +48,7 @@ func Initialize(ctx context.Context, p2pHost host.Host, bootstrapConfig Bootstra
 	logger := logging.Logger().With("component", "kademlia_discovery")
 
 	if idleTime == 0 {
-		return nil, fmt.Errorf("Kademlia idle time must be a positive duration, got 0")
+		return nil, fmt.Errorf("kademlia idle time must be a positive duration, got 0")
 	}
 
 	// Start a DHT, for use in peer discovery. We can't just make a new DHT

@@ -24,11 +24,9 @@ type CBOnReceived func(msg *pubsub.Message) error
 //////////////////// PRIVATE PACKAGE VARS AND INIT FUNCTION ////////////////////
 
 var _ctx context.Context
-var _p2pHost host.Host
 var _topicName string
 var _cbOnReceived CBOnReceived
 
-var _ps *pubsub.PubSub
 var _topic *pubsub.Topic
 var _subscription *pubsub.Subscription
 
@@ -61,11 +59,9 @@ func Initialize(
 
 	// If everything successful, set the package's static vars
 	_ctx = ctx
-	_p2pHost = p2pHost
 	_topicName = topicName
 	_cbOnReceived = cbOnReceived
 
-	_ps = ps
 	_topic = topic
 	_subscription = subscription
 

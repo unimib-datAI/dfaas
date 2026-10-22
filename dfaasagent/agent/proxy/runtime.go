@@ -80,7 +80,7 @@ func (r *RuntimeAPI) Weight(backend, server string) (uint, error) {
 
 	// Weight is always non-negative, anyway we test that.
 	if w64 < 0 {
-		return 0, fmt.Errorf("negative weight %f returned", w64)
+		return 0, fmt.Errorf("negative weight %d returned", w64)
 	}
 
 	return uint(w64), nil

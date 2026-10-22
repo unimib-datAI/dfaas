@@ -30,7 +30,6 @@ import (
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/promq"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/loadbalancer"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/utils/maddrhelp"
 )
 
@@ -235,10 +234,6 @@ func runAgent(config config.Configuration) error {
 	} else {
 		logger.Debug("mDNS discovery disabled")
 	}
-
-	////////// NODESTBL INITIALIZATION //////////
-
-	nodestbl.Initialize(config)
 
 	////////// GOROUTINES //////////
 
