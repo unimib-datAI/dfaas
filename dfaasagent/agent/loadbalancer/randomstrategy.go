@@ -29,7 +29,7 @@ type RandomStrategy struct {
 	runtimeapi *proxy.RuntimeAPI
 
 	// FaaS client used to get the list of deployed functions.
-	funcsClient *faas.Client
+	faas faas.Provider
 
 	// Starting seed for the pseudo-random number generator. If set to -1, a
 	// random seed is used.
@@ -98,7 +98,7 @@ func (strategy *RandomStrategy) setup() error {
 	logger := logging.Logger()
 
 	// Get the list of deployed FaaS functions.
-	funcs, err := strategy.funcsClient.Names()
+	funcs, err := strategy.faas.Names()
 	if err != nil {
 		return fmt.Errorf("failed to check deployed functions: %w", err)
 	}
@@ -122,7 +122,7 @@ func (strategy *RandomStrategy) setup() error {
 // are performed by changing the routing weights.
 func (strategy *RandomStrategy) initProxyConfig() error {
 	// Get the deployed functions and their timeout configuration.
-	funcs, err := strategy.funcsClient.WithTimeout()
+	funcs, err := strategy.faas.WithTimeout()
 	if err != nil {
 		return fmt.Errorf("get function metadata: %w", err)
 	}
@@ -186,7 +186,7 @@ func (strategy *RandomStrategy) initProxyConfig() error {
 func (strategy *RandomStrategy) recalculate() error {
 	logger := logging.Logger()
 
-	functions, err := strategy.funcsClient.Names()
+	functions, err := strategy.faas.Names()
 	if err != nil {
 		return fmt.Errorf("getting function names: %w", err)
 	}

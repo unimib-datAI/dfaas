@@ -69,7 +69,16 @@ func (strategyFactory *recalcStrategyFactory) createStrategy() (Strategy, error)
 		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
 	}
 
-	strategy.funcsClient = faas.New(_config.FaaSHost, _config.FaaSPort)
+	faas, err := faas.New(_config.FaaSPlatform,
+		_config.FaaSHost,
+		_config.FaaSPort,
+		_config.OpenWhiskNamespace,
+		_config.OpenWhiskAPIKey,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("initializing FaaS platform wrapper: %w", err)
+	}
+	strategy.faas = faas
 
 	// Set up the HAProxy Runtime API client. Used to set the proxy weights
 	// without reloading HAProxy (this cannot be done via Data Plane API).
@@ -113,7 +122,16 @@ func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, er
 	runtimeapi_addr := fmt.Sprintf("%s:%d", _config.RuntimeAPIHost, _config.RuntimeAPIPort)
 	strategy.runtimeapi = proxy.NewRuntimeAPI(runtimeapi_addr)
 
-	strategy.funcsClient = faas.New(_config.FaaSHost, _config.FaaSPort)
+	faas, err := faas.New(_config.FaaSPlatform,
+		_config.FaaSHost,
+		_config.FaaSPort,
+		_config.OpenWhiskNamespace,
+		_config.OpenWhiskAPIKey,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("initializing FaaS platform wrapper: %w", err)
+	}
+	strategy.faas = faas
 
 	strategy.forecasterClient = forecaster.Client{
 		Hostname: constants.ForecasterHost,
@@ -151,7 +169,16 @@ func (strategyFactory *staticStrategyFactory) createStrategy() (Strategy, error)
 	}
 	strategy.hacfgupdater = hacfgupdater
 
-	strategy.funcsClient = faas.New(_config.FaaSHost, _config.FaaSPort)
+	faas, err := faas.New(_config.FaaSPlatform,
+		_config.FaaSHost,
+		_config.FaaSPort,
+		_config.OpenWhiskNamespace,
+		_config.OpenWhiskAPIKey,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("initializing FaaS platform wrapper: %w", err)
+	}
+	strategy.faas = faas
 
 	strategy.nodeInfo = nodeInfoStatic{}
 	strategy.targetNodes = make(map[string][]string)
@@ -181,9 +208,16 @@ func (strategyFactory *allLocalStrategyFactory) createStrategy() (Strategy, erro
 	}
 	strategy.hacfgupdater = hacfgupdater
 
-	// Set up the wrapper to FaaS client used to get the list of deployed FaaS
-	// functions.
-	strategy.funcsClient = faas.New(_config.FaaSHost, _config.FaaSPort)
+	faas, err := faas.New(_config.FaaSPlatform,
+		_config.FaaSHost,
+		_config.FaaSPort,
+		_config.OpenWhiskNamespace,
+		_config.OpenWhiskAPIKey,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("initializing FaaS platform wrapper: %w", err)
+	}
+	strategy.faas = faas
 
 	return strategy, nil
 }
@@ -241,7 +275,16 @@ func (strategyFactory *rlAgentStrategyFactory) createStrategy() (Strategy, error
 		return nil, fmt.Errorf("initializing historical iterations time span info: %w", err)
 	}
 
-	strategy.funcsClient = faas.New(_config.FaaSHost, _config.FaaSPort)
+	faas, err := faas.New(_config.FaaSPlatform,
+		_config.FaaSHost,
+		_config.FaaSPort,
+		_config.OpenWhiskNamespace,
+		_config.OpenWhiskAPIKey,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("initializing FaaS platform wrapper: %w", err)
+	}
+	strategy.faas = faas
 
 	// We also set-up the internal http.Client used to send the observation to
 	// the RL model and get the response as action. This allows used to reduce
@@ -288,7 +331,16 @@ func (strategyFactory *randomStrategyFactory) createStrategy() (Strategy, error)
 	runtimeapiAddr := fmt.Sprintf("%s:%d", _config.RuntimeAPIHost, _config.RuntimeAPIPort)
 	strategy.runtimeapi = proxy.NewRuntimeAPI(runtimeapiAddr)
 
-	strategy.funcsClient = faas.New(_config.FaaSHost, _config.FaaSPort)
+	faas, err := faas.New(_config.FaaSPlatform,
+		_config.FaaSHost,
+		_config.FaaSPort,
+		_config.OpenWhiskNamespace,
+		_config.OpenWhiskAPIKey,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("initializing FaaS platform wrapper: %w", err)
+	}
+	strategy.faas = faas
 
 	return strategy, nil
 }
@@ -320,7 +372,16 @@ func (strategyFactory *latencyThresholdStrategyFactory) createStrategy() (Strate
 	}
 	strategy.hacfgupdater = hacfgupdater
 
-	strategy.funcsClient = faas.New(_config.FaaSHost, _config.FaaSPort)
+	faas, err := faas.New(_config.FaaSPlatform,
+		_config.FaaSHost,
+		_config.FaaSPort,
+		_config.OpenWhiskNamespace,
+		_config.OpenWhiskAPIKey,
+	)
+	if err != nil {
+		return nil, fmt.Errorf("initializing FaaS platform wrapper: %w", err)
+	}
+	strategy.faas = faas
 
 	return strategy, nil
 }

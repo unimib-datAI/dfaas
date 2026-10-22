@@ -33,7 +33,7 @@ import (
 type RLAgentStrategy struct {
 	hacfgupdater *hacfgupd.Updater
 	runtimeapi   *proxy.RuntimeAPI
-	funcsClient  *faas.Client
+	faas         faas.Provider
 	promq        *promq.Client
 	httpClient   *http.Client
 
@@ -102,7 +102,7 @@ func (strategy *RLAgentStrategy) RunStrategy() error {
 		}
 		logger.Info("k6 experiment started")
 
-		names, err := strategy.funcsClient.Names()
+		names, err := strategy.faas.Names()
 		if err != nil {
 			return fmt.Errorf("failed to get function names: %w", err)
 		}
@@ -225,7 +225,7 @@ func (strategy *RLAgentStrategy) runIteration(currentIteration int) error {
 // a new neighbor appears.
 func (strategy *RLAgentStrategy) reloadProxy() error {
 	// Build the funcs map.
-	funcs, err := strategy.funcsClient.WithTimeout()
+	funcs, err := strategy.faas.WithTimeout()
 	if err != nil {
 		return fmt.Errorf("get function metadata: %w", err)
 	}

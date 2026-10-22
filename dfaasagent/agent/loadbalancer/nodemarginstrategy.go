@@ -40,7 +40,7 @@ const powerUsageNodeMetric = "power_usage_node"
 type NodeMarginStrategy struct {
 	hacfgupdater     *hacfgupd.Updater
 	nodestbl         *nodestbl.TableNMS
-	funcsClient      *faas.Client
+	faas             faas.Provider
 	forecasterClient forecaster.Client
 	nodeInfo         nodeInfo
 	runtimeapi       *proxy.RuntimeAPI
@@ -211,7 +211,7 @@ func (strategy *NodeMarginStrategy) publishNodeInfo() error {
 	var err error
 
 	// Obtain our function names list
-	strategy.nodeInfo.funcs, err = strategy.funcsClient.Names()
+	strategy.nodeInfo.funcs, err = strategy.faas.Names()
 	if err != nil {
 		return fmt.Errorf("getting functions info from the local FaaS platform: %w", err)
 	}

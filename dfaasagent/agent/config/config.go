@@ -110,6 +110,16 @@ type Configuration struct {
 	// "openwhisk" are supported.
 	FaaSPlatform string `mapstructure:"AGENT_FAAS_PLATFORM"`
 
+	// OpenWhiskNamespace is the OpenWhisk namespace to query actions from.
+	//
+	// The value is mandatory (and used) when FaaSPlaform is "openwhisk".
+	OpenWhiskNamespace string `mapstructure:"AGENT_OPENWHISK_NAMESPACE"`
+
+	// OpenWhiskAPIKey is the OpenWhisk API key in "uuid:key" format.
+	//
+	// The value is mandatory (and used) when FaaSPlaform is "openwhisk".
+	OpenWhiskAPIKey string `mapstructure:"AGENT_OPENWHISK_API_KEY"`
+
 	// Connection information for the local FaaS platform. This information will
 	// be used to configure the proxy, allow incoming requests to be processed
 	// locally, and run administrative queries, such as checking which functions

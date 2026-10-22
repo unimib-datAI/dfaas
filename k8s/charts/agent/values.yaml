@@ -99,6 +99,16 @@ config:
   # "openwhisk" are supported.
   AGENT_FAAS_PLATFORM: "openfaas"
 
+  # The OpenWhisk namespace to query actions from.
+  #
+  # The value is mandatory (and used) when AGENT_FAAS_PLATFORM is "openwhisk".
+  AGENT_OPENWHISK_NAMESPACE: ""
+
+  # The OpenWhisk API key in "uuid:key" format.
+  #
+  # The value is mandatory (and used) when AGENT_FAAS_PLATFORM is "openwhisk".
+  AGENT_OPENWHISK_API_KEY: ""
+
   # Connection information for the local FaaS platform. If you use Kubernetes
   # you can set the generated DNS name like "gateway.default.svc.cluster.local"
   # for OpenFaaS and port 8080, otherwise you must set manually the IP.

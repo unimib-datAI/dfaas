@@ -23,7 +23,7 @@ type AllLocalStrategy struct {
 	hacfgupdater *hacfgupd.Updater
 
 	// FaaS client to retrieve deployed functions.
-	funcsClient *faas.Client
+	faas faas.Provider
 
 	// AllLocalStrategy is an iteration-based strategy, where a method is
 	// executed every N seconds to check the current deployment state. If the
@@ -68,7 +68,7 @@ func (strategy *AllLocalStrategy) runIteration() error {
 	start := time.Now().UTC()
 
 	// WithTimeout always returns a new map.
-	funcs, err := strategy.funcsClient.WithTimeout()
+	funcs, err := strategy.faas.WithTimeout()
 	if err != nil {
 		return fmt.Errorf("get function metadata: %w", err)
 	}

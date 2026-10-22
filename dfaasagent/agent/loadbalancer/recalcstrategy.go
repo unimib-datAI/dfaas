@@ -41,7 +41,7 @@ import (
 // fields are initialized.
 type RecalcStrategy struct {
 	hacfgupdater *hacfgupd.Updater
-	funcsClient  *faas.Client
+	faas         faas.Provider
 	runtimeapi   *proxy.RuntimeAPI
 	promq        *promq.Client
 
@@ -248,7 +248,7 @@ func (strategy *RecalcStrategy) broadcastLimitsPeriodically(stop <-chan struct{}
 				continue
 			}
 
-			funcs, err := strategy.funcsClient.WithMaxRates()
+			funcs, err := strategy.faas.WithMaxRates()
 			if err != nil {
 				logger.Errorf("Failed to get deployed functions: %v", err)
 				continue
@@ -302,7 +302,7 @@ func (strategy *RecalcStrategy) updateLimitsForNeighbors(iterationRate float32) 
 	)
 
 	// Get deployed functions with associated limits.
-	funcs, err := strategy.funcsClient.WithMaxRates()
+	funcs, err := strategy.faas.WithMaxRates()
 	if err != nil {
 		return fmt.Errorf("failed to get deployed functions: %w", err)
 	}
@@ -404,7 +404,7 @@ func (strategy *RecalcStrategy) updateLocalWeights() error {
 	}
 	logger.Debugw("Proxy req rate stats", "data", proxyReqRate)
 
-	funcs, err := strategy.funcsClient.WithMaxRates()
+	funcs, err := strategy.faas.WithMaxRates()
 	if err != nil {
 		return fmt.Errorf("failed to get deployed functions: %w", err)
 	}
@@ -767,7 +767,7 @@ func (strategy *RecalcStrategy) setAllTrafficLocal() error {
 	logger := logging.Logger().With("strategy_component", "setAllTrafficLocal")
 
 	// Get deployed functions.
-	funcs, err := strategy.funcsClient.WithMaxRates()
+	funcs, err := strategy.faas.WithMaxRates()
 	if err != nil {
 		return fmt.Errorf("failed to get deployed functions: %w", err)
 	}
@@ -844,7 +844,7 @@ func (strategy *RecalcStrategy) reloadProxy() error {
 		neighborsHost[peerID] = host
 	}
 
-	funcsTimeout, err := strategy.funcsClient.WithTimeout()
+	funcsTimeout, err := strategy.faas.WithTimeout()
 	if err != nil {
 		return fmt.Errorf("get function metadata: %w", err)
 	}

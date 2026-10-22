@@ -28,7 +28,7 @@ import (
 type StaticStrategy struct {
 	hacfgupdater *hacfgupd.Updater
 	nodestbl     *nodestbl.TableNMS
-	funcsClient  *faas.Client
+	faas         faas.Provider
 
 	nodeInfo nodeInfoStatic
 	// Map of target nodes, with node ID of a common neighbour as key,
@@ -152,7 +152,7 @@ func (strategy *StaticStrategy) publishNodeInfo() error {
 	var err error
 
 	// Obtain our function names list.
-	strategy.nodeInfo.funcs, err = strategy.funcsClient.Names()
+	strategy.nodeInfo.funcs, err = strategy.faas.Names()
 	if err != nil {
 		return fmt.Errorf("getting functions info from local FaaS platform: %w", err)
 	}

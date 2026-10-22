@@ -26,7 +26,7 @@ import (
 // equally between the local node and all eligible neighbours.
 type LatencyThresholdStrategy struct {
 	hacfgupdater *hacfgupd.Updater
-	funcsClient  *faas.Client
+	faas         faas.Provider
 
 	thresholdMs float64
 }
@@ -105,7 +105,7 @@ func (strategy *LatencyThresholdStrategy) calculateWeights() (map[string]map[str
 	}
 
 	// Get the list of deployed FaaS functions.
-	funcs, err := strategy.funcsClient.Names()
+	funcs, err := strategy.faas.Names()
 	if err != nil {
 		return nil, fmt.Errorf("failed to check deployed functions: %w", err)
 	}
@@ -156,7 +156,7 @@ func (strategy *LatencyThresholdStrategy) calculateWeights() (map[string]map[str
 // Update HAProxy configuration with new weights.
 func (strategy *LatencyThresholdStrategy) setProxyWeights(weights map[string]map[string]uint) error {
 	// Get the deployed functions and their timeout configuration.
-	funcs, err := strategy.funcsClient.WithTimeout()
+	funcs, err := strategy.faas.WithTimeout()
 	if err != nil {
 		return fmt.Errorf("get function metadata: %w", err)
 	}
