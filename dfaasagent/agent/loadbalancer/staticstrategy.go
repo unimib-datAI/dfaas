@@ -15,8 +15,8 @@ import (
 
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/communication"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/constants"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/faas"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/funcs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
 )
@@ -28,7 +28,7 @@ import (
 type StaticStrategy struct {
 	hacfgupdater *hacfgupd.Updater
 	nodestbl     *nodestbl.TableNMS
-	funcsClient  *funcs.Client
+	funcsClient  *faas.Client
 
 	nodeInfo nodeInfoStatic
 	// Map of target nodes, with node ID of a common neighbour as key,

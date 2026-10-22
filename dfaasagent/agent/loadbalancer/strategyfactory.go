@@ -12,9 +12,9 @@ import (
 	"time"
 
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/constants"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/faas"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/forecaster"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/funcs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/promq"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/proxy"
@@ -69,7 +69,7 @@ func (strategyFactory *recalcStrategyFactory) createStrategy() (Strategy, error)
 		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
 	}
 
-	strategy.funcsClient = funcs.New(_config.FaaSHost, _config.FaaSPort)
+	strategy.funcsClient = faas.New(_config.FaaSHost, _config.FaaSPort)
 
 	// Set up the HAProxy Runtime API client. Used to set the proxy weights
 	// without reloading HAProxy (this cannot be done via Data Plane API).
@@ -113,7 +113,7 @@ func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, er
 	runtimeapi_addr := fmt.Sprintf("%s:%d", _config.RuntimeAPIHost, _config.RuntimeAPIPort)
 	strategy.runtimeapi = proxy.NewRuntimeAPI(runtimeapi_addr)
 
-	strategy.funcsClient = funcs.New(_config.FaaSHost, _config.FaaSPort)
+	strategy.funcsClient = faas.New(_config.FaaSHost, _config.FaaSPort)
 
 	strategy.forecasterClient = forecaster.Client{
 		Hostname: constants.ForecasterHost,
@@ -151,7 +151,7 @@ func (strategyFactory *staticStrategyFactory) createStrategy() (Strategy, error)
 	}
 	strategy.hacfgupdater = hacfgupdater
 
-	strategy.funcsClient = funcs.New(_config.FaaSHost, _config.FaaSPort)
+	strategy.funcsClient = faas.New(_config.FaaSHost, _config.FaaSPort)
 
 	strategy.nodeInfo = nodeInfoStatic{}
 	strategy.targetNodes = make(map[string][]string)
@@ -183,7 +183,7 @@ func (strategyFactory *allLocalStrategyFactory) createStrategy() (Strategy, erro
 
 	// Set up the wrapper to FaaS client used to get the list of deployed FaaS
 	// functions.
-	strategy.funcsClient = funcs.New(_config.FaaSHost, _config.FaaSPort)
+	strategy.funcsClient = faas.New(_config.FaaSHost, _config.FaaSPort)
 
 	return strategy, nil
 }
@@ -241,7 +241,7 @@ func (strategyFactory *rlAgentStrategyFactory) createStrategy() (Strategy, error
 		return nil, fmt.Errorf("initializing historical iterations time span info: %w", err)
 	}
 
-	strategy.funcsClient = funcs.New(_config.FaaSHost, _config.FaaSPort)
+	strategy.funcsClient = faas.New(_config.FaaSHost, _config.FaaSPort)
 
 	// We also set-up the internal http.Client used to send the observation to
 	// the RL model and get the response as action. This allows used to reduce
@@ -288,7 +288,7 @@ func (strategyFactory *randomStrategyFactory) createStrategy() (Strategy, error)
 	runtimeapiAddr := fmt.Sprintf("%s:%d", _config.RuntimeAPIHost, _config.RuntimeAPIPort)
 	strategy.runtimeapi = proxy.NewRuntimeAPI(runtimeapiAddr)
 
-	strategy.funcsClient = funcs.New(_config.FaaSHost, _config.FaaSPort)
+	strategy.funcsClient = faas.New(_config.FaaSHost, _config.FaaSPort)
 
 	return strategy, nil
 }
@@ -320,7 +320,7 @@ func (strategyFactory *latencyThresholdStrategyFactory) createStrategy() (Strate
 	}
 	strategy.hacfgupdater = hacfgupdater
 
-	strategy.funcsClient = funcs.New(_config.FaaSHost, _config.FaaSPort)
+	strategy.funcsClient = faas.New(_config.FaaSHost, _config.FaaSPort)
 
 	return strategy, nil
 }

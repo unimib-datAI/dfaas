@@ -17,8 +17,8 @@ import (
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/communication"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/faas"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/funcs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/promq"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/proxy"
@@ -41,7 +41,7 @@ import (
 // fields are initialized.
 type RecalcStrategy struct {
 	hacfgupdater *hacfgupd.Updater
-	funcsClient  *funcs.Client
+	funcsClient  *faas.Client
 	runtimeapi   *proxy.RuntimeAPI
 	promq        *promq.Client
 

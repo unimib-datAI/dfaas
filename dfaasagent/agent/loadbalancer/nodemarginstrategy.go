@@ -17,9 +17,9 @@ import (
 	"github.com/pkg/errors"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/communication"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/constants"
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/faas"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/forecaster"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/funcs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/promq"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/nodestbl"
@@ -40,7 +40,7 @@ const powerUsageNodeMetric = "power_usage_node"
 type NodeMarginStrategy struct {
 	hacfgupdater     *hacfgupd.Updater
 	nodestbl         *nodestbl.TableNMS
-	funcsClient      *funcs.Client
+	funcsClient      *faas.Client
 	forecasterClient forecaster.Client
 	nodeInfo         nodeInfo
 	runtimeapi       *proxy.RuntimeAPI

@@ -3,9 +3,9 @@
 // This file is licensed under the AGPL v3.0-or-later license. See LICENSE and
 // AUTHORS file for more information.
 
-// Package funcs allows to retrieve the function lists and details from the
+// Package faas allows to retrieve the function lists and details from the
 // local FaaS instance.
-package funcs
+package faas
 
 import (
 	"encoding/json"

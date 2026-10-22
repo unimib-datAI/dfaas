@@ -11,8 +11,8 @@ import (
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/faas"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/funcs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 )
 
@@ -23,7 +23,7 @@ type AllLocalStrategy struct {
 	hacfgupdater *hacfgupd.Updater
 
 	// FaaS client to retrieve deployed functions.
-	funcsClient *funcs.Client
+	funcsClient *faas.Client
 
 	// AllLocalStrategy is an iteration-based strategy, where a method is
 	// executed every N seconds to check the current deployment state. If the

@@ -13,8 +13,8 @@ import (
 
 	pubsub "github.com/libp2p/go-libp2p-pubsub"
 
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/faas"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/funcs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/proxy"
 )
@@ -29,7 +29,7 @@ type RandomStrategy struct {
 	runtimeapi *proxy.RuntimeAPI
 
 	// FaaS client used to get the list of deployed functions.
-	funcsClient *funcs.Client
+	funcsClient *faas.Client
 
 	// Starting seed for the pseudo-random number generator. If set to -1, a
 	// random seed is used.

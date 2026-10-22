@@ -23,8 +23,8 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	ma "github.com/multiformats/go-multiaddr"
 
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/faas"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/funcs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/infogath/promq"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/proxy"
@@ -33,7 +33,7 @@ import (
 type RLAgentStrategy struct {
 	hacfgupdater *hacfgupd.Updater
 	runtimeapi   *proxy.RuntimeAPI
-	funcsClient  *funcs.Client
+	funcsClient  *faas.Client
 	promq        *promq.Client
 	httpClient   *http.Client
 
@@ -268,8 +268,8 @@ func (strategy *RLAgentStrategy) reloadProxy() error {
 		Neighbors     []string
 		NeighborsPort map[string]string
 		NeighborsHost map[string]string
-		FaaSHost  string
-		FaaSPort  uint
+		FaaSHost      string
+		FaaSPort      uint
 		RejectorHost  string
 		RejectorPort  uint
 	}{
@@ -279,8 +279,8 @@ func (strategy *RLAgentStrategy) reloadProxy() error {
 		Neighbors:     strategy.neighbors,
 		NeighborsHost: neighborsHost,
 		NeighborsPort: neighborsPort,
-		FaaSHost:  _config.FaaSHost,
-		FaaSPort:  _config.FaaSPort,
+		FaaSHost:      _config.FaaSHost,
+		FaaSPort:      _config.FaaSPort,
 		RejectorHost:  _config.RejectorHost,
 		RejectorPort:  _config.RejectorPort,
 	}

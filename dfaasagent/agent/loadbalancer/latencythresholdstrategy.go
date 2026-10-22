@@ -15,8 +15,8 @@ import (
 	"github.com/libp2p/go-libp2p/core/peer"
 	libp2pping "github.com/libp2p/go-libp2p/p2p/protocol/ping"
 
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/faas"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/hacfgupd"
-	"github.com/unimib-datAI/dfaas/dfaasagent/agent/funcs"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 )
 
@@ -26,7 +26,7 @@ import (
 // equally between the local node and all eligible neighbours.
 type LatencyThresholdStrategy struct {
 	hacfgupdater *hacfgupd.Updater
-	funcsClient  *funcs.Client
+	funcsClient  *faas.Client
 
 	thresholdMs float64
 }
