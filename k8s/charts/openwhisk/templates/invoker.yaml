@@ -1,0 +1,107 @@
+# The invoker runs user actions as pods (KubernetesContainerFactory), so it needs
+# permissions to manage pods; restrict them to a ServiceAccount used only by the invoker.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Release.Name }}-invoker
+  labels:
+{{ include "openwhisk.labels" . | indent 4 }}
+---
+kind: Role
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ .Release.Name }}-invoker
+  labels:
+{{ include "openwhisk.labels" . | indent 4 }}
+rules:
+- apiGroups: ["extensions", "apps"]
+  resources: ["deployments"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["pods"]
+  verbs: ["get", "list", "watch", "create", "update", "patch", "delete"]
+- apiGroups: [""]
+  resources: ["events"]
+  verbs: ["get", "list"]
+- apiGroups: [""]
+  resources: ["pods/log"]
+  verbs: ["get", "list"]
+---
+kind: RoleBinding
+apiVersion: rbac.authorization.k8s.io/v1
+metadata:
+  name: {{ .Release.Name }}-invoker
+  labels:
+{{ include "openwhisk.labels" . | indent 4 }}
+subjects:
+- kind: ServiceAccount
+  namespace: {{ .Release.Namespace | quote }}
+  name: {{ .Release.Name }}-invoker
+roleRef:
+  kind: Role
+  name: {{ .Release.Name }}-invoker
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-invoker
+  labels:
+    name: {{ .Release.Name }}-invoker
+{{ include "openwhisk.labels" . | indent 4 }}
+spec:
+  serviceName: {{ .Release.Name }}-invoker
+  selector:
+    matchLabels:
+      name: {{ .Release.Name }}-invoker
+  template:
+    metadata:
+      labels:
+        name: {{ .Release.Name }}-invoker
+{{ include "openwhisk.labels" . | indent 8 }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+    spec:
+      serviceAccountName: {{ .Release.Name }}-invoker
+      initContainers:
+{{ include "openwhisk.waitForController" . | indent 6 }}
+      containers:
+      - name: invoker
+        image: {{ include "openwhisk.image" (list . "invoker") }}
+        command: ["/bin/bash", "-c", "/init.sh --uniqueName $INVOKER_NAME"]
+        ports:
+        - name: invoker
+          containerPort: 8080
+        env:
+        - name: "PORT"
+          value: "8080"
+        - name: "INVOKER_NAME"
+          valueFrom:
+            fieldRef:
+              fieldPath: metadata.name
+        - name: "JAVA_OPTS"
+          value: "-Xmx512M"
+        - name: "INVOKER_OPTS"
+          value: "-Dkubernetes.master=https://$KUBERNETES_SERVICE_HOST -Dwhisk.spi.ContainerFactoryProvider=org.apache.openwhisk.core.containerpool.kubernetes.KubernetesContainerFactoryProvider -Dwhisk.kubernetes.user-pod-node-affinity.enabled=false"
+        # Used to set __OW_API_HOST in action containers
+        - name: "WHISK_API_HOST_PROTO"
+          value: "http"
+        - name: "WHISK_API_HOST_PORT"
+          value: "80"
+        - name: "WHISK_API_HOST_NAME"
+          value: {{ include "openwhisk.svc" (list . "nginx") | quote }}
+        - name: "CONFIG_whisk_containerPool_userMemory"
+          value: "2048m"
+        # Logs go to stdout
+        - name: "WHISK_LOGS_DIR"
+          value: ""
+        - name: "ZOOKEEPER_HOSTS"
+          value: "{{ .Release.Name }}-zookeeper-0.{{ include "openwhisk.svc" (list . "zookeeper") }}:2181"
+        - name: "CONFIG_whisk_helm_release"
+          value: {{ .Release.Name | quote }}
+        - name: "CONFIG_akka_coordinatedShutdown_phases_actorSystemTerminate_timeout"
+          value: "30 s"
+        - name: "CONFIG_whisk_runtime_delete_timeout"
+          value: "30 seconds"
+{{ include "openwhisk.coreEnv" . | indent 8 }}

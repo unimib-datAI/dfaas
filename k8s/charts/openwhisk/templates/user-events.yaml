@@ -1,0 +1,52 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-user-events
+  labels:
+    name: {{ .Release.Name }}-user-events
+{{ include "openwhisk.labels" . | indent 4 }}
+spec:
+  selector:
+    name: {{ .Release.Name }}-user-events
+  ports:
+  - port: 9095
+    name: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-user-events
+  labels:
+    name: {{ .Release.Name }}-user-events
+{{ include "openwhisk.labels" . | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+      name: {{ .Release.Name }}-user-events
+  template:
+    metadata:
+      labels:
+        name: {{ .Release.Name }}-user-events
+{{ include "openwhisk.labels" . | indent 8 }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "9095"
+    spec:
+      containers:
+        - name: user-events
+          image: {{ include "openwhisk.image" (list . "user-events") }}
+          env:
+          - name: "KAFKA_HOSTS"
+            value: "{{ .Release.Name }}-kafka-0.{{ include "openwhisk.svc" (list . "kafka") }}:9092"
+          ports:
+            - containerPort: 9095
+          livenessProbe:
+            httpGet:
+              path: /ping
+              port: 9095
+            initialDelaySeconds: 30
+            timeoutSeconds: 5
+          readinessProbe:
+            httpGet:
+              path: /ping
+              port: 9095

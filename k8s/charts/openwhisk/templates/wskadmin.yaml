@@ -1,0 +1,30 @@
+# Utility pod for running wskadmin: kubectl exec -it <release>-wskadmin -- wskadmin ...
+apiVersion: v1
+kind: Pod
+metadata:
+  name: {{ .Release.Name }}-wskadmin
+  labels:
+    name: {{ .Release.Name }}-wskadmin
+{{ include "openwhisk.labels" . | indent 4 }}
+spec:
+  containers:
+  - name: wskadmin
+    image: {{ include "openwhisk.image" (list . "ow-utils") }}
+    command: ["/bin/bash", "-c", "tail -f /dev/null"]
+    env:
+    - name: "WHISK_LOGS_DIR"
+      value: "/var/log"
+    - name: "DB_PROTOCOL"
+      value: "http"
+    - name: "DB_HOST"
+      value: {{ include "openwhisk.svc" (list . "couchdb") | quote }}
+    - name: "DB_PORT"
+      value: "5984"
+{{ include "openwhisk.dbSecretEnv" (list . "DB_USERNAME" "db_username") | indent 4 }}
+{{ include "openwhisk.dbSecretEnv" (list . "DB_PASSWORD" "db_password") | indent 4 }}
+    - name: "DB_WHISK_ACTIONS"
+      value: "{{ .Values.db.prefix }}whisks"
+    - name: "DB_WHISK_AUTHS"
+      value: "{{ .Values.db.prefix }}subjects"
+    - name: "DB_WHISK_ACTIVATIONS"
+      value: "{{ .Values.db.prefix }}activations"

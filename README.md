@@ -174,9 +174,9 @@ For more information read associated [README](simulation/README.md) file.
 
 Copyright © 2021-2026 The DFaaS Authors.
 
-The source code in this repository is licensed under the GNU Affero General
-Public License (AGPL), version 2.0 or later. See the [LICENSE](LICENSE) file for
-more information.
+Unless otherwise noted, the source code in this repository is licensed under the
+GNU Affero General Public License (AGPL), version 2.0 or later. See the
+[LICENSE](LICENSE) file for more information.
 
 This program is distributed in the hope that it will be useful, but WITHOUT ANY
 WARRANTY; without even the implied warranty of MERCHANTABILITY or FITNESS FOR A

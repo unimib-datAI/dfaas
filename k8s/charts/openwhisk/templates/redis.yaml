@@ -1,0 +1,56 @@
+{{ include "openwhisk.pvc" (list . "redis-pvc" "256Mi") }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-redis
+  labels:
+    name: {{ .Release.Name }}-redis
+{{ include "openwhisk.labels" . | indent 4 }}
+spec:
+  selector:
+    name: {{ .Release.Name }}-redis
+  ports:
+    - port: 6379
+      name: redis
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-redis
+  labels:
+    name: {{ .Release.Name }}-redis
+{{ include "openwhisk.labels" . | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+      name: {{ .Release.Name }}-redis
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        name: {{ .Release.Name }}-redis
+{{ include "openwhisk.labels" . | indent 8 }}
+    spec:
+      volumes:
+      - name: redis-data
+        persistentVolumeClaim:
+          claimName: {{ .Release.Name }}-redis-pvc
+      initContainers:
+      - name: redis-init
+        image: busybox:latest
+        imagePullPolicy: IfNotPresent
+        command: ["chown", "-v", "-R", "999:999", "/data"]
+        volumeMounts:
+        - mountPath: /data
+          name: redis-data
+      containers:
+        - name: redis
+          image: redis:4.0
+          volumeMounts:
+          - mountPath: /data
+            name: redis-data
+          ports:
+          - name: redis
+            containerPort: 6379

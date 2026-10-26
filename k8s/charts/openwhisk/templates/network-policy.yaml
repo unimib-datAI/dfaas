@@ -1,0 +1,65 @@
+# Default deny all ingress
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-default-no-ingress-np
+  labels:
+{{ include "openwhisk.labels" . | indent 4 }}
+spec:
+  podSelector: {}
+  policyTypes:
+  - Ingress
+---
+# Backend control plane pods only accept connections from non-user-action-pods
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-backend-np
+  labels:
+{{ include "openwhisk.labels" . | indent 4 }}
+spec:
+  podSelector:
+    matchExpressions:
+      - {key: user-action-pod, operator: DoesNotExist}
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchExpressions:
+          - {key: user-action-pod, operator: DoesNotExist}
+---
+# Frontend pods (nginx, controller, apigateway) accept connections from anyone
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-frontend-np
+  labels:
+{{ include "openwhisk.labels" . | indent 4 }}
+spec:
+  podSelector:
+    matchExpressions:
+      - {key: name, operator: In, values: ["{{ .Release.Name }}-controller", "{{ .Release.Name }}-apigateway", "{{ .Release.Name }}-nginx"]}
+  policyTypes:
+  - Ingress
+  ingress:
+  - {}
+---
+# User action pods only accept connections from the invoker
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: {{ .Release.Name }}-actions-allow-invoker-np
+  labels:
+{{ include "openwhisk.labels" . | indent 4 }}
+spec:
+  podSelector:
+    matchExpressions:
+      - {key: user-action-pod, operator: In, values: ["true"]}
+  policyTypes:
+  - Ingress
+  ingress:
+  - from:
+    - podSelector:
+        matchLabels:
+          name: {{ .Release.Name }}-invoker

@@ -1,0 +1,139 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-nginx
+  labels:
+{{ include "openwhisk.labels" . | indent 4 }}
+data:
+  nginx.conf: |
+    worker_processes auto;
+    worker_rlimit_nofile 4096;
+
+    events {
+      worker_connections  4096;
+    }
+
+    http {
+      client_max_body_size 50M;
+
+      rewrite_log on;
+      # change log format to display the upstream information
+      log_format combined-upstream '$remote_addr - $remote_user [$time_local] '
+          '[#tid_$request_id] $request $status $body_bytes_sent '
+          '$http_referer $http_user_agent $upstream_addr';
+      access_log /logs/nginx_access.log combined-upstream;
+      error_log /logs/nginx_error.log error;
+
+      # needed to enable keepalive to upstream controllers
+      proxy_http_version 1.1;
+      proxy_set_header Connection "";
+
+      upstream controllers {
+         # Mark the controller as unavailable after fail_timeout seconds, to not get any requests during restart.
+         server {{ include "openwhisk.svc" (list . "controller") }}:8080 fail_timeout=60s;
+
+         keepalive 512;
+      }
+
+      server {
+        listen 80;
+
+        # match namespace, note while OpenWhisk allows a richer character set for a
+        # namespace, not all those characters are permitted in the (sub)domain name;
+        # if namespace does not match, no vanity URL rewriting takes place.
+        server_name ~^(?<namespace>[0-9a-zA-Z-]+)\.{{ .Values.whisk.apiHostName }}$;
+
+        # Hack to convince nginx to dynamically resolve the dns entries.
+        resolver kube-dns.kube-system;
+        set $apigw {{ include "openwhisk.svc" (list . "apigateway") }};
+
+        location /api/v1/web {
+            if ($namespace) {
+                rewrite    /(.*) /api/v1/web/${namespace}/$1 break;
+            }
+            proxy_pass http://controllers;
+            proxy_read_timeout 75s; # 70+5 additional seconds to allow controller to terminate request
+        }
+
+        location /api/v1 {
+            proxy_pass http://controllers;
+            proxy_read_timeout 75s; # 70+5 additional seconds to allow controller to terminate request
+        }
+
+        location /api {
+            proxy_pass http://$apigw:8080;
+        }
+
+        location /v1/health-check {
+            proxy_pass http://$apigw:9000;
+        }
+
+        location /v2 {
+            proxy_pass http://$apigw:9000;
+        }
+
+        location / {
+            if ($namespace) {
+              rewrite    /(.*) /api/v1/web/${namespace}/$1 break;
+            }
+            proxy_pass http://controllers;
+            proxy_read_timeout 75s; # 70+5 additional seconds to allow controller to terminate request
+        }
+      }
+    }
+---
+# Single entry point of the deployment, exposed on whisk.apiHostPort of the node
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-nginx
+  labels:
+    name: {{ .Release.Name }}-nginx
+{{ include "openwhisk.labels" . | indent 4 }}
+spec:
+  type: NodePort
+  selector:
+    name: {{ .Release.Name }}-nginx
+  ports:
+    - port: 80
+      nodePort: {{ .Values.whisk.apiHostPort }}
+      name: http
+      targetPort: http
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-nginx
+  labels:
+    name: {{ .Release.Name }}-nginx
+{{ include "openwhisk.labels" . | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+      name: {{ .Release.Name }}-nginx
+  template:
+    metadata:
+      labels:
+        name: {{ .Release.Name }}-nginx
+{{ include "openwhisk.labels" . | indent 8 }}
+    spec:
+      volumes:
+      - name: nginx-conf
+        configMap:
+          name: {{ .Release.Name }}-nginx
+      - name: logs
+        emptyDir: {}
+      initContainers:
+{{ include "openwhisk.waitForController" . | indent 6 }}
+      containers:
+      - name: nginx
+        image: nginx:1.21.1
+        ports:
+        - name: http
+          containerPort: 80
+        volumeMounts:
+        - name: nginx-conf
+          mountPath: "/etc/nginx/nginx.conf"
+          subPath: "nginx.conf"
+        - name: logs
+          mountPath: "/logs"

@@ -1,0 +1,62 @@
+# Installs the routemgmt package (API Gateway support) and the OpenWhisk catalog
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-install-packages-cm
+  labels:
+{{ include "openwhisk.labels" . | indent 4 }}
+data:
+{{ (.Files.Glob "configMapFiles/installPackages/myTask.sh").AsConfig | indent 2 }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-install-packages
+  labels:
+    name: {{ .Release.Name }}-install-packages
+{{ include "openwhisk.labels" . | indent 4 }}
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        name: {{ .Release.Name }}-install-packages
+{{ include "openwhisk.labels" . | indent 8 }}
+    spec:
+      restartPolicy: Never
+      volumes:
+      - name: task-dir
+        configMap:
+          name: {{ .Release.Name }}-install-packages-cm
+      initContainers:
+      - name: wait-for-healthy-invoker
+        image: busybox:latest
+        imagePullPolicy: IfNotPresent
+        command: ["sh", "-c", "until [ \"$(wget -T 5 -qO - http://{{ include "openwhisk.svc" (list . "controller") }}:8080/invokers/healthy/count)\" -gt 0 ] 2>/dev/null; do echo 'waiting for healthy invoker'; sleep 3; done"]
+      containers:
+      - name: install-packages
+        image: {{ include "openwhisk.image" (list . "ow-utils") }}
+        command: ["/bin/bash", "-c", "set -e; . /task/myTask.sh"]
+        volumeMounts:
+        - name: task-dir
+          mountPath: "/task/myTask.sh"
+          subPath: "myTask.sh"
+        env:
+          - name: "WHISK_AUTH"
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Release.Name }}-whisk.auth
+                key: system
+          - name: "WHISK_API_HOST"
+            value: "{{ include "openwhisk.svc" (list . "nginx") }}:80"
+          - name: "WHISK_API_HOST_URL"
+            value: "http://{{ include "openwhisk.svc" (list . "nginx") }}:80"
+          - name: "WHISK_SYSTEM_NAMESPACE"
+            value: "/whisk.system"
+          - name: "WHISK_API_GATEWAY_HOST_V2"
+            value: "http://{{ include "openwhisk.svc" (list . "apigateway") }}:9000/v2"
+          # tags to use for git clone operations
+          - name: "OW_GIT_TAG_OPENWHISK"
+            value: {{ .Values.whisk.gitTag | quote }}
+          - name: "OW_GIT_TAG_OPENWHISK_CATALOG"
+            value: "1.0.0"

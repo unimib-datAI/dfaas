@@ -1,0 +1,5 @@
+apiVersion: v2
+name: openwhisk
+description: Apache OpenWhisk is an open source serverless cloud platform
+type: application
+version: 2.0.0

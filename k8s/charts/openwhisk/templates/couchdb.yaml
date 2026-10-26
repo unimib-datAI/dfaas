@@ -1,0 +1,53 @@
+{{ include "openwhisk.pvc" (list . "couchdb-pvc" "2Gi") }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-couchdb
+  labels:
+    name: {{ .Release.Name }}-couchdb
+{{ include "openwhisk.labels" . | indent 4 }}
+spec:
+  selector:
+    name: {{ .Release.Name }}-couchdb
+  ports:
+    - port: 5984
+      name: couchdb
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Release.Name }}-couchdb
+  labels:
+    name: {{ .Release.Name }}-couchdb
+{{ include "openwhisk.labels" . | indent 4 }}
+spec:
+  selector:
+    matchLabels:
+      name: {{ .Release.Name }}-couchdb
+  strategy:
+    type: Recreate
+  template:
+    metadata:
+      labels:
+        name: {{ .Release.Name }}-couchdb
+{{ include "openwhisk.labels" . | indent 8 }}
+    spec:
+      containers:
+      - name: couchdb
+        image: apache/couchdb:2.3
+        ports:
+        - name: couchdb
+          containerPort: 5984
+        env:
+{{ include "openwhisk.dbSecretEnv" (list . "COUCHDB_USER" "db_username") | indent 8 }}
+{{ include "openwhisk.dbSecretEnv" (list . "COUCHDB_PASSWORD" "db_password") | indent 8 }}
+        - name: "NODENAME"
+          value: "couchdb0"
+        volumeMounts:
+        - name: database-storage
+          mountPath: /opt/couchdb/data
+      volumes:
+      - name: database-storage
+        persistentVolumeClaim:
+          claimName: {{ .Release.Name }}-couchdb-pvc

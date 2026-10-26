@@ -1,0 +1,59 @@
+# Wipes and initializes the OpenWhisk databases on every install
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: {{ .Release.Name }}-init-couchdb
+  labels:
+{{ include "openwhisk.labels" . | indent 4 }}
+data:
+{{ (.Files.Glob "configMapFiles/initCouchDB/initdb.sh").AsConfig | indent 2 }}
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: {{ .Release.Name }}-init-couchdb
+  labels:
+    name: {{ .Release.Name }}-init-couchdb
+{{ include "openwhisk.labels" . | indent 4 }}
+spec:
+  backoffLimit: 3
+  template:
+    metadata:
+      labels:
+        name: {{ .Release.Name }}-init-couchdb
+{{ include "openwhisk.labels" . | indent 8 }}
+    spec:
+      restartPolicy: Never
+      volumes:
+      - name: task-dir
+        configMap:
+          name: {{ .Release.Name }}-init-couchdb
+      - name: whisk-auth
+        secret:
+          secretName: {{ .Release.Name }}-whisk.auth
+      containers:
+      - name: init-couchdb
+        image: {{ include "openwhisk.image" (list . "ow-utils") }}
+        command: ["/bin/bash", "-c", "set -e; . /task/initdb.sh"]
+        volumeMounts:
+        - name: task-dir
+          mountPath: "/task/initdb.sh"
+          subPath: "initdb.sh"
+        - name: whisk-auth
+          mountPath: "/etc/whisk-auth"
+        env:
+        - name: "DB_PROTOCOL"
+          value: "http"
+        - name: "DB_HOST"
+          value: {{ include "openwhisk.svc" (list . "couchdb") | quote }}
+        - name: "DB_PORT"
+          value: "5984"
+        - name: "DB_PREFIX"
+          value: {{ .Values.db.prefix | quote }}
+{{ include "openwhisk.dbSecretEnv" (list . "COUCHDB_USER" "db_username") | indent 8 }}
+{{ include "openwhisk.dbSecretEnv" (list . "COUCHDB_PASSWORD" "db_password") | indent 8 }}
+        - name: "NODENAME"
+          value: "couchdb0"
+        # tag to use for git clone to get ansible files to initialize couchdb
+        - name: "OW_GIT_TAG_OPENWHISK"
+          value: {{ .Values.whisk.gitTag | quote }}

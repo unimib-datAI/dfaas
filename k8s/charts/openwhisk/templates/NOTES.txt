@@ -1,0 +1,13 @@
+Apache OpenWhisk
+Copyright 2016-2021 The Apache Software Foundation
+
+This product includes software developed at
+The Apache Software Foundation (http://www.apache.org/).
+
+To configure your wsk cli to connect to it, run:
+
+  $ wsk property set --apihost http://{{ .Values.whisk.apiHostName }}:{{ .Values.whisk.apiHostPort }}
+
+Your release is named {{ .Release.Name }}.
+
+Once the '{{ .Release.Name }}-install-packages' Pod is in the Completed state, your OpenWhisk deployment is ready to be used.

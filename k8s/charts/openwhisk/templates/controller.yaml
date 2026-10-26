@@ -1,0 +1,102 @@
+# The controller's wait-for-kafka init container reads Endpoints from the k8s API
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: {{ .Release.Name }}-core
+  labels:
+{{ include "openwhisk.labels" . | indent 4 }}
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: {{ .Release.Name }}-allow-view
+  labels:
+{{ include "openwhisk.labels" . | indent 4 }}
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: ClusterRole
+  name: view
+subjects:
+  - kind: ServiceAccount
+    name: {{ .Release.Name }}-core
+    namespace: {{ .Release.Namespace | quote }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-controller
+  labels:
+    name: {{ .Release.Name }}-controller
+{{ include "openwhisk.labels" . | indent 4 }}
+spec:
+  selector:
+    name: {{ .Release.Name }}-controller
+  ports:
+    - port: 8080
+      name: http
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-controller
+  labels:
+    name: {{ .Release.Name }}-controller
+{{ include "openwhisk.labels" . | indent 4 }}
+spec:
+  serviceName: {{ .Release.Name }}-controller
+  selector:
+    matchLabels:
+      name: {{ .Release.Name }}-controller
+  template:
+    metadata:
+      labels:
+        name: {{ .Release.Name }}-controller
+{{ include "openwhisk.labels" . | indent 8 }}
+      annotations:
+        prometheus.io/scrape: "true"
+        prometheus.io/port: "8080"
+    spec:
+      serviceAccountName: {{ .Release.Name }}-core
+      initContainers:
+      - name: wait-for-kafka
+        image: {{ include "openwhisk.image" (list . "ow-utils") }}
+        command: ["sh", "-c", 'cacert="/var/run/secrets/kubernetes.io/serviceaccount/ca.crt"; token="$(cat /var/run/secrets/kubernetes.io/serviceaccount/token)"; while true; do rc=$(curl -sS --cacert $cacert --header "Authorization: Bearer $token" https://kubernetes.default.svc/api/v1/namespaces/{{ .Release.Namespace }}/endpoints/{{ .Release.Name }}-kafka | jq -r ".subsets[].addresses | length"); echo "num ready kafka endpoints is $rc"; if [ $rc -gt 0 ]; then echo "Success: ready kafka endpoint!"; break; fi; echo "kafka not ready yet; sleeping for 3 seconds"; sleep 3; done;']
+      - name: wait-for-couchdb
+        image: busybox:latest
+        imagePullPolicy: IfNotPresent
+        command: ["sh", "-c", "until wget -T 5 --spider --header=\"Authorization: Basic {{ printf "%s:%s" .Values.db.auth.username .Values.db.auth.password | b64enc }}\" http://{{ include "openwhisk.svc" (list . "couchdb") }}:5984/ow_kube_couchdb_initialized_marker; do echo 'waiting for CouchDB'; sleep 3; done"]
+      containers:
+      - name: controller
+        image: {{ include "openwhisk.image" (list . "controller") }}
+        command: ["/bin/bash", "-c", "/init.sh 0"]
+        ports:
+        - name: controller
+          containerPort: 8080
+        livenessProbe:
+          httpGet:
+            path: "/ping"
+            port: 8080
+          initialDelaySeconds: 10
+        readinessProbe:
+          httpGet:
+            path: "/ping"
+            port: 8080
+          initialDelaySeconds: 10
+        env:
+        - name: "PORT"
+          value: "8080"
+        - name: "TZ"
+          value: "UTC"
+        - name: "POD_IP"
+          valueFrom:
+            fieldRef:
+              fieldPath: status.podIP
+        - name: "CONFIG_whisk_info_buildNo"
+          value: "20221014"
+        - name: "JAVA_OPTS"
+          value: "-Xmx1024M"
+        - name: "CONTROLLER_INSTANCES"
+          value: "1"
+        - name: "CONFIG_akka_cluster_seedNodes_0"
+          value: "akka://controller-actor-system@$(POD_IP):25520"
+{{ include "openwhisk.coreEnv" . | indent 8 }}

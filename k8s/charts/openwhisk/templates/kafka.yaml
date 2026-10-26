@@ -1,0 +1,82 @@
+{{ include "openwhisk.pvc" (list . "kafka-pvc" "512Mi") }}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: {{ .Release.Name }}-kafka
+  labels:
+    name: {{ .Release.Name }}-kafka
+{{ include "openwhisk.labels" . | indent 4 }}
+spec:
+  selector:
+    name: {{ .Release.Name }}-kafka
+  clusterIP: None
+  ports:
+  - name: broker
+    port: 9092
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: {{ .Release.Name }}-kafka
+  labels:
+    name: {{ .Release.Name }}-kafka
+{{ include "openwhisk.labels" . | indent 4 }}
+spec:
+  serviceName: {{ .Release.Name }}-kafka
+  selector:
+    matchLabels:
+      name: {{ .Release.Name }}-kafka
+  template:
+    metadata:
+      labels:
+        name: {{ .Release.Name }}-kafka
+{{ include "openwhisk.labels" . | indent 8 }}
+    spec:
+      initContainers:
+      - name: wait-for-zookeeper
+        image: busybox:latest
+        imagePullPolicy: IfNotPresent
+        command: ["sh", "-c", "until [ \"$(echo ruok | nc -w 1 {{ .Release.Name }}-zookeeper-0.{{ include "openwhisk.svc" (list . "zookeeper") }} 2181)\" = imok ]; do echo 'waiting for zookeeper'; sleep 1; done"]
+      containers:
+      - name: kafka
+        image: wurstmeister/kafka:2.12-2.3.1
+        command: ["start-kafka.sh"]
+        ports:
+        - name: kafka
+          containerPort: 9092
+        livenessProbe:
+          tcpSocket:
+            port: 9092
+          initialDelaySeconds: 5
+        readinessProbe:
+          exec:
+            command: ["/opt/kafka/bin/kafka-topics.sh", "localhost:9092", "--version"]
+          initialDelaySeconds: 5
+          timeoutSeconds: 5
+        env:
+        - name: "KAFKA_BROKER_ID"
+          value: "0"
+        - name: "HOSTNAME_COMMAND"
+          value: "hostname -f"
+        - name: "KAFKA_ADVERTISED_PORT"
+          value: "9092"
+        - name: "KAFKA_PORT"
+          value: "9092"
+        - name: "KAFKA_LISTENER_SECURITY_PROTOCOL_MAP"
+          value: "EXTERNAL:PLAINTEXT"
+        - name: "KAFKA_LISTENERS"
+          value: "EXTERNAL://:9092"
+        - name: "KAFKA_ADVERTISED_LISTENERS"
+          value: "EXTERNAL://_{HOSTNAME_COMMAND}:9092"
+        - name: "KAFKA_INTER_BROKER_LISTENER_NAME"
+          value: "EXTERNAL"
+        - name: "KAFKA_ZOOKEEPER_CONNECT"
+          value: "{{ .Release.Name }}-zookeeper-0.{{ include "openwhisk.svc" (list . "zookeeper") }}:2181"
+        volumeMounts:
+        - name: data
+          mountPath: /kafka
+      volumes:
+      - name: data
+        persistentVolumeClaim:
+          claimName: {{ .Release.Name }}-kafka-pvc
