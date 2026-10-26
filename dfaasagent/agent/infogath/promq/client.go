@@ -20,6 +20,7 @@ import (
 	"github.com/prometheus/common/model"
 	"go.uber.org/zap"
 
+	"github.com/unimib-datAI/dfaas/dfaasagent/agent/faas"
 	"github.com/unimib-datAI/dfaas/dfaasagent/agent/logging"
 )
 
@@ -31,10 +32,19 @@ type Client struct {
 	// Query resolution size for range queries.
 	promStep time.Duration
 
+	// Underlying FaaS platform (faas.PlatformOpenFaaS or
+	// faas.PlatformOpenWhisk).
+	platform string
+
 	logger *zap.SugaredLogger
 }
 
-func New(host string, port uint, step time.Duration) (*Client, error) {
+// New returns a Prometheus client that can be used to retrieve metrics using
+// the available methods. You must provide the host and port for the Prometheus
+// connection, the retrieval interval (as configured in Prometheus), and the
+// current FaaS platform. The latter is required because some queries are
+// specific to the underlying FaaS platform.
+func New(host string, port uint, step time.Duration, platform string) (*Client, error) {
 	origin := fmt.Sprintf("http://%s:%d", host, port)
 
 	client := Client{}
@@ -52,6 +62,13 @@ func New(host string, port uint, step time.Duration) (*Client, error) {
 	}
 	client.promStep = step
 
+	switch platform {
+	case faas.PlatformOpenFaaS, faas.PlatformOpenWhisk:
+		client.platform = platform
+	default:
+		return nil, fmt.Errorf("unsupported FaaS platform %q", platform)
+	}
+
 	client.logger = logging.Logger()
 
 	return &client, nil
@@ -60,6 +77,10 @@ func New(host string, port uint, step time.Duration) (*Client, error) {
 // Replicas returns the last number of replicas for each function in the
 // given time range, always rounding up.
 func (c *Client) Replicas(start, end time.Time) (map[string]uint, error) {
+	if err := c.requirePlatform(faas.PlatformOpenFaaS); err != nil {
+		return nil, fmt.Errorf("query Replicas: %w", err)
+	}
+
 	if end.Before(start) {
 		return nil, fmt.Errorf("end time (%d) must be after start time (%d)", end.Unix(), start.Unix())
 	}
@@ -286,6 +307,10 @@ func (c *Client) ForwardedRPS(start, end time.Time) (map[string]map[string]float
 // could not be computed (for example, due to no invocations in the specified
 // time range).
 func (c *Client) AvgRespTimeLocal(start, end time.Time) (map[string]float32, error) {
+	if err := c.requirePlatform(faas.PlatformOpenFaaS); err != nil {
+		return nil, fmt.Errorf("query AvgRespTimeLocal: %w", err)
+	}
+
 	if end.Before(start) {
 		return nil, fmt.Errorf("end time (%d) must be after start time (%d)", end.Unix(), start.Unix())
 	}
@@ -735,5 +760,16 @@ func (c *Client) logQuery(query string, end time.Time) {
 
 	endTime := end.Format("2006-01-02 15:04:05 MST")
 
-	c.logger.Debugf("Prometheus query at %s: %s", endTime, logQuery)
+	c.logger.Debugw("Prometheus query executed", "when", endTime, "query", logQuery)
+}
+
+// requirePlatform returns an error if the configured platform is not the given
+// one.
+//
+// It must be called by all methods that rely on platform-specific metrics.
+func (c *Client) requirePlatform(platform string) error {
+	if c.platform != platform {
+		return fmt.Errorf("expected platform %q, found %q", faas.PlatformOpenFaaS, c.platform)
+	}
+	return nil
 }

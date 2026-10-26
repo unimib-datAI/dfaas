@@ -86,7 +86,11 @@ func (strategyFactory *recalcStrategyFactory) createStrategy() (Strategy, error)
 	strategy.runtimeapi = proxy.NewRuntimeAPI(runtimeapi_addr)
 
 	// Set up the Prometheus client used to run PromQL queries.
-	strategy.promq, err = promq.New(_config.PrometheusHost, _config.PrometheusPort, _config.PrometheusStep)
+	strategy.promq, err = promq.New(_config.PrometheusHost,
+		_config.PrometheusPort,
+		_config.PrometheusStep,
+		faas.Platform(),
+	)
 	if err != nil {
 		return nil, fmt.Errorf("initializing Prometheus client: %w", err)
 	}
@@ -253,28 +257,6 @@ func (strategyFactory *rlAgentStrategyFactory) createStrategy() (Strategy, error
 	runtimeapi_addr := fmt.Sprintf("%s:%d", _config.RuntimeAPIHost, _config.RuntimeAPIPort)
 	strategy.runtimeapi = proxy.NewRuntimeAPI(runtimeapi_addr)
 
-	// Set up the Prometheus client used to run PromQL queries.
-	realPromq, err := promq.New(_config.PrometheusHost, _config.PrometheusPort, _config.PrometheusStep)
-	if err != nil {
-		return nil, fmt.Errorf("initializing Prometheus client: %w", err)
-	}
-	strategy.promq = realPromq
-
-	// Set up the historical Prometheus client used to run PromQL queries.
-	historicalPromq, err := promq.New(_config.HistoricalPrometheusHost,
-		_config.HistoricalPrometheusPort,
-		_config.PrometheusStep)
-	if err != nil {
-		return nil, fmt.Errorf("initializing historical Prometheus client: %w", err)
-	}
-	strategy.historicalPromq = historicalPromq
-
-	// Set up the mapping slice from iterations number to time span.
-	strategy.historicalIterationTimeSpan, err = readIterationTimestamps(_config.HistoricalIterationsPath)
-	if err != nil {
-		return nil, fmt.Errorf("initializing historical iterations time span info: %w", err)
-	}
-
 	faas, err := faas.New(_config.FaaSPlatform,
 		_config.FaaSHost,
 		_config.FaaSPort,
@@ -285,6 +267,34 @@ func (strategyFactory *rlAgentStrategyFactory) createStrategy() (Strategy, error
 		return nil, fmt.Errorf("initializing FaaS platform wrapper: %w", err)
 	}
 	strategy.faas = faas
+
+	// Set up the Prometheus client used to run PromQL queries.
+	realPromq, err := promq.New(_config.PrometheusHost,
+		_config.PrometheusPort,
+		_config.PrometheusStep,
+		faas.Platform(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("initializing Prometheus client: %w", err)
+	}
+	strategy.promq = realPromq
+
+	// Set up the historical Prometheus client used to run PromQL queries.
+	historicalPromq, err := promq.New(_config.HistoricalPrometheusHost,
+		_config.HistoricalPrometheusPort,
+		_config.PrometheusStep,
+		faas.Platform(),
+	)
+	if err != nil {
+		return nil, fmt.Errorf("initializing historical Prometheus client: %w", err)
+	}
+	strategy.historicalPromq = historicalPromq
+
+	// Set up the mapping slice from iterations number to time span.
+	strategy.historicalIterationTimeSpan, err = readIterationTimestamps(_config.HistoricalIterationsPath)
+	if err != nil {
+		return nil, fmt.Errorf("initializing historical iterations time span info: %w", err)
+	}
 
 	// We also set-up the internal http.Client used to send the observation to
 	// the RL model and get the response as action. This allows used to reduce
