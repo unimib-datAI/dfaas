@@ -38,7 +38,7 @@ fi
 pushd /openwhisk/ansible
     ansible-playbook -i environments/local setup.yml
     ansible-playbook -i environments/local couchdb.yml --tags ini \
-                     -e db_prefix=$DB_PREFIX \
+                     -e db_prefix="" \
                      -e db_protocol=$DB_PROTOCOL \
                      -e db_host=$DB_HOST \
                      -e db_username=$COUCHDB_USER \
@@ -65,7 +65,7 @@ curl --silent -X PUT -u "$COUCHDB_USER:$COUCHDB_PASSWORD" $DB_PROTOCOL://$DB_HOS
 # initialize the DB tables for OpenWhisk
 pushd /openwhisk/ansible
     ansible-playbook -i environments/local initdb.yml \
-                     -e db_prefix=$DB_PREFIX \
+                     -e db_prefix="" \
                      -e db_protocol=$DB_PROTOCOL \
                      -e db_host=$DB_HOST \
                      -e db_username=$COUCHDB_USER \
@@ -74,7 +74,7 @@ pushd /openwhisk/ansible
                      -e openwhisk_home=/openwhisk
 
     ansible-playbook -i environments/local wipe.yml \
-                     -e db_prefix=$DB_PREFIX \
+                     -e db_prefix="" \
                      -e db_protocol=$DB_PROTOCOL \
                      -e db_host=$DB_HOST \
                      -e db_username=$COUCHDB_USER \

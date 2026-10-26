@@ -48,8 +48,6 @@ spec:
           value: {{ include "openwhisk.svc" (list . "couchdb") | quote }}
         - name: "DB_PORT"
           value: "5984"
-        - name: "DB_PREFIX"
-          value: {{ .Values.db.prefix | quote }}
 {{ include "openwhisk.dbSecretEnv" (list . "COUCHDB_USER" "db_username") | indent 8 }}
 {{ include "openwhisk.dbSecretEnv" (list . "COUCHDB_PASSWORD" "db_password") | indent 8 }}
         - name: "NODENAME"

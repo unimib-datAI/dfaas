@@ -84,11 +84,11 @@ spec:
 - name: "CONFIG_whisk_couchdb_provider"
   value: "CouchDB"
 - name: "CONFIG_whisk_couchdb_databases_WhiskActivation"
-  value: "{{ .Values.db.prefix }}activations"
+  value: "activations"
 - name: "CONFIG_whisk_couchdb_databases_WhiskEntity"
-  value: "{{ .Values.db.prefix }}whisks"
+  value: "whisks"
 - name: "CONFIG_whisk_couchdb_databases_WhiskAuth"
-  value: "{{ .Values.db.prefix }}subjects"
+  value: "subjects"
 
 # Action limits
 - name: "LIMITS_ACTIONS_INVOKES_PERMINUTE"

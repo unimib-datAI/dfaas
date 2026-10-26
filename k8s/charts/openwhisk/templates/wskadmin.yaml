@@ -23,8 +23,8 @@ spec:
 {{ include "openwhisk.dbSecretEnv" (list . "DB_USERNAME" "db_username") | indent 4 }}
 {{ include "openwhisk.dbSecretEnv" (list . "DB_PASSWORD" "db_password") | indent 4 }}
     - name: "DB_WHISK_ACTIONS"
-      value: "{{ .Values.db.prefix }}whisks"
+      value: "whisks"
     - name: "DB_WHISK_AUTHS"
-      value: "{{ .Values.db.prefix }}subjects"
+      value: "subjects"
     - name: "DB_WHISK_ACTIVATIONS"
-      value: "{{ .Values.db.prefix }}activations"
+      value: "activations"
