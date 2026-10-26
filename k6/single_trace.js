@@ -110,7 +110,7 @@ export function setup() {
     const res = http.get(`${ENDPOINT_ADDR}/k6_exp_started`);
 
     // Let the DFaaS node to prepare for the experiment.
-    sleep(2);
+    sleep(5);
 }
 
 export function teardown(data) {
