@@ -8,15 +8,16 @@ The function file structure is primarily derived from the
 [python3-http-debian](https://github.com/openfaas/python-flask-template/tree/master/template/python3-http-debian)
 template in the [OpenFaaS Python Flask
 templates](https://github.com/openfaas/python-flask-template). Some files have
-been removed, and the Dockerfile has been simplified. The main function logic
-can be found in [function/handler.py](function/handler.py).
+been removed, and the Dockerfile (renamed as Containerfile) has been simplified.
+The main function logic can be found in
+[function/handler.py](function/handler.py).
 
 ## Build and push
 
 Use the help script to build the image from the project's root directory:
 
 ```console
-$ ./k8s/scripts/build-image.sh openfaas-image-classification none --containerfile functions/image-classification/Dockerfile
+$ ./k8s/scripts/build-image.sh openfaas-image-classification none --containerfile functions/image-classification/Containerfile
 ```
 
 This will generate the image with `localhost/openfaas-image-classification:dev`
@@ -24,7 +25,7 @@ tag. To push the image to GitHub Container Registry (after login) with tag
 `ghcr.io/unimib-datai/dfaas-openfaas-image-classification`:
 
 ```console
-$ ./k8s/scripts/build-image.sh openfaas-image-classification push --containerfile functions/image-classification/Dockerfile
+$ ./k8s/scripts/build-image.sh openfaas-image-classification push --containerfile functions/image-classification/Containerfile
 ```
 
 > [!IMPORTANT]

@@ -4,8 +4,9 @@
 # See: https://github.com/openfaas/python-flask-template
 ARG PYTHON_VERSION=3.12
 ARG DEBIAN_OS=slim
+ARG OF_WATCHDOG_VERSION=0.12.6
 
-FROM --platform=${TARGETPLATFORM:-linux/amd64} ghcr.io/openfaas/of-watchdog:0.11.4 AS watchdog
+FROM --platform=${TARGETPLATFORM:-linux/amd64} ghcr.io/openfaas/of-watchdog:${OF_WATCHDOG_VERSION} AS watchdog
 FROM --platform=${TARGETPLATFORM:-linux/amd64} python:${PYTHON_VERSION}-${DEBIAN_OS} AS build
 
 COPY --from=watchdog /fwatchdog /usr/bin/fwatchdog
@@ -41,8 +42,9 @@ RUN pip install --no-cache-dir --user -r requirements.torch.txt
 FROM build AS ship
 WORKDIR /opt/app
 
-# Configure of-watchdog in HTTP mode.
-# See: https://github.com/openfaas/of-watchdog?tab=readme-ov-file#modes
+# OpenFaaS Watchdog configuration.
+#
+# See: https://github.com/openfaas/of-watchdog
 ENV mode="http"
 ENV fprocess="python main.py"
 ENV cgi_headers="true"
