@@ -13,15 +13,15 @@ import (
 const (
 	defaultMiB     = 128
 	defaultSeconds = 5
-	maxMib         = 1024
+	maxMiB         = 1024
 	maxSeconds     = 5 * 60
 )
 
 func main() {
 	http.HandleFunc("/", Handle)
 
-	log.Println("memstress listening on :8081")
-	log.Fatal(http.ListenAndServe(":8081", nil))
+	log.Println("memstress listening on :8090")
+	log.Fatal(http.ListenAndServe(":8090", nil))
 }
 
 // intParam reads an integer query parameter. If the parameter is absent, def is

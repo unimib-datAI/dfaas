@@ -7,7 +7,7 @@ ARG DEBIAN_OS=slim
 ARG OF_WATCHDOG_VERSION=0.12.6
 
 FROM --platform=${TARGETPLATFORM:-linux/amd64} ghcr.io/openfaas/of-watchdog:${OF_WATCHDOG_VERSION} AS watchdog
-FROM --platform=${TARGETPLATFORM:-linux/amd64} python:${PYTHON_VERSION}-${DEBIAN_OS} AS build
+FROM --platform=${TARGETPLATFORM:-linux/amd64} docker.io/library/python:${PYTHON_VERSION}-${DEBIAN_OS} AS build
 
 COPY --from=watchdog /fwatchdog /usr/bin/fwatchdog
 RUN chmod +x /usr/bin/fwatchdog

@@ -6,7 +6,7 @@
 #
 # Based on the official Go image: https://hub.docker.com/_/golang
 ARG GO_VERSION=1.27.3
-ARG ALPINE_VERSION=3.24.3
+ARG ALPINE_VERSION=3.24
 
 # Stage 1: Build the Go app.
 FROM docker.io/library/golang:${GO_VERSION}-alpine${ALPINE_VERSION} AS build
@@ -33,7 +33,7 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     CGO_ENABLED=0 go build -v -trimpath -ldflags="-s -w" -o dfaasagent .
 
 # Stage 2: Create a minimal image using Alpine.
-FROM alpine:${ALPINE_VERSION}
+FROM docker.io/library/alpine:${ALPINE_VERSION}
 
 WORKDIR /usr/src/dfaasagent/
 
