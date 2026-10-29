@@ -2,6 +2,10 @@
 #
 # The forecaster is a web server written in Python that uses the FastAPI
 # framework and is run with uvicorn.
+#
+# Build using the forecaster directory as context:
+#
+#   podman build -f forecaster/Containerfile -t forecaster forecaster/
 FROM docker.io/library/python:3.9-slim
 
 # See: https://docs.github.com/en/packages/learn-github-packages/connecting-a-repository-to-a-package#connecting-a-repository-to-a-container-image-using-the-command-line
@@ -17,18 +21,16 @@ RUN apt-get update && \
 
 WORKDIR /usr/src/forecaster
 
-COPY forecaster/requirements.txt ./
+COPY requirements.txt ./
 
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY forecaster ./
+COPY . ./
 
-EXPOSE 8000
+EXPOSE 8080
 
 # Run web server as main command.
 ENTRYPOINT ["/usr/local/bin/uvicorn", "main:app"]
 
 # Default args to append to uvicorn. Note that the port 8080 is exposed.
 CMD ["--port", "8080", "--host", "0.0.0.0"]
-
-# vim: set filetype=dockerfile :
