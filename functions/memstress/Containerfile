@@ -1,0 +1,48 @@
+ARG GO_VERSION=1.27.3
+ARG ALPINE_VERSION=3.24.3
+ARG OF_WATCHDOG_VERSION=0.12.6
+
+FROM --platform=${TARGETPLATFORM:-linux/amd64} ghcr.io/openfaas/of-watchdog:${OF_WATCHDOG_VERSION} AS watchdog
+
+FROM --platform=${TARGETPLATFORM:-linux/amd64} golang:${GO_VERSION}-alpine${ALPINE_VERSION} AS build
+
+WORKDIR /src
+
+# There is no go.sum because the function does not use external deps.
+COPY go.mod ./
+
+RUN go mod download -x && mkdir -p /out
+
+COPY main.go ./
+
+# Build a minimal Go binary, this is why we strip debug info.
+#
+# We also cache Go modules and intermediate build files to speed up subsequent
+# compilations.
+RUN --mount=type=cache,target=/go/pkg/mod \
+    --mount=type=cache,target=/root/.cache/go-build \
+    CGO_ENABLED=0 go build -v -trimpath -ldflags="-s -w" -o /out/memstress .
+
+# Create now a minimal image using Alpine.
+FROM --platform=${TARGETPLATFORM:-linux/amd64} alpine:${ALPINE_VERSION}
+
+COPY --from=watchdog /fwatchdog /usr/bin/fwatchdog
+COPY --from=build /out/memstress /usr/bin/memstress
+
+# Create a non root user.
+RUN addgroup -S -g 10001 app && \
+    adduser -S -D -H -u 10001 -G app app
+
+USER 10001:10001
+
+# OpenFaaS Watchdog configuration.
+#
+# See: https://github.com/openfaas/of-watchdog
+ENV mode="http"
+ENV fprocess="/usr/bin/memstress"
+ENV upstream_url="http://127.0.0.1:8081"
+ENV port="8080"
+
+EXPOSE 8080
+
+ENTRYPOINT ["/usr/bin/fwatchdog"]
