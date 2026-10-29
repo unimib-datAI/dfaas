@@ -1,43 +1,47 @@
 # Containerfile to build the DFaaS agent.
 #
+# Build from the repository root:
+#
+#   podman build -f dfaasagent/Containerfile -t dfaasagent .
+#
 # Based on the official Go image: https://hub.docker.com/_/golang
+ARG GO_VERSION=1.27.3
+ARG ALPINE_VERSION=3.24.3
 
 # Stage 1: Build the Go app.
-FROM docker.io/library/golang:1.24 AS builder
+FROM docker.io/library/golang:${GO_VERSION}-alpine${ALPINE_VERSION} AS build
 
 # See: https://docs.github.com/en/packages/learn-github-packages/connecting-a-repository-to-a-package#connecting-a-repository-to-a-container-image-using-the-command-line
 LABEL org.opencontainers.image.source="https://github.com/unimib-datAI/dfaas"
 LABEL org.opencontainers.image.description="DFaaS Agent"
 LABEL org.opencontainers.image.licenses="AGPL-3.0"
 
-# Set Go specific env vars. CGO_ENABLED=0 is necessary to use Alpine image!
-ENV CGO_ENABLED=0
-
 WORKDIR /usr/src/dfaasagent
 
-COPY dfaasagent/go.mod dfaasagent/go.sum ./
-RUN go mod download
+COPY go.mod go.sum ./
+RUN go mod download -x
 
-COPY dfaasagent/ .
+COPY main.go ./
+COPY agent/ ./agent/
 
+# Build a minimal Go binary, this is why we strip debug info.
+#
 # Cache Go modules and intermediate build files to speed up subsequent
 # compilations.
 RUN --mount=type=cache,target=/go/pkg/mod \
     --mount=type=cache,target=/root/.cache/go-build \
-    go build -v -o dfaasagent .
+    CGO_ENABLED=0 go build -v -trimpath -ldflags="-s -w" -o dfaasagent .
 
 # Stage 2: Create a minimal image using Alpine.
-FROM alpine:3.22
+FROM alpine:${ALPINE_VERSION}
 
 WORKDIR /usr/src/dfaasagent/
 
-# Copy the binary from the builder stage
-COPY --from=builder /usr/src/dfaasagent/dfaasagent .
-COPY k8s/configs/group_list.json .
+# Copy the binary from the build stage.
+COPY --from=build /usr/src/dfaasagent/dfaasagent .
+COPY configs/group_list.json .
 
-# The DFaaS agent exposes a HTTP web server with /healtz endpoint.
+# The DFaaS agent exposes a HTTP web server with /healthz endpoint.
 EXPOSE 8080
 
 ENTRYPOINT ["/usr/src/dfaasagent/dfaasagent"]
-
-# vim: set filetype=dockerfile :
