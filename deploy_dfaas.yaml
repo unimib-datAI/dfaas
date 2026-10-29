@@ -238,11 +238,12 @@
             values_files: k8s/charts/values-rejector.yaml
             release_namespace: default
 
-    # OPENFAAS_URL=http://127.0.0.1:31112 PATH="$PATH:$HOME/.local/bin" ./k8s/scripts/deploy-functions.sh
-    - name: Deploy OpenFaaS functions
-      ansible.builtin.shell: ./k8s/scripts/deploy-functions.sh
-      args:
-        chdir: "{{ playbook_dir }}"
+    - name: Deploy OpenFaaS functions (ocr, shasum, and figlet)
+      ansible.builtin.command: "faas-cli store deploy {{ item }}"
       environment:
         OPENFAAS_URL: "{{ openfaas_url }}"
-        PATH: "{{ ansible_env.PATH }}:{{ user_home }}/.local/bin"
+        PATH: "/opt/bin:{{ ansible_env.PATH }}"
+      loop:
+        - ocr
+        - shasum
+        - figlet
