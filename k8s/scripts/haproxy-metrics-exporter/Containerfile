@@ -15,10 +15,10 @@ ENV CGO_ENABLED=0
 
 WORKDIR /opt/
 
-COPY k8s/scripts/haproxy-metrics-exporter/go.mod k8s/scripts/haproxy-metrics-exporter/go.sum ./
+COPY go.mod go.sum ./
 RUN go mod download
 
-COPY k8s/scripts/haproxy-metrics-exporter/main.go .
+COPY main.go .
 
 # Cache Go modules and intermediate build files to speed up subsequent
 # compilations.

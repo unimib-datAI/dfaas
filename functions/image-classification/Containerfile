@@ -30,13 +30,13 @@ ENV PATH=$PATH:/home/app/.local/bin
 
 WORKDIR /opt/app
 
-COPY functions/image-classification/main.py .
-COPY functions/image-classification/function.py .
+COPY main.py .
+COPY function.py .
 
-COPY functions/image-classification/requirements.txt .
+COPY requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 
-COPY functions/image-classification/requirements.torch.txt .
+COPY requirements.torch.txt .
 RUN pip install --no-cache-dir --user -r requirements.torch.txt
 
 FROM build AS ship

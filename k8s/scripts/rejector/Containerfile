@@ -15,8 +15,8 @@ ENV CGO_ENABLED=0
 
 WORKDIR /opt/
 
-COPY k8s/scripts/rejector/go.mod ./
-COPY k8s/scripts/rejector/main.go ./
+COPY go.mod ./
+COPY main.go ./
 
 # Cache Go modules and intermediate build files to speed up subsequent
 # compilations.

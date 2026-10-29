@@ -43,9 +43,9 @@ agent and forecaster components:
 By default, the Helm chart is configured to use the first option. You can switch
 to the second option by setting `image` to `localhost/agent:dev` and
 `imagePullPolicy` to `Never` in the `values.yaml` file. After that, you must
-manually push the image to the cluster. You can use the utility script
-[`build-image.sh`](k8s/scripts/build-image.sh), which builds the image locally
-and pushes it to the local k3s cluster.
+manually push the image to the cluster. You can use `just agent k3s` (see the
+[justfile](../justfile)), which builds the image locally and imports it into
+the local k3s cluster.
 
 ## Agent identity
 

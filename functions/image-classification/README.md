@@ -14,10 +14,10 @@ The main function logic can be found in
 
 ## Build and push
 
-Use the help script to build the image from the project's root directory:
+Use the project's [justfile](../../justfile) to build the image:
 
 ```console
-$ ./k8s/scripts/build-image.sh openfaas-image-classification none --containerfile functions/image-classification/Containerfile
+$ just build openfaas-image-classification functions/image-classification
 ```
 
 This will generate the image with `localhost/openfaas-image-classification:dev`
@@ -25,7 +25,7 @@ tag. To push the image to GitHub Container Registry (after login) with tag
 `ghcr.io/unimib-datai/dfaas-openfaas-image-classification`:
 
 ```console
-$ ./k8s/scripts/build-image.sh openfaas-image-classification push --containerfile functions/image-classification/Containerfile
+$ just build openfaas-image-classification functions/image-classification push
 ```
 
 > [!IMPORTANT]

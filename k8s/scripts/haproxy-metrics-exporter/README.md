@@ -27,12 +27,9 @@ $ ./haproxy-metrics-exporter
 ```
 
 You can build (and push the local k3s cluster) the container image with the
-[`k8s/scripts/build-image.sh`](k8s/scripts/build-image.sh) script:
+project's [justfile](../../../justfile):
 
-    $ k8s/scripts/build-image.sh haproxy-metrics-exporter k3s --containerfile k8s/scripts/haproxy-metrics-exporter/Containerfile
-
-Make sure to be in the project's root directory, not in
-`k8s/scripts/haproxy-metrics-exporter` directory!
+    $ just build haproxy-metrics-exporter k8s/scripts/haproxy-metrics-exporter k3s
 
 ## Configuration
 

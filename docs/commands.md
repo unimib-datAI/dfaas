@@ -13,17 +13,10 @@ $ sudo helm install prometheus prometheus-community/prometheus --values k8s/char
 $ sudo helm install openfaas openfaas/openfaas --values k8s/charts/values-openfaas.yaml --version 14.2.128
 ```
 
-Next deploy the custom stick-table-exporter service:
-
-```console
-$ ./k8s/scripts/build-image.sh stick-table-exporter k3s --containerfile k8s/scripts/stick-table-exporter/Containerfile
-$ sudo helm install stick-table-exporter k8s/scripts/stick-table-exporter/helm/
-```
-
 Finally deploy the DFaaS agent with a custom configuration:
 
 ```console
-$ ./k8s/scripts/build-image.sh agent k3s
+$ just agent k3s
 $ sudo helm install agent ./k8s/charts/agent/ --values CONFIG.yaml
 ```
 

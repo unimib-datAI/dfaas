@@ -22,9 +22,6 @@ If you want to deploy to a Kubernetes cluster, you can use the given Helm chart:
 See the [`values.yaml`](helm/values.yaml) file for more information.
 
 You can build (and push the local k3s cluster) the container image with the
-[`k8s/scripts/build-image.sh`](k8s/scripts/build-image.sh) script:
+project's [justfile](../../../justfile):
 
-    $ k8s/scripts/build-image.sh rejector k3s --containerfile k8s/scripts/rejector/Containerfile
-
-Make sure to be in the project's root directory, not in k8s/scripts/rejector
-directory!
+    $ just build rejector k8s/scripts/rejector k3s
