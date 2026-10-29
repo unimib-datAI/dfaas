@@ -76,6 +76,9 @@ func New(host string, port uint, step time.Duration, platform string) (*Client, 
 
 // Replicas returns the last number of replicas for each function in the
 // given time range, always rounding up.
+//
+// Only OpenFaaS is supported: OpenWhisk does not export the number of
+// containers per action.
 func (c *Client) Replicas(start, end time.Time) (map[string]uint, error) {
 	if err := c.requirePlatform(faas.PlatformOpenFaaS); err != nil {
 		return nil, fmt.Errorf("query Replicas: %w", err)
@@ -129,7 +132,14 @@ func (c *Client) Replicas(start, end time.Time) (map[string]uint, error) {
 
 // CPUUsage returns the node CPU usage percentage (0-100) for a specific
 // container between start and end, relative to the machine's total cores.
+//
+// Only OpenFaaS is supported: OpenWhisk does not export CPU usage per action,
+// and its action containers are all named "user-action".
 func (c *Client) CPUUsage(containerName string, start, end time.Time) (float32, error) {
+	if err := c.requirePlatform(faas.PlatformOpenFaaS); err != nil {
+		return 0, fmt.Errorf("query CPUUsage: %w", err)
+	}
+
 	if end.Before(start) {
 		return 0, fmt.Errorf("end time (%d) must be after start time (%d)", end.Unix(), start.Unix())
 	}
@@ -307,10 +317,6 @@ func (c *Client) ForwardedRPS(start, end time.Time) (map[string]map[string]float
 // could not be computed (for example, due to no invocations in the specified
 // time range).
 func (c *Client) AvgRespTimeLocal(start, end time.Time) (map[string]float32, error) {
-	if err := c.requirePlatform(faas.PlatformOpenFaaS); err != nil {
-		return nil, fmt.Errorf("query AvgRespTimeLocal: %w", err)
-	}
-
 	if end.Before(start) {
 		return nil, fmt.Errorf("end time (%d) must be after start time (%d)", end.Unix(), start.Unix())
 	}
@@ -322,20 +328,59 @@ func (c *Client) AvgRespTimeLocal(start, end time.Time) (map[string]float32, err
 	// only integer. So: convert to seconds, round, then rebuild a clean duration.
 	durationStr := (time.Duration(math.Round(duration.Seconds())) * time.Second).String()
 
-	// We use the metric "gateway_functions_seconds" exported by OpenFaaS
-	// Gateway. It's an histogram.
-	// See: https://docs.openfaas.com/architecture/metrics/#gateway
-	//
-	// We do an "sum by" aggregation because the gateway may restart and produce
-	// duplicate time series for the same function. Aggregating ensures we
-	// return a single time series per function instead of multiple series
-	// fragmented across gateway restarts. Also we may have multiple series with
-	// different return code (e.g. 500, 200...).
-	query := fmt.Sprintf(`
-	sum by (function_name) ( rate(gateway_functions_seconds_sum[%[1]s]))
+	// The query and the label holding the function name depend on the
+	// platform.
+	var query, label string
+	switch c.platform {
+	case faas.PlatformOpenFaaS:
+		// We use the metric "gateway_functions_seconds" exported by OpenFaaS
+		// Gateway. It's an histogram.
+		// See: https://docs.openfaas.com/architecture/metrics/#gateway
+		//
+		// We do an "sum by" aggregation because the gateway may restart and
+		// produce duplicate time series for the same function. Aggregating
+		// ensures we return a single time series per function instead of
+		// multiple series fragmented across gateway restarts. Also we may have
+		// multiple series with different return code (e.g. 500, 200...).
+		label = "function_name"
+		query = fmt.Sprintf(`
+		sum by (function_name) ( rate(gateway_functions_seconds_sum[%[1]s]))
+			/
+		sum by (function_name) (rate(gateway_functions_seconds_count[%[1]s]))
+		`, durationStr)
+	case faas.PlatformOpenWhisk:
+		// We use the histograms exported by the OpenWhisk user-events service.
+		// See: https://github.com/apache/openwhisk/blob/master/core/monitoring/user-events/README.md
+		//
+		// The response time of an activation is the sum of the wait time (in
+		// the OpenWhisk queue), the init time (only on cold starts) and the
+		// execution time (duration). Since init time is observed only for cold
+		// starts, summing the rates of the "_sum" series and dividing by the
+		// number of activations gives the average response time per
+		// activation. If there were no cold starts, the init time series may be
+		// missing, so we fall back to zero.
+		//
+		// We aggregate by action to merge series with different namespaces,
+		// initiators or user-events restarts.
+		label = "action"
+		query = fmt.Sprintf(`
+		(
+		  sum by (action) (rate(openwhisk_action_duration_seconds_sum[%[1]s]))
+		  +
+		  sum by (action) (rate(openwhisk_action_waitTime_seconds_sum[%[1]s]))
+		  +
+		  (
+		    sum by (action) (rate(openwhisk_action_initTime_seconds_sum[%[1]s]))
+		    or
+		    sum by (action) (rate(openwhisk_action_duration_seconds_sum[%[1]s])) * 0
+		  )
+		)
 		/
-	sum by (function_name) (rate(gateway_functions_seconds_count[%[1]s]))
-	`, durationStr)
+		sum by (action) (rate(openwhisk_action_duration_seconds_count[%[1]s]))
+		`, durationStr)
+	default:
+		return nil, fmt.Errorf("query AvgRespTimeLocal: unsupported platform %q", c.platform)
+	}
 	c.logQuery(query, end)
 
 	ctx := context.Background()
@@ -355,9 +400,7 @@ func (c *Client) AvgRespTimeLocal(start, end time.Time) (map[string]float32, err
 	resp := make(map[string]float32, len(vector))
 
 	for _, sample := range vector {
-		// We know that function_name are in the form "function.namespace",
-		// where usually namespace is "default". We do not want it.
-		function := strings.Split(string(sample.Metric["function_name"]), ".")[0]
+		function := c.functionName(string(sample.Metric[model.LabelName(label)]))
 
 		value := float32(sample.Value) * 1000
 
@@ -410,7 +453,7 @@ func (c *Client) RejectRate(start, end time.Time) (map[string]float32, error) {
 		increase(haproxy_server_http_requests_total{
 		  proxy=~"function_.*",
 		  proxy!~".*_forwarded",
-		  server="openfaas-local"
+		  server="faas-local"
 		}[%[1]s])
 	  )
 	  -
@@ -418,7 +461,7 @@ func (c *Client) RejectRate(start, end time.Time) (map[string]float32, error) {
 		increase(haproxy_server_http_responses_total{
 		  proxy=~"function_.*",
 		  proxy!~".*_forwarded",
-		  server="openfaas-local",
+		  server="faas-local",
 		  code="2xx"
 		}[%[1]s])
 	  )
@@ -428,7 +471,7 @@ func (c *Client) RejectRate(start, end time.Time) (map[string]float32, error) {
 	  increase(haproxy_server_http_requests_total{
 		proxy=~"function_.*",
 		proxy!~".*_forwarded",
-		server="openfaas-local"
+		server="faas-local"
 	  }[%[1]s])
 	)`, durationStr)
 	c.logQuery(query, end)
@@ -481,7 +524,7 @@ func (c *Client) RejectRate(start, end time.Time) (map[string]float32, error) {
 // DFaaS node as second level key.
 //
 // Note that the return map contains also the local DFaaS node names as
-// "openfaas-local". Other nodes are named with "node_X", where X is its ID.
+// "faas-local". Other nodes are named with "node_X", where X is its ID.
 //
 // Note that requests coming from other nodes (forwarded) are not included.
 func (c *Client) ForwardRPS(start, end time.Time) (map[string]map[string]float32, error) {
@@ -497,7 +540,7 @@ func (c *Client) ForwardRPS(start, end time.Time) (map[string]map[string]float32
 
 	// For each function, there are two backends (function_X and
 	// function_X_forwarded). We focus only on the function_X backend. This
-	// backend can have multiple servers: the default openfaas-local instance
+	// backend can have multiple servers: the default faas-local instance
 	// and zero or more node_ID servers.
 	//
 	// Metrics are aggregated by proxy/backend and server, since HAProxy may
@@ -565,7 +608,7 @@ func (c *Client) ForwardRPS(start, end time.Time) (map[string]map[string]float32
 // The return type is a map with function names as the first level key and the
 // DFaaS node as second level key.
 //
-// The return map contains also the local DFaaS node names as "openfaas-local".
+// The return map contains also the local DFaaS node names as "faas-local".
 // Other nodes are named with "node_X", where X is its ID.
 //
 // Rejected requests coming from other nodes (forwarded) are not included.
@@ -582,7 +625,7 @@ func (c *Client) ForwardRejectRPS(start, end time.Time) (map[string]map[string]f
 
 	// As with ForwardRate(), each function exposes two backends: function_X and
 	// function_X_forwarded. We focus only on the function_X backend. This
-	// backend has multiple servers: the default openfaas-local instance, plus
+	// backend has multiple servers: the default faas-local instance, plus
 	// zero or more node_ID servers.
 	//
 	// We define successful requests using haproxy_server_http_responses_total
@@ -681,7 +724,7 @@ func (c *Client) AvgRespTimeForward(start, end time.Time) (map[string]map[string
 	// function_X_forwarded. The latter is used for incoming requests from other
 	// nodes. Even if the query considers both backends, we focus only on the
 	// function_X backend. This backend is served by multiple servers: two
-	// predefined ones (openfaas-local for local processing and rejector for
+	// predefined ones (faas-local for local processing and rejector for
 	// direct rejection), plus zero or more node_ID servers.
 	//
 	// Metrics are aggregated by proxy/backend and server, since HAProxy may
@@ -769,7 +812,22 @@ func (c *Client) logQuery(query string, end time.Time) {
 // It must be called by all methods that rely on platform-specific metrics.
 func (c *Client) requirePlatform(platform string) error {
 	if c.platform != platform {
-		return fmt.Errorf("expected platform %q, found %q", faas.PlatformOpenFaaS, c.platform)
+		return fmt.Errorf("expected platform %q, found %q", platform, c.platform)
 	}
 	return nil
+}
+
+// functionName returns the normalized function name as found in
+// platform-specific metric labels.
+func (c *Client) functionName(name string) string {
+	switch c.platform {
+	case faas.PlatformOpenWhisk:
+		// Actions in a package are in the form "package/action". We want only
+		// the action name.
+		return name[strings.LastIndex(name, "/")+1:]
+	default:
+		// OpenFaaS function_name are in the form "function.namespace", where
+		// usually namespace is "default". We do not want it.
+		return strings.Split(name, ".")[0]
+	}
 }
