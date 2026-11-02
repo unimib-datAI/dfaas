@@ -51,17 +51,21 @@ frontend main
 
     {{/* Create ACLs and backend selection for each function. */}}
     {{range $funcName, $_ := .Functions -}}
-        # Match function path (always under /function/).
-        acl is_{{$funcName}} path_beg /function/{{$funcName}}
+        {{- $id := proxyID $funcName -}}
+        # Match function path, optionally followed by a sub-path ("/...") or
+        # by an extension (".json", used by OpenWhisk Web Actions).
+        acl is_{{$id}} path {{funcPath $funcName}}
+        acl is_{{$id}} path_beg {{funcPath $funcName}}/ {{funcPath $funcName}}.
 
         # Use the forwarded backend if the request originates from another DFaaS
         # node. Otherwise, use the local backend.
-        use_backend function_{{$funcName}}_forwarded if is_{{$funcName}} { req.hdr(DFaaS-Node-ID) -m found }
-        use_backend function_{{$funcName}} if is_{{$funcName}}
+        use_backend function_{{$id}}_forwarded if is_{{$id}} { req.hdr(DFaaS-Node-ID) -m found }
+        use_backend function_{{$id}} if is_{{$id}}
     {{end}}
 
 {{- range $funcName, $timeout := .Functions }}
-backend function_{{$funcName}}
+{{- $id := proxyID $funcName }}
+backend function_{{$id}}
     # Mark the request with the current DFaaS-Node-ID. This allows the receiving
     # node to determine that the request has been forwarded.
     http-request set-header DFaaS-Node-ID {{$.DFaaSNodeID}}
@@ -87,7 +91,7 @@ backend function_{{$funcName}}
     timeout server {{$timeout}}ms
     {{- end}}
 
-backend function_{{$funcName}}_forwarded
+backend function_{{$id}}_forwarded
     # This is a forwarded request: preserve the original node ID and add the
     # node to which the request was forwarded.
     http-response set-header DFaaS-Node-ID %[var(txn.dfaas_node_id)]

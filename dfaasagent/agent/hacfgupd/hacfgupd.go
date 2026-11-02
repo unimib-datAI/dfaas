@@ -32,7 +32,10 @@ type Updater struct {
 	dataplaneapi_password string
 }
 
-func New(host string, port uint, username, password, templateRaw string) (*Updater, error) {
+// New returns a new Updater for the given template. The template can use sprig
+// functions and the given funcs (can be nil), which take precedence over sprig
+// ones.
+func New(host string, port uint, username, password, templateRaw string, funcs template.FuncMap) (*Updater, error) {
 	updater := Updater{
 		dataplaneapi_url:      fmt.Sprintf("http://%s:%d", host, port),
 		dataplaneapi_username: username,
@@ -40,8 +43,8 @@ func New(host string, port uint, username, password, templateRaw string) (*Updat
 	}
 
 	// Load the given template. First we create an unnamed template with sprig
-	// functions.
-	tmpl := template.New("").Funcs(sprig.TxtFuncMap())
+	// functions and the custom ones.
+	tmpl := template.New("").Funcs(sprig.TxtFuncMap()).Funcs(funcs)
 
 	// Parse template content.
 	templateCompiled, err := tmpl.Parse(templateRaw)

@@ -192,7 +192,7 @@ func (strategy *RandomStrategy) recalculate() error {
 	}
 
 	for _, function := range functions {
-		backend := fmt.Sprintf("function_%s", function)
+		backend := funcBackend(function)
 
 		weights := strategy.generateWeights()
 

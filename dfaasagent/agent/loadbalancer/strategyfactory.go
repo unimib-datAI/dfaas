@@ -61,15 +61,6 @@ func (strategyFactory *recalcStrategyFactory) createStrategy() (Strategy, error)
 		return nil, fmt.Errorf("PrometheusStep must be a positive duration")
 	}
 
-	strategy.hacfgupdater, err = hacfgupd.New(_config.DataPlaneAPIHost,
-		_config.DataPlaneAPIPort,
-		_config.DataPlaneAPIUser,
-		_config.DataPlaneAPIPassword,
-		haproxycfgrecalcTemplate)
-	if err != nil {
-		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
-	}
-
 	faas, err := faas.New(_config.FaaSPlatform,
 		_config.FaaSHost,
 		_config.FaaSPort,
@@ -80,6 +71,16 @@ func (strategyFactory *recalcStrategyFactory) createStrategy() (Strategy, error)
 		return nil, fmt.Errorf("initializing FaaS platform wrapper: %w", err)
 	}
 	strategy.faas = faas
+
+	strategy.hacfgupdater, err = hacfgupd.New(_config.DataPlaneAPIHost,
+		_config.DataPlaneAPIPort,
+		_config.DataPlaneAPIUser,
+		_config.DataPlaneAPIPassword,
+		haproxycfgrecalcTemplate,
+		templateFuncs(strategy.faas))
+	if err != nil {
+		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
+	}
 
 	// Set up the HAProxy Runtime API client. Used to set the proxy weights
 	// without reloading HAProxy (this cannot be done via Data Plane API).
@@ -117,7 +118,8 @@ func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, er
 		_config.DataPlaneAPIPort,
 		_config.DataPlaneAPIUser,
 		_config.DataPlaneAPIPassword,
-		haproxycfgnmsTemplate)
+		haproxycfgnmsTemplate,
+		nil)
 	if err != nil {
 		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
 	}
@@ -127,7 +129,7 @@ func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, er
 	runtimeapi_addr := fmt.Sprintf("%s:%d", _config.RuntimeAPIHost, _config.RuntimeAPIPort)
 	strategy.runtimeapi = proxy.NewRuntimeAPI(runtimeapi_addr)
 
-	faas, err := faas.New(_config.FaaSPlatform,
+	faasProvider, err := faas.New(_config.FaaSPlatform,
 		_config.FaaSHost,
 		_config.FaaSPort,
 		_config.OpenWhiskNamespace,
@@ -136,7 +138,10 @@ func (strategyFactory *nodeMarginStrategyFactory) createStrategy() (Strategy, er
 	if err != nil {
 		return nil, fmt.Errorf("initializing FaaS platform wrapper: %w", err)
 	}
-	strategy.faas = faas
+	if faasProvider.Platform() != faas.PlatformOpenFaaS {
+		return nil, errors.New("strategy supported only on OpenFaaS")
+	}
+	strategy.faas = faasProvider
 
 	strategy.forecasterClient = forecaster.Client{
 		Hostname: constants.ForecasterHost,
@@ -164,16 +169,6 @@ func (strategyFactory *staticStrategyFactory) createStrategy() (Strategy, error)
 	// TODO: Use a custom table.
 	strategy.nodestbl = nodestbl.NewTableNMS(_config.RecalcPeriod * 2)
 
-	hacfgupdater, err := hacfgupd.New(_config.DataPlaneAPIHost,
-		_config.DataPlaneAPIPort,
-		_config.DataPlaneAPIUser,
-		_config.DataPlaneAPIPassword,
-		haproxycfgStaticTemplate)
-	if err != nil {
-		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
-	}
-	strategy.hacfgupdater = hacfgupdater
-
 	faas, err := faas.New(_config.FaaSPlatform,
 		_config.FaaSHost,
 		_config.FaaSPort,
@@ -184,6 +179,17 @@ func (strategyFactory *staticStrategyFactory) createStrategy() (Strategy, error)
 		return nil, fmt.Errorf("initializing FaaS platform wrapper: %w", err)
 	}
 	strategy.faas = faas
+
+	hacfgupdater, err := hacfgupd.New(_config.DataPlaneAPIHost,
+		_config.DataPlaneAPIPort,
+		_config.DataPlaneAPIUser,
+		_config.DataPlaneAPIPassword,
+		haproxycfgStaticTemplate,
+		templateFuncs(strategy.faas))
+	if err != nil {
+		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
+	}
+	strategy.hacfgupdater = hacfgupdater
 
 	strategy.nodeInfo = nodeInfoStatic{}
 	strategy.targetNodes = make(map[string][]string)
@@ -202,17 +208,6 @@ var haproxycfgAllLocalTemplate string
 func (strategyFactory *allLocalStrategyFactory) createStrategy() (Strategy, error) {
 	strategy := &AllLocalStrategy{}
 
-	// Set up the HAProxy config update mechanism (via HAProxy Data Plane API).
-	hacfgupdater, err := hacfgupd.New(_config.DataPlaneAPIHost,
-		_config.DataPlaneAPIPort,
-		_config.DataPlaneAPIUser,
-		_config.DataPlaneAPIPassword,
-		haproxycfgAllLocalTemplate)
-	if err != nil {
-		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
-	}
-	strategy.hacfgupdater = hacfgupdater
-
 	faas, err := faas.New(_config.FaaSPlatform,
 		_config.FaaSHost,
 		_config.FaaSPort,
@@ -223,6 +218,18 @@ func (strategyFactory *allLocalStrategyFactory) createStrategy() (Strategy, erro
 		return nil, fmt.Errorf("initializing FaaS platform wrapper: %w", err)
 	}
 	strategy.faas = faas
+
+	// Set up the HAProxy config update mechanism (via HAProxy Data Plane API).
+	hacfgupdater, err := hacfgupd.New(_config.DataPlaneAPIHost,
+		_config.DataPlaneAPIPort,
+		_config.DataPlaneAPIUser,
+		_config.DataPlaneAPIPassword,
+		haproxycfgAllLocalTemplate,
+		templateFuncs(strategy.faas))
+	if err != nil {
+		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
+	}
+	strategy.hacfgupdater = hacfgupdater
 
 	return strategy, nil
 }
@@ -247,7 +254,8 @@ func (strategyFactory *rlAgentStrategyFactory) createStrategy() (Strategy, error
 		_config.DataPlaneAPIPort,
 		_config.DataPlaneAPIUser,
 		_config.DataPlaneAPIPassword,
-		haproxycfgRLAgentTemplate)
+		haproxycfgRLAgentTemplate,
+		nil)
 	if err != nil {
 		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
 	}
@@ -329,22 +337,6 @@ func (strategyFactory *randomStrategyFactory) createStrategy() (Strategy, error)
 	strategy.randomSeed = _config.RandomSeed
 	strategy.randomReject = _config.RandomReject
 
-	// Set up the HAProxy config update mechanism (via HAProxy Data Plane API).
-	hacfgupdater, err := hacfgupd.New(_config.DataPlaneAPIHost,
-		_config.DataPlaneAPIPort,
-		_config.DataPlaneAPIUser,
-		_config.DataPlaneAPIPassword,
-		haproxycfgRandomTemplate)
-	if err != nil {
-		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
-	}
-	strategy.hacfgupdater = hacfgupdater
-
-	// Set up the HAProxy Runtime API client. Used to update HAProxy runtime
-	// configuration without reloading HAProxy.
-	runtimeapiAddr := fmt.Sprintf("%s:%d", _config.RuntimeAPIHost, _config.RuntimeAPIPort)
-	strategy.runtimeapi = proxy.NewRuntimeAPI(runtimeapiAddr)
-
 	faas, err := faas.New(_config.FaaSPlatform,
 		_config.FaaSHost,
 		_config.FaaSPort,
@@ -355,6 +347,23 @@ func (strategyFactory *randomStrategyFactory) createStrategy() (Strategy, error)
 		return nil, fmt.Errorf("initializing FaaS platform wrapper: %w", err)
 	}
 	strategy.faas = faas
+
+	// Set up the HAProxy config update mechanism (via HAProxy Data Plane API).
+	hacfgupdater, err := hacfgupd.New(_config.DataPlaneAPIHost,
+		_config.DataPlaneAPIPort,
+		_config.DataPlaneAPIUser,
+		_config.DataPlaneAPIPassword,
+		haproxycfgRandomTemplate,
+		templateFuncs(strategy.faas))
+	if err != nil {
+		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
+	}
+	strategy.hacfgupdater = hacfgupdater
+
+	// Set up the HAProxy Runtime API client. Used to update HAProxy runtime
+	// configuration without reloading HAProxy.
+	runtimeapiAddr := fmt.Sprintf("%s:%d", _config.RuntimeAPIHost, _config.RuntimeAPIPort)
+	strategy.runtimeapi = proxy.NewRuntimeAPI(runtimeapiAddr)
 
 	return strategy, nil
 }
@@ -375,17 +384,6 @@ func (strategyFactory *latencyThresholdStrategyFactory) createStrategy() (Strate
 		return nil, fmt.Errorf("latency threshold ms is %f, must be non-negative", strategy.thresholdMs)
 	}
 
-	// Set up the HAProxy config update mechanism (via HAProxy Data Plane API).
-	hacfgupdater, err := hacfgupd.New(_config.DataPlaneAPIHost,
-		_config.DataPlaneAPIPort,
-		_config.DataPlaneAPIUser,
-		_config.DataPlaneAPIPassword,
-		haproxycfgLatencyThresholdTemplate)
-	if err != nil {
-		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
-	}
-	strategy.hacfgupdater = hacfgupdater
-
 	faas, err := faas.New(_config.FaaSPlatform,
 		_config.FaaSHost,
 		_config.FaaSPort,
@@ -396,6 +394,18 @@ func (strategyFactory *latencyThresholdStrategyFactory) createStrategy() (Strate
 		return nil, fmt.Errorf("initializing FaaS platform wrapper: %w", err)
 	}
 	strategy.faas = faas
+
+	// Set up the HAProxy config update mechanism (via HAProxy Data Plane API).
+	hacfgupdater, err := hacfgupd.New(_config.DataPlaneAPIHost,
+		_config.DataPlaneAPIPort,
+		_config.DataPlaneAPIUser,
+		_config.DataPlaneAPIPassword,
+		haproxycfgLatencyThresholdTemplate,
+		templateFuncs(strategy.faas))
+	if err != nil {
+		return nil, fmt.Errorf("initializing HAProxy config updater: %w", err)
+	}
+	strategy.hacfgupdater = hacfgupdater
 
 	return strategy, nil
 }

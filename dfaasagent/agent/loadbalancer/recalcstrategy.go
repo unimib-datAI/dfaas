@@ -261,7 +261,7 @@ func (strategy *RecalcStrategy) broadcastLimitsPeriodically(stop <-chan struct{}
 			}
 
 			for funcName := range funcs {
-				backend := "function_" + funcName
+				backend := funcBackend(funcName)
 				servers, present := proxyReqRate[backend]
 
 				var iterationRate float32
@@ -434,7 +434,7 @@ func (strategy *RecalcStrategy) updateLocalWeights() error {
 	neighborsRPS := make(map[string]map[string]float32)
 
 	for funcName := range funcs {
-		backend := "function_" + funcName
+		backend := funcBackend(funcName)
 		if servers, present := proxyReqRate[backend]; present {
 			rps[funcName] = servers["BACKEND"]
 		} else {
@@ -446,7 +446,7 @@ func (strategy *RecalcStrategy) updateLocalWeights() error {
 		neighborsRPS[neighborID] = make(map[string]float32)
 
 		for funcName := range funcs {
-			backend := fmt.Sprintf("function_%s_forwarded_%s", funcName, neighborID)
+			backend := funcForwardedBackend(funcName, neighborID)
 			if servers, present := proxyReqRate[backend]; present {
 				neighborsRPS[neighborID][funcName] = servers["BACKEND"]
 			} else {
@@ -460,9 +460,9 @@ func (strategy *RecalcStrategy) updateLocalWeights() error {
 	// will be populated by the code that follows.
 	weights := make(map[string]map[string]uint)
 	for funcName := range funcs {
-		weights["function_"+funcName] = make(map[string]uint)
+		weights[funcBackend(funcName)] = make(map[string]uint)
 		for _, neighborID := range neighborsID {
-			backend := fmt.Sprintf("function_%s_forwarded_%s", funcName, neighborID)
+			backend := funcForwardedBackend(funcName, neighborID)
 			weights[backend] = make(map[string]uint)
 		}
 	}
@@ -482,7 +482,7 @@ func (strategy *RecalcStrategy) updateLocalWeights() error {
 			// We first disable incoming requests from neighbors because we are
 			// overloaded.
 			for _, neighborID := range neighborsID {
-				backend := fmt.Sprintf("function_%s_forwarded_%s", funcName, neighborID)
+				backend := funcForwardedBackend(funcName, neighborID)
 				weights[backend]["faas-local"] = 0
 				weights[backend]["rejector"] = 100
 			}
@@ -524,7 +524,7 @@ func (strategy *RecalcStrategy) updateLocalWeights() error {
 
 			// We now have the weights, but we need to store them in the global
 			// weight table.
-			backend := fmt.Sprintf("function_%s", funcName)
+			backend := funcBackend(funcName)
 			for server, weight := range funcWeights {
 				weights[backend][server] = weight
 			}
@@ -533,7 +533,7 @@ func (strategy *RecalcStrategy) updateLocalWeights() error {
 
 		// Since the node is not overloaded for this function, we can process
 		// all requests locally.
-		backend := fmt.Sprintf("function_%s", funcName)
+		backend := funcBackend(funcName)
 		weights[backend]["faas-local"] = 100
 		weights[backend]["rejector"] = 0
 		for _, neighborID := range neighborsID {
@@ -554,7 +554,7 @@ func (strategy *RecalcStrategy) updateLocalWeights() error {
 
 		share := margin / float32(len(neighborsID))
 		for _, neighborID := range neighborsID {
-			backend := fmt.Sprintf("function_%s_forwarded_%s", funcName, neighborID)
+			backend := funcForwardedBackend(funcName, neighborID)
 			neighborRPS := neighborsRPS[neighborID][funcName]
 
 			var allowed uint
@@ -789,7 +789,7 @@ func (strategy *RecalcStrategy) setAllTrafficLocal() error {
 	for funcName := range funcs {
 		// All client requests are handled locally with no rejections and no
 		// forwarding.
-		localBackend := fmt.Sprintf("function_%s", funcName)
+		localBackend := funcBackend(funcName)
 		if slices.Contains(backends, localBackend) {
 			if err := strategy.runtimeapi.SetWeight(localBackend, "faas-local", 100); err != nil {
 				return fmt.Errorf("failed to set local weight for %q: %w", localBackend, err)
@@ -808,7 +808,7 @@ func (strategy *RecalcStrategy) setAllTrafficLocal() error {
 
 		// Forwarded traffic is rejected until the next iteration is configured.
 		for _, neighborID := range neighborsID {
-			forwardedBackend := fmt.Sprintf("function_%s_forwarded_%s", funcName, neighborID)
+			forwardedBackend := funcForwardedBackend(funcName, neighborID)
 
 			if !slices.Contains(backends, forwardedBackend) {
 				continue

@@ -30,8 +30,22 @@ type owAnnotation struct {
 // owAction contains the relevant attributes of an action returned by the
 // OpenWhisk actions endpoint.
 type owAction struct {
+	// Namespace is "<namespace>/<package>" for actions inside a package,
+	// otherwise is only "<namespace>".
+	Namespace   string         `json:"namespace"`
 	Name        string         `json:"name"`
 	Annotations []owAnnotation `json:"annotations"`
+}
+
+// qualifiedName returns the action name in the "<package>/<action>" form, as
+// used in Web Action URLs. Actions not in a package belong to the "default"
+// package.
+func (a owAction) qualifiedName() string {
+	pkg := "default"
+	if _, p, found := strings.Cut(a.Namespace, "/"); found {
+		pkg = p
+	}
+	return pkg + "/" + a.Name
 }
 
 type owActionsResponse []owAction
@@ -85,6 +99,8 @@ func NewOpenWhisk(hostname string, port uint, namespace, apiKey string) (*OpenWh
 }
 
 // actions retrieves action information from the OpenWhisk actions endpoint.
+//
+// Only Web Actions are supported!
 func (o *OpenWhisk) actions() (owActionsResponse, error) {
 	u := url.URL{
 		Scheme: "http",
@@ -120,13 +136,46 @@ func (o *OpenWhisk) actions() (owActionsResponse, error) {
 		return nil, fmt.Errorf("deserializing JSON actions info: %w", err)
 	}
 
-	return actions, nil
+	// Keep only Web Actions. Since action names are mapped to HAProxy
+	// identifiers, we also make sure that two actions do not end up with the
+	// same identifier.
+	webActions := make(owActionsResponse, 0, len(actions))
+	proxyIDs := make(map[string]string, len(actions))
+	for _, action := range actions {
+		if value, ok := action.annotation("web-export"); !ok || value != "true" {
+			continue
+		}
+
+		name := action.qualifiedName()
+		id := ProxyID(name)
+		if other, found := proxyIDs[id]; found {
+			return nil, fmt.Errorf("actions %q and %q have the same proxy ID %q", other, name, id)
+		}
+		proxyIDs[id] = name
+
+		webActions = append(webActions, action)
+	}
+
+	return webActions, nil
 }
 
 func (o *OpenWhisk) Platform() string {
 	return PlatformOpenWhisk
 }
 
+// PathPrefix returns the Web Actions path prefix for the configured namespace.
+// The namespace must be explicit (not "_") to build a valid URL.
+func (o *OpenWhisk) PathPrefix() string {
+	return "/api/v1/web/" + o.namespace + "/"
+}
+
+// Path returns the Web Action path for the given action, expected in the
+// "<package>/<action>" form.
+func (o *OpenWhisk) Path(name string) string {
+	return o.PathPrefix() + name
+}
+
+// Names returns the Web Action names in the "<package>/<action>" form.
 func (o *OpenWhisk) Names() ([]string, error) {
 	actions, err := o.actions()
 	if err != nil {
@@ -135,7 +184,7 @@ func (o *OpenWhisk) Names() ([]string, error) {
 
 	names := make([]string, 0, len(actions))
 	for _, action := range actions {
-		names = append(names, action.Name)
+		names = append(names, action.qualifiedName())
 	}
 
 	return names, nil
@@ -156,10 +205,10 @@ func (o *OpenWhisk) WithMaxRates() (map[string]uint, error) {
 
 		maxRate, err := strconv.ParseUint(value, 10, 32)
 		if err != nil {
-			return nil, fmt.Errorf("parsing MaxRate for action %q: %w", action.Name, err)
+			return nil, fmt.Errorf("parsing MaxRate for action %q: %w", action.qualifiedName(), err)
 		}
 
-		result[action.Name] = uint(maxRate)
+		result[action.qualifiedName()] = uint(maxRate)
 	}
 
 	return result, nil
@@ -175,17 +224,17 @@ func (o *OpenWhisk) WithTimeout() (map[string]*uint, error) {
 	for _, action := range actions {
 		value, ok := action.annotation("dfaas.timeout_ms")
 		if !ok {
-			result[action.Name] = nil
+			result[action.qualifiedName()] = nil
 			continue
 		}
 
 		timeout, err := strconv.ParseUint(value, 10, 32)
 		if err != nil {
-			return nil, fmt.Errorf("parsing Timeout for action %q: %w", action.Name, err)
+			return nil, fmt.Errorf("parsing Timeout for action %q: %w", action.qualifiedName(), err)
 		}
 
 		v := uint(timeout)
-		result[action.Name] = &v
+		result[action.qualifiedName()] = &v
 	}
 
 	return result, nil

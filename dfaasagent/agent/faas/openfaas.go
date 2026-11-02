@@ -80,6 +80,14 @@ func (o *OpenFaaS) Platform() string {
 	return PlatformOpenFaaS
 }
 
+func (o *OpenFaaS) PathPrefix() string {
+	return "/function/"
+}
+
+func (o *OpenFaaS) Path(name string) string {
+	return o.PathPrefix() + name
+}
+
 func (o *OpenFaaS) Names() ([]string, error) {
 	functions, err := o.functions()
 	if err != nil {

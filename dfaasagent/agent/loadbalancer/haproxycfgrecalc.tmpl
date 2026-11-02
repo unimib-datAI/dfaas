@@ -55,23 +55,27 @@ frontend main
 
     {{/* Create ACLs and backend selection for each function. */}}
     {{range $funcName, $_ := .Functions -}}
-        # Match function path (always under /function/).
-        acl is_{{$funcName}} path_beg /function/{{$funcName}}
+        {{- $id := proxyID $funcName -}}
+        # Match function path, optionally followed by a sub-path ("/...") or
+        # by an extension (".json", used by OpenWhisk Web Actions).
+        acl is_{{$id}} path {{funcPath $funcName}}
+        acl is_{{$id}} path_beg {{funcPath $funcName}}/ {{funcPath $funcName}}.
 
         # Route forwarded requests to the dedicated neighbor backend. If a
         # request comes with no recognized neighbor, HAProxy returns 503.
         {{range $neighborID := $.Neighbors -}}
             {{/* DFaaS-Node-ID contains the full ID without the "node_" prefix! */}}
-            acl from_neighbor_{{$funcName}}_{{$neighborID}} req.hdr(DFaaS-Node-ID) -m str {{trimPrefix "node_" $neighborID}}
-            use_backend function_{{$funcName}}_forwarded_{{$neighborID}} if is_{{$funcName}} from_neighbor_{{$funcName}}_{{$neighborID}}
+            acl from_neighbor_{{$id}}_{{$neighborID}} req.hdr(DFaaS-Node-ID) -m str {{trimPrefix "node_" $neighborID}}
+            use_backend function_{{$id}}_forwarded_{{$neighborID}} if is_{{$id}} from_neighbor_{{$id}}_{{$neighborID}}
         {{end -}}
 
         # Locally originated requests use the normal load-balancing backend.
-        use_backend function_{{$funcName}} if is_{{$funcName}} !has_node_hdr
+        use_backend function_{{$id}} if is_{{$id}} !has_node_hdr
     {{end}}
 
 {{- range $funcName, $timeout := .Functions }}
-backend function_{{$funcName}}
+{{- $id := proxyID $funcName }}
+backend function_{{$id}}
     # Save, if available, the K6 iteration to a process' variable. This
     # variabile will be read by the DFaaS agent via the Runtime API to know the
     # latest known K6 iteration. Used only for debugging and on strategies that
@@ -110,7 +114,7 @@ backend function_{{$funcName}}
 {{- range $neighborID := $.Neighbors }}
 # Each neighbor has a dedicated backend for incoming forwarded requests because
 # we need to selectively balance weights for each.
-backend function_{{$funcName}}_forwarded_{{$neighborID}}
+backend function_{{$id}}_forwarded_{{$neighborID}}
     # This is a forwarded request: we preserve original node ID and add where it
     # was forwarded to.
     http-response set-header DFaaS-Node-ID %[var(txn.dfaas_node_id)]
