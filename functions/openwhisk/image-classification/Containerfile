@@ -1,0 +1,16 @@
+# Image for the OpenWhisk image-classification action. It extends the official
+# OpenWhisk Python runtime by installing the dependencies, since PyTorch is too
+# large for a zip action. The action code is given as zip file when creating the
+# action.
+#
+# The main benefit of this is that updating the code no longer needs an image
+# rebuild.
+ARG RUNTIME_VERSION=1.20.0
+
+FROM --platform=${TARGETPLATFORM:-linux/amd64} docker.io/openwhisk/action-python-v3.12:${RUNTIME_VERSION}
+
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+COPY requirements.torch.txt .
+RUN pip install --no-cache-dir -r requirements.torch.txt
