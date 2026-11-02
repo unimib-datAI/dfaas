@@ -7,6 +7,7 @@ package loadbalancer
 
 import (
 	_ "embed"
+	"errors"
 	"fmt"
 	"net/http"
 	"time"
@@ -89,7 +90,7 @@ func (strategyFactory *recalcStrategyFactory) createStrategy() (Strategy, error)
 	strategy.promq, err = promq.New(_config.PrometheusHost,
 		_config.PrometheusPort,
 		_config.PrometheusStep,
-		faas.Platform(),
+		strategy.faas.Platform(),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("initializing Prometheus client: %w", err)
@@ -257,7 +258,7 @@ func (strategyFactory *rlAgentStrategyFactory) createStrategy() (Strategy, error
 	runtimeapi_addr := fmt.Sprintf("%s:%d", _config.RuntimeAPIHost, _config.RuntimeAPIPort)
 	strategy.runtimeapi = proxy.NewRuntimeAPI(runtimeapi_addr)
 
-	faas, err := faas.New(_config.FaaSPlatform,
+	faasProvider, err := faas.New(_config.FaaSPlatform,
 		_config.FaaSHost,
 		_config.FaaSPort,
 		_config.OpenWhiskNamespace,
@@ -266,13 +267,16 @@ func (strategyFactory *rlAgentStrategyFactory) createStrategy() (Strategy, error
 	if err != nil {
 		return nil, fmt.Errorf("initializing FaaS platform wrapper: %w", err)
 	}
-	strategy.faas = faas
+	if faasProvider.Platform() != faas.PlatformOpenFaaS {
+		return nil, errors.New("strategy supported only on OpenFaaS")
+	}
+	strategy.faas = faasProvider
 
 	// Set up the Prometheus client used to run PromQL queries.
 	realPromq, err := promq.New(_config.PrometheusHost,
 		_config.PrometheusPort,
 		_config.PrometheusStep,
-		faas.Platform(),
+		strategy.faas.Platform(),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("initializing Prometheus client: %w", err)
@@ -283,7 +287,7 @@ func (strategyFactory *rlAgentStrategyFactory) createStrategy() (Strategy, error
 	historicalPromq, err := promq.New(_config.HistoricalPrometheusHost,
 		_config.HistoricalPrometheusPort,
 		_config.PrometheusStep,
-		faas.Platform(),
+		strategy.faas.Platform(),
 	)
 	if err != nil {
 		return nil, fmt.Errorf("initializing historical Prometheus client: %w", err)
