@@ -6,14 +6,14 @@ system, and also [buildah](https://buildah.io/).
 Each DFaaS component has a `Containerfile` in its root directory, which is also
 used as build context. The available components are:
 
-| Component                | Directory                              | Image name                      |
-|--------------------------|----------------------------------------|---------------------------------|
-| DFaaS Agent              | `dfaasagent`                           | `agent`                         |
-| DFaaS Forecaster         | `forecaster`                           | `forecaster`                    |
-| memstress function       | `functions/memstress`                  | `openfaas-memstress`            |
-| image-classification     | `functions/image-classification`       | `openfaas-image-classification` |
-| rejector                 | `k8s/scripts/rejector`                 | `rejector`                      |
-| haproxy-metrics-exporter | `k8s/scripts/haproxy-metrics-exporter` | `haproxy-metrics-exporter`      |
+| Component                | Directory                                 | Image name                      |
+|--------------------------|-------------------------------------------|---------------------------------|
+| DFaaS Agent              | `dfaasagent`                              | `agent`                         |
+| DFaaS Forecaster         | `forecaster`                              | `forecaster`                    |
+| memstress function       | `functions/openfaas/memstress`            | `openfaas-memstress`            |
+| image-classification     | `functions/openfaas/image-classification` | `openfaas-image-classification` |
+| rejector                 | `k8s/scripts/rejector`                    | `rejector`                      |
+| haproxy-metrics-exporter | `k8s/scripts/haproxy-metrics-exporter`    | `haproxy-metrics-exporter`      |
 
 To build the image of one component, you can run the following command:
 
@@ -31,9 +31,9 @@ runs the given actions in order:
 Without actions, the image is only built and tagged. Some examples:
 
 ```console
-$ just build openfaas-memstress functions/memstress
+$ just build openfaas-memstress functions/openfaas/memstress
 $ just build rejector k8s/scripts/rejector k3s
-$ just build openfaas-image-classification functions/image-classification push
+$ just build openfaas-image-classification functions/openfaas/image-classification push
 ```
 
 Since the main components are the DFaaS Agent and Forecaster, there are two

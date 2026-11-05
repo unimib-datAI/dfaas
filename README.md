@@ -115,13 +115,11 @@ exploiting the playbook and configuration files in
 
 ### Deploy functions
 
-Use the [`k8s/scripts/deploy-functions.sh`](k8s/scripts/deploy-functions.sh)
-script to automatically deploy the default functions to the local DFaaS
-instance. If you use the Ansible playbook, this step is done automatically.
+Use `faas-cli` to deploy functions to the local DFaaS instance with OpenFaaS, or
+`wsk` for OpenWhisk. The deployment is out of scope for the DFaaS project.
 
-We also created a basic ML inference function for OpenFaaS named
-`image-classification`. Refer to [its
-documentation](functions/image-classification/README.md) for more details.
+Under the `functions/` directory you can found some custom functions for
+OpenFaaS and OpenWhisk.
 
 ### Invoke a function
 

@@ -5,7 +5,7 @@ OpenWhisk. It implements a basic Python Web Action for image classification
 using Torchvision.
 
 This is the OpenWhisk port of the [OpenFaaS
-version](../../image-classification). The main function logic is mostly the
+version](../../openfaas/image-classification). The main function logic is mostly the
 same. The differences are:
 
 * [\_\_main\_\_.py](__main__.py) contains the `main(args)` entry point called by

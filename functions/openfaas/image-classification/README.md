@@ -14,10 +14,10 @@ The main function logic can be found in
 
 ## Build and push
 
-Use the project's [justfile](../../justfile) to build the image:
+Use the project's [justfile](../../../justfile) to build the image:
 
 ```console
-$ just build openfaas-image-classification functions/image-classification
+$ just build openfaas-image-classification functions/openfaas/image-classification
 ```
 
 This will generate the image with `localhost/openfaas-image-classification:dev`
@@ -25,7 +25,7 @@ tag. To push the image to GitHub Container Registry (after login) with tag
 `ghcr.io/unimib-datai/dfaas-openfaas-image-classification`:
 
 ```console
-$ just build openfaas-image-classification functions/image-classification push
+$ just build openfaas-image-classification functions/openfaas/image-classification push
 ```
 
 > [!IMPORTANT]
@@ -51,7 +51,7 @@ if the DFaaS Agent does not use this strategy.
 You can also pass the options `--env exec_timeout=4s` and `--env
 max_inflight=400` to configure the per-request execution timeout and the maximum
 number of concurrent requests each replica can handle. See
-[docs/timeout.md](../docs/timeout.md) for more details.
+[docs/timeouts.md](../../../docs/timeouts.md) for more details.
 
 ## Test
 

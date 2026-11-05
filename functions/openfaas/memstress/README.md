@@ -10,10 +10,10 @@ server listening on port `8081`.
 
 ## Build and push
 
-Use the project's [justfile](../../justfile) to build the image:
+Use the project's [justfile](../../../justfile) to build the image:
 
 ```console
-$ just build openfaas-memstress functions/memstress
+$ just build openfaas-memstress functions/openfaas/memstress
 ```
 
 This will generate the image with `localhost/openfaas-memstress:dev` tag. To
@@ -21,7 +21,7 @@ push the image to GitHub Container Registry (after login) with tag
 `ghcr.io/unimib-datai/dfaas-openfaas-memstress`:
 
 ```console
-$ just build openfaas-memstress functions/memstress push
+$ just build openfaas-memstress functions/openfaas/memstress push
 ```
 
 > [!IMPORTANT]
@@ -48,7 +48,7 @@ You can also pass the options `--env exec_timeout=60s` and `--env
 max_inflight=400` to configure the per-request execution timeout and the
 maximum number of concurrent requests each replica can handle. The execution
 timeout must be longer than the largest `seconds` value you plan to send,
-otherwise the request is cut off. See [docs/timeout.md](../docs/timeout.md) for
+otherwise the request is cut off. See [docs/timeouts.md](../../../docs/timeouts.md) for
 more details.
 
 It is also recommended to set `GOMEMLIMIT` slightly below the container memory
