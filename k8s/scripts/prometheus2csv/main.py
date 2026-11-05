@@ -1,4 +1,4 @@
-#!/usr/bin/env python3
+#!/usr/bin/env -S uv run --script
 # SPDX-License-Identifier: AGPL-3.0-or-later.
 # Copyright 2026 The DFaaS Authors. All rights reserved.
 # This file is licensed under the AGPL v3.0 or later license. See LICENSE and
@@ -8,6 +8,13 @@
 # specified time range.
 #
 # Run the script with the --help flag for more details.
+
+# /// script
+# requires-python = ">=3.12"
+# dependencies = [
+#     "prometheus-api-client>=0.7.0",
+# ]
+# ///
 
 import csv
 import gzip

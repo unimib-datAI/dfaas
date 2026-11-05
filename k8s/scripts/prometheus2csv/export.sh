@@ -28,7 +28,7 @@ run_job() {
 
   mkdir "$OUTPUT_BASE_DIR/$NODE_NAME"
 
-  /home/emanuele/ipython-env/env/bin/python main.py \
+  ./main.py \
       --host "$IP" \
       --metrics-file metrics.csv \
       --start "$START_DATE" \
