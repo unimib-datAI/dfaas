@@ -33,8 +33,13 @@ Create the action as a Web Action from the source file:
 
 ```console
 $ wsk action create noop functions/openwhisk/noop/main.go \
-    --kind go:1.23 --web true --memory 128 --annotation dfaas.maxrate 100
+    --kind go:1.23 --web true --memory 512 --annotation dfaas.maxrate 100
 ```
+
+> [!NOTE]
+> The runtime compiles the source file when it initializes the action, so the
+> memory limit must also cover the compiler. With `--memory 128` the action fails
+> with `The action did not initialize and exited unexpectedly.`
 
 > [!IMPORTANT]
 > Do not use hyphens or underscores, otherwise they will break the HAProxy
