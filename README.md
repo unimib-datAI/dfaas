@@ -1,5 +1,7 @@
 # DFaaS: Decentralized Function-as-a-Service for Federated Edge 
 
+<img src="images/dfaas-logo.png" alt="DFaaS logo" width="150">
+
 This repository contains DFaaS, a decentralized FaaS-based architecture designed
 to automatically and autonomously balance the traffic load across edge nodes
 belonging to federated Edge Computing ecosystems.
