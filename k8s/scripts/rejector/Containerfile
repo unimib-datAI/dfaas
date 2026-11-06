@@ -1,9 +1,11 @@
 # Container to build the rejector
 #
 # Based on the official Go image: https://hub.docker.com/_/golang
+ARG GO_VERSION=1.27.3
+ARG ALPINE_VERSION=3.24
 
 # Stage 1: Build the Go app.
-FROM docker.io/library/golang:1.26 AS builder
+FROM docker.io/library/golang:${GO_VERSION}-alpine${ALPINE_VERSION} AS build
 
 # See: https://docs.github.com/en/packages/learn-github-packages/connecting-a-repository-to-a-package#connecting-a-repository-to-a-container-image-using-the-command-line
 LABEL org.opencontainers.image.source="https://github.com/unimib-datAI/dfaas"
@@ -25,12 +27,12 @@ RUN --mount=type=cache,target=/go/pkg/mod \
     go build -v -o rejector .
 
 # Stage 2: Create a minimal image using Alpine Linux.
-FROM docker.io/library/alpine:3.23
+FROM docker.io/library/alpine:${ALPINE_VERSION}
 
 WORKDIR /opt/
 
 # Copy the binary from the builder stage
-COPY --from=builder /opt/rejector .
+COPY --from=build /opt/rejector .
 
 # The rejector exposes an HTTP Web server to port 8080.
 EXPOSE 8080
