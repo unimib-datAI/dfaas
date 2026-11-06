@@ -38,7 +38,8 @@ It creates the following Kubernetes resources:
   zookeeper-pvc-data, and zookeeper-pvc-datalog.
 
 Note that in this deployment, the invoker creates and removes pods for actions
-as the load changes.
+as the load changes. Unlike the original chart, no runtime has prewarmed
+containers so the invoker does not keep idle action pods running.
 
 ## Installing
 
