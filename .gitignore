@@ -52,7 +52,9 @@ metrics_predictions/output*/**
 /data
 *.png
 *.jpg
+*.jpeg
 *.csv
+*.zip
 *.gz
 *.html
 *.pdf
