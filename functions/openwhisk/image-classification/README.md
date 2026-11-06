@@ -52,14 +52,19 @@ Web Action using the custom runtime image and the zip file:
 ```console
 $ wsk action create mlimage action.zip \
     --docker ghcr.io/unimib-datai/dfaas-openwhisk-image-classification:dev \
-    --web true --memory 256 --timeout 120000 --annotation dfaas.maxrate 100
+    --web true --memory 512 --timeout 120000 --annotation dfaas.maxrate 100
 ```
 
-Note that DFaaS Agent considers only Web Actions. You can tune `--memory` to the
-size that matches the model weights, 256 should be enough. The `dfaas.maxrate`
-annotation is required by the Recalc strategy. You can omit it if the DFaaS
-Agent does not use this strategy. You can also set `dfaas.timeout_ms` to
-configure the per-request timeout, or `timeout` for the Web Action timeout.
+> [!NOTE]
+> The memory limit must cover PyTorch and the model weights. With `--memory 256`
+> the action initializes, but the first request fails with `The action did not
+> produce a valid response and exited unexpectedly.` 512 MB is also the maximum
+> allowed by the OpenWhisk deployment.
+
+Note that DFaaS Agent considers only Web Actions. The `dfaas.maxrate` annotation
+is required by the Recalc strategy. You can omit it if the DFaaS Agent does not
+use this strategy. You can also set `dfaas.timeout_ms` to configure the
+per-request timeout, or `timeout` for the Web Action timeout.
 
 To update only the code, rebuild the zip file and run `wsk action update` with
 the same arguments.
