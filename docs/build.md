@@ -11,6 +11,7 @@ used as build context. The available components are:
 | DFaaS Agent              | `dfaasagent`                              | `agent`                         |
 | DFaaS Forecaster         | `forecaster`                              | `forecaster`                    |
 | memstress function       | `functions/openfaas/memstress`            | `openfaas-memstress`            |
+| noop function            | `functions/openfaas/noop`                 | `openfaas-noop`                 |
 | image-classification     | `functions/openfaas/image-classification` | `openfaas-image-classification` |
 | rejector                 | `k8s/scripts/rejector`                    | `rejector`                      |
 | haproxy-metrics-exporter | `k8s/scripts/haproxy-metrics-exporter`    | `haproxy-metrics-exporter`      |
