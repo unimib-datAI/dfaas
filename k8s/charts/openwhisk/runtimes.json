@@ -196,7 +196,7 @@
         ],
         "go": [
             {
-                "kind": "go:1.17",
+                "kind": "go:1.23",
                 "default": true,
                 "deprecated": false,
                 "attached": {
@@ -205,8 +205,8 @@
                 },
                 "image": {
                     "prefix": "openwhisk",
-                    "name": "action-golang-v1.17",
-                    "tag": "1.20.0"
+                    "name": "action-golang-v1.23",
+                    "tag": "1.25.0"
                 }
             }
         ],

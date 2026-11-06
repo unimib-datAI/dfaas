@@ -12,10 +12,15 @@ behavior is the same. The differences are:
   OpenWhisk Go runtime and returns a Web Action response, instead of being an
   HTTP server.
 * There is no Containerfile, since the function has no dependencies. The action
-  runs on the official `go:1.17` runtime, which is already available in the
+  runs on the official `go:1.23` runtime, which is already available in the
   [OpenWhisk chart](../../../k8s/charts/openwhisk/runtimes.json), so there is no
   image to build and push. For the same reason there is no `go.mod`: the runtime
   compiles the single source file when it initializes the action.
+
+> [!WARNING]
+> This action is compiled with Go 1.23 by the `openwhisk/action-golang-v1.23`
+> runtime, while the [OpenFaaS version](../../openfaas/noop) uses Go 1.27. Go
+> 1.23 is the latest version with an official OpenWhisk runtime image.
 
 ## Deploy
 
@@ -28,7 +33,7 @@ Create the action as a Web Action from the source file:
 
 ```console
 $ wsk action create noop functions/openwhisk/noop/main.go \
-    --kind go:1.17 --web true --memory 128 --annotation dfaas.maxrate 100
+    --kind go:1.23 --web true --memory 128 --annotation dfaas.maxrate 100
 ```
 
 > [!IMPORTANT]
