@@ -7,8 +7,12 @@
 #
 # Each component has a Containerfile in its root directory, which is also used
 # as build context.
+#
+# The recipes to deploy DFaaS on the local node are in deploy.just.
 
 set shell := ["bash", "-euo", "pipefail", "-c"]
+
+import 'deploy.just'
 
 registry := "ghcr.io/unimib-datai"
 

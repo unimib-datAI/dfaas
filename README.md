@@ -71,57 +71,47 @@ LTS](https://releases.ubuntu.com/noble/) and [K3S](https://k3s.io/) as the
 Kubernetes distribution.
 
 We recommend starting with fresh virtual machines (VMs) running Ubuntu. You can
-deploy one DFaaS platform per VM. To assist with setup, a collection of Ansible
-playbooks is available.
+deploy one DFaaS platform per VM.
 
 For more information about DFaaS, refer to the documentation in the
 [`docs`](docs) directory.
 
-### Automated deployment with Ansible
+### Deploy with just
 
-Install Ansible on the control node following the [official
-documentation](https://docs.ansible.com/ansible/latest/installation_guide/intro_installation.html)
-(use the Ansible PPA). Then use the provided playbook
-[`deploy_dfaas.yaml`](deploy_dfaas.yaml) to setup a node and deploy DFaaS on it.
-We suggest to create an inventory file if you use more than one node.
+DFaaS is deployed on the local node with [just](https://just.systems/). The node
+needs:
 
-An example of `inventory.yaml` file is
+* [buildah](https://buildah.io/), to build the images,
+* [k3s](https://k3s.io/), installed with `INSTALL_K3S_EXEC="--disable traefik"`,
+* [Helm](https://helm.sh/) v3 (v4 is not supported),
+* [`faas-cli`](https://github.com/openfaas/faas-cli) in `/opt/bin` for OpenFaaS,
+  or [`wsk`](https://github.com/apache/openwhisk-cli) in `/opt/bin` and `zip` for
+  OpenWhisk.
 
-```yaml
-all:
-  hosts:
-    <node-name>:
-      ansible_host: <ip_address>
-      ansible_user: <user>
-      ansible_password: <password>
-      ansible_become: true
-```
-
-We assume that the managed node has a user with root privileges and can connect
-via SSH with a password.
-
-If you want to setup and deploy DFaaS on the same node you are running Ansible,
-just run:
+Build the images, then deploy the whole node. `CONFIG.yaml` is the Helm values
+file of the agent:
 
 ```console
-$ ansible-playbook --inventory localhost, --connection local deploy_dfaas.yaml --tags setup
-$ ansible-playbook --inventory localhost, --connection local deploy_dfaas.yaml --tags deploy
+$ just agent k3s
+$ just forecaster k3s
+$ just deploy-all CONFIG.yaml
 ```
+
+See [`docs/commands.md`](docs/commands.md) for the agent's configuration, the
+other deployment modes and how to deploy OpenWhisk, and
+[`docs/build.md`](docs/build.md) for building the images.
 
 You can make automatic calls to the node with k6. More information
 about it in the [dedicated directory](k6).
 
-If you have four different VMs it's recommended to deploy the entire system
-exploiting the playbook and configuration files in
-[`test_environment`](test_environment). This is still a work in progress.
-
 ### Deploy functions
 
 Use `faas-cli` to deploy functions to the local DFaaS instance with OpenFaaS, or
-`wsk` for OpenWhisk. The deployment is out of scope for the DFaaS project.
+`wsk` for OpenWhisk.
 
 Under the `functions/` directory you can found some custom functions for
-OpenFaaS and OpenWhisk.
+OpenFaaS and OpenWhisk. You can deploy them with `just deploy-functions`, see
+[`docs/commands.md`](docs/commands.md) for this and the other deployment modes.
 
 ### Invoke a function
 
