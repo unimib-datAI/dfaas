@@ -2,7 +2,7 @@
 image: localhost/agent:dev
 imagePullPolicy: Never # The agent image is manually imported.
 # Alternative is the latest dev version from GitHub Container Registry.
-#image: ghcr.io/unimib-datai/agent:dev
+#image: ghcr.io/unimib-datai/dfaas-agent:dev
 #imagePullPolicy: Always # Since the dev tag is overwritten with newer versions.
 
 # Default DFaaS Agent configuration.
@@ -124,7 +124,8 @@ config:
   # scrape interval (see Prometheus config).
   AGENT_PROMETHEUS_STEP: 5s
 
-  AGENT_STRATEGY: "nodemarginstrategy"
+  # The "nodemarginstrategy" also requires forecaster.enabled set to true.
+  AGENT_STRATEGY: "alllocalstrategy"
 
   AGENT_GROUP_LIST_FILE_NAME: "./group_list.json"
 
@@ -180,10 +181,11 @@ privateKey: ""
 #  -----END PRIVATE KEY-----
 
 forecaster:
-  enabled: true
+  # Required only by the "nodemarginstrategy".
+  enabled: false
 
   # Same as the dfaas-agent image.
   image: localhost/forecaster:dev
   imagePullPolicy: Never
-  #image: ghcr.io/unimib-datai/forecaster:dev
+  #image: ghcr.io/unimib-datai/dfaas-forecaster:dev
   #imagePullPolicy: Always # Since the dev tag is overwritten with newer versions.

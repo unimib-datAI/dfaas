@@ -23,13 +23,25 @@ deployment. There is also a recipe for each component, see `just --list`.
 `CONFIG` is the Helm values file of the agent, it overrides the [chart's default
 values](../k8s/charts/agent/values.yaml). See
 [agent-startup.md](agent-startup.md) for the available options. By default the
-chart uses local images, so you need to build them first:
+chart uses the All Local strategy, without the forecaster, and a local image, so
+you need to build it first:
 
 ```console
 $ just agent k3s
-$ just forecaster k3s
 $ just deploy-all CONFIG.yaml
 ```
+
+To deploy the images published on GitHub Container Registry instead, without
+building anything, set the `images` variable:
+
+```console
+$ just images=public deploy-all CONFIG.yaml
+```
+
+This overrides any image set in `CONFIG.yaml`. The Node Margin strategy also
+requires the forecaster: enable it in `CONFIG.yaml` (see
+[agent-startup.md](agent-startup.md#forecaster)) and, if you use local images,
+build it with `just forecaster k3s`.
 
 Without the agent, HAProxy replies to function calls with `503`, until you
 configure it. With `just deploy-faas` there is no HAProxy, so call the functions

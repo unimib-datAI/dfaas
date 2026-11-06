@@ -88,14 +88,16 @@ needs:
   or [`wsk`](https://github.com/apache/openwhisk-cli) in `/opt/bin` and `zip` for
   OpenWhisk.
 
-Build the images, then deploy the whole node. `CONFIG.yaml` is the Helm values
-file of the agent:
+Build the agent image, then deploy the whole node. `CONFIG.yaml` is the Helm
+values file of the agent:
 
 ```console
 $ just agent k3s
-$ just forecaster k3s
 $ just deploy-all CONFIG.yaml
 ```
+
+Or skip the build and deploy the public images with
+`just images=public deploy-all CONFIG.yaml`.
 
 See [`docs/commands.md`](docs/commands.md) for the agent's configuration, the
 other deployment modes and how to deploy OpenWhisk, and

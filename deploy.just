@@ -16,9 +16,21 @@
 #
 #   just platform=openwhisk deploy-faas
 #   just function_replica_timeout=60s function_gateway_timeout=61s deploy-faas
+#   just images=public deploy-all CONFIG
 
 # FaaS platform to deploy: "openfaas" or "openwhisk".
 platform := "openfaas"
+
+# Agent and forecaster images to deploy: "local" uses the images set in the
+# agent's config (by default the ones imported with "just agent k3s"), "public"
+# overrides them with the ones published on the registry.
+images := "local"
+agent_image_args := if images == "public" {
+    "--set image=" + registry + "/dfaas-agent:dev --set imagePullPolicy=Always " + \
+    "--set forecaster.image=" + registry + "/dfaas-forecaster:dev --set forecaster.imagePullPolicy=Always"
+} else {
+    ""
+}
 
 # OpenFaaS only: timeouts and limits, shared by all functions. The timeouts must
 # be increasing, see docs/timeouts.md. The gateway timeout is global and it must
@@ -72,7 +84,8 @@ deploy-faas: _check-platform deploy-prometheus deploy-platform deploy-functions
 deploy-agent config: (_check-agent-config config)
     {{ sudo_k }} helm upgrade --install agent "{{ charts }}/agent" \
         --namespace default \
-        --values "{{ join(invocation_directory(), config) }}"
+        --values "{{ join(invocation_directory(), config) }}" \
+        {{ agent_image_args }}
     {{ sudo_k }} kubectl rollout restart deployment/dfaas-agent
     {{ sudo_k }} kubectl rollout status deployment/dfaas-agent --timeout=5m
 
@@ -165,13 +178,18 @@ _check-platform:
 _check-agent-config config: _check-platform
     #!/usr/bin/env bash
     set -euo pipefail
+    case "{{ images }}" in
+      local|public) ;;
+      *) echo "Unknown images: {{ images }} (valid images: local, public)" >&2; exit 1 ;;
+    esac
+
     config="{{ join(invocation_directory(), config) }}"
     if [[ ! -f "$config" ]]; then
       echo "Agent config not found: $config" >&2
       exit 1
     fi
 
-    rendered=$(helm template agent "{{ charts }}/agent" --values "$config")
+    rendered=$(helm template agent "{{ charts }}/agent" --values "$config" {{ agent_image_args }})
 
     configured=$(sed -n 's/^ *AGENT_FAAS_PLATFORM: "\(.*\)"$/\1/p' <<< "$rendered")
     if [[ "$configured" != "{{ platform }}" ]]; then
@@ -188,7 +206,7 @@ _check-agent-config config: _check-platform
       while IFS= read -r image; do
         if ! grep -qFx "$image" <<< "$imported"; then
           echo "Image $image is not imported in k3s." >&2
-          echo "Build it (just agent k3s, just forecaster k3s) or set a remote image in the config." >&2
+          echo "Build it (just agent k3s, just forecaster k3s) or deploy the public images (just images=public ...)." >&2
           exit 1
         fi
       done <<< "$images"

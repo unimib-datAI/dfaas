@@ -12,9 +12,8 @@ more), so we provide a Helm chart located at
 
 Additionally, there is the *forecaster* component: a small Python program that
 provides an HTTP API to the main agent. The forecaster is mandatory only if you
-use the *Node Margin Strategy*, otherwise it is optional. It is installed and
-started by default as part of the agent Helm chart, but it can be disabled if
-needed.
+use the *Node Margin Strategy*, otherwise it is optional. It is part of the agent
+Helm chart, but it is disabled by default.
 
 ## How to configure the agent
 
@@ -36,16 +35,19 @@ Throughout this document, examples refer to modifying the `values.yaml` file.
 There are two main ways to allow Kubernetes to pull the correct image for the
 agent and forecaster components:
 
-1. Pulling the public image published on ghcr.io/unimib-datai (see
+1. Pulling a locally imported image.
+2. Pulling the public image published on ghcr.io/unimib-datai (see
    [github.com/orgs/unimib-datAI/packages](https://github.com/orgs/unimib-datAI/packages))
-2. Pulling a locally imported image.
 
-By default, the Helm chart is configured to use the first option. You can switch
-to the second option by setting `image` to `localhost/agent:dev` and
-`imagePullPolicy` to `Never` in the `values.yaml` file. After that, you must
-manually push the image to the cluster. You can use `just agent k3s` (see the
+By default, the Helm chart is configured to use the first option. You must
+manually import the image into the cluster: you can use `just agent k3s` (see the
 [justfile](../justfile)), which builds the image locally and imports it into
 the local k3s cluster.
+
+You can switch to the second option by deploying with `just images=public
+deploy-agent CONFIG.yaml` (or `deploy-all`), or by setting `image` to
+`ghcr.io/unimib-datai/dfaas-agent:dev` and `imagePullPolicy` to `Always` in the
+`values.yaml` file.
 
 ## Agent identity
 
@@ -141,17 +143,21 @@ and will keep retrying until both connections are successfully established.
 
 ## Forecaster
 
-The forecaster component is installed and started automatically with the agent
-when using the provided Helm chart. If it is not required, it can be disabled by
-setting `enabled` to false in the `forecaster` section of the values.yaml file.
+The forecaster component is not deployed by default. If you use the Node Margin
+Strategy, enable it by setting `enabled` to true in the `forecaster` section of
+the values.yaml file, and select the strategy:
 
 ```yaml
+config:
+  AGENT_STRATEGY: "nodemarginstrategy"
+
 forecaster:
-  enabled: false
+  enabled: true
 ```
 
 The image pulling rules that apply to the forecaster are the same as those for
-the agent.
+the agent: import the local image with `just forecaster k3s`, or use the public
+one (`ghcr.io/unimib-datai/dfaas-forecaster:dev`).
 
 ## Manual agent startup
 
