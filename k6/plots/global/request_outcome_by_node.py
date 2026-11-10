@@ -72,7 +72,7 @@ def aggregate(df):
     )
 
 
-def plot(df, output):
+def plot(df, output, title=True):
     """
     Generate a 100% stacked bar chart showing request outcomes per node.
     """
@@ -106,8 +106,9 @@ def plot(df, output):
         ylabel="Requests (%)",
         xlabel="DFaaS node",
         ylim=(0, 110),
-        title="Incoming request outcome distribution per DFaaS node",
     )
+    if title:
+        ax.set_title("Incoming request outcome distribution per DFaaS node")
 
     ax.grid(axis="y", linestyle="--", alpha=0.3)
     ax.legend(loc="upper center", bbox_to_anchor=(0.5, -0.18), ncol=3, fontsize=8)
@@ -119,19 +120,35 @@ def plot(df, output):
     plt.close(fig)
 
 
-def process_csv(input_csv, output_csv, output_pdf):
+ALL_LABEL = "All"
+
+
+def process_csv(
+    input_csv, output_csv, output_pdf, rename=None, add_all=False, title=True
+):
     """
     Process a single input CSV file.
+
+    rename maps node names to the labels shown in the outputs. With add_all, an
+    extra row aggregates the requests of every node.
     """
     print(f"Loading CSV: {input_csv}")
 
     df = pl.read_csv(input_csv, null_values=[""])
+
+    if rename:
+        df = df.with_columns(pl.col("node").replace(rename))
 
     # Classify request outcomes
     df = classify_outcome(df)
 
     # Aggregate outcomes per node
     aggregated = aggregate(df)
+    aggregated = aggregated.sort("node")
+
+    if add_all:
+        federation = aggregate(df.with_columns(pl.lit(ALL_LABEL).alias("node")))
+        aggregated = pl.concat([aggregated, federation], how="diagonal").fill_null(0)
 
     ordered_columns = [
         "node",
@@ -146,18 +163,17 @@ def process_csv(input_csv, output_csv, output_pdf):
     aggregated = aggregated.select(
         [c for c in ordered_columns if c in aggregated.columns]
     )
-    aggregated = aggregated.sort("node")
 
     # Save outputs
     aggregated.write_csv(output_csv)
-    plot(aggregated, output_pdf)
+    plot(aggregated, output_pdf, title)
 
     print(f"Saved CSV: {output_csv}")
     print(f"Saved PDF: {output_pdf}")
     print()
 
 
-def process_experiment(exp):
+def process_experiment(exp, rename=None, add_all=False, title=True):
     """
     Process one experiment directory.
     """
@@ -167,7 +183,14 @@ def process_experiment(exp):
     output_csv = output_dir / "request_outcome_by_node.csv"
     output_pdf = output_dir / "request_outcome_by_node.pdf"
 
-    process_csv(input_csv, output_csv, output_pdf)
+    process_csv(input_csv, output_csv, output_pdf, rename, add_all, title)
+
+
+def parse_rename(value):
+    old, sep, new = value.partition("=")
+    if not sep or not old or not new:
+        raise argparse.ArgumentTypeError(f"expected OLD=NEW, got {value!r}")
+    return old, new
 
 
 def main():
@@ -200,7 +223,30 @@ def main():
         help="Output PDF plot file (required with --input-csv)",
     )
 
+    parser.add_argument(
+        "--rename",
+        type=parse_rename,
+        action="append",
+        default=[],
+        metavar="OLD=NEW",
+        help="Show node OLD with label NEW (repeatable), e.g. node_f=node_d",
+    )
+
+    parser.add_argument(
+        "--all",
+        action="store_true",
+        help=f"Add an '{ALL_LABEL}' bar with the outcomes of every node",
+    )
+
+    parser.add_argument(
+        "--no-title",
+        action="store_true",
+        help="Omit the figure title (e.g. for a paper figure with a caption)",
+    )
+
     args = parser.parse_args()
+    rename = dict(args.rename)
+    title = not args.no_title
 
     # Direct CSV mode
     if args.input_csv:
@@ -211,6 +257,9 @@ def main():
             args.input_csv.resolve(),
             args.output_csv.resolve(),
             args.output_pdf.resolve(),
+            rename,
+            args.all,
+            title,
         )
         return
 
@@ -219,7 +268,7 @@ def main():
         parser.error("provide experiment directories or use --input-csv")
 
     for exp in args.experiments:
-        process_experiment(exp.resolve())
+        process_experiment(exp.resolve(), rename, args.all, title)
 
 
 if __name__ == "__main__":
