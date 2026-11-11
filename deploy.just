@@ -74,8 +74,7 @@ deploy-all config: (_check-agent-config config) deploy-no-agent (deploy-agent co
 [group('deploy')]
 deploy-no-agent: _check-platform deploy-prometheus deploy-haproxy deploy-rejector deploy-faas
 
-# Deploy only the FaaS platform, the functions and Prometheus, which both platforms
-# require. Call the functions on the platform's port.
+# Deploy only the FaaS platform, the functions and Prometheus, which both platforms require. Call the functions on the platform's port.
 [group('deploy')]
 deploy-faas: _check-platform deploy-prometheus deploy-platform deploy-functions
 
